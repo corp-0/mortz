@@ -1,0 +1,18 @@
+<Project Sdk="Godot.NET.Sdk/4.6.2">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework Condition=" '$(GodotTargetPlatform)' == 'android' ">net9.0</TargetFramework>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>true</ImplicitUsings>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="Mortz.Tests\**" />
+    <Compile Remove="Mortz.Core\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="Mortz.Core\Mortz.Core.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,6 @@
+id = "base"
+name = "Mortz Base"
+version = "1.0.0"
+author = "Gilles"
+description = "The base game content pack."
+load_order = 0

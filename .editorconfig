@@ -1,0 +1,55 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.cs]
+indent_style = space
+indent_size = 4
+
+# Constants are SCREAMING_SNAKE_CASE (Godot convention), not .NET PascalCase
+dotnet_naming_rule.constants_screaming_snake.symbols = constants
+dotnet_naming_rule.constants_screaming_snake.style = screaming_snake
+dotnet_naming_rule.constants_screaming_snake.severity = warning
+
+dotnet_naming_symbols.constants.applicable_kinds = field, local
+dotnet_naming_symbols.constants.applicable_accessibilities = *
+dotnet_naming_symbols.constants.required_modifiers = const
+
+dotnet_naming_style.screaming_snake.capitalization = all_upper
+dotnet_naming_style.screaming_snake.word_separator = _
+
+# Private fields are _camelCase
+dotnet_naming_rule.private_fields_underscore_camel.symbols = private_fields
+dotnet_naming_rule.private_fields_underscore_camel.style = underscore_camel
+dotnet_naming_rule.private_fields_underscore_camel.severity = warning
+
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private
+
+dotnet_naming_style.underscore_camel.capitalization = camel_case
+dotnet_naming_style.underscore_camel.required_prefix = _
+
+# File-scoped namespaces, as used everywhere already
+csharp_style_namespace_declarations = file_scoped:warning
+
+# Braces only required for multiline bodies; single-statement ifs stay braceless
+csharp_prefer_braces = when_multiline:suggestion
+
+# Usings outside the namespace, System.* first
+csharp_using_directive_placement = outside_namespace:warning
+dotnet_sort_system_directives_first = true
+
+# Fields that are never reassigned should say so
+dotnet_style_readonly_field = true:warning
+
+# Explicit types, except var is fine when the RHS already names the type
+csharp_style_var_for_built_in_types = false:warning
+csharp_style_var_when_type_is_apparent = true:none
+csharp_style_var_elsewhere = false:warning
+
+# Prefer target-typed new: Type x = new(); not Type x = new Type();
+csharp_style_implicit_object_creation_when_type_is_apparent = true:warning

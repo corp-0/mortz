@@ -1,0 +1,119 @@
+using System.IO.Compression;
+
+namespace Mortz.Core;
+
+public enum TerrainMaterial : byte
+{
+    Empty = 0,
+    Solid = 1,        // collides, indestructible
+    Destructible = 2, // collides, carvable
+}
+
+/// <summary>
+/// The collision side of the terrain: one material cell per pixel. Every peer
+/// holds its own copy, changed only by carves; the same carves in the same
+/// order must produce byte-identical masks everywhere, so integer math only.
+/// Out-of-bounds is empty. Maps bring their own solid borders, and falling
+/// out the bottom is death, which makes death pits a map design tool.
+/// </summary>
+public sealed class TerrainMask
+{
+    public int Width { get; }
+    public int Height { get; }
+
+    private readonly TerrainMaterial[] _cells;
+    // Pristine state, for computing the "removed" diff sent to late joiners.
+    private readonly TerrainMaterial[] _original;
+
+    public TerrainMask(int width, int height, Func<int, int, bool> solid, Func<int, int, bool> destructible)
+    {
+        Width = width;
+        Height = height;
+        _cells = new TerrainMaterial[width * height];
+        for (int y = 0; y < height; y++)
+            for (int x = 0; x < width; x++)
+            {
+                // Solid wins where layers overlap.
+                if (solid(x, y)) _cells[y * width + x] = TerrainMaterial.Solid;
+                else if (destructible(x, y)) _cells[y * width + x] = TerrainMaterial.Destructible;
+            }
+        _original = (TerrainMaterial[])_cells.Clone();
+    }
+
+    public TerrainMaterial Get(int x, int y) =>
+        InBounds(x, y) ? _cells[y * Width + x] : TerrainMaterial.Empty;
+
+    public bool IsSolid(int x, int y) => Get(x, y) != TerrainMaterial.Empty;
+
+    /// <summary>Any solid cell in the pixel rect [minX,maxX) × [minY,maxY)?</summary>
+    public bool RectSolid(float minX, float minY, float maxX, float maxY)
+    {
+        int x0 = (int)MathF.Floor(minX);
+        int x1 = (int)MathF.Ceiling(maxX) - 1;
+        int y0 = (int)MathF.Floor(minY);
+        int y1 = (int)MathF.Ceiling(maxY) - 1;
+        for (int y = y0; y <= y1; y++)
+            for (int x = x0; x <= x1; x++)
+                if (IsSolid(x, y))
+                    return true;
+        return false;
+    }
+
+    /// <summary>
+    /// Remove Destructible cells within the circle. Returns the removed pixel
+    /// coordinates in deterministic (row-major) order; Solid is untouched.
+    /// </summary>
+    public List<(int X, int Y)> CarveCircle(int cx, int cy, int radius)
+    {
+        List<(int, int)> removed = new List<(int, int)>();
+        int r2 = radius * radius;
+        for (int y = cy - radius; y <= cy + radius; y++)
+            for (int x = cx - radius; x <= cx + radius; x++)
+            {
+                if (!InBounds(x, y)) continue;
+                int dx = x - cx, dy = y - cy;
+                if (dx * dx + dy * dy > r2) continue;
+                if (_cells[y * Width + x] != TerrainMaterial.Destructible) continue;
+                _cells[y * Width + x] = TerrainMaterial.Empty;
+                removed.Add((x, y));
+            }
+        return removed;
+    }
+
+    /// <summary>
+    /// Late-join sync: which originally-Destructible cells are now Empty,
+    /// as a deflate-compressed 1-bit-per-pixel mask (mostly zeros).
+    /// </summary>
+    public byte[] SerializeRemoved()
+    {
+        byte[] bits = new byte[(_cells.Length + 7) / 8];
+        for (int i = 0; i < _cells.Length; i++)
+            if (_original[i] == TerrainMaterial.Destructible && _cells[i] == TerrainMaterial.Empty)
+                bits[i / 8] |= (byte)(1 << (i % 8));
+
+        using MemoryStream ms = new MemoryStream();
+        using (DeflateStream deflate = new DeflateStream(ms, CompressionLevel.Fastest))
+            deflate.Write(bits);
+        return ms.ToArray();
+    }
+
+    /// <summary>Apply a removed-mask from <see cref="SerializeRemoved"/>; reports each removed pixel.</summary>
+    public void ApplyRemoved(byte[] data, Action<int, int>? onRemoved = null)
+    {
+        byte[] bits = new byte[(_cells.Length + 7) / 8];
+        using (DeflateStream deflate = new DeflateStream(new MemoryStream(data), CompressionMode.Decompress))
+            deflate.ReadExactly(bits);
+
+        for (int i = 0; i < _cells.Length; i++)
+        {
+            if ((bits[i / 8] & (1 << (i % 8))) == 0) continue;
+            if (_cells[i] != TerrainMaterial.Destructible) continue;
+            _cells[i] = TerrainMaterial.Empty;
+            onRemoved?.Invoke(i % Width, i / Width);
+        }
+    }
+
+    public bool Contains(int x, int y) => InBounds(x, y);
+
+    private bool InBounds(int x, int y) => x >= 0 && x < Width && y >= 0 && y < Height;
+}

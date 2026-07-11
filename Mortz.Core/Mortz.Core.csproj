@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Mortz.Core</RootNamespace>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+  </PropertyGroup>
+  <!-- Install the pre-commit hook on first build; set HUSKY=0 to skip (CI, exports) -->
+  <Target Name="HuskyInstall" AfterTargets="Restore;CollectPackageReferences" Condition="'$(HUSKY)' != '0'">
+    <Exec Command="dotnet tool restore" StandardOutputImportance="Low" WorkingDirectory=".." />
+    <Exec Command="dotnet husky install" StandardOutputImportance="Low" WorkingDirectory=".." />
+  </Target>
+</Project>

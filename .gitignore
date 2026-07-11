@@ -1,0 +1,17 @@
+# Godot
+.godot/
+*.translation
+export_credentials.cfg
+mono_crash.*.json
+
+# .NET
+bin/
+obj/
+*.user
+*.binlog
+TestResults/
+.vs/
+
+# IDE
+.idea/
+.vscode/
