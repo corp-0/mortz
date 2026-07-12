@@ -26,11 +26,15 @@ public sealed class MapPackage
 
     // All content access goes through here. When the content manager arrives
     // (multiple packs, external mod dirs), only this root changes.
-    private const string CONTENT_ROOT = "res://content/Base";
+    // Content is not embedded in the export; builds read it from a content/
+    // directory next to the executable (tools/export.ps1 puts it there).
+    private static string ContentRoot => OS.HasFeature("editor")
+        ? "res://content/Base"
+        : OS.GetExecutablePath().GetBaseDir().PathJoin("content/Base");
 
     public static MapPackage? Load(string mapId)
     {
-        string dir = $"{CONTENT_ROOT}/maps/{mapId}";
+        string dir = $"{ContentRoot}/maps/{mapId}";
         Image? background = LoadPng($"{dir}/background.png");
         Image? solid = LoadPng($"{dir}/solid.png");
         Image? destructible = LoadPng($"{dir}/destructible.png");

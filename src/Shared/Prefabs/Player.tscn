@@ -1,0 +1,40 @@
+[gd_scene format=3 uid="uid://4ksxyg8c7l8k"]
+
+[ext_resource type="Texture2D" uid="uid://bixaxn83876w6" path="res://Assets/ScifiCritters4.PNG" id="1_el0ul"]
+[ext_resource type="Texture2D" uid="uid://dwe3tj73fx26j" path="res://Assets/BaseCannon.png" id="2_2h1fo"]
+[ext_resource type="Script" uid="uid://b7lehci78rb18" path="res://src/Client/PlayerView.cs" id="3_pview"]
+
+[node name="Player" type="Node2D" unique_id=1524314240 node_paths=PackedStringArray("_body", "_aimPivot", "_launcher", "_camera", "_reloadBar")]
+script = ExtResource("3_pview")
+_body = NodePath("PlayerSprite")
+_aimPivot = NodePath("AimPivot")
+_launcher = NodePath("AimPivot/Launcher")
+_camera = NodePath("Camera2D")
+_reloadBar = NodePath("ReloadingTime")
+
+[node name="PlayerSprite" type="Sprite2D" parent="." unique_id=1209316856]
+texture = ExtResource("1_el0ul")
+hframes = 5
+vframes = 5
+region_rect = Rect2(0, 0, 32, 32)
+
+[node name="AimPivot" type="Node2D" parent="." unique_id=1795265278]
+
+[node name="Launcher" type="Sprite2D" parent="AimPivot" unique_id=1062109070]
+position = Vector2(20, 0)
+scale = Vector2(0.3115385, 0.29761904)
+texture = ExtResource("2_2h1fo")
+
+[node name="Muzzle" type="Marker2D" parent="AimPivot" unique_id=334312682]
+position = Vector2(40, 0)
+
+[node name="Camera2D" type="Camera2D" parent="." unique_id=1011691946]
+
+[node name="ReloadingTime" type="ProgressBar" parent="." unique_id=1801305937]
+visible = false
+offset_left = -16.0
+offset_top = -16.0
+offset_right = 11.0
+offset_bottom = 11.0
+max_value = 5.0
+show_percentage = false

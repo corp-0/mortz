@@ -24,9 +24,13 @@ public partial class NetworkManager : Node
     [Signal] public delegate void ConnectedEventHandler();
     [Signal] public delegate void ConnectionFailedEventHandler();
     [Signal] public delegate void DisconnectedEventHandler();
-    [Signal] public delegate void SnapshotReceivedEventHandler(byte[] data);
+    /// <summary>ack = newest input sequence the server applied for THIS client.</summary>
+    [Signal] public delegate void SnapshotReceivedEventHandler(byte[] data, int ack);
     [Signal] public delegate void WelcomeReceivedEventHandler(string mapId, string mapHash, byte[] removedData);
-    [Signal] public delegate void CarveReceivedEventHandler(int x, int y, int radius);
+    /// <summary>ownerId/spawnSeq identify the shell so the owner's client can
+    /// confirm its predicted carve; 0/-1 for carves nobody predicted (debug).</summary>
+    [Signal] public delegate void CarveReceivedEventHandler(int x, int y, int radius, int ownerId, int spawnSeq);
+    [Signal] public delegate void DeathReceivedEventHandler(long peerId, int x, int y);
 
     // Peers that sent a valid Hello; only these take part in the game.
     private readonly HashSet<long> _validatedPeers = new();
@@ -35,7 +39,7 @@ public partial class NetworkManager : Node
     // outgoing inputs and incoming snapshots are each held for half the lag.
     private int _fakeLagMs;
     private readonly Queue<(ulong Due, byte[] Packet)> _delayedInputs = new();
-    private readonly Queue<(ulong Due, byte[] Data)> _delayedSnapshots = new();
+    private readonly Queue<(ulong Due, byte[] Data, int Ack)> _delayedSnapshots = new();
 
     public bool IsServer => Multiplayer.MultiplayerPeer != null && Multiplayer.IsServer();
 
@@ -58,6 +62,7 @@ public partial class NetworkManager : Node
         Error err = peer.CreateServer(port, NetConfig.MAX_PLAYERS);
         if (err != Error.Ok)
             return err;
+        peer.Host.Compress(ENetConnection.CompressionMode.RangeCoder); // must match the client
         Multiplayer.MultiplayerPeer = peer;
         return Error.Ok;
     }
@@ -68,6 +73,7 @@ public partial class NetworkManager : Node
         Error err = peer.CreateClient(address, port);
         if (err != Error.Ok)
             return err;
+        peer.Host.Compress(ENetConnection.CompressionMode.RangeCoder); // must match the server
         Multiplayer.MultiplayerPeer = peer;
         return Error.Ok;
     }
@@ -92,7 +98,7 @@ public partial class NetworkManager : Node
             EmitSignal(SignalName.PeerLeft, id);
     }
 
-    // ---- client → server ----
+    // ---- client -> server ----
 
     public void SendHello() => RpcId(1, MethodName.Hello, NetConfig.PROTOCOL_VERSION);
 
@@ -139,7 +145,7 @@ public partial class NetworkManager : Node
             EmitSignal(SignalName.DebugCarveRequested, sender, x, y);
     }
 
-    // ---- server → clients ----
+    // ---- server -> clients ----
 
     public void SendWelcome(long peerId, string mapId, string mapHash, byte[] removedData) =>
         RpcId(peerId, MethodName.Welcome, mapId, mapHash, removedData);
@@ -148,20 +154,48 @@ public partial class NetworkManager : Node
     private void Welcome(string mapId, string mapHash, byte[] removedData) =>
         EmitSignal(SignalName.WelcomeReceived, mapId, mapHash, removedData);
 
-    public void BroadcastCarve(int x, int y, int radius) => Rpc(MethodName.Carve, x, y, radius);
+    public void BroadcastCarve(int x, int y, int radius, int ownerId, int spawnSeq) =>
+        Rpc(MethodName.Carve, x, y, radius, ownerId, spawnSeq);
 
     [Rpc(TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
-    private void Carve(int x, int y, int radius) => EmitSignal(SignalName.CarveReceived, x, y, radius);
+    private void Carve(int x, int y, int radius, int ownerId, int spawnSeq) =>
+        EmitSignal(SignalName.CarveReceived, x, y, radius, ownerId, spawnSeq);
 
-    public void BroadcastSnapshot(byte[] data) => Rpc(MethodName.ReceiveSnapshot, data);
+    /// <summary>x/y = body center at the moment of death, for gib/blood effects.</summary>
+    public void BroadcastDeath(long peerId, int x, int y) => Rpc(MethodName.PlayerDied, peerId, x, y);
+
+    [Rpc(TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
+    private void PlayerDied(long peerId, int x, int y) => EmitSignal(SignalName.DeathReceived, peerId, x, y);
+
+    /// <summary>Same snapshot bytes to every validated peer, each with its own input ack.</summary>
+    public void BroadcastSnapshot(byte[] data, Func<long, int> ackFor)
+    {
+        foreach (long peer in _validatedPeers)
+            RpcId(peer, MethodName.ReceiveSnapshot, data, ackFor(peer));
+    }
 
     [Rpc(TransferMode = MultiplayerPeer.TransferModeEnum.Unreliable)]
-    private void ReceiveSnapshot(byte[] data)
+    private void ReceiveSnapshot(byte[] data, int ack)
     {
         if (_fakeLagMs > 0)
-            _delayedSnapshots.Enqueue((Time.GetTicksMsec() + (ulong)(_fakeLagMs / 2), data));
+            _delayedSnapshots.Enqueue((Time.GetTicksMsec() + (ulong)(_fakeLagMs / 2), data, ack));
         else
-            EmitSignal(SignalName.SnapshotReceived, data);
+            EmitSignal(SignalName.SnapshotReceived, data, ack);
+    }
+
+    /// <summary>
+    /// Wire bytes/packets since the last call, from ENet's own counters, so
+    /// the numbers include ENet framing and compression (not IP/UDP headers).
+    /// </summary>
+    public (double SentBytes, double RecvBytes, double SentPackets, double RecvPackets) PopWireStats()
+    {
+        if (Multiplayer.MultiplayerPeer is not ENetMultiplayerPeer { Host: { } host })
+            return default;
+        return (
+            host.PopStatistic(ENetConnection.HostStatistic.SentData),
+            host.PopStatistic(ENetConnection.HostStatistic.ReceivedData),
+            host.PopStatistic(ENetConnection.HostStatistic.SentPackets),
+            host.PopStatistic(ENetConnection.HostStatistic.ReceivedPackets));
     }
 
     public override void _Process(double delta)
@@ -172,6 +206,9 @@ public partial class NetworkManager : Node
         while (_delayedInputs.Count > 0 && _delayedInputs.Peek().Due <= now)
             RpcId(1, MethodName.SubmitInputs, _delayedInputs.Dequeue().Packet);
         while (_delayedSnapshots.Count > 0 && _delayedSnapshots.Peek().Due <= now)
-            EmitSignal(SignalName.SnapshotReceived, _delayedSnapshots.Dequeue().Data);
+        {
+            (ulong _, byte[] data, int ack) = _delayedSnapshots.Dequeue();
+            EmitSignal(SignalName.SnapshotReceived, data, ack);
+        }
     }
 }

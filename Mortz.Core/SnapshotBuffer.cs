@@ -59,14 +59,37 @@ public sealed class SnapshotBuffer
                     break;
                 }
             }
-            // Rope comes from the newer snapshot as-is: the anchor is static
+            // Aim and rope come from the newer snapshot as-is: the anchor is static
             // while attached, and the flying hook is too fast to bother lerping.
-            result.Add(new RenderPlayer(np.PeerId, pos, np.Rope, np.RopePoint));
+            // Ammo/reload too: they step at most once per snapshot anyway.
+            result.Add(new RenderPlayer(np.PeerId, pos, np.Aim, np.Skin, np.Rope, np.RopePoint,
+                np.Ammo, np.ReloadTicks));
         }
-        return new InterpolatedState(result);
+
+        // Shells matched by id like players. New this interval: rendered at
+        // the newer position. Gone from the newer snapshot: exploded, drop it
+        // (the carve event is the visual).
+        List<RenderMortar> mortars = new List<RenderMortar>();
+        foreach (MortarState nm in newer.Mortars)
+        {
+            Vec2 pos = nm.Position;
+            foreach (MortarState om in older.Mortars)
+            {
+                if (om.Id == nm.Id)
+                {
+                    pos = Vec2.Lerp(om.Position, nm.Position, t);
+                    break;
+                }
+            }
+            mortars.Add(new RenderMortar(nm.Id, nm.OwnerId, pos, nm.Velocity));
+        }
+        return new InterpolatedState(result, mortars);
     }
 }
 
-public readonly record struct RenderPlayer(int PeerId, Vec2 Position, RopeMode Rope, Vec2 RopePoint);
+public readonly record struct RenderPlayer(int PeerId, Vec2 Position, byte Aim, byte Skin, RopeMode Rope, Vec2 RopePoint,
+    byte Ammo, byte ReloadTicks);
 
-public sealed record InterpolatedState(IReadOnlyList<RenderPlayer> Players);
+public readonly record struct RenderMortar(ushort Id, int OwnerId, Vec2 Position, Vec2 Velocity);
+
+public sealed record InterpolatedState(IReadOnlyList<RenderPlayer> Players, IReadOnlyList<RenderMortar> Mortars);

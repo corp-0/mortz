@@ -12,12 +12,17 @@ namespace Mortz.Server;
 /// </summary>
 public partial class ServerMain : Node
 {
+    /// <summary>Map to load when --map is not passed.</summary>
+    [Export] private string _defaultMap = "castlewars";
+
+    private static readonly bool _netStats = CmdArgs.HasFlag("--net-stats");
+
     private SimWorld _sim = null!;
     private MapPackage _map = null!;
 
     public override void _Ready()
     {
-        string mapId = CmdArgs.GetValue("--map") ?? "arena01";
+        string mapId = CmdArgs.GetValue("--map") ?? _defaultMap;
         MapPackage? map = MapPackage.Load(mapId);
         if (map == null)
         {
@@ -26,7 +31,7 @@ public partial class ServerMain : Node
             return;
         }
         _map = map;
-        _sim = new SimWorld(map.BuildMask());
+        _sim = new SimWorld(map.BuildMask(), Random.Shared.Next());
 
         NetworkManager net = NetworkManager.Instance;
         net.PeerJoined += OnPeerJoined;
@@ -48,11 +53,36 @@ public partial class ServerMain : Node
 
     public override void _PhysicsProcess(double delta)
     {
-        if (_sim == null)
-            return;
         _sim.Step();
+        foreach ((int x, int y, int radius, int owner, int spawnSeq) in _sim.Explosions)
+        {
+            GD.Print($"[server] mortar exploded at ({x},{y})");
+            NetworkManager.Instance.BroadcastCarve(x, y, radius, owner, spawnSeq);
+        }
+        foreach ((int peerId, Vec2 pos) in _sim.Deaths)
+        {
+            GD.Print($"[server] player {peerId} gibbed at ({(int)pos.X},{(int)pos.Y})");
+            NetworkManager.Instance.BroadcastDeath(peerId, (int)pos.X, (int)pos.Y);
+        }
         if (_sim.Tick % NetConfig.TICKS_PER_SNAPSHOT == 0 && _sim.Players.Count > 0)
-            NetworkManager.Instance.BroadcastSnapshot(_sim.TakeSnapshot().Serialize());
+        {
+            byte[] snapshot = _sim.TakeSnapshot().Serialize();
+            NetworkManager.Instance.BroadcastSnapshot(snapshot,
+                peerId => _sim.Players.TryGetValue((int)peerId, out PlayerState p) ? p.LastInputSeq : -1);
+        }
+        if (_netStats && _sim.Tick % SimConfig.TICK_RATE == 0)
+            PrintNetStats();
+    }
+
+    // One line per second: wire totals from ENet plus each player's input
+    // backlog. pending > 1 means standing input latency, one tick per input.
+    private void PrintNetStats()
+    {
+        (double sent, double recv, double sentPk, double recvPk) = NetworkManager.Instance.PopWireStats();
+        string peers = string.Join(" ", _sim.Players.Keys.Select(
+            id => $"peer={id} pending={_sim.PendingInputs(id)} ack={_sim.Players[id].LastInputSeq}"));
+        GD.Print($"[stats] unix={Time.GetUnixTimeFromSystem():F3} tick={_sim.Tick} " +
+                 $"sent={sent:F0}B/{sentPk:F0}pk recv={recv:F0}B/{recvPk:F0}pk {peers}");
     }
 
     private void OnPeerJoined(long peerId)
@@ -79,6 +109,6 @@ public partial class ServerMain : Node
         List<(int X, int Y)> removed = _sim.Terrain.CarveCircle(x, y, SimConfig.DEBUG_CARVE_RADIUS);
         GD.Print($"[server] carve at ({x},{y}) by {peerId}: {removed.Count} px");
         if (removed.Count > 0)
-            NetworkManager.Instance.BroadcastCarve(x, y, SimConfig.DEBUG_CARVE_RADIUS);
+            NetworkManager.Instance.BroadcastCarve(x, y, SimConfig.DEBUG_CARVE_RADIUS, 0, -1);
     }
 }

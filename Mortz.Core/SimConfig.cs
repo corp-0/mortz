@@ -15,15 +15,18 @@ public static class SimConfig
     public const float PLAYER_HALF_WIDTH = 16;
     public const float PLAYER_HALF_HEIGHT = 16;
 
+    /// <summary>Critter sprites on the sheet; the server deals one per player at join.</summary>
+    public const int SKIN_COUNT = 25;
+
     /// <summary>Max wall height (px) walked over automatically; makes carved rubble traversable.</summary>
     public const int STEP_UP_PIXELS = 4;
 
     // ---- running / falling ----
     public const float MAX_RUN_SPEED = 320;      // px/s
-    public const float GROUND_ACCEL = 2400;     // px/s²  (~0.13 s from stand to max)
-    public const float GROUND_FRICTION = 1800;  // px/s²  when no input held
-    public const float AIR_ACCEL = 1200;        // px/s²  weaker air control
-    public const float GRAVITY = 1500;         // px/s²
+    public const float GROUND_ACCEL = 2400;     // px/s^2  (~0.13 s from stand to max)
+    public const float GROUND_FRICTION = 1800;  // px/s^2  when no input held
+    public const float AIR_ACCEL = 1200;        // px/s^2  weaker air control
+    public const float GRAVITY = 1500;         // px/s^2
     public const float MAX_FALL_SPEED = 900;     // px/s
 
     // ---- jumps ----
@@ -50,12 +53,28 @@ public static class SimConfig
     // ---- rope ----
     public const float ROPE_SPEED = 1300;       // px/s   hook projectile
     public const float ROPE_MAX_RANGE = 520;     // px     hook flies this far, then fizzles
-    public const float ROPE_REEL_SPEED = 300;    // px/s   constant pull while attached
+    public const float ROPE_PULL_ACCEL = 2500;   // px/s^2  toward the anchor while taut; swings build speed
+    public const float ROPE_SHORTEN_SPEED = 150; // px/s   slow rest-length creep; this is the climb
     public const float ROPE_MIN_LENGTH = 24;     // px
-    public const float ROPE_ATTACH_IMPULSE = 160;// px/s   the tug you feel on attach
     // Re-fire cooldowns: cheap after a productive rope, punishing after a whiff.
     public const float ROPE_RELEASE_COOLDOWN = 0.25f; // s  after releasing an attached rope
     public const float ROPE_MISS_COOLDOWN = 1.0f;     // s  after the hook hits nothing
+
+    // ---- mortar ----
+    public const float MORTAR_SPEED = 900;        // px/s   muzzle speed along the aim
+    public const float MORTAR_INHERIT = 0.5f;     //        fraction of the shooter's velocity added to the shot
+    public const float MORTAR_GRAVITY = 900;      // px/s^2  floatier than players, for longer arcs
+    public const float MORTAR_MAX_FALL = 900;     // px/s
+    public const float MORTAR_MUZZLE_OFFSET = 20; // px     spawn distance from body center along the aim
+    /// <summary>Explosion radius: the carved hole and the kill zone (LieroX-sized).</summary>
+    public const int MORTAR_CARVE_RADIUS = 48;    // px
+    // No cooldown between shots: the magazine is the limiter. Reload loads one
+    // shell per second until full (auto when empty, R anytime below full) and
+    // each completed second banks a shell right away. Firing mid-reload is
+    // allowed if a shell is loaded, but scraps the one in progress and stops
+    // the reload; banked shells are kept.
+    public const int MORTAR_MAX_AMMO = 5;
+    public const float MORTAR_RELOAD_PER_SHELL = 1.0f; // s
 
     // ---- dev tools ----
     /// <summary>Radius of the dev click-to-carve, the stand-in weapon until mortars exist.</summary>
@@ -67,4 +86,5 @@ public static class SimConfig
     public const int COYOTE_MAX_TICKS = (int)(COYOTE_MAX * TICK_RATE);
     public const int ROPE_RELEASE_COOLDOWN_TICKS = (int)(ROPE_RELEASE_COOLDOWN * TICK_RATE);
     public const int ROPE_MISS_COOLDOWN_TICKS = (int)(ROPE_MISS_COOLDOWN * TICK_RATE);
+    public const int MORTAR_RELOAD_TICKS = (int)(MORTAR_RELOAD_PER_SHELL * TICK_RATE);
 }

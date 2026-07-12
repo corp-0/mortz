@@ -8,99 +8,82 @@ namespace Mortz.Client;
 /// <summary>
 /// Renders the networked world and sends local input. The local player is
 /// client-side predicted (instant response, corrections eased in over a few
-/// frames); remote players render from interpolated snapshots. Terrain draws
-/// as the three map layers, with carve events punching holes into the
-/// destructible layer and throwing pixel-colored debris.
+/// frames); remote players render from interpolated snapshots. The map itself
+/// (layers, collision mask, carves) lives in GameMap.
 /// </summary>
 public partial class GameView : Node2D
 {
     /// <summary>How fast reconciliation corrections blend away (per second).</summary>
     private const float CORRECTION_DECAY = 10f;
 
-    private static readonly Color Hole = new(0, 0, 0, 0);
+    private static readonly bool _netStats = CmdArgs.HasFlag("--net-stats");
+
+    // Perceived-lag probe, run as a pair of clients on one machine (shared
+    // wall clock): --probe-input injects walking bursts and logs the press
+    // edge, --probe-watch logs when a remote player's rendered position first
+    // moves after being still. Timestamp difference = true press-to-screen lag.
+    private static readonly bool _probeInput = CmdArgs.HasFlag("--probe-input");
+    private static readonly bool _probeWatch = CmdArgs.HasFlag("--probe-watch");
+
+    [Export] private GameMap _gameMap = null!;
+    [Export] private RopeOverlay _ropes = null!;
+    [Export] private PackedScene _playerScene = null!;
+
+    private static readonly bool _testFire = CmdArgs.HasFlag("--test-fire");
 
     private readonly SnapshotBuffer _snapshots = new();
-    private readonly Dictionary<int, ColorRect> _playerRects = new();
-    private readonly RopeOverlay _ropes = new() { Name = "RopeOverlay" };
-    private TerrainMask _mask = null!;
+    private readonly Dictionary<int, PlayerView> _players = new();
+    private readonly Dictionary<ushort, MortarView> _mortars = new();
+    // Own shells, rendered from prediction (keyed by the input seq that fired).
+    private readonly Dictionary<int, MortarView> _ownMortars = new();
     private Predictor _predictor = null!;
-    private Image _destructibleImage = null!;
-    private ImageTexture _destructibleTexture = null!;
     private Vector2 _correctionOffset;
+    private byte _localAim;
     private float _renderTick = -1;
     private int _lastLoggedSecond = -1;
     private bool _testCarveSent;
 
-    /// <summary>Must be called before adding to the tree.</summary>
+    // --probe-watch state: last stable position and whether we're waiting for it to move.
+    private Vector2 _probeRef;
+    private ulong _probeStableSince;
+    private bool _probeArmed;
+
+    // --net-stats accumulators, reported once per second.
+    private readonly Dictionary<int, ulong> _inputSendTimes = new();
+    private int _statFrames;
+    private int _lastAckSeen = -1;
+    private ulong _lastSnapshotMsec;
+    private double _rttSum, _rttMax;
+    private int _rttCount;
+    private float _corrSum;
+    private int _corrCount;
+
+    /// <summary>Must be called right after instantiating, before entering the tree.</summary>
     public void Initialize(MapPackage map, byte[] removedData)
     {
-        _mask = map.BuildMask();
-        _predictor = new Predictor(_mask);
-
-        // Local working copy of the destructible layer; carves punch it transparent.
-        _destructibleImage = (Image)map.Destructible.Duplicate();
-        int alreadyRemoved = 0;
-        _mask.ApplyRemoved(removedData, (x, y) =>
-        {
-            _destructibleImage.SetPixel(x, y, Hole);
-            alreadyRemoved++;
-        });
-        _destructibleTexture = ImageTexture.CreateFromImage(_destructibleImage);
-        GD.Print($"[client] late-join sync: {alreadyRemoved} px already removed");
-
-        AddLayerSprite(ImageTexture.CreateFromImage(map.Background));
-        AddLayerSprite(_destructibleTexture);
-        AddLayerSprite(ImageTexture.CreateFromImage(map.Solid));
-        AddChild(_ropes);
+        _gameMap.Initialize(map, removedData);
+        _predictor = new Predictor(_gameMap.Mask);
     }
-
-    private void AddLayerSprite(Texture2D texture) =>
-        AddChild(new Sprite2D { Texture = texture, Centered = false });
 
     public override void _Ready()
     {
         NetworkManager.Instance.SnapshotReceived += OnSnapshotReceived;
-        NetworkManager.Instance.CarveReceived += OnCarveReceived;
     }
 
     public override void _ExitTree()
     {
         NetworkManager.Instance.SnapshotReceived -= OnSnapshotReceived;
-        NetworkManager.Instance.CarveReceived -= OnCarveReceived;
-    }
-
-    // ---- terrain ----
-
-    private void OnCarveReceived(int x, int y, int radius)
-    {
-        List<(int X, int Y)> removed = _mask.CarveCircle(x, y, radius);
-        if (removed.Count == 0)
-            return;
-
-        List<(Vector2, Color)> debris = new List<(Vector2, Color)>(removed.Count);
-        foreach ((int px, int py) in removed)
-        {
-            debris.Add((new Vector2(px, py), _destructibleImage.GetPixel(px, py)));
-            _destructibleImage.SetPixel(px, py, Hole);
-        }
-        _destructibleTexture.Update(_destructibleImage);
-        AddChild(CarveBurst.Create(new Vector2(x, y), debris));
-        GD.Print($"[client] carve at ({x},{y}) removed {removed.Count} px");
     }
 
     public override void _UnhandledInput(InputEvent @event)
     {
-        // Dev stand-in for the mortar until weapons exist: click to carve.
-        if (@event is InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: true })
-        {
-            Vector2 pos = GetGlobalMousePosition();
-            NetworkManager.Instance.RequestDebugCarve((int)pos.X, (int)pos.Y);
-        }
+        if (@event is InputEventKey { PhysicalKeycode: Key.F3, Pressed: true, Echo: false })
+            PlayerView.DrawSimBoxes = !PlayerView.DrawSimBoxes;
     }
 
     // ---- state flow ----
 
-    private void OnSnapshotReceived(byte[] data)
+    private void OnSnapshotReceived(byte[] data, int ack)
     {
         Snapshot snapshot = Snapshot.Deserialize(data);
         _snapshots.Add(snapshot);
@@ -112,13 +95,15 @@ public partial class GameView : Node2D
                 continue;
             if (!_predictor.Initialized)
                 GD.Print("[client] prediction initialized");
-            Vec2 correction = _predictor.Reconcile(player, player.LastInputSeq);
+            Vec2 correction = _predictor.Reconcile(player, ack);
             // Small disagreements ease in; teleport-scale ones (respawn after a
             // death pit) snap immediately instead of sliding across the map.
             if (correction.Length() > 150)
                 _correctionOffset = Vector2.Zero;
             else
                 _correctionOffset += new Vector2(correction.X, correction.Y);
+            if (_netStats)
+                RecordAck(ack, correction);
             SendTestCarveOnce();
             break;
         }
@@ -138,10 +123,10 @@ public partial class GameView : Node2D
         if (_testCarveSent || !CmdArgs.HasFlag("--test-carve"))
             return;
         _testCarveSent = true;
-        for (int y = 0; y < _mask.Height; y++)
-            for (int x = 0; x < _mask.Width; x++)
+        for (int y = 0; y < _gameMap.Mask.Height; y++)
+            for (int x = 0; x < _gameMap.Mask.Width; x++)
             {
-                if (_mask.Get(x, y) == TerrainMaterial.Destructible)
+                if (_gameMap.Mask.Get(x, y) == TerrainMaterial.Destructible)
                 {
                     GD.Print($"[client] requesting test carve at ({x},{y})");
                     NetworkManager.Instance.RequestDebugCarve(x, y);
@@ -167,22 +152,134 @@ public partial class GameView : Node2D
             buttons |= InputButtons.Dash;
         if (Input.IsMouseButtonPressed(MouseButton.Right))
             buttons |= InputButtons.Rope;
+        if (Input.IsMouseButtonPressed(MouseButton.Left))
+            buttons |= InputButtons.Fire;
+        if (Input.IsPhysicalKeyPressed(Key.R))
+            buttons |= InputButtons.Reload;
 
-        byte aim = 0;
         if (_predictor.Initialized)
         {
             Vector2 toMouse = GetGlobalMousePosition() - BodyCenter(_predictor.State.Position);
             if (toMouse.LengthSquared() > 1)
-                aim = PlayerInput.AimFromVector(new Vec2(toMouse.X, toMouse.Y));
+                _localAim = PlayerInput.AimFromVector(new Vec2(toMouse.X, toMouse.Y));
         }
 
-        _predictor.LocalTick(new PlayerInput(buttons, aim));
-        NetworkManager.Instance.SendInputs(
-            InputPacket.Encode(_predictor.RecentInputs(NetConfig.INPUT_REDUNDANCY)));
+        // Headless E2E: point-blank floor shots exercise explosion and
+        // self-death. Set after the mouse block so the aim stays put.
+        if (_testFire)
+        {
+            buttons |= InputButtons.Fire;
+            _localAim = 64;
+        }
+        if (_probeInput)
+            buttons = ProbeButtons();
+
+        _predictor.LocalTick(new PlayerInput(buttons, _localAim));
+        if (_predictor.NextSeq % NetConfig.TICKS_PER_INPUT_PACKET == 0)
+        {
+            NetworkManager.Instance.SendInputs(
+                InputPacket.Encode(_predictor.RecentInputs(NetConfig.INPUT_REDUNDANCY)));
+            if (_netStats)
+                _inputSendTimes[_predictor.NextSeq - 1] = Time.GetTicksMsec();
+        }
+
+        if (_netStats && ++_statFrames >= SimConfig.TICK_RATE)
+            PrintNetStats();
+    }
+
+    // ---- perceived-lag probe ----
+
+    /// <summary>Half a second of walking every five seconds, alternating
+    /// direction so the player ends up roughly where it started.</summary>
+    private InputButtons ProbeButtons()
+    {
+        const int CYCLE = 5 * SimConfig.TICK_RATE;
+        int phase = _predictor.NextSeq % CYCLE;
+        if (phase >= SimConfig.TICK_RATE / 2)
+            return InputButtons.None;
+        if (phase == 0)
+            GD.Print($"[probe] press unix={Time.GetUnixTimeFromSystem():F3}");
+        return (_predictor.NextSeq / CYCLE) % 2 == 0 ? InputButtons.Right : InputButtons.Left;
+    }
+
+    /// <summary>Logs when a remote player's rendered position first moves
+    /// after a second of standing still. Runs on the interpolated output, so
+    /// it sees exactly what the screen shows.</summary>
+    private void ProbeWatch(Vector2 pos)
+    {
+        ulong now = Time.GetTicksMsec();
+        if (_probeArmed)
+        {
+            if ((pos - _probeRef).Length() > 0.3f)
+            {
+                GD.Print($"[probe] move unix={Time.GetUnixTimeFromSystem():F3}");
+                _probeArmed = false;
+                _probeRef = pos;
+                _probeStableSince = now;
+            }
+            return;
+        }
+        if ((pos - _probeRef).Length() > 0.01f)
+        {
+            _probeRef = pos;
+            _probeStableSince = now;
+        }
+        else if (now - _probeStableSince > 1000)
+            _probeArmed = true;
+    }
+
+    // ---- --net-stats ----
+
+    private void RecordAck(int ack, Vec2 correction)
+    {
+        _lastSnapshotMsec = Time.GetTicksMsec();
+        _corrSum += correction.Length();
+        _corrCount++;
+        if (ack <= _lastAckSeen)
+            return;
+        _lastAckSeen = ack;
+        if (_inputSendTimes.TryGetValue(ack, out ulong sentAt))
+        {
+            // Input send -> snapshot acking it. Remote-view latency is roughly
+            // this plus the interpolation delay on the other client.
+            double rtt = Time.GetTicksMsec() - sentAt;
+            _rttSum += rtt;
+            _rttCount++;
+            _rttMax = Math.Max(_rttMax, rtt);
+        }
+        List<int> stale = new List<int>();
+        foreach (int seq in _inputSendTimes.Keys)
+            if (seq <= ack)
+                stale.Add(seq);
+        foreach (int seq in stale)
+            _inputSendTimes.Remove(seq);
+    }
+
+    private void PrintNetStats()
+    {
+        _statFrames = 0;
+        (double sent, double recv, double sentPk, double recvPk) = NetworkManager.Instance.PopWireStats();
+        float interpTicks = _snapshots.NewestTick >= 0 ? _snapshots.NewestTick - _renderTick : -1;
+        double snapAge = _lastSnapshotMsec > 0 ? Time.GetTicksMsec() - _lastSnapshotMsec : -1;
+        double rttAvg = _rttCount > 0 ? _rttSum / _rttCount : -1;
+        float corrAvg = _corrCount > 0 ? _corrSum / _corrCount : 0;
+        GD.Print($"[stats] unix={Time.GetUnixTimeFromSystem():F3} seq={_predictor.NextSeq} " +
+                 $"newest={_snapshots.NewestTick} renderTick={_renderTick:F1} interp={interpTicks:F1}tk " +
+                 $"snapAge={snapAge:F0}ms rtt={rttAvg:F0}avg/{_rttMax:F0}max ms corr={corrAvg:F2}px " +
+                 $"up={sent:F0}B/{sentPk:F0}pk down={recv:F0}B/{recvPk:F0}pk");
+        _rttSum = 0; _rttMax = 0; _rttCount = 0;
+        _corrSum = 0; _corrCount = 0;
     }
 
     public override void _Process(double delta)
     {
+        if (_predictor is { Initialized: true })
+        {
+            // Predicted destruction: our shells carve the instant they land.
+            foreach ((int seq, Vec2 pos) in _predictor.DrainImpacts())
+                _gameMap.PredictCarve(seq, new Vector2(pos.X, pos.Y));
+        }
+
         if (_snapshots.NewestTick < 0)
             return;
 
@@ -208,7 +305,9 @@ public partial class GameView : Node2D
                 continue;
             seen.Add(player.PeerId);
             Vector2 feet = new Vector2(player.Position.X, player.Position.Y);
-            PlaceRect(player.PeerId, feet);
+            if (_probeWatch)
+                ProbeWatch(feet);
+            Place(player.PeerId, feet, player.Aim, player.Skin, player.Ammo, player.ReloadTicks);
             if (player.Rope != RopeMode.None)
                 _ropes.Segments.Add((BodyCenter(player.Position), new Vector2(player.RopePoint.X, player.RopePoint.Y)));
         }
@@ -218,49 +317,93 @@ public partial class GameView : Node2D
             seen.Add(localId);
             _correctionOffset *= MathF.Max(0f, 1f - CORRECTION_DECAY * (float)delta);
             Vector2 pos = new Vector2(_predictor.State.Position.X, _predictor.State.Position.Y);
-            PlaceRect(localId, pos + _correctionOffset);
+            Place(localId, pos + _correctionOffset, _localAim, _predictor.State.Skin,
+                _predictor.State.Ammo, _predictor.State.ReloadTicks);
             if (_predictor.State.Rope != RopeMode.None)
                 _ropes.Segments.Add((
                     BodyCenter(_predictor.State.Position) + _correctionOffset,
                     new Vector2(_predictor.State.RopePoint.X, _predictor.State.RopePoint.Y)));
         }
 
-        foreach ((int peerId, ColorRect? rect) in _playerRects)
+        foreach ((int peerId, PlayerView? view) in _players)
         {
             if (!seen.Contains(peerId))
             {
-                rect.QueueFree();
-                _playerRects.Remove(peerId);
+                view.QueueFree();
+                _players.Remove(peerId);
+            }
+        }
+
+        PlaceMortars(state.Mortars);
+    }
+
+    private void PlaceMortars(IReadOnlyList<RenderMortar> mortars)
+    {
+        // Everyone else's shells come from snapshots; our own authoritative
+        // copies are hidden because the predicted ones below are already on
+        // screen (and at present time, not interpolation-delay time).
+        int localId = Multiplayer.GetUniqueId();
+        HashSet<ushort> seen = new HashSet<ushort>();
+        foreach (RenderMortar m in mortars)
+        {
+            if (m.OwnerId == localId)
+                continue;
+            seen.Add(m.Id);
+            if (!_mortars.TryGetValue(m.Id, out MortarView? view))
+            {
+                view = new MortarView();
+                AddChild(view);
+                _mortars[m.Id] = view;
+            }
+            view.Position = new Vector2(m.Position.X, m.Position.Y);
+            view.Rotation = MathF.Atan2(m.Velocity.Y, m.Velocity.X);
+        }
+        foreach ((ushort id, MortarView view) in _mortars)
+        {
+            if (!seen.Contains(id))
+            {
+                view.QueueFree();
+                _mortars.Remove(id);
+            }
+        }
+
+        HashSet<int> seenOwn = new HashSet<int>();
+        if (_predictor.Initialized)
+        {
+            foreach ((int seq, MortarState shell) in _predictor.Shells)
+            {
+                seenOwn.Add(seq);
+                if (!_ownMortars.TryGetValue(seq, out MortarView? view))
+                {
+                    view = new MortarView();
+                    AddChild(view);
+                    _ownMortars[seq] = view;
+                }
+                view.Position = new Vector2(shell.Position.X, shell.Position.Y);
+                view.Rotation = MathF.Atan2(shell.Velocity.Y, shell.Velocity.X);
+            }
+        }
+        foreach ((int seq, MortarView view) in _ownMortars)
+        {
+            if (!seenOwn.Contains(seq))
+            {
+                view.QueueFree();
+                _ownMortars.Remove(seq);
             }
         }
     }
 
-    private void PlaceRect(int peerId, Vector2 feetPosition)
+    private void Place(int peerId, Vector2 feet, byte aim, byte skin, byte ammo, byte reloadTicks)
     {
-        if (!_playerRects.TryGetValue(peerId, out ColorRect? rect))
+        if (!_players.TryGetValue(peerId, out PlayerView? view))
         {
-            rect = CreatePlayerRect(peerId);
-            _playerRects[peerId] = rect;
+            view = _playerScene.Instantiate<PlayerView>();
+            view.SetIsLocal(peerId == Multiplayer.GetUniqueId());
+            AddChild(view);
+            _players[peerId] = view;
         }
-        rect.Position = new Vector2(
-            feetPosition.X - SimConfig.PLAYER_HALF_WIDTH,
-            feetPosition.Y - SimConfig.PLAYER_HALF_HEIGHT * 2); // state Y = feet
+        view.Apply(feet, aim, skin, ammo, reloadTicks);
     }
-
-    private ColorRect CreatePlayerRect(int peerId)
-    {
-        bool isLocal = peerId == Multiplayer.GetUniqueId();
-        ColorRect rect = new ColorRect
-        {
-            Size = new Vector2(SimConfig.PLAYER_HALF_WIDTH * 2, SimConfig.PLAYER_HALF_HEIGHT * 2),
-            Color = isLocal ? Colors.White : ColorForPeer(peerId),
-        };
-        AddChild(rect);
-        return rect;
-    }
-
-    private static Color ColorForPeer(int peerId) =>
-        Color.FromHsv((peerId * 0.61803f) % 1f, 0.75f, 0.95f);
 
     private static Vector2 BodyCenter(Vec2 feet) =>
         new(feet.X, feet.Y - SimConfig.PLAYER_HALF_HEIGHT);

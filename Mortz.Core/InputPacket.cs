@@ -1,7 +1,7 @@
 namespace Mortz.Core;
 
 /// <summary>
-/// Wire format for client → server input: the newest few inputs of the
+/// Wire format for client -> server input: the newest few inputs of the
 /// history, re-sent redundantly each packet so single packet loss costs
 /// nothing. Sequences are consecutive, so only the newest one is written.
 /// </summary>
@@ -17,7 +17,7 @@ public static class InputPacket
         w.Write((byte)inputs.Count);
         foreach ((int _, PlayerInput input) in inputs)
         {
-            w.Write((byte)input.Buttons);
+            w.Write((ushort)input.Buttons);
             w.Write(input.Aim);
         }
         return ms.ToArray();
@@ -35,7 +35,7 @@ public static class InputPacket
         for (int i = 0; i < count; i++)
         {
             int seq = newestSeq - count + 1 + i;
-            InputButtons buttons = (InputButtons)r.ReadByte();
+            InputButtons buttons = (InputButtons)r.ReadUInt16();
             result.Add((seq, new PlayerInput(buttons, r.ReadByte())));
         }
         return result;

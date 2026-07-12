@@ -59,7 +59,7 @@ public class RopeTests
     }
 
     [Fact]
-    public void AttachedRope_ReelsPlayerUpward()
+    public void AttachedRope_ClimbsTowardAnchor()
     {
         TerrainMask world = CeilingWorld();
         PlayerState p = PlayerSim.Tick(Grounded(), FireUp, world);
@@ -69,7 +69,7 @@ public class RopeTests
         for (int i = 0; i < 2 * SimConfig.TICK_RATE; i++)
             p = PlayerSim.Tick(p, Idle, world);
 
-        Assert.True(p.Position.Y < startY - 50); // reeled well off the floor
+        Assert.True(p.Position.Y < startY - 50); // hauled well off the floor
         Assert.False(p.Grounded);
     }
 
@@ -92,7 +92,7 @@ public class RopeTests
     }
 
     [Fact]
-    public void Jump_ReleasesAttachedRope_AndStillJumps()
+    public void Jump_ReleasesAttachedRope_WithoutSpendingAJump()
     {
         TerrainMask world = CeilingWorld();
         PlayerState p = PlayerSim.Tick(Grounded(), FireUp, world);
@@ -105,8 +105,15 @@ public class RopeTests
         Assert.False(p.Grounded);
         p = PlayerSim.Tick(p, new PlayerInput(InputButtons.Jump), world);
 
-        Assert.Equal(RopeMode.None, p.Rope);                 // jump let go of the rope
-        Assert.Equal(-SimConfig.AIR_JUMP_SPEED, p.Velocity.Y); // and the air jump fired
+        Assert.Equal(RopeMode.None, p.Rope);                   // jump let go of the rope...
+        Assert.NotEqual(-SimConfig.AIR_JUMP_SPEED, p.Velocity.Y); // ...but didn't jump
+        Assert.Equal(SimConfig.TOTAL_JUMPS, p.JumpsLeft);      // and spent nothing
+
+        p = PlayerSim.Tick(p, Idle, world); // let go of the button
+        p = PlayerSim.Tick(p, new PlayerInput(InputButtons.Jump), world);
+
+        Assert.Equal(-SimConfig.AIR_JUMP_SPEED, p.Velocity.Y); // second press is the real jump
+        Assert.Equal(SimConfig.TOTAL_JUMPS - 1, p.JumpsLeft);
     }
 
     [Fact]
@@ -125,14 +132,16 @@ public class RopeTests
         Assert.False(p.Grounded);
         Assert.Equal(SimConfig.TOTAL_JUMPS, p.JumpsLeft);
 
-        for (int i = 0; i < 10; i++)
-            p = PlayerSim.Tick(p, Idle, world); // falling
+        // Fall until there's headroom: an air jump rises v^2/2g ~ 83 px and
+        // must not bonk the ceiling slab, or its velocity zeroes mid-tick.
+        p = TickUntil(p, world, s => s.Position.Y >= 200);
+        Assert.False(p.Grounded);
 
         p = PlayerSim.Tick(p, new PlayerInput(InputButtons.Jump), world);
         Assert.Equal(-SimConfig.AIR_JUMP_SPEED, p.Velocity.Y);
         Assert.Equal(1, p.JumpsLeft);
 
-        for (int i = 0; i < 10; i++)
+        for (int i = 0; i < 3; i++)
             p = PlayerSim.Tick(p, Idle, world);
 
         p = PlayerSim.Tick(p, new PlayerInput(InputButtons.Jump), world);
@@ -181,12 +190,11 @@ public class RopeTests
     }
 
     [Fact]
-    public void ReelingIntoObstacle_HoldsBelow_NeverTeleportsPast()
+    public void PullIntoObstacle_HoldsBelow_NeverPassesThrough()
     {
-        // Anchor in the ceiling, a solid slab between player and anchor. The
-        // reel should press the player against the slab's underside and hold
-        // there. Regression: reel tension used to build up for a second and
-        // then teleport the player through to the other side.
+        // Anchor in the ceiling, a solid slab between player and anchor: the
+        // pull presses the player against the slab's underside and holds
+        // there. Walls beat rope.
         TerrainMask world = TestWorlds.Flat(extraSolid: (x, y) =>
             y < 60 ||                                        // ceiling
             (x is >= 160 and < 240 && y is >= 140 and < 150)); // slab in the way
@@ -204,37 +212,36 @@ public class RopeTests
         {
             p = PlayerSim.Tick(p, Idle, world);
             // Body top may touch the slab bottom (feet at 182) but never pass it.
-            Assert.True(p.Position.Y >= 181, $"teleported through the slab at tick {i}: Y={p.Position.Y}");
+            Assert.True(p.Position.Y >= 181, $"passed through the slab at tick {i}: Y={p.Position.Y}");
         }
 
         Assert.Equal(RopeMode.Attached, p.Rope);
-        // The rope paid out instead of storing impossible reel.
-        float distance = (p.RopePoint - new Vec2(p.Position.X, p.Position.Y - SimConfig.PLAYER_HALF_HEIGHT)).Length();
-        Assert.True(p.RopeLength >= distance - 1);
     }
 
     [Fact]
-    public void TautRope_RemovesRadialVelocity_KeepsTangential()
+    public void TautRope_AcceleratesTowardAnchor_SlackDoesNothing()
     {
-        // Hanging straight below the anchor with velocity (200, 300): the
-        // downward part is radial (away from the anchor) and must vanish; the
-        // sideways part is tangential and must survive. Swinging is this rule
-        // applied every tick.
+        // Hanging at full stretch below the anchor: the pull beats gravity, so
+        // a motionless player starts accelerating upward. The same player on a
+        // slack rope just falls. Sideways speed is untouched either way; the
+        // force only ever points at the anchor.
         TerrainMask world = CeilingWorld();
-        PlayerState p = Grounded() with
+        PlayerState hanging = Grounded() with
         {
             Position = new Vec2(200, 178), // body center (200,162), anchor 104 px above
             Grounded = false,
             Rope = RopeMode.Attached,
             RopePoint = new Vec2(200, 58),
             RopeLength = 104,
-            Velocity = new Vec2(200, 300),
+            Velocity = new Vec2(200, 0),
         };
 
-        p = PlayerSim.Tick(p, Idle, world);
+        PlayerState taut = PlayerSim.Tick(hanging, Idle, world);
+        Assert.True(taut.Velocity.Y < 0, $"pull should beat gravity, vy={taut.Velocity.Y}");
+        Assert.True(taut.Velocity.X > 150); // tangential survives (minus air drag)
 
-        Assert.True(p.Velocity.Y <= 1);    // radial (downward) component killed
-        Assert.True(p.Velocity.X > 150);   // tangential survives (minus air drag)
+        PlayerState slack = PlayerSim.Tick(hanging with { RopeLength = 300 }, Idle, world);
+        Assert.True(slack.Velocity.Y > 0, "slack rope must not pull; gravity wins");
     }
 
     [Fact]
@@ -247,7 +254,7 @@ public class RopeTests
             new PlayerState { PeerId = 3, Rope = RopeMode.Attached, RopePoint = new Vec2(5, 6), RopeLength = 77 },
         };
 
-        Snapshot restored = Snapshot.Deserialize(new Snapshot(42, players).Serialize());
+        Snapshot restored = Snapshot.Deserialize(new Snapshot(42, players, []).Serialize());
 
         Assert.Equal(RopeMode.None, restored.Players[0].Rope);
         Assert.Equal(new Vec2(10, 20), restored.Players[1].RopePoint);

@@ -13,6 +13,8 @@ public enum TerrainMaterial : byte
 /// The collision side of the terrain: one material cell per pixel. Every peer
 /// holds its own copy, changed only by carves; the same carves in the same
 /// order must produce byte-identical masks everywhere, so integer math only.
+/// (Clients additionally apply predicted carves ahead of the server and
+/// restore mispredicted cells on confirmation, converging back to identical.)
 /// Out-of-bounds is empty. Maps bring their own solid borders, and falling
 /// out the bottom is death, which makes death pits a map design tool.
 /// </summary>
@@ -45,7 +47,7 @@ public sealed class TerrainMask
 
     public bool IsSolid(int x, int y) => Get(x, y) != TerrainMaterial.Empty;
 
-    /// <summary>Any solid cell in the pixel rect [minX,maxX) × [minY,maxY)?</summary>
+    /// <summary>Any solid cell in the pixel rect [minX,maxX) x [minY,maxY)?</summary>
     public bool RectSolid(float minX, float minY, float maxX, float maxY)
     {
         int x0 = (int)MathF.Floor(minX);
@@ -78,6 +80,18 @@ public sealed class TerrainMask
                 removed.Add((x, y));
             }
         return removed;
+    }
+
+    /// <summary>Undo one pixel of a predicted carve: back to Destructible if
+    /// the pristine map had it so. Client prediction only; the authoritative
+    /// mask never restores.</summary>
+    public void RestoreDestructible(int x, int y)
+    {
+        if (!InBounds(x, y))
+            return;
+        int i = y * Width + x;
+        if (_original[i] == TerrainMaterial.Destructible && _cells[i] == TerrainMaterial.Empty)
+            _cells[i] = TerrainMaterial.Destructible;
     }
 
     /// <summary>

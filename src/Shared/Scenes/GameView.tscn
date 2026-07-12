@@ -1,0 +1,17 @@
+[gd_scene format=3 uid="uid://cjwh1mbdhwqhh"]
+
+[ext_resource type="Script" uid="uid://b4yn6nnq4p213" path="res://src/Client/GameView.cs" id="1_gview"]
+[ext_resource type="PackedScene" uid="uid://pb6yifh4403o" path="res://src/Shared/Scenes/GameMap.tscn" id="2_gmap"]
+[ext_resource type="Script" uid="uid://jylbysmnxgfg" path="res://src/Client/RopeOverlay.cs" id="3_ropes"]
+[ext_resource type="PackedScene" uid="uid://4ksxyg8c7l8k" path="res://src/Shared/Prefabs/Player.tscn" id="4_player"]
+
+[node name="GameView" type="Node2D" unique_id=1808596722 node_paths=PackedStringArray("_gameMap", "_ropes")]
+script = ExtResource("1_gview")
+_gameMap = NodePath("GameMap")
+_ropes = NodePath("RopeOverlay")
+_playerScene = ExtResource("4_player")
+
+[node name="GameMap" parent="." unique_id=1523337900 instance=ExtResource("2_gmap")]
+
+[node name="RopeOverlay" type="Node2D" parent="." unique_id=409740464]
+script = ExtResource("3_ropes")

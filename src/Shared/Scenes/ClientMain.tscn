@@ -1,0 +1,8 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/Client/ClientMain.cs" id="1_cmain"]
+[ext_resource type="PackedScene" path="res://src/Shared/Scenes/GameView.tscn" id="2_gview"]
+
+[node name="ClientMain" type="Node"]
+script = ExtResource("1_cmain")
+_gameViewScene = ExtResource("2_gview")

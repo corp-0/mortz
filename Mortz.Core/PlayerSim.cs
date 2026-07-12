@@ -5,7 +5,7 @@ namespace Mortz.Core;
 /// has to stay a pure function, prediction replays it over buffered inputs.
 /// Movement is a swept AABB against the terrain mask, one pixel at a time per
 /// axis, with step-up so small carved bumps don't stop a running player.
-/// Position is the feet midpoint; the body occupies [X-hw, X+hw) × [Y-2*hh, Y).
+/// Position is the feet midpoint; the body occupies [X-hw, X+hw) x [Y-2*hh, Y).
 /// </summary>
 public static class PlayerSim
 {
@@ -30,14 +30,16 @@ public static class PlayerSim
         p.Velocity = p.Velocity with { Y = MathF.Min(p.Velocity.Y + SimConfig.GRAVITY * DT, maxFall) };
 
         // Jumps: ground (incl. coyote grace), then wall, then air.
-        // Any jump press lets go of an attached rope first (the swing-release tech).
         bool jumpPressed = input.Jump && (p.PrevButtons & InputButtons.Jump) == 0;
         if (jumpPressed)
         {
+            // On a rope, jump only lets go: dropping out of a swing keeps your
+            // momentum and the full jump budget for the fall. Costs the press.
             if (p.Rope == RopeMode.Attached)
+            {
                 RopeSim.ReleaseAttached(ref p);
-
-            if (p.Grounded || p.CoyoteTicks > 0)
+            }
+            else if (p.Grounded || p.CoyoteTicks > 0)
             {
                 p.Velocity = p.Velocity with { Y = -SimConfig.JUMP_SPEED };
                 p.Grounded = false;
@@ -88,8 +90,7 @@ public static class PlayerSim
             p.CoyoteTicks--;
         }
 
-        RopeSim.ConstrainPosition(ref p, terrain);
-
+        p.Aim = input.Aim;
         p.PrevButtons = input.Buttons;
         return p;
     }

@@ -103,7 +103,7 @@ public class SimWorldTests
         w.AddPlayer(42);
         for (int t = 0; t < 30; t++)
         {
-            w.EnqueueInput(1, t, new PlayerInput(InputButtons.Right | InputButtons.Jump));
+            w.EnqueueInput(1, t, new PlayerInput(InputButtons.Right | InputButtons.Jump, (byte)(t * 7)));
             w.Step();
         }
 
@@ -114,13 +114,16 @@ public class SimWorldTests
         Assert.Equal(original.Players.Length, restored.Players.Length);
         for (int i = 0; i < original.Players.Length; i++)
         {
-            // PrevButtons is sim-internal and intentionally not on the wire,
-            // so compare the replicated fields only.
+            // PrevButtons and LastInputSeq are intentionally not on the wire.
+            // Points and velocities are quantized to 1/4, so allow that much.
             Assert.Equal(original.Players[i].PeerId, restored.Players[i].PeerId);
-            Assert.Equal(original.Players[i].Position, restored.Players[i].Position);
-            Assert.Equal(original.Players[i].Velocity, restored.Players[i].Velocity);
+            Assert.Equal(original.Players[i].Position.X, restored.Players[i].Position.X, 0.126f);
+            Assert.Equal(original.Players[i].Position.Y, restored.Players[i].Position.Y, 0.126f);
+            Assert.Equal(original.Players[i].Velocity.X, restored.Players[i].Velocity.X, 0.126f);
+            Assert.Equal(original.Players[i].Velocity.Y, restored.Players[i].Velocity.Y, 0.126f);
             Assert.Equal(original.Players[i].Grounded, restored.Players[i].Grounded);
-            Assert.Equal(original.Players[i].LastInputSeq, restored.Players[i].LastInputSeq);
+            Assert.Equal(original.Players[i].Aim, restored.Players[i].Aim);
+            Assert.Equal(original.Players[i].Skin, restored.Players[i].Skin);
         }
     }
 }

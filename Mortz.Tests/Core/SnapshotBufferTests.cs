@@ -6,7 +6,7 @@ namespace Mortz.Tests.Core;
 public class SnapshotBufferTests
 {
     private static Snapshot Snap(int tick, float x) =>
-        new(tick, [new PlayerState { PeerId = 1, Position = new Vec2(x, 0) }]);
+        new(tick, [new PlayerState { PeerId = 1, Position = new Vec2(x, 0) }], []);
 
     [Fact]
     public void Sample_InterpolatesBetweenBracketingSnapshots()
@@ -54,15 +54,37 @@ public class SnapshotBufferTests
     }
 
     [Fact]
+    public void Sample_InterpolatesMortarsById_AndDropsExploded()
+    {
+        SnapshotBuffer buf = new SnapshotBuffer();
+        buf.Add(new Snapshot(10, [],
+        [
+            new MortarState { Id = 7, Position = new Vec2(100, 50) },
+            new MortarState { Id = 8, Position = new Vec2(0, 0) }, // gone by tick 12: exploded
+        ]));
+        buf.Add(new Snapshot(12, [],
+        [
+            new MortarState { Id = 7, Position = new Vec2(120, 70) },
+            new MortarState { Id = 9, Position = new Vec2(300, 300) }, // just fired
+        ]));
+
+        InterpolatedState mid = buf.Sample(11f)!;
+        Assert.Equal(2, mid.Mortars.Count);
+        Assert.Equal(110, mid.Mortars.First(m => m.Id == 7).Position.X, 3);
+        Assert.Equal(300, mid.Mortars.First(m => m.Id == 9).Position.X, 3);
+        Assert.DoesNotContain(mid.Mortars, m => m.Id == 8);
+    }
+
+    [Fact]
     public void PlayerPresentOnlyInNewerSnapshot_UsesNewerPosition()
     {
         SnapshotBuffer buf = new SnapshotBuffer();
-        buf.Add(new Snapshot(10, [new PlayerState { PeerId = 1, Position = new Vec2(100, 0) }]));
+        buf.Add(new Snapshot(10, [new PlayerState { PeerId = 1, Position = new Vec2(100, 0) }], []));
         buf.Add(new Snapshot(12,
         [
             new PlayerState { PeerId = 1, Position = new Vec2(200, 0) },
             new PlayerState { PeerId = 2, Position = new Vec2(500, 0) }, // just joined
-        ]));
+        ], []));
 
         InterpolatedState mid = buf.Sample(11f)!;
         Assert.Equal(500, mid.Players.First(p => p.PeerId == 2).Position.X, 3);

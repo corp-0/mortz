@@ -6,12 +6,14 @@ using Mortz.Shared;
 namespace Mortz.Client;
 
 /// <summary>
-/// Client flow: lobby (Host / Join by IP) → connect → hand over to GameView.
+/// Client flow: lobby (Host / Join by IP) -> connect -> hand over to GameView.
 /// Also supports headless auto-join for E2E testing: `++ --connect 127.0.0.1`.
 /// </summary>
 public partial class ClientMain : Node
 {
     private const int CONNECT_RETRIES = 5;
+
+    [Export] private PackedScene _gameViewScene = null!;
 
     private Control _lobby = null!;
     private LineEdit _addressEdit = null!;
@@ -94,7 +96,7 @@ public partial class ClientMain : Node
         _pendingAddress = address;
         _pendingPort = port;
         _retriesLeft = CONNECT_RETRIES;
-        _status.Text = $"Connecting to {address}:{port}…";
+        _status.Text = $"Connecting to {address}:{port}...";
         GD.Print($"[client] connecting to {address}:{port}");
         TryConnect();
     }
@@ -112,7 +114,7 @@ public partial class ClientMain : Node
         // A freshly spawned local server takes a moment to start listening.
         if (_retriesLeft-- > 0)
         {
-            _status.Text = $"Retrying… ({CONNECT_RETRIES - _retriesLeft}/{CONNECT_RETRIES})";
+            _status.Text = $"Retrying... ({CONNECT_RETRIES - _retriesLeft}/{CONNECT_RETRIES})";
             await ToSignal(GetTree().CreateTimer(1.0), SceneTreeTimer.SignalName.Timeout);
             TryConnect();
             return;
@@ -126,7 +128,7 @@ public partial class ClientMain : Node
     {
         GD.Print($"[client] connected, peer id {Multiplayer.GetUniqueId()}");
         NetworkManager.Instance.SendHello();
-        _status.Text = "Loading map…";
+        _status.Text = "Loading map...";
     }
 
     private void OnWelcomeReceived(string mapId, string mapHash, byte[] removedData)
@@ -142,7 +144,7 @@ public partial class ClientMain : Node
         GD.Print($"[client] map '{map.DisplayName}' verified");
 
         _lobby.Visible = false;
-        _gameView = new GameView { Name = "GameView" };
+        _gameView = _gameViewScene.Instantiate<GameView>();
         _gameView.Initialize(map, removedData);
         AddChild(_gameView);
     }

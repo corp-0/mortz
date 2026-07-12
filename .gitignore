@@ -3,6 +3,10 @@
 *.translation
 export_credentials.cfg
 mono_crash.*.json
+build/client/**
+build/server/**
+!build/client/.gitkeep
+!build/server/.gitkeep
 
 # .NET
 bin/

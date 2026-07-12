@@ -21,6 +21,14 @@ public partial class CarveBurst : Node2D
     private readonly List<Particle> _particles = new();
     private float _age;
 
+    private static readonly Color[] _fire =
+    {
+        new(1f, 0.92f, 0.45f),  // flash yellow
+        new(1f, 0.62f, 0.12f),  // orange
+        new(0.88f, 0.3f, 0.05f), // ember red
+        new(0.35f, 0.32f, 0.3f), // smoke grey
+    };
+
     public static CarveBurst Create(Vector2 center, IReadOnlyList<(Vector2 Position, Color Color)> pixels)
     {
         CarveBurst burst = new CarveBurst();
@@ -34,6 +42,25 @@ public partial class CarveBurst : Node2D
                 Position = pixels[i].Position,
                 Velocity = away * (60 + rng.Next(160)) + new Vector2(0, -80 - rng.Next(80)),
                 Color = pixels[i].Color,
+            });
+        }
+        return burst;
+    }
+
+    /// <summary>The boom itself: fire and smoke flung radially, scaled to the
+    /// blast radius. Spawns on every explosion, carve or not.</summary>
+    public static CarveBurst Explosion(Vector2 center, int radius)
+    {
+        CarveBurst burst = new CarveBurst();
+        Random rng = new Random();
+        for (int i = 0; i < MAX_PARTICLES; i++)
+        {
+            Vector2 dir = Vector2.FromAngle((float)(rng.NextDouble() * Math.Tau));
+            burst._particles.Add(new Particle
+            {
+                Position = center + dir * rng.Next(radius / 2),
+                Velocity = dir * (radius * 3 + rng.Next(radius * 6)) + new Vector2(0, -60),
+                Color = _fire[rng.Next(_fire.Length)],
             });
         }
         return burst;

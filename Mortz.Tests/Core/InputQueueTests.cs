@@ -66,4 +66,35 @@ public class InputQueueTests
         // The oldest surviving pending input is at most MAX_PENDING behind the newest.
         Assert.True(q.LastAppliedSeq >= 19 - InputQueue.MAX_PENDING);
     }
+
+    [Fact]
+    public void Backlog_DrainsToOneBufferedInput_ThenStaysThere()
+    {
+        InputQueue q = new InputQueue();
+        for (int seq = 0; seq < 3; seq++)
+            q.Enqueue(seq, In(InputButtons.None));
+
+        // Steady state: one new input arrives per tick, like a live client.
+        for (int seq = 3; seq < 8; seq++)
+        {
+            q.Enqueue(seq, In(InputButtons.None));
+            q.Next();
+        }
+
+        Assert.Equal(1, q.PendingCount);
+        Assert.Equal(6, q.LastAppliedSeq); // caught up to one behind the newest
+    }
+
+    [Fact]
+    public void Drain_ReturnsTheNewerOfTheTwoConsumedInputs()
+    {
+        InputQueue q = new InputQueue();
+        q.Enqueue(0, In(InputButtons.Left));
+        q.Enqueue(1, In(InputButtons.Right));
+        q.Enqueue(2, In(InputButtons.Jump));
+
+        Assert.Equal(InputButtons.Right, q.Next().Buttons);
+        Assert.Equal(1, q.LastAppliedSeq); // ack covers the overtaken input too
+        Assert.Equal(1, q.PendingCount);
+    }
 }

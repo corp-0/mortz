@@ -1,7 +1,7 @@
 namespace Mortz.Core;
 
 [Flags]
-public enum InputButtons : byte
+public enum InputButtons : ushort
 {
     None = 0,
     Left = 1 << 0,
@@ -11,6 +11,8 @@ public enum InputButtons : byte
     Rope = 1 << 4,
     Up = 1 << 5,
     Down = 1 << 6,
+    Fire = 1 << 7,
+    Reload = 1 << 8,
 }
 
 /// <summary>
@@ -27,6 +29,8 @@ public readonly record struct PlayerInput(InputButtons Buttons, byte Aim = 0)
     public bool Rope => (Buttons & InputButtons.Rope) != 0;
     public bool Up => (Buttons & InputButtons.Up) != 0;
     public bool Down => (Buttons & InputButtons.Down) != 0;
+    public bool Fire => (Buttons & InputButtons.Fire) != 0;
+    public bool Reload => (Buttons & InputButtons.Reload) != 0;
 
     /// <summary>-1, 0 or +1 horizontal drive.</summary>
     public float MoveDir => (Right ? 1f : 0f) - (Left ? 1f : 0f);
@@ -41,13 +45,12 @@ public readonly record struct PlayerInput(InputButtons Buttons, byte Aim = 0)
         }
     }
 
-    public Vec2 AimDir
+    public Vec2 AimDir => AimToDir(Aim);
+
+    public static Vec2 AimToDir(byte aim)
     {
-        get
-        {
-            float angle = Aim * (MathF.Tau / 256f);
-            return new Vec2(MathF.Cos(angle), MathF.Sin(angle));
-        }
+        float angle = aim * (MathF.Tau / 256f);
+        return new Vec2(MathF.Cos(angle), MathF.Sin(angle));
     }
 
     public static byte AimFromVector(Vec2 dir)

@@ -30,6 +30,16 @@ public record struct PlayerState
     /// <summary>Ticks until the next dash is allowed.</summary>
     public byte DashCooldown;
 
+    /// <summary>Mortar shells in the magazine. Weapon state lives in
+    /// WeaponSim (run by both SimWorld and the Predictor, never PlayerSim)
+    /// and rides the snapshot like everything else replayed.</summary>
+    public byte Ammo;
+
+    /// <summary>Ticks until the next shell loads; 0 = not reloading. Shells
+    /// bank one at a time until the magazine is full; firing throws away the
+    /// one in progress and stops the reload.</summary>
+    public byte ReloadTicks;
+
     /// <summary>Grace ticks after leaving a ledge where a jump still counts as grounded.</summary>
     public byte CoyoteTicks;
 
@@ -40,12 +50,20 @@ public record struct PlayerState
     public Vec2 RopePoint;
     /// <summary>Hook velocity while flying.</summary>
     public Vec2 RopeVelocity;
-    /// <summary>Constraint length while attached; auto-reels shorter.</summary>
+    /// <summary>Slack threshold set at attach; the pull only acts at full stretch.</summary>
     public float RopeLength;
+
+    /// <summary>Aim byte from the last applied input, so remote clients can render the weapon.</summary>
+    public byte Aim;
+
+    /// <summary>Sprite frame dealt by the server at join; survives respawns.</summary>
+    public byte Skin;
 
     /// <summary>
     /// Newest input sequence the server applied to this player (-1 before any).
     /// Set by SimWorld, not PlayerSim; this is the ack prediction replays from.
+    /// Not in the snapshot itself: only the owner cares, so the server sends
+    /// each client its own ack beside the packet.
     /// </summary>
     public int LastInputSeq;
 
