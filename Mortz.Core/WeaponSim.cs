@@ -16,6 +16,9 @@ public static class WeaponSim
     /// <returns>true when a shell fires this tick.</returns>
     public static bool Tick(ref PlayerState p, PlayerInput input, InputButtons prevButtons)
     {
+        if (p.RespawnTicks > 0)
+            return false; // corpses don't fire or reload
+
         bool firePressed = input.Fire && (prevButtons & InputButtons.Fire) == 0;
         bool reloadPressed = input.Reload && (prevButtons & InputButtons.Reload) == 0;
 

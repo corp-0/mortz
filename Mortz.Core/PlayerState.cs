@@ -56,6 +56,17 @@ public record struct PlayerState
     /// <summary>Aim byte from the last applied input, so remote clients can render the weapon.</summary>
     public byte Aim;
 
+    /// <summary>Server-authoritative and never predicted: blasts subtract it in
+    /// SimWorld only, prediction just carries the acked value through replay.
+    /// 0 while the body lies dead; respawn restores MAX_HEALTH.</summary>
+    public byte Health;
+
+    /// <summary>Ticks until respawn; nonzero = dead. A dead body is frozen and
+    /// untouchable: PlayerSim and WeaponSim no-op on it (which also freezes
+    /// prediction replay), blasts skip it, shells fly through it. Only the
+    /// server counts it down and respawns at 0.</summary>
+    public byte RespawnTicks;
+
     /// <summary>Sprite frame dealt by the server at join; survives respawns.</summary>
     public byte Skin;
 

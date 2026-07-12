@@ -34,6 +34,8 @@ public sealed record Snapshot(int Tick, PlayerState[] Players, MortarState[] Mor
             w.Write(p.CoyoteTicks);
             w.Write(p.RopeCooldown);
             w.Write(p.Aim);
+            w.Write(p.Health);
+            w.Write(p.RespawnTicks);
             w.Write(p.Skin);
             if (p.Rope != RopeMode.None)
                 WriteVec(w, p.RopePoint);
@@ -82,6 +84,8 @@ public sealed record Snapshot(int Tick, PlayerState[] Players, MortarState[] Mor
                 CoyoteTicks = r.ReadByte(),
                 RopeCooldown = r.ReadByte(),
                 Aim = r.ReadByte(),
+                Health = r.ReadByte(),
+                RespawnTicks = r.ReadByte(),
                 Skin = r.ReadByte(),
             };
             if (p.Rope != RopeMode.None)

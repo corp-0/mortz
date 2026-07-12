@@ -61,9 +61,9 @@ public sealed class SnapshotBuffer
             }
             // Aim and rope come from the newer snapshot as-is: the anchor is static
             // while attached, and the flying hook is too fast to bother lerping.
-            // Ammo/reload too: they step at most once per snapshot anyway.
+            // Ammo/reload/health too: they step at most once per snapshot anyway.
             result.Add(new RenderPlayer(np.PeerId, pos, np.Aim, np.Skin, np.Rope, np.RopePoint,
-                np.Ammo, np.ReloadTicks));
+                np.Ammo, np.ReloadTicks, np.Health, np.RespawnTicks));
         }
 
         // Shells matched by id like players. New this interval: rendered at
@@ -88,7 +88,7 @@ public sealed class SnapshotBuffer
 }
 
 public readonly record struct RenderPlayer(int PeerId, Vec2 Position, byte Aim, byte Skin, RopeMode Rope, Vec2 RopePoint,
-    byte Ammo, byte ReloadTicks);
+    byte Ammo, byte ReloadTicks, byte Health, byte RespawnTicks);
 
 public readonly record struct RenderMortar(ushort Id, int OwnerId, Vec2 Position, Vec2 Velocity);
 

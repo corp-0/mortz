@@ -254,6 +254,10 @@ public class MortarTests
         (int peerId, Vec2 pos) = Assert.Single(w.Deaths);
         Assert.Equal(1, peerId);
         Assert.True(pos.Y > 200, "died near the floor");
+        Assert.True(w.Players[1].RespawnTicks > 0, "gibbed bodies lie dead for a while");
+
+        for (int t = 0; t < SimConfig.RESPAWN_DELAY_TICKS; t++)
+            StepWith(w, ref seq, InputButtons.None, AIM_DOWN);
         Assert.Equal(SimConfig.MORTAR_MAX_AMMO, w.Players[1].Ammo); // fresh spawn, full mag
         // The crater ate the spawn column's floor, so FindSpawn falls back to
         // dropping the fresh body mid-air, well above the death spot.
@@ -293,6 +297,14 @@ public class MortarTests
         }
 
         Assert.Equal([2], killed); // the shooter outlived their own shot
+
+        for (int t = 0; t < SimConfig.RESPAWN_DELAY_TICKS; t++)
+        {
+            w.EnqueueInput(1, seq, new PlayerInput(InputButtons.None));
+            w.EnqueueInput(2, seq, new PlayerInput(InputButtons.None));
+            seq++;
+            w.Step();
+        }
         Assert.True(w.Players[2].Position.X < 200, "victim respawned back at their spawn column");
     }
 

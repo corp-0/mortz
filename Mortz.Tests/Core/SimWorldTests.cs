@@ -71,8 +71,13 @@ public class SimWorldTests
         }
         Assert.True(fell);
 
-        // Keep stepping without input: the respawn happens and they stand again.
-        for (int i = 0; i < SimConfig.TICK_RATE && !w.Players[1].Grounded; i++)
+        // A little more falling and the pit registers the death; the body then
+        // lies dead below the map for the full delay before standing again.
+        for (int i = 0; i < SimConfig.TICK_RATE && w.Players[1].RespawnTicks == 0; i++)
+            w.Step();
+        Assert.True(w.Players[1].RespawnTicks > 0);
+
+        for (int i = 0; i < SimConfig.RESPAWN_DELAY_TICKS + SimConfig.TICK_RATE && !w.Players[1].Grounded; i++)
             w.Step();
 
         Assert.Equal(spawn, w.Players[1].Position);

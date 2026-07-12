@@ -13,7 +13,7 @@ namespace Mortz.Core;
 /// the reload bar react instantly) and every local shot spawns a cosmetic
 /// shell here, keyed by the input seq that fired it. The owner only ever sees
 /// these local shells; the authoritative copies in the snapshot are hidden by
-/// the view. Explosions, carving and kills stay server-only: a predicted
+/// the view. Explosions, carving and damage stay server-only: a predicted
 /// shell simply vanishes on impact and the boom arrives with the carve.
 /// </summary>
 public sealed class Predictor
@@ -69,7 +69,7 @@ public sealed class Predictor
 
     /// <summary>Mirrors SimWorld's order: a shell moves on its spawn tick.
     /// Impacts are reported for predicted carving and the shell despawns; the
-    /// server still owns the real consequences (authoritative carve, kills).</summary>
+    /// server still owns the real consequences (authoritative carve, damage).</summary>
     private void StepShells(List<(int SpawnSeq, MortarState Shell)> shells)
     {
         for (int i = shells.Count - 1; i >= 0; i--)

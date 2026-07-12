@@ -76,6 +76,17 @@ public static class SimConfig
     public const int MORTAR_MAX_AMMO = 5;
     public const float MORTAR_RELOAD_PER_SHELL = 1.0f; // s
 
+    // ---- health / blast ----
+    // The blast circle is MORTAR_CARVE_RADIUS. Inside the core fraction a hit
+    // is a guaranteed kill; from there damage falls off linearly to the rim.
+    // Distances are measured to the nearest point of the body box.
+    public const int MAX_HEALTH = 100;
+    public const int MORTAR_DAMAGE = 100;           //        in the lethal core
+    public const float BLAST_CORE_FRACTION = 0.75f; //        of the radius
+    public const int BLAST_EDGE_DAMAGE = 35;        //        at the rim
+    /// <summary>How long a gibbed body stays dead (and hidden) before respawning.</summary>
+    public const float RESPAWN_DELAY = 2.0f;        // s
+
     // ---- dev tools ----
     /// <summary>Radius of the dev click-to-carve, the stand-in weapon until mortars exist.</summary>
     public const int DEBUG_CARVE_RADIUS = 24;
@@ -87,4 +98,5 @@ public static class SimConfig
     public const int ROPE_RELEASE_COOLDOWN_TICKS = (int)(ROPE_RELEASE_COOLDOWN * TICK_RATE);
     public const int ROPE_MISS_COOLDOWN_TICKS = (int)(ROPE_MISS_COOLDOWN * TICK_RATE);
     public const int MORTAR_RELOAD_TICKS = (int)(MORTAR_RELOAD_PER_SHELL * TICK_RATE);
+    public const int RESPAWN_DELAY_TICKS = (int)(RESPAWN_DELAY * TICK_RATE);
 }

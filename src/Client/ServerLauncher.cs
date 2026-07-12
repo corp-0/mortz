@@ -11,7 +11,8 @@ namespace Mortz.Client;
 /// </summary>
 public static class ServerLauncher
 {
-    private const string SERVER_EXE_NAME = "MortzServer.exe";
+    private static string ServerExeName =>
+        OS.HasFeature("windows") ? "MortzServer.exe" : "MortzServer.x86_64";
 
     private static int _pid = -1;
 
@@ -31,7 +32,7 @@ public static class ServerLauncher
         }
         else
         {
-            exe = OS.GetExecutablePath().GetBaseDir().PathJoin(SERVER_EXE_NAME);
+            exe = OS.GetExecutablePath().GetBaseDir().PathJoin(ServerExeName);
             args = ["--headless", "++", "--server", "--port", port.ToString()];
         }
 

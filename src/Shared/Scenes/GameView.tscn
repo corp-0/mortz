@@ -12,14 +12,17 @@
 [ext_resource type="Script" path="res://src/Client/Diagnostics/NetStatsProbe.cs" id="10_netstats"]
 [ext_resource type="Script" path="res://src/Client/Diagnostics/LagProbes.cs" id="11_lagprobes"]
 [ext_resource type="Script" path="res://src/Client/Diagnostics/E2eHooks.cs" id="12_e2e"]
+[ext_resource type="Script" path="res://src/Client/Hud.cs" id="13_hud"]
+[ext_resource type="Script" path="res://src/Client/ShellRow.cs" id="14_shells"]
 
-[node name="GameView" type="Node2D" unique_id=1808596722 node_paths=PackedStringArray("_gameMap", "_ropes", "_localPlayer", "_players", "_mortars")]
+[node name="GameView" type="Node2D" unique_id=1808596722 node_paths=PackedStringArray("_gameMap", "_ropes", "_localPlayer", "_players", "_mortars", "_hud")]
 script = ExtResource("1_gview")
 _gameMap = NodePath("GameMap")
 _ropes = NodePath("RopeOverlay")
 _localPlayer = NodePath("LocalPlayer")
 _players = NodePath("Players")
 _mortars = NodePath("Mortars")
+_hud = NodePath("Hud")
 
 [node name="GameMap" parent="." unique_id=1523337900 instance=ExtResource("2_gmap")]
 
@@ -40,6 +43,39 @@ _playerScene = ExtResource("4_player")
 [node name="Mortars" type="Node2D" parent="."]
 script = ExtResource("8_mortars")
 _mortarScene = ExtResource("9_mortar")
+
+[node name="Hud" type="CanvasLayer" parent="." node_paths=PackedStringArray("_healthLabel", "_shells", "_damageFlash")]
+script = ExtResource("13_hud")
+_healthLabel = NodePath("Corner/HealthLabel")
+_shells = NodePath("Corner/Shells")
+_damageFlash = NodePath("DamageFlash")
+
+[node name="DamageFlash" type="ColorRect" parent="Hud"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+color = Color(1, 0, 0, 0)
+
+[node name="Corner" type="HBoxContainer" parent="Hud"]
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = -44.0
+offset_right = 360.0
+offset_bottom = -12.0
+theme_override_constants/separation = 12
+
+[node name="HealthLabel" type="Label" parent="Hud/Corner"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "100"
+
+[node name="Shells" type="Control" parent="Hud/Corner"]
+layout_mode = 2
+size_flags_vertical = 4
+script = ExtResource("14_shells")
 
 [node name="Diagnostics" type="Node" parent="."]
 

@@ -11,6 +11,9 @@ public static class PlayerSim
 {
     public static PlayerState Tick(PlayerState p, PlayerInput input, TerrainMask terrain)
     {
+        if (p.RespawnTicks > 0)
+            return p; // dead bodies are frozen; SimWorld owns the countdown
+
         const float DT = SimConfig.DT;
 
         if (p.DashCooldown > 0)

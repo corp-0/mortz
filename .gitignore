@@ -5,6 +5,10 @@ export_credentials.cfg
 mono_crash.*.json
 build/client/**
 build/server/**
+build/client-linux/**
+build/server-linux/**
+!build/client-linux/.gitkeep
+!build/server-linux/.gitkeep
 !build/client/.gitkeep
 !build/server/.gitkeep
 

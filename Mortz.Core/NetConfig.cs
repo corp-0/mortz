@@ -4,7 +4,7 @@ namespace Mortz.Core;
 public static class NetConfig
 {
     /// <summary>Bumped on every wire-incompatible change; mismatched clients are rejected.</summary>
-    public const int PROTOCOL_VERSION = 17;
+    public const int PROTOCOL_VERSION = 20;
 
     public const int DEFAULT_PORT = 7777;
     public const int MAX_PLAYERS = 8;

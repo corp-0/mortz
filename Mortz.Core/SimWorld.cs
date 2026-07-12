@@ -56,6 +56,7 @@ public sealed class SimWorld
         Grounded = true,
         JumpsLeft = SimConfig.TOTAL_JUMPS,
         Ammo = SimConfig.MORTAR_MAX_AMMO,
+        Health = SimConfig.MAX_HEALTH,
         LastInputSeq = -1,
     };
 
@@ -100,19 +101,29 @@ public sealed class SimWorld
         foreach (int id in _players.Keys.ToArray())
         {
             InputQueue queue = _inputs[id];
-            PlayerInput input = queue.Next();
+            PlayerInput input = queue.Next(); // consumed even by the dead: acks must keep flowing
             PlayerState prev = _players[id];
-            PlayerState state = PlayerSim.Tick(prev, input, Terrain);
-            // Shells are world entities and this is the authoritative sim, so
-            // the spawn happens here; prediction runs the same WeaponSim but
-            // keeps its shells cosmetic.
-            if (WeaponSim.Tick(ref state, input, prev.PrevButtons))
-                _mortars.Add(WeaponSim.NewShell(_nextMortarId++, queue.LastAppliedSeq, state, input));
-            if (FellOutOfTheMap(state))
+            PlayerState state;
+            if (prev.RespawnTicks > 0)
             {
-                // Death pit: respawn, same skin (a scored death once deathmatch exists).
-                _deaths.Add((id, BodyCenter(state)));
-                state = FreshState(id) with { Skin = state.Skin };
+                state = prev;
+                if (--state.RespawnTicks == 0)
+                    state = FreshState(id) with { Skin = prev.Skin };
+            }
+            else
+            {
+                state = PlayerSim.Tick(prev, input, Terrain);
+                // Shells are world entities and this is the authoritative sim, so
+                // the spawn happens here; prediction runs the same WeaponSim but
+                // keeps its shells cosmetic.
+                if (WeaponSim.Tick(ref state, input, prev.PrevButtons))
+                    _mortars.Add(WeaponSim.NewShell(_nextMortarId++, queue.LastAppliedSeq, state, input));
+                if (FellOutOfTheMap(state))
+                {
+                    // Death pit (a scored death once deathmatch exists).
+                    _deaths.Add((id, BodyCenter(state)));
+                    state = Corpse(state);
+                }
             }
             state.LastInputSeq = queue.LastAppliedSeq;
             _players[id] = state;
@@ -150,7 +161,7 @@ public sealed class SimWorld
     {
         foreach ((int id, PlayerState p) in _players)
         {
-            if (id == m.OwnerId)
+            if (id == m.OwnerId || p.RespawnTicks > 0)
                 continue;
             if (m.Position.X >= p.Position.X - SimConfig.PLAYER_HALF_WIDTH &&
                 m.Position.X < p.Position.X + SimConfig.PLAYER_HALF_WIDTH &&
@@ -161,8 +172,9 @@ public sealed class SimWorld
         return false;
     }
 
-    /// <summary>Carve the hole and kill everyone in the blast circle, shooter
-    /// included: point blank is suicide until health exists. The explosion is
+    /// <summary>Carve the hole, then hurt everyone in the blast circle with
+    /// BlastSim's falloff, shooter included: point blank is still suicide.
+    /// Running out of health is a death like any other. The explosion is
     /// reported even when the carve removes nothing (all Solid).</summary>
     private void Explode(in MortarState m)
     {
@@ -173,22 +185,31 @@ public sealed class SimWorld
         foreach (int id in _players.Keys.ToArray())
         {
             PlayerState p = _players[id];
-            if (!InBlast(p, at, SimConfig.MORTAR_CARVE_RADIUS))
+            if (p.RespawnTicks > 0)
+                continue; // already gibbed, nothing left to hurt
+            int damage = BlastSim.Damage(p, at);
+            if (damage == 0)
                 continue;
-            _deaths.Add((id, BodyCenter(p)));
-            // LastInputSeq must survive the respawn: it was acked this tick.
-            _players[id] = FreshState(id) with { Skin = p.Skin, LastInputSeq = p.LastInputSeq };
+            if (damage >= p.Health)
+            {
+                _deaths.Add((id, BodyCenter(p)));
+                _players[id] = Corpse(p);
+                continue;
+            }
+            p.Health = (byte)(p.Health - damage);
+            _players[id] = p;
         }
     }
 
-    /// <summary>Blast circle vs body AABB.</summary>
-    private static bool InBlast(in PlayerState p, Vec2 center, int radius)
+    /// <summary>The body stays where it died (hidden by the view, gibs mark the
+    /// spot) until Step's countdown respawns it. Rope drops so nothing renders.</summary>
+    private static PlayerState Corpse(in PlayerState p) => p with
     {
-        float nx = Math.Clamp(center.X, p.Position.X - SimConfig.PLAYER_HALF_WIDTH, p.Position.X + SimConfig.PLAYER_HALF_WIDTH);
-        float ny = Math.Clamp(center.Y, p.Position.Y - SimConfig.PLAYER_HALF_HEIGHT * 2, p.Position.Y);
-        float dx = center.X - nx, dy = center.Y - ny;
-        return dx * dx + dy * dy <= radius * radius;
-    }
+        Velocity = Vec2.Zero,
+        Health = 0,
+        Rope = RopeMode.None,
+        RespawnTicks = (byte)SimConfig.RESPAWN_DELAY_TICKS,
+    };
 
     private static Vec2 BodyCenter(in PlayerState p) =>
         p.Position with { Y = p.Position.Y - SimConfig.PLAYER_HALF_HEIGHT };
