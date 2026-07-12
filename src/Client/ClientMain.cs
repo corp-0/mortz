@@ -6,18 +6,17 @@ using Mortz.Shared;
 namespace Mortz.Client;
 
 /// <summary>
-/// Client flow: lobby (Host / Join by IP) -> connect -> hand over to GameView.
-/// Also supports headless auto-join for E2E testing: `++ --connect 127.0.0.1`.
+/// Client session flow: lobby (Host / Join by IP) -> connect -> verify map ->
+/// hand over to GameView. Also supports headless auto-join for E2E testing:
+/// `++ --connect 127.0.0.1`.
 /// </summary>
 public partial class ClientMain : Node
 {
     private const int CONNECT_RETRIES = 5;
 
     [Export] private PackedScene _gameViewScene = null!;
+    [Export] private Lobby _lobby = null!;
 
-    private Control _lobby = null!;
-    private LineEdit _addressEdit = null!;
-    private Label _status = null!;
     private GameView? _gameView;
     private bool _spawnedLocalServer;
     private int _retriesLeft;
@@ -32,8 +31,6 @@ public partial class ClientMain : Node
         net.Disconnected += OnDisconnected;
         net.WelcomeReceived += OnWelcomeReceived;
 
-        BuildLobbyUi();
-
         string? autoConnect = CmdArgs.GetValue("--connect");
         if (autoConnect != null)
             StartConnecting(autoConnect, CmdArgs.GetInt("--port", NetConfig.DEFAULT_PORT));
@@ -45,49 +42,21 @@ public partial class ClientMain : Node
             ServerLauncher.Kill();
     }
 
-    // ---- lobby ----
+    // ---- lobby intents (connected in ClientMain.tscn) ----
 
-    private void BuildLobbyUi()
-    {
-        _lobby = new CenterContainer();
-        _lobby.SetAnchorsPreset(Control.LayoutPreset.FullRect);
-
-        VBoxContainer box = new VBoxContainer { CustomMinimumSize = new Vector2(320, 0) };
-        box.AddThemeConstantOverride("separation", 12);
-        _lobby.AddChild(box);
-
-        Label title = new Label { Text = "MORTZ", HorizontalAlignment = HorizontalAlignment.Center };
-        title.AddThemeFontSizeOverride("font_size", 48);
-        box.AddChild(title);
-
-        Button hostButton = new Button { Text = "Host game" };
-        hostButton.Pressed += OnHostPressed;
-        box.AddChild(hostButton);
-
-        _addressEdit = new LineEdit { Text = "127.0.0.1", PlaceholderText = "server address" };
-        box.AddChild(_addressEdit);
-
-        Button joinButton = new Button { Text = "Join" };
-        joinButton.Pressed += () => StartConnecting(_addressEdit.Text.Trim(), NetConfig.DEFAULT_PORT);
-        box.AddChild(joinButton);
-
-        _status = new Label { HorizontalAlignment = HorizontalAlignment.Center };
-        box.AddChild(_status);
-
-        AddChild(_lobby);
-    }
-
-    private void OnHostPressed()
+    public void OnHostRequested()
     {
         int port = NetConfig.DEFAULT_PORT;
         if (!ServerLauncher.Spawn(port))
         {
-            _status.Text = "Failed to start local server.";
+            _lobby.SetStatus("Failed to start local server.");
             return;
         }
         _spawnedLocalServer = true;
         StartConnecting("127.0.0.1", port);
     }
+
+    public void OnJoinRequested(string address) => StartConnecting(address, NetConfig.DEFAULT_PORT);
 
     // ---- connection ----
 
@@ -96,7 +65,7 @@ public partial class ClientMain : Node
         _pendingAddress = address;
         _pendingPort = port;
         _retriesLeft = CONNECT_RETRIES;
-        _status.Text = $"Connecting to {address}:{port}...";
+        _lobby.SetStatus($"Connecting to {address}:{port}...");
         GD.Print($"[client] connecting to {address}:{port}");
         TryConnect();
     }
@@ -114,13 +83,13 @@ public partial class ClientMain : Node
         // A freshly spawned local server takes a moment to start listening.
         if (_retriesLeft-- > 0)
         {
-            _status.Text = $"Retrying... ({CONNECT_RETRIES - _retriesLeft}/{CONNECT_RETRIES})";
+            _lobby.SetStatus($"Retrying... ({CONNECT_RETRIES - _retriesLeft}/{CONNECT_RETRIES})");
             await ToSignal(GetTree().CreateTimer(1.0), SceneTreeTimer.SignalName.Timeout);
             TryConnect();
             return;
         }
         GD.Print("[client] connection failed");
-        _status.Text = "Connection failed.";
+        _lobby.SetStatus("Connection failed.");
         NetworkManager.Instance.ResetPeer();
     }
 
@@ -128,7 +97,7 @@ public partial class ClientMain : Node
     {
         GD.Print($"[client] connected, peer id {Multiplayer.GetUniqueId()}");
         NetworkManager.Instance.SendHello();
-        _status.Text = "Loading map...";
+        _lobby.SetStatus("Loading map...");
     }
 
     private void OnWelcomeReceived(string mapId, string mapHash, byte[] removedData)
@@ -138,7 +107,7 @@ public partial class ClientMain : Node
         {
             GD.PrintErr($"[client] map '{mapId}' missing or mismatched with server, disconnecting");
             NetworkManager.Instance.ResetPeer();
-            _status.Text = $"Map mismatch: {mapId}";
+            _lobby.SetStatus($"Map mismatch: {mapId}");
             return;
         }
         GD.Print($"[client] map '{map.DisplayName}' verified");
@@ -161,6 +130,6 @@ public partial class ClientMain : Node
             _spawnedLocalServer = false;
         }
         _lobby.Visible = true;
-        _status.Text = "Disconnected.";
+        _lobby.SetStatus("Disconnected.");
     }
 }

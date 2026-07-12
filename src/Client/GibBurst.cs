@@ -75,11 +75,16 @@ public partial class GibBurst : Node2D
             if (_mask.IsSolid((int)p.Position.X, (int)p.Position.Y))
             {
                 // Landed: stain the terrain and stop existing. Bigger pieces
-                // smear wider splats.
+                // smear wider splats. Only solid cells take the stain, so a
+                // carve can always erase it; painted on air it would float.
                 int splat = (int)p.Size / 2;
                 for (int dy = -splat; dy <= splat; dy++)
                     for (int dx = -splat; dx <= splat; dx++)
-                        _paint((int)p.Position.X + dx, (int)p.Position.Y + dy, p.Color);
+                    {
+                        int sx = (int)p.Position.X + dx, sy = (int)p.Position.Y + dy;
+                        if (_mask.IsSolid(sx, sy))
+                            _paint(sx, sy, p.Color);
+                    }
                 _particles.RemoveAt(i);
                 continue;
             }

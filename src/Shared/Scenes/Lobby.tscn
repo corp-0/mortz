@@ -1,0 +1,44 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/Client/Lobby.cs" id="1_lobby"]
+
+[node name="Lobby" type="CenterContainer" node_paths=PackedStringArray("_addressEdit", "_status")]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_lobby")
+_addressEdit = NodePath("Menu/AddressEdit")
+_status = NodePath("Menu/Status")
+
+[node name="Menu" type="VBoxContainer" parent="."]
+custom_minimum_size = Vector2(320, 0)
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="Menu"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 48
+text = "MORTZ"
+horizontal_alignment = 1
+
+[node name="HostButton" type="Button" parent="Menu"]
+layout_mode = 2
+text = "Host game"
+
+[node name="AddressEdit" type="LineEdit" parent="Menu"]
+layout_mode = 2
+text = "127.0.0.1"
+placeholder_text = "server address"
+
+[node name="JoinButton" type="Button" parent="Menu"]
+layout_mode = 2
+text = "Join"
+
+[node name="Status" type="Label" parent="Menu"]
+layout_mode = 2
+horizontal_alignment = 1
+
+[connection signal="pressed" from="Menu/HostButton" to="." method="OnHostPressed"]
+[connection signal="pressed" from="Menu/JoinButton" to="." method="OnJoinPressed"]

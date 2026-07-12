@@ -4,14 +4,57 @@
 [ext_resource type="PackedScene" uid="uid://pb6yifh4403o" path="res://src/Shared/Scenes/GameMap.tscn" id="2_gmap"]
 [ext_resource type="Script" uid="uid://jylbysmnxgfg" path="res://src/Client/RopeOverlay.cs" id="3_ropes"]
 [ext_resource type="PackedScene" uid="uid://4ksxyg8c7l8k" path="res://src/Shared/Prefabs/Player.tscn" id="4_player"]
+[ext_resource type="Script" path="res://src/Client/EffectsSpawner.cs" id="5_effects"]
+[ext_resource type="Script" path="res://src/Client/LocalPlayerController.cs" id="6_local"]
+[ext_resource type="Script" path="res://src/Client/PlayerViewManager.cs" id="7_players"]
+[ext_resource type="Script" path="res://src/Client/MortarViewManager.cs" id="8_mortars"]
+[ext_resource type="PackedScene" path="res://src/Shared/Prefabs/Mortar.tscn" id="9_mortar"]
+[ext_resource type="Script" path="res://src/Client/Diagnostics/NetStatsProbe.cs" id="10_netstats"]
+[ext_resource type="Script" path="res://src/Client/Diagnostics/LagProbes.cs" id="11_lagprobes"]
+[ext_resource type="Script" path="res://src/Client/Diagnostics/E2eHooks.cs" id="12_e2e"]
 
-[node name="GameView" type="Node2D" unique_id=1808596722 node_paths=PackedStringArray("_gameMap", "_ropes")]
+[node name="GameView" type="Node2D" unique_id=1808596722 node_paths=PackedStringArray("_gameMap", "_ropes", "_localPlayer", "_players", "_mortars")]
 script = ExtResource("1_gview")
 _gameMap = NodePath("GameMap")
 _ropes = NodePath("RopeOverlay")
-_playerScene = ExtResource("4_player")
+_localPlayer = NodePath("LocalPlayer")
+_players = NodePath("Players")
+_mortars = NodePath("Mortars")
 
 [node name="GameMap" parent="." unique_id=1523337900 instance=ExtResource("2_gmap")]
 
+[node name="Effects" type="Node2D" parent="." node_paths=PackedStringArray("_gameMap")]
+script = ExtResource("5_effects")
+_gameMap = NodePath("../GameMap")
+
 [node name="RopeOverlay" type="Node2D" parent="." unique_id=409740464]
 script = ExtResource("3_ropes")
+
+[node name="LocalPlayer" type="Node2D" parent="."]
+script = ExtResource("6_local")
+
+[node name="Players" type="Node2D" parent="."]
+script = ExtResource("7_players")
+_playerScene = ExtResource("4_player")
+
+[node name="Mortars" type="Node2D" parent="."]
+script = ExtResource("8_mortars")
+_mortarScene = ExtResource("9_mortar")
+
+[node name="Diagnostics" type="Node" parent="."]
+
+[node name="NetStats" type="Node" parent="Diagnostics" node_paths=PackedStringArray("_gameView", "_localPlayer")]
+script = ExtResource("10_netstats")
+_gameView = NodePath("../..")
+_localPlayer = NodePath("../../LocalPlayer")
+
+[node name="LagProbes" type="Node" parent="Diagnostics" node_paths=PackedStringArray("_localPlayer", "_players")]
+script = ExtResource("11_lagprobes")
+_localPlayer = NodePath("../../LocalPlayer")
+_players = NodePath("../../Players")
+
+[node name="E2eHooks" type="Node" parent="Diagnostics" node_paths=PackedStringArray("_gameView", "_localPlayer", "_gameMap")]
+script = ExtResource("12_e2e")
+_gameView = NodePath("../..")
+_localPlayer = NodePath("../../LocalPlayer")
+_gameMap = NodePath("../../GameMap")
