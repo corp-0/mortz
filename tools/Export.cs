@@ -31,7 +31,7 @@ internal static class Export
         // Must match the editor version (Godots-managed install), or exports run
         // on different templates than the project was built against.
         string godot = Environment.GetEnvironmentVariable("GODOT_PATH")
-            ?? @"C:\Users\filax\AppData\Roaming\Godot\app_userdata\Godots\versions\Godot_v4_6_2-stable_mono_win64\Godot_v4.6.2-stable_mono_win64\Godot_v4.6.2-stable_mono_win64_console.exe";
+            ?? @"E:\filax\Godot\4.7.0\Godot_v4.7-stable_mono_win64_console.exe";
         if (!File.Exists(godot))
             throw new Exception($"Godot not found at {godot} (set GODOT_PATH to override)");
 
