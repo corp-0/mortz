@@ -1,5 +1,6 @@
 using Godot;
 using Mortz.Core;
+using Mortz.Core.Net.Messages;
 using Mortz.Net;
 using Mortz.Shared;
 
@@ -9,9 +10,17 @@ namespace Mortz.Server;
 /// Dedicated server: owns the authoritative SimWorld, steps it at the fixed
 /// physics tick (60 Hz) and broadcasts snapshots. Terrain changes go out as
 /// carve events. Runs headless; never instantiates any client/UI code.
+/// Peers first gather in a pre-match lobby; the match starts once everyone
+/// there is ready. Anyone connecting after that drops straight into the game.
 /// </summary>
 public partial class ServerMain : Node
 {
+    private enum Phase
+    {
+        LOBBY,
+        IN_GAME
+    }
+
     /// <summary>Map to load when --map is not passed.</summary>
     [Export] private string _defaultMap = "castlewars";
 
@@ -19,6 +28,9 @@ public partial class ServerMain : Node
 
     private SimWorld _sim = null!;
     private MapPackage _map = null!;
+    private Phase _phase = Phase.LOBBY;
+    private readonly Dictionary<long, bool> _lobbyReady = new();
+    private readonly Dictionary<long, string> _names = new();
 
     public override void _Ready()
     {
@@ -37,7 +49,8 @@ public partial class ServerMain : Node
         net.PeerJoined += OnPeerJoined;
         net.PeerLeft += OnPeerLeft;
         net.InputsReceived += OnInputsReceived;
-        net.DebugCarveRequested += OnDebugCarveRequested;
+        SetReadyMsg.Received += OnSetReady;
+        DebugCarveMsg.Received += OnDebugCarve;
 
         int port = CmdArgs.GetInt("--port", NetConfig.DEFAULT_PORT);
         Error err = net.StartServer(port);
@@ -53,16 +66,18 @@ public partial class ServerMain : Node
 
     public override void _PhysicsProcess(double delta)
     {
+        if (_phase == Phase.LOBBY)
+            return;
         _sim.Step();
         foreach ((int x, int y, int radius, int owner, int spawnSeq) in _sim.Explosions)
         {
             GD.Print($"[server] mortar exploded at ({x},{y})");
-            NetworkManager.Instance.BroadcastCarve(x, y, radius, owner, spawnSeq);
+            new CarveMsg(x, y, radius, owner, spawnSeq).Broadcast();
         }
         foreach ((int peerId, Vec2 pos) in _sim.Deaths)
         {
             GD.Print($"[server] player {peerId} gibbed at ({(int)pos.X},{(int)pos.Y})");
-            NetworkManager.Instance.BroadcastDeath(peerId, (int)pos.X, (int)pos.Y);
+            new DeathMsg(peerId, (int)pos.X, (int)pos.Y).Broadcast();
         }
         if (_sim.Tick % NetConfig.TICKS_PER_SNAPSHOT == 0 && _sim.Players.Count > 0)
         {
@@ -85,17 +100,85 @@ public partial class ServerMain : Node
                  $"sent={sent:F0}B/{sentPk:F0}pk recv={recv:F0}B/{recvPk:F0}pk {peers}");
     }
 
-    private void OnPeerJoined(long peerId)
+    private void OnPeerJoined(long peerId, string playerName)
     {
-        _sim.AddPlayer((int)peerId);
-        NetworkManager.Instance.SendWelcome(peerId, _map.MapId, _map.Hash, _sim.Terrain.SerializeRemoved());
-        GD.Print($"[server] player {peerId} joined ({_sim.Players.Count} in game)");
+        playerName = playerName.Trim();
+        if (playerName.Length == 0)
+            playerName = $"Player {peerId}";
+        else if (playerName.Length > NetConfig.MAX_NAME_LENGTH)
+            playerName = playerName[..NetConfig.MAX_NAME_LENGTH];
+        _names[peerId] = playerName;
+
+        if (_phase == Phase.IN_GAME)
+        {
+            AddToGame(peerId);
+            BroadcastRoster(); // after Welcome, so the joiner's GameView is listening
+            return;
+        }
+        _lobbyReady[peerId] = false;
+        GD.Print($"[server] player {peerId} '{playerName}' entered lobby ({_lobbyReady.Count} waiting)");
+        BroadcastLobbyState();
     }
 
     private void OnPeerLeft(long peerId)
     {
+        _names.Remove(peerId);
+        if (_lobbyReady.Remove(peerId))
+        {
+            GD.Print($"[server] player {peerId} left lobby ({_lobbyReady.Count} waiting)");
+            BroadcastLobbyState();
+            TryStartMatch(); // the leaver may have been the only one not ready
+            return;
+        }
         _sim.RemovePlayer((int)peerId);
         GD.Print($"[server] player {peerId} left ({_sim.Players.Count} in game)");
+        BroadcastRoster();
+    }
+
+    private void OnSetReady(long sender, SetReadyMsg msg)
+    {
+        if (!_lobbyReady.ContainsKey(sender))
+            return;
+        _lobbyReady[sender] = msg.Ready;
+        GD.Print($"[server] player {sender} is {(msg.Ready ? "ready" : "not ready")}");
+        BroadcastLobbyState();
+        TryStartMatch();
+    }
+
+    private void BroadcastLobbyState()
+    {
+        long[] peers = _lobbyReady.Keys.ToArray();
+        string[] names = peers.Select(p => _names[p]).ToArray();
+        byte[] flags = peers.Select(p => _lobbyReady[p] ? (byte)1 : (byte)0).ToArray();
+        new LobbyStateMsg(peers, names, flags).Broadcast();
+    }
+
+    private void TryStartMatch()
+    {
+        if (_phase != Phase.LOBBY || _lobbyReady.Count == 0 || _lobbyReady.ContainsValue(false))
+            return;
+        _phase = Phase.IN_GAME;
+        GD.Print($"[server] all {_lobbyReady.Count} player(s) ready, starting match");
+        foreach (long peerId in _lobbyReady.Keys)
+            AddToGame(peerId);
+        _lobbyReady.Clear();
+        BroadcastRoster(); // lobby-phase rosters would predate everyone's GameView
+    }
+
+    /// <summary>Name list for in-game display (nameplates); only sent while IN_GAME,
+    /// the lobby gets names through the lobby state instead.</summary>
+    private void BroadcastRoster()
+    {
+        long[] peers = _names.Keys.ToArray();
+        string[] names = peers.Select(p => _names[p]).ToArray();
+        new RosterMsg(peers, names).Broadcast();
+    }
+
+    private void AddToGame(long peerId)
+    {
+        _sim.AddPlayer((int)peerId);
+        new WelcomeMsg(_map.MapId, _map.Hash, _sim.Terrain.SerializeRemoved()).SendTo(peerId);
+        GD.Print($"[server] player {peerId} joined ({_sim.Players.Count} in game)");
     }
 
     private void OnInputsReceived(long peerId, byte[] packet)
@@ -104,11 +187,11 @@ public partial class ServerMain : Node
             _sim.EnqueueInput((int)peerId, seq, input);
     }
 
-    private void OnDebugCarveRequested(long peerId, int x, int y)
+    private void OnDebugCarve(long sender, DebugCarveMsg msg)
     {
-        List<(int X, int Y)> removed = _sim.Terrain.CarveCircle(x, y, SimConfig.DEBUG_CARVE_RADIUS);
-        GD.Print($"[server] carve at ({x},{y}) by {peerId}: {removed.Count} px");
+        List<(int X, int Y)> removed = _sim.Terrain.CarveCircle(msg.X, msg.Y, SimConfig.DEBUG_CARVE_RADIUS);
+        GD.Print($"[server] carve at ({msg.X},{msg.Y}) by {sender}: {removed.Count} px");
         if (removed.Count > 0)
-            NetworkManager.Instance.BroadcastCarve(x, y, SimConfig.DEBUG_CARVE_RADIUS, 0, -1);
+            new CarveMsg(msg.X, msg.Y, SimConfig.DEBUG_CARVE_RADIUS, 0, -1).Broadcast();
     }
 }

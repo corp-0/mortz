@@ -1,6 +1,6 @@
 using Godot;
 using Mortz.Core;
-using Mortz.Net;
+using Mortz.Core.Net.Messages;
 using Mortz.Shared;
 
 namespace Mortz.Client;
@@ -66,10 +66,10 @@ public partial class GameMap : Node2D
     }
 
     public override void _Ready() =>
-        NetworkManager.Instance.CarveReceived += OnCarveReceived;
+        CarveMsg.Received += OnCarve;
 
     public override void _ExitTree() =>
-        NetworkManager.Instance.CarveReceived -= OnCarveReceived;
+        CarveMsg.Received -= OnCarve;
 
     public override void _Process(double delta)
     {
@@ -95,11 +95,12 @@ public partial class GameMap : Node2D
         _ledger.AddPending(spawnSeq, x, y, SimConfig.MORTAR_CARVE_RADIUS, removed, Time.GetTicksMsec());
     }
 
-    private void OnCarveReceived(int x, int y, int radius, int ownerId, int spawnSeq)
+    private void OnCarve(CarveMsg msg)
     {
+        (int x, int y, int radius) = (msg.X, msg.Y, msg.Radius);
         _ledger.RecordConfirmed(x, y, radius, Time.GetTicksMsec());
 
-        if (ownerId == Multiplayer.GetUniqueId() && _ledger.TryConfirm(spawnSeq, out CarveLedger.PendingCarve? pending))
+        if (msg.OwnerId == Multiplayer.GetUniqueId() && _ledger.TryConfirm(msg.SpawnSeq, out CarveLedger.PendingCarve? pending))
         {
             // Our shell, already predicted (boom included). Usually a perfect
             // match and both steps are no-ops; on a mispredict this moves the

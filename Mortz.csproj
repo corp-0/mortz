@@ -11,6 +11,7 @@
   <ItemGroup>
     <Compile Remove="Mortz.Tests\**" />
     <Compile Remove="Mortz.Core\**" />
+    <Compile Remove="Mortz.Net.Gen\**" />
     <Compile Remove="tools\**" />
   </ItemGroup>
   <ItemGroup>

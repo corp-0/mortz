@@ -1,15 +1,20 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://src/Client/ClientMain.cs" id="1_cmain"]
 [ext_resource type="PackedScene" path="res://src/Shared/Scenes/GameView.tscn" id="2_gview"]
-[ext_resource type="PackedScene" path="res://src/Shared/Scenes/Lobby.tscn" id="3_lobby"]
+[ext_resource type="PackedScene" path="res://src/Shared/Scenes/MainMenu.tscn" id="3_menu"]
+[ext_resource type="PackedScene" path="res://src/Shared/Scenes/Lobby.tscn" id="4_lobby"]
 
-[node name="ClientMain" type="Node" node_paths=PackedStringArray("_lobby")]
+[node name="ClientMain" type="Node" node_paths=PackedStringArray("_menu", "_lobby")]
 script = ExtResource("1_cmain")
 _gameViewScene = ExtResource("2_gview")
+_menu = NodePath("MainMenu")
 _lobby = NodePath("Lobby")
 
-[node name="Lobby" parent="." instance=ExtResource("3_lobby")]
+[node name="MainMenu" parent="." instance=ExtResource("3_menu")]
 
-[connection signal="HostRequested" from="Lobby" to="." method="OnHostRequested"]
-[connection signal="JoinRequested" from="Lobby" to="." method="OnJoinRequested"]
+[node name="Lobby" parent="." instance=ExtResource("4_lobby")]
+
+[connection signal="HostRequested" from="MainMenu" to="." method="OnHostRequested"]
+[connection signal="JoinRequested" from="MainMenu" to="." method="OnJoinRequested"]
+[connection signal="ReadyToggled" from="Lobby" to="." method="OnReadyToggled"]

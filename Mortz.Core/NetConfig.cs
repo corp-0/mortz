@@ -3,11 +3,13 @@ namespace Mortz.Core;
 /// <summary>Networking constants shared by client and server.</summary>
 public static class NetConfig
 {
-    /// <summary>Bumped on every wire-incompatible change; mismatched clients are rejected.</summary>
-    public const int PROTOCOL_VERSION = 20;
+    /// <summary>Bumped on semantic wire changes. Message shape changes are caught
+    /// automatically by NetRegistry.SCHEMA_HASH; both ride in Hello.</summary>
+    public const int PROTOCOL_VERSION = 23;
 
     public const int DEFAULT_PORT = 7777;
     public const int MAX_PLAYERS = 8;
+    public const int MAX_NAME_LENGTH = 24;
 
     /// <summary>
     /// A snapshot is broadcast every N simulation ticks. 30 Hz halves both

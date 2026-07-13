@@ -21,13 +21,21 @@ public partial class PlayerView : Node2D
     [Export] private Sprite2D _launcher = null!;
     [Export] private Camera2D _camera = null!;
     [Export] private ProgressBar _reloadBar = null!;
+    [Export] private Label _nameplate = null!;
 
     private bool _boxVisible;
     private int _lastHealth = -1;
     private float _hitFlash;
 
-    /// <summary>Only the local player's camera drives the screen.</summary>
-    public void SetIsLocal(bool isLocal) => _camera.Enabled = isLocal;
+    /// <summary>Only the local player's camera drives the screen, and only
+    /// remote players wear a nameplate; you know who you are.</summary>
+    public void SetIsLocal(bool isLocal)
+    {
+        _camera.Enabled = isLocal;
+        _nameplate.Visible = !isLocal;
+    }
+
+    public void SetPlayerName(string name) => _nameplate.Text = name;
 
     public void Apply(Vector2 feet, byte aim, byte skin, byte ammo, byte reloadTicks, byte health,
         byte respawnTicks)

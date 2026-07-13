@@ -1,11 +1,14 @@
 using Godot;
+using Mortz.Core.Net.Messages;
 
 namespace Mortz.Client;
 
 /// <summary>
 /// Pool of PlayerView instances, one per visible player. GameView pushes
 /// placements between BeginFrame and Prune; anyone not placed this frame
-/// despawns. F3 toggles the sim collision box outlines.
+/// despawns. Nameplates come from the server's roster broadcasts, which cover
+/// match start and every later join/leave. F3 toggles the sim collision box
+/// outlines.
 /// </summary>
 public partial class PlayerViewManager : Node2D
 {
@@ -16,6 +19,23 @@ public partial class PlayerViewManager : Node2D
 
     private readonly Dictionary<int, PlayerView> _views = new();
     private readonly HashSet<int> _placed = new();
+    private readonly Dictionary<int, string> _names = new();
+
+    public override void _Ready() => RosterMsg.Received += OnRoster;
+
+    public override void _ExitTree() => RosterMsg.Received -= OnRoster;
+
+    // Views and rosters race (a view can spawn before the first roster, and
+    // rosters keep coming as players join/leave), so names apply in both
+    // directions: at spawn from the dict, and to live views on every roster.
+    private void OnRoster(RosterMsg msg)
+    {
+        _names.Clear();
+        for (int i = 0; i < msg.PeerIds.Length; i++)
+            _names[(int)msg.PeerIds[i]] = msg.Names[i];
+        foreach ((int peerId, PlayerView view) in _views)
+            view.SetPlayerName(_names.GetValueOrDefault(peerId, ""));
+    }
 
     public override void _UnhandledInput(InputEvent @event)
     {
@@ -36,6 +56,7 @@ public partial class PlayerViewManager : Node2D
         {
             view = _playerScene.Instantiate<PlayerView>();
             view.SetIsLocal(isLocal);
+            view.SetPlayerName(_names.GetValueOrDefault(peerId, ""));
             AddChild(view);
             _views[peerId] = view;
         }

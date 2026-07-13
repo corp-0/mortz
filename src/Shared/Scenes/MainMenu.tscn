@@ -1,0 +1,96 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/Client/MainMenu.cs" id="1_menu"]
+
+[node name="MainMenu" type="CenterContainer" node_paths=PackedStringArray("_homePanel", "_joinPanel", "_hostPanel", "_joinNameEdit", "_addressEdit", "_hostNameEdit", "_portEdit", "_status")]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_menu")
+_homePanel = NodePath("Menu/HomePanel")
+_joinPanel = NodePath("Menu/JoinPanel")
+_hostPanel = NodePath("Menu/HostPanel")
+_joinNameEdit = NodePath("Menu/JoinPanel/PlayerNameEdit")
+_addressEdit = NodePath("Menu/JoinPanel/AddressEdit")
+_hostNameEdit = NodePath("Menu/HostPanel/PlayerNameEdit")
+_portEdit = NodePath("Menu/HostPanel/PortEdit")
+_status = NodePath("Menu/Status")
+
+[node name="Menu" type="VBoxContainer" parent="."]
+custom_minimum_size = Vector2(320, 0)
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="Menu"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 48
+text = "MORTZ"
+horizontal_alignment = 1
+
+[node name="HomePanel" type="VBoxContainer" parent="Menu"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="JoinButton" type="Button" parent="Menu/HomePanel"]
+layout_mode = 2
+text = "Join game"
+
+[node name="HostButton" type="Button" parent="Menu/HomePanel"]
+layout_mode = 2
+text = "Host game"
+
+[node name="JoinPanel" type="VBoxContainer" parent="Menu"]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="PlayerNameEdit" type="LineEdit" parent="Menu/JoinPanel"]
+layout_mode = 2
+placeholder_text = "player name"
+
+[node name="AddressEdit" type="LineEdit" parent="Menu/JoinPanel"]
+layout_mode = 2
+text = "127.0.0.1"
+placeholder_text = "address or address:port"
+
+[node name="JoinConfirmButton" type="Button" parent="Menu/JoinPanel"]
+layout_mode = 2
+text = "Join"
+
+[node name="JoinBackButton" type="Button" parent="Menu/JoinPanel"]
+layout_mode = 2
+text = "Back"
+
+[node name="HostPanel" type="VBoxContainer" parent="Menu"]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="PlayerNameEdit" type="LineEdit" parent="Menu/HostPanel"]
+layout_mode = 2
+placeholder_text = "player name"
+
+[node name="PortEdit" type="LineEdit" parent="Menu/HostPanel"]
+layout_mode = 2
+placeholder_text = "port"
+
+[node name="HostConfirmButton" type="Button" parent="Menu/HostPanel"]
+layout_mode = 2
+text = "Host"
+
+[node name="HostBackButton" type="Button" parent="Menu/HostPanel"]
+layout_mode = 2
+text = "Back"
+
+[node name="Status" type="Label" parent="Menu"]
+layout_mode = 2
+horizontal_alignment = 1
+
+[connection signal="pressed" from="Menu/HomePanel/JoinButton" to="." method="OnJoinMenuPressed"]
+[connection signal="pressed" from="Menu/HomePanel/HostButton" to="." method="OnHostMenuPressed"]
+[connection signal="pressed" from="Menu/JoinPanel/JoinConfirmButton" to="." method="OnJoinConfirmed"]
+[connection signal="pressed" from="Menu/JoinPanel/JoinBackButton" to="." method="OnBackPressed"]
+[connection signal="pressed" from="Menu/HostPanel/HostConfirmButton" to="." method="OnHostConfirmed"]
+[connection signal="pressed" from="Menu/HostPanel/HostBackButton" to="." method="OnBackPressed"]

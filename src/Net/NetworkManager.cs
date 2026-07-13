@@ -1,24 +1,26 @@
 using Godot;
 using Mortz.Core;
+using Mortz.Core.Net;
 using Mortz.Shared;
 
 namespace Mortz.Net;
 
 /// <summary>
-/// Autoload owning the ENet peer and every RPC endpoint. Pure transport glue:
-/// no game decisions live here, it moves bytes/inputs between the wire and
-/// whoever is listening (ServerMain or the client's GameView) via signals.
+/// Autoload owning the ENet peer. Pure transport glue: connection lifecycle,
+/// peer validation (Hello), and the generic message envelope that every
+/// generated [NetMessage] rides through. The only bespoke RPCs left are the
+/// hot path (inputs up, snapshots down; per-peer acks and redundancy framing
+/// don't fit a uniform envelope) and Hello itself, which is the validation
+/// bootstrap the envelope relies on.
 /// </summary>
 public partial class NetworkManager : Node
 {
     public static NetworkManager Instance { get; private set; } = null!;
 
-    /// <summary>Server side: a peer connected AND passed the protocol-version check.</summary>
-    [Signal] public delegate void PeerJoinedEventHandler(long peerId);
+    /// <summary>Server side: a peer connected AND passed the protocol/schema check.</summary>
+    [Signal] public delegate void PeerJoinedEventHandler(long peerId, string playerName);
     [Signal] public delegate void PeerLeftEventHandler(long peerId);
     [Signal] public delegate void InputsReceivedEventHandler(long peerId, byte[] packet);
-
-    [Signal] public delegate void DebugCarveRequestedEventHandler(long peerId, int x, int y);
 
     /// <summary>Client side.</summary>
     [Signal] public delegate void ConnectedEventHandler();
@@ -26,26 +28,25 @@ public partial class NetworkManager : Node
     [Signal] public delegate void DisconnectedEventHandler();
     /// <summary>ack = newest input sequence the server applied for THIS client.</summary>
     [Signal] public delegate void SnapshotReceivedEventHandler(byte[] data, int ack);
-    [Signal] public delegate void WelcomeReceivedEventHandler(string mapId, string mapHash, byte[] removedData);
-    /// <summary>ownerId/spawnSeq identify the shell so the owner's client can
-    /// confirm its predicted carve; 0/-1 for carves nobody predicted (debug).</summary>
-    [Signal] public delegate void CarveReceivedEventHandler(int x, int y, int radius, int ownerId, int spawnSeq);
-    [Signal] public delegate void DeathReceivedEventHandler(long peerId, int x, int y);
 
     // Peers that sent a valid Hello; only these take part in the game.
     private readonly HashSet<long> _validatedPeers = new();
 
     // Artificial latency for netcode testing (client side, `--fake-lag <ms>`):
-    // outgoing inputs and incoming snapshots are each held for half the lag.
+    // outgoing and incoming packets are each held for half the lag. Covers the
+    // hot path and every enveloped message.
     private int _fakeLagMs;
     private readonly Queue<(ulong Due, byte[] Packet)> _delayedInputs = new();
     private readonly Queue<(ulong Due, byte[] Data, int Ack)> _delayedSnapshots = new();
+    private readonly Queue<(ulong Due, int MsgId, byte[] Payload, long Target, NetChannel Channel)> _delayedOutMsgs = new();
+    private readonly Queue<(ulong Due, int MsgId, long Sender, byte[] Payload)> _delayedInMsgs = new();
 
     public bool IsServer => Multiplayer.MultiplayerPeer != null && Multiplayer.IsServer();
 
     public override void _Ready()
     {
         Instance = this;
+        NetTransport.Send = SendEnvelope;
         _fakeLagMs = CmdArgs.GetInt("--fake-lag", 0);
         if (_fakeLagMs > 0)
             GD.Print($"[net] simulating {_fakeLagMs} ms round-trip latency");
@@ -98,24 +99,79 @@ public partial class NetworkManager : Node
             EmitSignal(SignalName.PeerLeft, id);
     }
 
-    // ---- client -> server ----
+    // ---- validation bootstrap ----
 
-    public void SendHello() => RpcId(1, MethodName.Hello, NetConfig.PROTOCOL_VERSION);
+    public void SendHello(string playerName) =>
+        RpcId(1, MethodName.Hello, NetConfig.PROTOCOL_VERSION, NetRegistry.SCHEMA_HASH, playerName);
 
     [Rpc(MultiplayerApi.RpcMode.AnyPeer, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
-    private void Hello(int protocolVersion)
+    private void Hello(int protocolVersion, ulong schemaHash, string playerName)
     {
         if (!IsServer) return;
         long sender = Multiplayer.GetRemoteSenderId();
-        if (protocolVersion != NetConfig.PROTOCOL_VERSION)
+        if (protocolVersion != NetConfig.PROTOCOL_VERSION || schemaHash != NetRegistry.SCHEMA_HASH)
         {
-            GD.Print($"[net] peer {sender} rejected: protocol {protocolVersion} != {NetConfig.PROTOCOL_VERSION}");
+            GD.Print($"[net] peer {sender} rejected: protocol {protocolVersion}/{schemaHash:X16} " +
+                     $"!= {NetConfig.PROTOCOL_VERSION}/{NetRegistry.SCHEMA_HASH:X16}");
             Multiplayer.MultiplayerPeer.DisconnectPeer((int)sender);
             return;
         }
         _validatedPeers.Add(sender);
-        EmitSignal(SignalName.PeerJoined, sender);
+        EmitSignal(SignalName.PeerJoined, sender, playerName);
     }
+
+    // ---- message envelope (everything generated rides here) ----
+
+    private void SendEnvelope(ushort msgId, byte[] payload, long target, NetChannel channel)
+    {
+        if (_fakeLagMs > 0)
+        {
+            _delayedOutMsgs.Enqueue((Time.GetTicksMsec() + (ulong)(_fakeLagMs / 2), msgId, payload, target, channel));
+            return;
+        }
+        SendEnvelopeNow(msgId, payload, target, channel);
+    }
+
+    private void SendEnvelopeNow(int msgId, byte[] payload, long target, NetChannel channel)
+    {
+        StringName endpoint = channel == NetChannel.RELIABLE ? MethodName.MsgReliable : MethodName.MsgUnreliable;
+        if (target == NetTransport.BROADCAST)
+        {
+            foreach (long peer in _validatedPeers)
+                RpcId(peer, endpoint, msgId, payload);
+        }
+        else
+        {
+            RpcId(target, endpoint, msgId, payload);
+        }
+    }
+
+    [Rpc(MultiplayerApi.RpcMode.AnyPeer, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
+    private void MsgReliable(int msgId, byte[] payload) => ReceiveEnvelope(msgId, payload);
+
+    [Rpc(MultiplayerApi.RpcMode.AnyPeer, TransferMode = MultiplayerPeer.TransferModeEnum.Unreliable)]
+    private void MsgUnreliable(int msgId, byte[] payload) => ReceiveEnvelope(msgId, payload);
+
+    private void ReceiveEnvelope(int msgId, byte[] payload)
+    {
+        long sender = Multiplayer.GetRemoteSenderId();
+        if (IsServer && !_validatedPeers.Contains(sender))
+            return;
+        if (_fakeLagMs > 0)
+        {
+            _delayedInMsgs.Enqueue((Time.GetTicksMsec() + (ulong)(_fakeLagMs / 2), msgId, sender, payload));
+            return;
+        }
+        Dispatch(msgId, sender, payload);
+    }
+
+    private void Dispatch(int msgId, long sender, byte[] payload)
+    {
+        if (!NetRegistry.Dispatch((ushort)msgId, sender, payload, IsServer))
+            GD.Print($"[net] dropped message id {msgId} from peer {sender} (unknown or wrong direction)");
+    }
+
+    // ---- hot path: inputs up ----
 
     public void SendInputs(byte[] packet)
     {
@@ -134,38 +190,7 @@ public partial class NetworkManager : Node
             EmitSignal(SignalName.InputsReceived, sender, packet);
     }
 
-    public void RequestDebugCarve(int x, int y) => RpcId(1, MethodName.SubmitDebugCarve, x, y);
-
-    [Rpc(MultiplayerApi.RpcMode.AnyPeer, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
-    private void SubmitDebugCarve(int x, int y)
-    {
-        if (!IsServer) return;
-        long sender = Multiplayer.GetRemoteSenderId();
-        if (_validatedPeers.Contains(sender))
-            EmitSignal(SignalName.DebugCarveRequested, sender, x, y);
-    }
-
-    // ---- server -> clients ----
-
-    public void SendWelcome(long peerId, string mapId, string mapHash, byte[] removedData) =>
-        RpcId(peerId, MethodName.Welcome, mapId, mapHash, removedData);
-
-    [Rpc(TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
-    private void Welcome(string mapId, string mapHash, byte[] removedData) =>
-        EmitSignal(SignalName.WelcomeReceived, mapId, mapHash, removedData);
-
-    public void BroadcastCarve(int x, int y, int radius, int ownerId, int spawnSeq) =>
-        Rpc(MethodName.Carve, x, y, radius, ownerId, spawnSeq);
-
-    [Rpc(TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
-    private void Carve(int x, int y, int radius, int ownerId, int spawnSeq) =>
-        EmitSignal(SignalName.CarveReceived, x, y, radius, ownerId, spawnSeq);
-
-    /// <summary>x/y = body center at the moment of death, for gib/blood effects.</summary>
-    public void BroadcastDeath(long peerId, int x, int y) => Rpc(MethodName.PlayerDied, peerId, x, y);
-
-    [Rpc(TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
-    private void PlayerDied(long peerId, int x, int y) => EmitSignal(SignalName.DeathReceived, peerId, x, y);
+    // ---- hot path: snapshots down ----
 
     /// <summary>Same snapshot bytes to every validated peer, each with its own input ack.</summary>
     public void BroadcastSnapshot(byte[] data, Func<long, int> ackFor)
@@ -209,6 +234,16 @@ public partial class NetworkManager : Node
         {
             (ulong _, byte[] data, int ack) = _delayedSnapshots.Dequeue();
             EmitSignal(SignalName.SnapshotReceived, data, ack);
+        }
+        while (_delayedOutMsgs.Count > 0 && _delayedOutMsgs.Peek().Due <= now)
+        {
+            (ulong _, int msgId, byte[] payload, long target, NetChannel channel) = _delayedOutMsgs.Dequeue();
+            SendEnvelopeNow(msgId, payload, target, channel);
+        }
+        while (_delayedInMsgs.Count > 0 && _delayedInMsgs.Peek().Due <= now)
+        {
+            (ulong _, int msgId, long sender, byte[] payload) = _delayedInMsgs.Dequeue();
+            Dispatch(msgId, sender, payload);
         }
     }
 }

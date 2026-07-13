@@ -1,5 +1,5 @@
 using Godot;
-using Mortz.Net;
+using Mortz.Core.Net.Messages;
 
 namespace Mortz.Client;
 
@@ -16,14 +16,14 @@ public partial class EffectsSpawner : Node2D
     {
         _gameMap.Exploded += OnExploded;
         _gameMap.GroundRemoved += OnGroundRemoved;
-        NetworkManager.Instance.DeathReceived += OnDeathReceived;
+        DeathMsg.Received += OnDeath;
     }
 
     public override void _ExitTree()
     {
         _gameMap.Exploded -= OnExploded;
         _gameMap.GroundRemoved -= OnGroundRemoved;
-        NetworkManager.Instance.DeathReceived -= OnDeathReceived;
+        DeathMsg.Received -= OnDeath;
     }
 
     private void OnExploded(Vector2 center, int radius) =>
@@ -32,6 +32,6 @@ public partial class EffectsSpawner : Node2D
     private void OnGroundRemoved(Vector2 center, List<(Vector2 Position, Color Color)> debris) =>
         AddChild(CarveBurst.Create(center, debris));
 
-    private void OnDeathReceived(long peerId, int x, int y) =>
-        AddChild(GibBurst.Create(new Vector2(x, y), _gameMap.Mask, _gameMap.Blood.Paint));
+    private void OnDeath(DeathMsg msg) =>
+        AddChild(GibBurst.Create(new Vector2(msg.X, msg.Y), _gameMap.Mask, _gameMap.Blood.Paint));
 }

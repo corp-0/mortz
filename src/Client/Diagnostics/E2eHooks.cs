@@ -1,6 +1,6 @@
 using Godot;
 using Mortz.Core;
-using Mortz.Net;
+using Mortz.Core.Net.Messages;
 using Mortz.Shared;
 
 namespace Mortz.Client.Diagnostics;
@@ -53,7 +53,7 @@ public partial class E2eHooks : Node
                 if (_gameMap.Mask.Get(x, y) == TerrainMaterial.Destructible)
                 {
                     GD.Print($"[client] requesting test carve at ({x},{y})");
-                    NetworkManager.Instance.RequestDebugCarve(x, y);
+                    new DebugCarveMsg(x, y).SendToServer();
                     return;
                 }
             }
