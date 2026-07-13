@@ -37,6 +37,7 @@ public partial class ServerMain : Node
     private Scoreboard _scores = null!;
     private Phase _phase = Phase.LOBBY;
     private int _matchEndTicks;
+    private Scoreboard.MatchWinner _winner;
     private readonly Dictionary<long, bool> _lobbyReady = new();
     private readonly Dictionary<long, string> _names = new();
 
@@ -118,6 +119,7 @@ public partial class ServerMain : Node
     /// <summary>Fresh world on the same map and rules; everyone back to ready-up.</summary>
     private void ReturnToLobby()
     {
+        Engine.TimeScale = 1;
         GD.Print($"[server] back to lobby ({_sim.Players.Count} player(s))");
         foreach (int peerId in _sim.Players.Keys)
             _lobbyReady[peerId] = false;
@@ -240,6 +242,8 @@ public partial class ServerMain : Node
         _sim.AddPlayer((int)peerId, team);
         _scores.AddPlayer((int)peerId, team);
         new WelcomeMsg(_map.MapId, _map.Hash, _sim.Config.ToBytes(), _sim.Terrain.SerializeRemoved()).SendTo(peerId);
+        if (_phase == Phase.MATCH_END)
+            new MatchEndMsg(_winner.ByTeam, _winner.Id).SendTo(peerId); // sync their slow motion and banner
         GD.Print($"[server] player {peerId} joined ({_sim.Players.Count} in game)" +
                  (team != 0 ? $" on team {team}" : ""));
     }
@@ -281,7 +285,11 @@ public partial class ServerMain : Node
     private void EndMatch(Scoreboard.MatchWinner winner)
     {
         _phase = Phase.MATCH_END;
-        _matchEndTicks = (int)(MATCH_END_SECONDS * SimConfig.TICK_RATE);
+        _winner = winner;
+        // Victory lap in slow motion: fewer sim ticks so it still lasts
+        // MATCH_END_SECONDS of real time.
+        Engine.TimeScale = SimConfig.MATCH_END_TIME_SCALE;
+        _matchEndTicks = (int)(MATCH_END_SECONDS * SimConfig.TICK_RATE * SimConfig.MATCH_END_TIME_SCALE);
         string who = winner.ByTeam ? $"team {winner.Id}" : Name(winner.Id);
         GD.Print($"[server] match over: {who} wins (first to {_sim.Config.KillTarget})");
         new MatchEndMsg(winner.ByTeam, winner.Id).Broadcast();

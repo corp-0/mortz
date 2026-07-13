@@ -103,6 +103,11 @@ public static class SimConfig
     /// <summary>Default first-to-X for the kills win conditions.</summary>
     public const int KILL_TARGET = 20;
 
+    /// <summary>Engine.TimeScale during the post-match victory lap. Server and
+    /// clients apply the same factor, so the tick streams stay in lockstep and
+    /// prediction never notices the slow motion.</summary>
+    public const float MATCH_END_TIME_SCALE = 0.3f;
+
     // ---- dev tools ----
     /// <summary>Radius of the dev click-to-carve, the stand-in weapon until mortars exist.</summary>
     public const int DEBUG_CARVE_RADIUS = 24;

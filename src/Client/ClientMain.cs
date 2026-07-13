@@ -36,6 +36,7 @@ public partial class ClientMain : Node
         net.Disconnected += OnDisconnected;
         LobbyStateMsg.Received += OnLobbyState;
         WelcomeMsg.Received += OnWelcome;
+        MatchEndMsg.Received += OnMatchEnd;
 
         string? autoConnect = CmdArgs.GetValue("--connect");
         if (autoConnect != null)
@@ -124,6 +125,7 @@ public partial class ClientMain : Node
         {
             // The match ended and the server reset to the lobby: drop the
             // old world, the next match arrives with a fresh Welcome.
+            Engine.TimeScale = 1;
             _gameView.QueueFree();
             _gameView = null;
             _lobby.ResetLocalReady();
@@ -155,9 +157,15 @@ public partial class ClientMain : Node
         AddChild(_gameView);
     }
 
+    /// <summary>Slow-motion victory lap, same factor as the server so the
+    /// tick streams stay in lockstep. Undone on the return to lobby.</summary>
+    private void OnMatchEnd(MatchEndMsg msg) =>
+        Engine.TimeScale = SimConfig.MATCH_END_TIME_SCALE;
+
     private void OnDisconnected()
     {
         GD.Print("[client] disconnected from server");
+        Engine.TimeScale = 1;
         _gameView?.QueueFree();
         _gameView = null;
         NetworkManager.Instance.ResetPeer();
