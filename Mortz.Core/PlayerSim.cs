@@ -9,7 +9,7 @@ namespace Mortz.Core;
 /// </summary>
 public static class PlayerSim
 {
-    public static PlayerState Tick(PlayerState p, PlayerInput input, TerrainMask terrain)
+    public static PlayerState Tick(PlayerState p, PlayerInput input, TerrainMask terrain, PlayerStats stats)
     {
         if (p.RespawnTicks > 0)
             return p; // dead bodies are frozen; SimWorld owns the countdown
@@ -20,17 +20,17 @@ public static class PlayerSim
             p.DashCooldown--;
 
         // Horizontal drive.
-        float target = input.MoveDir * SimConfig.MAX_RUN_SPEED;
+        float target = input.MoveDir * stats.MaxRunSpeed;
         float rate = input.MoveDir != 0
-            ? (p.Grounded ? SimConfig.GROUND_ACCEL : SimConfig.AIR_ACCEL)
-            : (p.Grounded ? SimConfig.GROUND_FRICTION : SimConfig.AIR_ACCEL * 0.5f);
+            ? (p.Grounded ? stats.GroundAccel : stats.AirAccel)
+            : (p.Grounded ? stats.GroundFriction : stats.AirAccel * 0.5f);
         p.Velocity = p.Velocity with { X = MoveToward(p.Velocity.X, target, rate * DT) };
 
         // Gravity, capped harder while wall sliding.
         int wall = WallDir(terrain, p.Position);
         bool wallSliding = !p.Grounded && p.Velocity.Y > 0 && wall != 0 && input.MoveDir == wall;
-        float maxFall = wallSliding ? SimConfig.WALL_SLIDE_MAX_FALL : SimConfig.MAX_FALL_SPEED;
-        p.Velocity = p.Velocity with { Y = MathF.Min(p.Velocity.Y + SimConfig.GRAVITY * DT, maxFall) };
+        float maxFall = wallSliding ? stats.WallSlideMaxFall : stats.MaxFallSpeed;
+        p.Velocity = p.Velocity with { Y = MathF.Min(p.Velocity.Y + stats.Gravity * DT, maxFall) };
 
         // Jumps: ground (incl. coyote grace), then wall, then air.
         bool jumpPressed = input.Jump && (p.PrevButtons & InputButtons.Jump) == 0;
@@ -40,23 +40,23 @@ public static class PlayerSim
             // momentum and the full jump budget for the fall. Costs the press.
             if (p.Rope == RopeMode.Attached)
             {
-                RopeSim.ReleaseAttached(ref p);
+                RopeSim.ReleaseAttached(ref p, stats);
             }
             else if (p.Grounded || p.CoyoteTicks > 0)
             {
-                p.Velocity = p.Velocity with { Y = -SimConfig.JUMP_SPEED };
+                p.Velocity = p.Velocity with { Y = -stats.JumpSpeed };
                 p.Grounded = false;
                 p.CoyoteTicks = 0;
-                p.JumpsLeft = SimConfig.TOTAL_JUMPS - 1;
+                p.JumpsLeft = (byte)(stats.TotalJumps - 1);
             }
             else if (wall != 0)
             {
-                p.Velocity = new Vec2(-wall * SimConfig.WALL_JUMP_KICK_X, -SimConfig.WALL_JUMP_SPEED_Y);
-                p.JumpsLeft = SimConfig.TOTAL_JUMPS - 1; // a wall jump spends the first jump
+                p.Velocity = new Vec2(-wall * stats.WallJumpKickX, -stats.WallJumpSpeedY);
+                p.JumpsLeft = (byte)(stats.TotalJumps - 1); // a wall jump spends the first jump
             }
             else if (p.JumpsLeft > 0)
             {
-                p.Velocity = p.Velocity with { Y = -SimConfig.AIR_JUMP_SPEED };
+                p.Velocity = p.Velocity with { Y = -stats.AirJumpSpeed };
                 p.JumpsLeft--;
             }
         }
@@ -66,11 +66,11 @@ public static class PlayerSim
         bool dashPressed = input.Dash && (p.PrevButtons & InputButtons.Dash) == 0;
         if (dashPressed && p.DashCooldown == 0 && input.HeldDir != Vec2.Zero)
         {
-            p.Velocity += input.HeldDir * SimConfig.DASH_SPEED;
-            p.DashCooldown = SimConfig.DASH_COOLDOWN_TICKS;
+            p.Velocity += input.HeldDir * stats.DashSpeed;
+            p.DashCooldown = stats.DashCooldownTicks;
         }
 
-        RopeSim.Tick(ref p, input, terrain, DT);
+        RopeSim.Tick(ref p, input, terrain, stats, DT);
 
         MoveX(ref p, terrain, p.Velocity.X * DT);
         MoveY(ref p, terrain, p.Velocity.Y * DT);
@@ -81,12 +81,12 @@ public static class PlayerSim
         {
             if (p.Velocity.Y > 0)
                 p.Velocity = p.Velocity with { Y = 0 };
-            p.JumpsLeft = SimConfig.TOTAL_JUMPS;
+            p.JumpsLeft = stats.TotalJumps;
             // Coyote grace scales with how fast you leave the ledge.
-            float bonusSeconds = MathF.Abs(p.Velocity.X) / 100f * SimConfig.COYOTE_BONUS_PER_100_SPEED;
+            float bonusSeconds = MathF.Abs(p.Velocity.X) / 100f * stats.CoyoteBonusPer100Speed;
             p.CoyoteTicks = (byte)Math.Min(
-                SimConfig.COYOTE_MAX_TICKS,
-                SimConfig.COYOTE_BASE_TICKS + (int)(bonusSeconds * SimConfig.TICK_RATE));
+                stats.CoyoteMaxTicks,
+                stats.CoyoteBaseTicks + (int)(bonusSeconds * SimConfig.TICK_RATE));
         }
         else if (p.CoyoteTicks > 0)
         {

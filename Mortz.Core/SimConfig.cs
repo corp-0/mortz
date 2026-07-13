@@ -3,9 +3,13 @@ namespace Mortz.Core;
 /// <summary>
 /// Simulation constants. Units are pixels and seconds; +Y is down (screen space),
 /// matching Godot 2D so positions pass through the shell unconverted.
-/// Game feel is tuned here. Durations are in seconds; the *Ticks values the
-/// sim consumes are derived at compile time, don't edit those.
-/// Arena dimensions come from the loaded map.
+/// Game feel is tuned here, but these are only the defaults: hosts override
+/// the tweakable ones through MatchConfig, and the sim reads that (or the
+/// player's PlayerStats) instead. The sim only reads this class directly for
+/// infrastructure that must not vary per match: tick rate, hitbox, skin
+/// sheet, numerical guards.
+/// Durations are in seconds; the *Ticks values are derived at compile time,
+/// don't edit those. Arena dimensions come from the loaded map.
 /// </summary>
 public static class SimConfig
 {

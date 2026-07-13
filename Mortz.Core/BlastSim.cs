@@ -7,16 +7,16 @@ namespace Mortz.Core;
 /// </summary>
 public static class BlastSim
 {
-    public static int Damage(in PlayerState p, Vec2 center)
+    public static int Damage(in PlayerState p, Vec2 center, MatchConfig cfg)
     {
         float d = DistanceToBody(p, center);
-        float core = SimConfig.MORTAR_CARVE_RADIUS * SimConfig.BLAST_CORE_FRACTION;
+        float core = cfg.MortarCarveRadius * cfg.BlastCoreFraction;
         if (d <= core)
-            return SimConfig.MORTAR_DAMAGE;
-        if (d > SimConfig.MORTAR_CARVE_RADIUS)
+            return cfg.MortarDamage;
+        if (d > cfg.MortarCarveRadius)
             return 0;
-        float t = (d - core) / (SimConfig.MORTAR_CARVE_RADIUS - core);
-        return (int)MathF.Round(SimConfig.MORTAR_DAMAGE + (SimConfig.BLAST_EDGE_DAMAGE - SimConfig.MORTAR_DAMAGE) * t);
+        float t = (d - core) / (cfg.MortarCarveRadius - core);
+        return (int)MathF.Round(cfg.MortarDamage + (cfg.BlastEdgeDamage - cfg.MortarDamage) * t);
     }
 
     private static float DistanceToBody(in PlayerState p, Vec2 center)

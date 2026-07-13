@@ -26,6 +26,10 @@ public partial class PlayerView : Node2D
     private bool _boxVisible;
     private int _lastHealth = -1;
     private float _hitFlash;
+    private PlayerStats _stats = null!;
+
+    /// <summary>Must be called before the first Apply (PlayerViewManager does).</summary>
+    public void Configure(PlayerStats stats) => _stats = stats;
 
     /// <summary>Only the local player's camera drives the screen, and only
     /// remote players wear a nameplate; you know who you are.</summary>
@@ -78,11 +82,11 @@ public partial class PlayerView : Node2D
         if (!_reloadBar.Visible)
         {
             _reloadBar.MinValue = ammo;
-            _reloadBar.MaxValue = SimConfig.MORTAR_MAX_AMMO;
+            _reloadBar.MaxValue = _stats.MaxAmmo;
             _reloadBar.Visible = true;
         }
         // Shells banked plus the fraction of the one being loaded.
-        _reloadBar.Value = ammo + 1.0 - (double)reloadTicks / SimConfig.MORTAR_RELOAD_TICKS;
+        _reloadBar.Value = ammo + 1.0 - (double)reloadTicks / _stats.ReloadTicks;
     }
 
     /// <summary>Red sprite flash whenever health drops. No bar: hurt state

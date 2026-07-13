@@ -21,6 +21,9 @@ public partial class Hud : CanvasLayer
     private int _lastHealth = -1;
     private float _flash;
 
+    /// <summary>Must be called before entering the tree (GameView.Initialize does).</summary>
+    public void Configure(PlayerStats stats) => _shells.SetMaxAmmo(stats.MaxAmmo);
+
     public void UpdateFrom(in PlayerState local)
     {
         _healthLabel.Text = local.Health.ToString();

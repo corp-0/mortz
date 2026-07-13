@@ -4,7 +4,7 @@ using Mortz.Core;
 namespace Mortz.Client;
 
 /// <summary>
-/// The magazine as MORTAR_MAX_AMMO shell pictograms, loaded ones lit and
+/// The magazine as one shell pictogram per magazine slot, loaded ones lit and
 /// spent ones ghosted: readable mid-fight where a number isn't. Same
 /// placeholder art language as MortarView until real prefabs exist.
 /// </summary>
@@ -14,7 +14,16 @@ public partial class ShellRow : Control
     private static readonly Color _body = new(0.85f, 0.85f, 0.85f);
     private static readonly Color _nose = new(0.95f, 0.6f, 0.2f);
 
+    private int _maxAmmo = SimConfig.MORTAR_MAX_AMMO;
     private int _ammo = SimConfig.MORTAR_MAX_AMMO;
+
+    public void SetMaxAmmo(int maxAmmo)
+    {
+        _maxAmmo = maxAmmo;
+        _ammo = maxAmmo;
+        CustomMinimumSize = new Vector2(_maxAmmo * SPACING, 30);
+        QueueRedraw();
+    }
 
     public void SetAmmo(byte ammo)
     {
@@ -25,11 +34,11 @@ public partial class ShellRow : Control
     }
 
     public override void _Ready() =>
-        CustomMinimumSize = new Vector2(SimConfig.MORTAR_MAX_AMMO * SPACING, 30);
+        CustomMinimumSize = new Vector2(_maxAmmo * SPACING, 30);
 
     public override void _Draw()
     {
-        for (int i = 0; i < SimConfig.MORTAR_MAX_AMMO; i++)
+        for (int i = 0; i < _maxAmmo; i++)
         {
             Vector2 at = new Vector2(i * SPACING + SPACING / 2, Size.Y * 0.7f);
             float alpha = i < _ammo ? 1f : 0.18f;

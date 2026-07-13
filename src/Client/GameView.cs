@@ -29,10 +29,14 @@ public partial class GameView : Node2D
     public float RenderTick => _interpolator.RenderTick;
 
     /// <summary>Must be called right after instantiating, before entering the tree.</summary>
-    public void Initialize(MapPackage map, byte[] removedData)
+    public void Initialize(MapPackage map, MatchConfig config, byte[] removedData)
     {
-        _gameMap.Initialize(map, removedData);
-        _localPlayer.Initialize(new Predictor(_gameMap.Mask));
+        _gameMap.Initialize(map, config, removedData);
+        _localPlayer.Initialize(new Predictor(_gameMap.Mask, config));
+        // Remote players render with the base stats until perks exist.
+        PlayerStats stats = PlayerStats.Resolve(config);
+        _players.Configure(stats);
+        _hud.Configure(stats);
     }
 
     public override void _Ready() =>

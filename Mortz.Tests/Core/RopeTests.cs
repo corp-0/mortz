@@ -8,6 +8,7 @@ public class RopeTests
     // Flat world plus a solid ceiling slab at y < 60 to hook onto.
     private static TerrainMask CeilingWorld() => TestWorlds.Flat(extraSolid: (x, y) => y < 60);
 
+    private static readonly PlayerStats Stats = TestWorlds.Stats;
     private static readonly byte AimUp = PlayerInput.AimFromVector(new Vec2(0, -1));
     private static readonly PlayerInput Idle = new(InputButtons.None);
     private static readonly PlayerInput FireUp = new(InputButtons.Rope, AimUp);
@@ -23,7 +24,7 @@ public class RopeTests
     private static PlayerState TickUntil(PlayerState p, TerrainMask world, Func<PlayerState, bool> done, int maxTicks = 300)
     {
         for (int i = 0; i < maxTicks && !done(p); i++)
-            p = PlayerSim.Tick(p, Idle, world);
+            p = PlayerSim.Tick(p, Idle, world, Stats);
         return p;
     }
 
@@ -31,7 +32,7 @@ public class RopeTests
     public void Hook_FiredAtCeiling_Attaches()
     {
         TerrainMask world = CeilingWorld();
-        PlayerState p = PlayerSim.Tick(Grounded(), FireUp, world);
+        PlayerState p = PlayerSim.Tick(Grounded(), FireUp, world, Stats);
         Assert.Equal(RopeMode.Flying, p.Rope);
 
         p = TickUntil(p, world, s => s.Rope != RopeMode.Flying, 60);
@@ -45,7 +46,7 @@ public class RopeTests
     {
         TerrainMask world = TestWorlds.Flat();
         byte aimUpRight = PlayerInput.AimFromVector(new Vec2(1, -0.2f).Normalized());
-        PlayerState p = PlayerSim.Tick(Grounded(), new PlayerInput(InputButtons.Rope, aimUpRight), world);
+        PlayerState p = PlayerSim.Tick(Grounded(), new PlayerInput(InputButtons.Rope, aimUpRight), world, Stats);
         Assert.Equal(RopeMode.Flying, p.Rope);
 
         p = TickUntil(p, world, s => s.Rope != RopeMode.Flying, 120);
@@ -62,12 +63,12 @@ public class RopeTests
     public void AttachedRope_ClimbsTowardAnchor()
     {
         TerrainMask world = CeilingWorld();
-        PlayerState p = PlayerSim.Tick(Grounded(), FireUp, world);
+        PlayerState p = PlayerSim.Tick(Grounded(), FireUp, world, Stats);
         p = TickUntil(p, world, s => s.Rope == RopeMode.Attached, 60);
 
         float startY = p.Position.Y;
         for (int i = 0; i < 2 * SimConfig.TICK_RATE; i++)
-            p = PlayerSim.Tick(p, Idle, world);
+            p = PlayerSim.Tick(p, Idle, world, Stats);
 
         Assert.True(p.Position.Y < startY - 50); // hauled well off the floor
         Assert.False(p.Grounded);
@@ -77,13 +78,13 @@ public class RopeTests
     public void Release_KeepsMomentum()
     {
         TerrainMask world = CeilingWorld();
-        PlayerState p = PlayerSim.Tick(Grounded(), FireUp, world);
+        PlayerState p = PlayerSim.Tick(Grounded(), FireUp, world, Stats);
         p = TickUntil(p, world, s => s.Rope == RopeMode.Attached, 60);
         for (int i = 0; i < 60; i++)
-            p = PlayerSim.Tick(p, Idle, world); // reeling upward, gaining speed
+            p = PlayerSim.Tick(p, Idle, world, Stats); // reeling upward, gaining speed
 
         Vec2 velocityBefore = p.Velocity;
-        p = PlayerSim.Tick(p, new PlayerInput(InputButtons.Rope, AimUp), world); // press again = release
+        p = PlayerSim.Tick(p, new PlayerInput(InputButtons.Rope, AimUp), world, Stats); // press again = release
 
         Assert.Equal(RopeMode.None, p.Rope);
         // Velocity unchanged by the release itself (only this tick's gravity applied).
@@ -95,22 +96,22 @@ public class RopeTests
     public void Jump_ReleasesAttachedRope_WithoutSpendingAJump()
     {
         TerrainMask world = CeilingWorld();
-        PlayerState p = PlayerSim.Tick(Grounded(), FireUp, world);
+        PlayerState p = PlayerSim.Tick(Grounded(), FireUp, world, Stats);
         p = TickUntil(p, world, s => s.Rope == RopeMode.Attached, 60);
         // Hang long enough for coyote grace to expire but nowhere near the ceiling.
         for (int i = 0; i < 15; i++)
-            p = PlayerSim.Tick(p, Idle, world);
+            p = PlayerSim.Tick(p, Idle, world, Stats);
 
         Assert.Equal(RopeMode.Attached, p.Rope);
         Assert.False(p.Grounded);
-        p = PlayerSim.Tick(p, new PlayerInput(InputButtons.Jump), world);
+        p = PlayerSim.Tick(p, new PlayerInput(InputButtons.Jump), world, Stats);
 
         Assert.Equal(RopeMode.None, p.Rope);                   // jump let go of the rope...
         Assert.NotEqual(-SimConfig.AIR_JUMP_SPEED, p.Velocity.Y); // ...but didn't jump
         Assert.Equal(SimConfig.TOTAL_JUMPS, p.JumpsLeft);      // and spent nothing
 
-        p = PlayerSim.Tick(p, Idle, world); // let go of the button
-        p = PlayerSim.Tick(p, new PlayerInput(InputButtons.Jump), world);
+        p = PlayerSim.Tick(p, Idle, world, Stats); // let go of the button
+        p = PlayerSim.Tick(p, new PlayerInput(InputButtons.Jump), world, Stats);
 
         Assert.Equal(-SimConfig.AIR_JUMP_SPEED, p.Velocity.Y); // second press is the real jump
         Assert.Equal(SimConfig.TOTAL_JUMPS - 1, p.JumpsLeft);
@@ -122,12 +123,12 @@ public class RopeTests
         // Rope to the ceiling, release, fall: neither jump was spent getting
         // airborne, so both presses must work mid-fall.
         TerrainMask world = CeilingWorld();
-        PlayerState p = PlayerSim.Tick(Grounded(), FireUp, world);
+        PlayerState p = PlayerSim.Tick(Grounded(), FireUp, world, Stats);
         p = TickUntil(p, world, s => s.Rope == RopeMode.Attached, 60);
         for (int i = 0; i < 20; i++)
-            p = PlayerSim.Tick(p, Idle, world); // reel up, coyote long expired
+            p = PlayerSim.Tick(p, Idle, world, Stats); // reel up, coyote long expired
 
-        p = PlayerSim.Tick(p, new PlayerInput(InputButtons.Rope, AimUp), world); // release
+        p = PlayerSim.Tick(p, new PlayerInput(InputButtons.Rope, AimUp), world, Stats); // release
         Assert.Equal(RopeMode.None, p.Rope);
         Assert.False(p.Grounded);
         Assert.Equal(SimConfig.TOTAL_JUMPS, p.JumpsLeft);
@@ -137,14 +138,14 @@ public class RopeTests
         p = TickUntil(p, world, s => s.Position.Y >= 200);
         Assert.False(p.Grounded);
 
-        p = PlayerSim.Tick(p, new PlayerInput(InputButtons.Jump), world);
+        p = PlayerSim.Tick(p, new PlayerInput(InputButtons.Jump), world, Stats);
         Assert.Equal(-SimConfig.AIR_JUMP_SPEED, p.Velocity.Y);
         Assert.Equal(1, p.JumpsLeft);
 
         for (int i = 0; i < 3; i++)
-            p = PlayerSim.Tick(p, Idle, world);
+            p = PlayerSim.Tick(p, Idle, world, Stats);
 
-        p = PlayerSim.Tick(p, new PlayerInput(InputButtons.Jump), world);
+        p = PlayerSim.Tick(p, new PlayerInput(InputButtons.Jump), world, Stats);
         Assert.Equal(-SimConfig.AIR_JUMP_SPEED, p.Velocity.Y);
         Assert.Equal(0, p.JumpsLeft);
     }
@@ -155,15 +156,15 @@ public class RopeTests
         TerrainMask world = CeilingWorld();
 
         // Attach then release: short cooldown.
-        PlayerState p = PlayerSim.Tick(Grounded(), FireUp, world);
+        PlayerState p = PlayerSim.Tick(Grounded(), FireUp, world, Stats);
         p = TickUntil(p, world, s => s.Rope == RopeMode.Attached, 60);
-        p = PlayerSim.Tick(p, new PlayerInput(InputButtons.Rope, AimUp), world);
+        p = PlayerSim.Tick(p, new PlayerInput(InputButtons.Rope, AimUp), world, Stats);
         Assert.Equal(RopeMode.None, p.Rope);
         Assert.Equal(SimConfig.ROPE_RELEASE_COOLDOWN_TICKS, p.RopeCooldown);
 
         // Whiff into open sky: long cooldown.
         TerrainMask flat = TestWorlds.Flat();
-        PlayerState q = PlayerSim.Tick(Grounded(), FireUp, flat);
+        PlayerState q = PlayerSim.Tick(Grounded(), FireUp, flat, Stats);
         q = TickUntil(q, flat, s => s.Rope == RopeMode.None, 120);
         Assert.Equal(SimConfig.ROPE_MISS_COOLDOWN_TICKS, q.RopeCooldown);
         Assert.True(q.RopeCooldown > SimConfig.ROPE_RELEASE_COOLDOWN_TICKS);
@@ -173,19 +174,19 @@ public class RopeTests
     public void Cooldown_BlocksRefire_UntilItExpires()
     {
         TerrainMask world = CeilingWorld();
-        PlayerState p = PlayerSim.Tick(Grounded(), FireUp, world);
+        PlayerState p = PlayerSim.Tick(Grounded(), FireUp, world, Stats);
         p = TickUntil(p, world, s => s.Rope == RopeMode.Attached, 60);
-        p = PlayerSim.Tick(p, new PlayerInput(InputButtons.Rope, AimUp), world); // release
+        p = PlayerSim.Tick(p, new PlayerInput(InputButtons.Rope, AimUp), world, Stats); // release
 
-        p = PlayerSim.Tick(p, Idle, world);                                      // button up
-        p = PlayerSim.Tick(p, new PlayerInput(InputButtons.Rope, AimUp), world); // re-press too soon
+        p = PlayerSim.Tick(p, Idle, world, Stats);                                      // button up
+        p = PlayerSim.Tick(p, new PlayerInput(InputButtons.Rope, AimUp), world, Stats); // re-press too soon
         Assert.Equal(RopeMode.None, p.Rope);
 
         for (int i = 0; i < SimConfig.ROPE_RELEASE_COOLDOWN_TICKS; i++)
-            p = PlayerSim.Tick(p, Idle, world);
+            p = PlayerSim.Tick(p, Idle, world, Stats);
         Assert.Equal(0, p.RopeCooldown);
 
-        p = PlayerSim.Tick(p, new PlayerInput(InputButtons.Rope, AimUp), world); // now it fires
+        p = PlayerSim.Tick(p, new PlayerInput(InputButtons.Rope, AimUp), world, Stats); // now it fires
         Assert.Equal(RopeMode.Flying, p.Rope);
     }
 
@@ -210,7 +211,7 @@ public class RopeTests
 
         for (int i = 0; i < 3 * SimConfig.TICK_RATE; i++)
         {
-            p = PlayerSim.Tick(p, Idle, world);
+            p = PlayerSim.Tick(p, Idle, world, Stats);
             // Body top may touch the slab bottom (feet at 182) but never pass it.
             Assert.True(p.Position.Y >= 181, $"passed through the slab at tick {i}: Y={p.Position.Y}");
         }
@@ -236,11 +237,11 @@ public class RopeTests
             Velocity = new Vec2(200, 0),
         };
 
-        PlayerState taut = PlayerSim.Tick(hanging, Idle, world);
+        PlayerState taut = PlayerSim.Tick(hanging, Idle, world, Stats);
         Assert.True(taut.Velocity.Y < 0, $"pull should beat gravity, vy={taut.Velocity.Y}");
         Assert.True(taut.Velocity.X > 150); // tangential survives (minus air drag)
 
-        PlayerState slack = PlayerSim.Tick(hanging with { RopeLength = 300 }, Idle, world);
+        PlayerState slack = PlayerSim.Tick(hanging with { RopeLength = 300 }, Idle, world, Stats);
         Assert.True(slack.Velocity.Y > 0, "slack rope must not pull; gravity wins");
     }
 

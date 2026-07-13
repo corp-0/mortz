@@ -1,4 +1,5 @@
 using Godot;
+using Mortz.Core;
 using Mortz.Core.Net.Messages;
 
 namespace Mortz.Client;
@@ -20,6 +21,12 @@ public partial class PlayerViewManager : Node2D
     private readonly Dictionary<int, PlayerView> _views = new();
     private readonly HashSet<int> _placed = new();
     private readonly Dictionary<int, string> _names = new();
+
+    // Everyone renders with the base stats until perks make them per-player.
+    private PlayerStats _stats = null!;
+
+    /// <summary>Must be called before the first Place (GameView.Initialize does).</summary>
+    public void Configure(PlayerStats stats) => _stats = stats;
 
     public override void _Ready() => RosterMsg.Received += OnRoster;
 
@@ -55,6 +62,7 @@ public partial class PlayerViewManager : Node2D
         if (!_views.TryGetValue(peerId, out PlayerView? view))
         {
             view = _playerScene.Instantiate<PlayerView>();
+            view.Configure(_stats);
             view.SetIsLocal(isLocal);
             view.SetPlayerName(_names.GetValueOrDefault(peerId, ""));
             AddChild(view);

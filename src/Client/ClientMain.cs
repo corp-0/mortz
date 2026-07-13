@@ -140,7 +140,8 @@ public partial class ClientMain : Node
         _menu.Visible = false;
         _lobby.Visible = false;
         _gameView = _gameViewScene.Instantiate<GameView>();
-        _gameView.Initialize(map, msg.RemovedData);
+        // FromBytes clamps, so a hostile host can't feed us degenerate numbers.
+        _gameView.Initialize(map, MatchConfig.FromBytes(msg.Config), msg.RemovedData);
         AddChild(_gameView);
     }
 

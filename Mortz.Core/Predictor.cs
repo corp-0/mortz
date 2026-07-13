@@ -20,14 +20,21 @@ public sealed class Predictor
 {
     private readonly InputHistory _history = new();
     private readonly TerrainMask _terrain;
+    private readonly MatchConfig _cfg;
+    // The local player's resolved stats; must match what the server resolved,
+    // or every replay mispredicts.
+    private readonly PlayerStats _stats;
     private readonly List<(int SpawnSeq, MortarState Shell)> _shells = new();
     private readonly List<(int SpawnSeq, Vec2 Position)> _impacts = new();
     private PlayerState _state;
 
     /// <param name="terrain">The client's mask; carve events mutate it in place.</param>
-    public Predictor(TerrainMask terrain)
+    /// <param name="config">The match config the server replicated in the Welcome.</param>
+    public Predictor(TerrainMask terrain, MatchConfig config)
     {
         _terrain = terrain;
+        _cfg = config;
+        _stats = PlayerStats.Resolve(config);
     }
 
     /// <summary>False until the first snapshot containing the local player arrives.</summary>
@@ -59,9 +66,9 @@ public sealed class Predictor
         if (Initialized)
         {
             InputButtons prevButtons = _state.PrevButtons;
-            _state = PlayerSim.Tick(_state, input, _terrain);
-            if (WeaponSim.Tick(ref _state, input, prevButtons))
-                _shells.Add((NextSeq, WeaponSim.NewShell((ushort)NextSeq, NextSeq, _state, input)));
+            _state = PlayerSim.Tick(_state, input, _terrain, _stats);
+            if (WeaponSim.Tick(ref _state, input, prevButtons, _stats))
+                _shells.Add((NextSeq, WeaponSim.NewShell((ushort)NextSeq, NextSeq, _state, input, _cfg)));
             StepShells(_shells);
         }
         NextSeq++;
@@ -75,7 +82,7 @@ public sealed class Predictor
         for (int i = shells.Count - 1; i >= 0; i--)
         {
             (int seq, MortarState shell) = shells[i];
-            MortarOutcome outcome = MortarSim.Tick(ref shell, _terrain, SimConfig.DT);
+            MortarOutcome outcome = MortarSim.Tick(ref shell, _terrain, _cfg, SimConfig.DT);
             if (outcome == MortarOutcome.Flying)
             {
                 shells[i] = (seq, shell);
@@ -114,9 +121,9 @@ public sealed class Predictor
         foreach ((int seq, PlayerInput input) in _history.Since(lastAppliedSeq))
         {
             InputButtons prevButtons = state.PrevButtons;
-            state = PlayerSim.Tick(state, input, _terrain);
-            if (WeaponSim.Tick(ref state, input, prevButtons))
-                rebuilt.Add((seq, WeaponSim.NewShell((ushort)seq, seq, state, input)));
+            state = PlayerSim.Tick(state, input, _terrain, _stats);
+            if (WeaponSim.Tick(ref state, input, prevButtons, _stats))
+                rebuilt.Add((seq, WeaponSim.NewShell((ushort)seq, seq, state, input, _cfg)));
             StepShells(rebuilt); // fast-forward in lockstep with the replay
         }
         _shells.AddRange(rebuilt);

@@ -43,7 +43,13 @@ public partial class ServerMain : Node
             return;
         }
         _map = map;
-        _sim = new SimWorld(map.BuildMask(), Random.Shared.Next());
+        MatchConfig? config = LoadRuleset();
+        if (config == null)
+        {
+            GetTree().Quit(1);
+            return;
+        }
+        _sim = new SimWorld(map.BuildMask(), config, Random.Shared.Next());
 
         NetworkManager net = NetworkManager.Instance;
         net.PeerJoined += OnPeerJoined;
@@ -174,10 +180,31 @@ public partial class ServerMain : Node
         new RosterMsg(peers, names).Broadcast();
     }
 
+    /// <summary>The host's ruleset preset (--ruleset path.json), or defaults
+    /// without the flag. Null means the file was asked for but unusable; the
+    /// host should hear about that, not silently run defaults.</summary>
+    private static MatchConfig? LoadRuleset()
+    {
+        string? path = CmdArgs.GetValue("--ruleset");
+        if (path == null)
+            return new MatchConfig();
+        try
+        {
+            MatchConfig config = MatchConfig.FromJson(File.ReadAllText(path));
+            GD.Print($"[server] ruleset '{path}' loaded");
+            return config;
+        }
+        catch (Exception e)
+        {
+            GD.PrintErr($"[server] failed to load ruleset '{path}': {e.Message}");
+            return null;
+        }
+    }
+
     private void AddToGame(long peerId)
     {
         _sim.AddPlayer((int)peerId);
-        new WelcomeMsg(_map.MapId, _map.Hash, _sim.Terrain.SerializeRemoved()).SendTo(peerId);
+        new WelcomeMsg(_map.MapId, _map.Hash, _sim.Config.ToBytes(), _sim.Terrain.SerializeRemoved()).SendTo(peerId);
         GD.Print($"[server] player {peerId} joined ({_sim.Players.Count} in game)");
     }
 

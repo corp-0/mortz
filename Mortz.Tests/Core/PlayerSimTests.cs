@@ -6,6 +6,7 @@ namespace Mortz.Tests.Core;
 public class PlayerSimTests
 {
     private static readonly TerrainMask Flat = TestWorlds.Flat();
+    private static readonly PlayerStats Stats = TestWorlds.Stats;
 
     private static PlayerState NewGroundedPlayer(float x = 200) => new()
     {
@@ -23,12 +24,12 @@ public class PlayerSimTests
     {
         PlayerState p = NewGroundedPlayer(50);
 
-        p = PlayerSim.Tick(p, Right, Flat);
+        p = PlayerSim.Tick(p, Right, Flat, Stats);
         Assert.True(p.Velocity.X > 0);
         Assert.True(p.Velocity.X < SimConfig.MAX_RUN_SPEED);
 
         for (int i = 0; i < SimConfig.TICK_RATE; i++) // one full second
-            p = PlayerSim.Tick(p, Right, Flat);
+            p = PlayerSim.Tick(p, Right, Flat, Stats);
         Assert.Equal(SimConfig.MAX_RUN_SPEED, p.Velocity.X);
     }
 
@@ -36,13 +37,13 @@ public class PlayerSimTests
     public void FrictionStopsRunWhenInputReleased()
     {
         PlayerState p = NewGroundedPlayer(50);
-        for (int i = 0; i < 30; i++) p = PlayerSim.Tick(p, Right, Flat);
+        for (int i = 0; i < 30; i++) p = PlayerSim.Tick(p, Right, Flat, Stats);
 
-        p = PlayerSim.Tick(p, Idle, Flat);
+        p = PlayerSim.Tick(p, Idle, Flat, Stats);
         Assert.True(p.Velocity.X < SimConfig.MAX_RUN_SPEED); // decelerating, not instant stop
         Assert.True(p.Velocity.X > 0);
 
-        for (int i = 0; i < 60; i++) p = PlayerSim.Tick(p, Idle, Flat);
+        for (int i = 0; i < 60; i++) p = PlayerSim.Tick(p, Idle, Flat, Stats);
         Assert.Equal(0, p.Velocity.X);
     }
 
@@ -50,13 +51,13 @@ public class PlayerSimTests
     public void JumpRisesThenLandsBackOnFloor()
     {
         PlayerState p = NewGroundedPlayer();
-        p = PlayerSim.Tick(p, JumpHeld, Flat);
+        p = PlayerSim.Tick(p, JumpHeld, Flat, Stats);
         Assert.False(p.Grounded);
         Assert.True(p.Velocity.Y < 0);
         Assert.True(p.Position.Y < TestWorlds.FLOOR_Y);
 
         for (int i = 0; i < 2 * SimConfig.TICK_RATE && !p.Grounded; i++)
-            p = PlayerSim.Tick(p, Idle, Flat);
+            p = PlayerSim.Tick(p, Idle, Flat, Stats);
 
         Assert.True(p.Grounded);
         Assert.Equal(TestWorlds.FLOOR_Y, p.Position.Y);
@@ -67,11 +68,11 @@ public class PlayerSimTests
     public void HoldingJumpDoesNotRejumpOnLanding_EdgeTriggered()
     {
         PlayerState p = NewGroundedPlayer();
-        p = PlayerSim.Tick(p, JumpHeld, Flat); // takes off
+        p = PlayerSim.Tick(p, JumpHeld, Flat, Stats); // takes off
 
         // Hold jump through the whole arc and past landing.
         for (int i = 0; i < 3 * SimConfig.TICK_RATE; i++)
-            p = PlayerSim.Tick(p, JumpHeld, Flat);
+            p = PlayerSim.Tick(p, JumpHeld, Flat, Stats);
 
         Assert.True(p.Grounded); // still on the ground: held button didn't re-trigger
     }
@@ -80,10 +81,10 @@ public class PlayerSimTests
     public void JumpingKeepsHorizontalMomentum()
     {
         PlayerState p = NewGroundedPlayer(50);
-        for (int i = 0; i < 60; i++) p = PlayerSim.Tick(p, Right, Flat);
+        for (int i = 0; i < 60; i++) p = PlayerSim.Tick(p, Right, Flat, Stats);
         float runSpeed = p.Velocity.X;
 
-        p = PlayerSim.Tick(p, new PlayerInput(InputButtons.Right | InputButtons.Jump), Flat);
+        p = PlayerSim.Tick(p, new PlayerInput(InputButtons.Right | InputButtons.Jump), Flat, Stats);
         Assert.Equal(runSpeed, p.Velocity.X); // at max speed: unchanged by the jump
         Assert.True(p.Velocity.Y < 0);
     }
@@ -93,7 +94,7 @@ public class PlayerSimTests
     {
         PlayerState p = NewGroundedPlayer(300);
         for (int i = 0; i < 5 * SimConfig.TICK_RATE; i++)
-            p = PlayerSim.Tick(p, Right, Flat);
+            p = PlayerSim.Tick(p, Right, Flat, Stats);
 
         Assert.Equal(0, p.Velocity.X);
         // Body edge flush against the wall (within one sub-step of pixel resolution).
@@ -109,7 +110,7 @@ public class PlayerSimTests
 
         PlayerState p = NewGroundedPlayer(200);
         for (int i = 0; i < 2 * SimConfig.TICK_RATE; i++)
-            p = PlayerSim.Tick(p, Right, world);
+            p = PlayerSim.Tick(p, Right, world, Stats);
 
         Assert.True(p.Position.X > 270); // did not get stuck at the bump edge
         Assert.True(p.Grounded);
@@ -122,7 +123,7 @@ public class PlayerSimTests
 
         PlayerState p = NewGroundedPlayer(200);
         for (int i = 0; i < 2 * SimConfig.TICK_RATE; i++)
-            p = PlayerSim.Tick(p, Right, world);
+            p = PlayerSim.Tick(p, Right, world, Stats);
 
         Assert.True(p.Position.X + SimConfig.PLAYER_HALF_WIDTH <= 261); // stopped at the wall
         Assert.Equal(0, p.Velocity.X);
@@ -137,10 +138,10 @@ public class PlayerSimTests
         float minFeetY = float.MaxValue;
 
         PlayerState p = NewGroundedPlayer();
-        p = PlayerSim.Tick(p, JumpHeld, world);
+        p = PlayerSim.Tick(p, JumpHeld, world, Stats);
         for (int i = 0; i < 2 * SimConfig.TICK_RATE && !p.Grounded; i++)
         {
-            p = PlayerSim.Tick(p, Idle, world);
+            p = PlayerSim.Tick(p, Idle, world, Stats);
             minFeetY = MathF.Min(minFeetY, p.Position.Y);
         }
 
@@ -156,12 +157,12 @@ public class PlayerSimTests
 
         // Stand on top of the destructible platform.
         PlayerState p = NewGroundedPlayer() with { Position = new Vec2(200, 200) };
-        p = PlayerSim.Tick(p, Idle, world);
+        p = PlayerSim.Tick(p, Idle, world, Stats);
         Assert.True(p.Grounded);
 
         world.CarveCircle(200, 215, 40);
         for (int i = 0; i < SimConfig.TICK_RATE; i++)
-            p = PlayerSim.Tick(p, Idle, world);
+            p = PlayerSim.Tick(p, Idle, world, Stats);
 
         Assert.Equal(TestWorlds.FLOOR_Y, p.Position.Y); // fell to the real floor
     }

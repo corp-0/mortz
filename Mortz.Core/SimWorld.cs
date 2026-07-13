@@ -10,10 +10,13 @@ public sealed class SimWorld
 {
     public int Tick { get; private set; }
     public TerrainMask Terrain { get; }
+    public MatchConfig Config { get; }
 
     // Sorted so iteration order (and thus any future interactions) is deterministic.
     private readonly SortedDictionary<int, PlayerState> _players = new();
     private readonly SortedDictionary<int, InputQueue> _inputs = new();
+    // Resolved per player at join; perk selections feed in here eventually.
+    private readonly SortedDictionary<int, PlayerStats> _stats = new();
 
     // Shells in flight, in spawn order.
     private readonly List<MortarState> _mortars = new();
@@ -37,28 +40,34 @@ public sealed class SimWorld
     /// center at the moment of death; the server broadcasts these for gibs.</summary>
     public IReadOnlyList<(int PeerId, Vec2 Position)> Deaths => _deaths;
 
-    public SimWorld(TerrainMask terrain, int seed = 0)
+    public SimWorld(TerrainMask terrain, MatchConfig config, int seed = 0)
     {
         Terrain = terrain;
+        Config = config;
         _rng = new Random(seed);
     }
 
     public void AddPlayer(int peerId)
     {
+        _stats[peerId] = PlayerStats.Resolve(Config);
         _players[peerId] = FreshState(peerId) with { Skin = (byte)_rng.Next(SimConfig.SKIN_COUNT) };
         _inputs[peerId] = new InputQueue();
     }
 
-    private PlayerState FreshState(int peerId) => new()
+    private PlayerState FreshState(int peerId)
     {
-        PeerId = peerId,
-        Position = FindSpawn(peerId),
-        Grounded = true,
-        JumpsLeft = SimConfig.TOTAL_JUMPS,
-        Ammo = SimConfig.MORTAR_MAX_AMMO,
-        Health = SimConfig.MAX_HEALTH,
-        LastInputSeq = -1,
-    };
+        PlayerStats stats = _stats[peerId];
+        return new PlayerState
+        {
+            PeerId = peerId,
+            Position = FindSpawn(peerId),
+            Grounded = true,
+            JumpsLeft = stats.TotalJumps,
+            Ammo = stats.MaxAmmo,
+            Health = stats.MaxHealth,
+            LastInputSeq = -1,
+        };
+    }
 
     /// <summary>
     /// Stable-per-peer spawn x, then the highest standing spot in that column.
@@ -82,6 +91,7 @@ public sealed class SimWorld
     {
         _players.Remove(peerId);
         _inputs.Remove(peerId);
+        _stats.Remove(peerId);
     }
 
     public void EnqueueInput(int peerId, int seq, PlayerInput input)
@@ -112,12 +122,13 @@ public sealed class SimWorld
             }
             else
             {
-                state = PlayerSim.Tick(prev, input, Terrain);
+                PlayerStats stats = _stats[id];
+                state = PlayerSim.Tick(prev, input, Terrain, stats);
                 // Shells are world entities and this is the authoritative sim, so
                 // the spawn happens here; prediction runs the same WeaponSim but
                 // keeps its shells cosmetic.
-                if (WeaponSim.Tick(ref state, input, prev.PrevButtons))
-                    _mortars.Add(WeaponSim.NewShell(_nextMortarId++, queue.LastAppliedSeq, state, input));
+                if (WeaponSim.Tick(ref state, input, prev.PrevButtons, stats))
+                    _mortars.Add(WeaponSim.NewShell(_nextMortarId++, queue.LastAppliedSeq, state, input, Config));
                 if (FellOutOfTheMap(state))
                 {
                     // Death pit (a scored death once deathmatch exists).
@@ -137,7 +148,7 @@ public sealed class SimWorld
         for (int i = _mortars.Count - 1; i >= 0; i--)
         {
             MortarState m = _mortars[i];
-            MortarOutcome outcome = MortarSim.Tick(ref m, Terrain, SimConfig.DT);
+            MortarOutcome outcome = MortarSim.Tick(ref m, Terrain, Config, SimConfig.DT);
             if (outcome == MortarOutcome.Flying && DirectHit(m))
                 outcome = MortarOutcome.Exploded;
             if (outcome == MortarOutcome.Flying)
@@ -179,15 +190,15 @@ public sealed class SimWorld
     private void Explode(in MortarState m)
     {
         Vec2 at = m.Position;
-        Terrain.CarveCircle((int)at.X, (int)at.Y, SimConfig.MORTAR_CARVE_RADIUS);
-        _explosions.Add(((int)at.X, (int)at.Y, SimConfig.MORTAR_CARVE_RADIUS, m.OwnerId, m.SpawnSeq));
+        Terrain.CarveCircle((int)at.X, (int)at.Y, Config.MortarCarveRadius);
+        _explosions.Add(((int)at.X, (int)at.Y, Config.MortarCarveRadius, m.OwnerId, m.SpawnSeq));
 
         foreach (int id in _players.Keys.ToArray())
         {
             PlayerState p = _players[id];
             if (p.RespawnTicks > 0)
                 continue; // already gibbed, nothing left to hurt
-            int damage = BlastSim.Damage(p, at);
+            int damage = BlastSim.Damage(p, at, Config);
             if (damage == 0)
                 continue;
             if (damage >= p.Health)
@@ -203,12 +214,12 @@ public sealed class SimWorld
 
     /// <summary>The body stays where it died (hidden by the view, gibs mark the
     /// spot) until Step's countdown respawns it. Rope drops so nothing renders.</summary>
-    private static PlayerState Corpse(in PlayerState p) => p with
+    private PlayerState Corpse(in PlayerState p) => p with
     {
         Velocity = Vec2.Zero,
         Health = 0,
         Rope = RopeMode.None,
-        RespawnTicks = (byte)SimConfig.RESPAWN_DELAY_TICKS,
+        RespawnTicks = (byte)Config.RespawnDelayTicks,
     };
 
     private static Vec2 BodyCenter(in PlayerState p) =>

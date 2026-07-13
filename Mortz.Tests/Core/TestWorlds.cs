@@ -11,6 +11,10 @@ public static class TestWorlds
     public const float WALL_LEFT = 8;
     public const float WALL_RIGHT = 392;
 
+    /// <summary>Default ruleset; asserts keep reading expected values off the SimConfig consts.</summary>
+    public static readonly MatchConfig Config = new();
+    public static readonly PlayerStats Stats = PlayerStats.Resolve(Config);
+
     public static TerrainMask Flat(
         Func<int, int, bool>? extraSolid = null,
         Func<int, int, bool>? destructible = null)

@@ -69,9 +69,10 @@ public class NetMessageTests : IDisposable
         WelcomeMsg received = default;
         Action<WelcomeMsg> handler = m => received = m;
         WelcomeMsg.Received += handler;
+        byte[] config = TestWorlds.Config.ToBytes();
         try
         {
-            new WelcomeMsg("castlewars", "abc123", [9, 8, 7]).SendTo(5);
+            new WelcomeMsg("castlewars", "abc123", config, [9, 8, 7]).SendTo(5);
         }
         finally
         {
@@ -79,6 +80,7 @@ public class NetMessageTests : IDisposable
         }
         Assert.Equal("castlewars", received.MapId);
         Assert.Equal("abc123", received.MapHash);
+        Assert.Equal(config, received.Config);
         Assert.Equal([9, 8, 7], received.RemovedData);
     }
 

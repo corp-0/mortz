@@ -7,6 +7,7 @@ namespace Mortz.Tests.Core;
 public class MovementTests
 {
     private static readonly TerrainMask Flat = TestWorlds.Flat();
+    private static readonly PlayerStats Stats = TestWorlds.Stats;
     private static readonly PlayerInput Idle = new(InputButtons.None);
     private static readonly PlayerInput JumpP = new(InputButtons.Jump);
 
@@ -21,7 +22,7 @@ public class MovementTests
     private static PlayerState TickN(PlayerState p, PlayerInput input, TerrainMask world, int n)
     {
         for (int i = 0; i < n; i++)
-            p = PlayerSim.Tick(p, input, world);
+            p = PlayerSim.Tick(p, input, world, Stats);
         return p;
     }
 
@@ -29,18 +30,18 @@ public class MovementTests
     public void DoubleJump_RisesAgainMidAir_ButOnlyOnce()
     {
         PlayerState p = Grounded();
-        p = PlayerSim.Tick(p, JumpP, Flat);          // ground jump
+        p = PlayerSim.Tick(p, JumpP, Flat, Stats);          // ground jump
         p = TickN(p, Idle, Flat, 20);                // partway up/over the arc
         float vyBefore = p.Velocity.Y;
 
-        p = PlayerSim.Tick(p, JumpP, Flat);          // air jump
+        p = PlayerSim.Tick(p, JumpP, Flat, Stats);          // air jump
         Assert.True(p.Velocity.Y < vyBefore);
         Assert.Equal(-SimConfig.AIR_JUMP_SPEED, p.Velocity.Y);
         Assert.Equal(0, p.JumpsLeft);
 
         p = TickN(p, Idle, Flat, 10);
         float vyMid = p.Velocity.Y;
-        p = PlayerSim.Tick(p, JumpP, Flat);          // third press: nothing left
+        p = PlayerSim.Tick(p, JumpP, Flat, Stats);          // third press: nothing left
         Assert.True(p.Velocity.Y >= vyMid);          // gravity only, no new impulse
     }
 
@@ -48,9 +49,9 @@ public class MovementTests
     public void AirJump_RefillsOnLanding()
     {
         PlayerState p = Grounded();
-        p = PlayerSim.Tick(p, JumpP, Flat);
+        p = PlayerSim.Tick(p, JumpP, Flat, Stats);
         p = TickN(p, Idle, Flat, 5);
-        p = PlayerSim.Tick(p, JumpP, Flat);          // spend the air jump
+        p = PlayerSim.Tick(p, JumpP, Flat, Stats);          // spend the air jump
         Assert.Equal(0, p.JumpsLeft);
 
         p = TickN(p, Idle, Flat, 4 * SimConfig.TICK_RATE); // land
@@ -63,7 +64,7 @@ public class MovementTests
         PlayerState p = Grounded() with { Position = new Vec2(200, 200) };
         PlayerInput right = new PlayerInput(InputButtons.Right);
         for (int i = 0; i < 2 * SimConfig.TICK_RATE && p.Grounded; i++)
-            p = PlayerSim.Tick(p, right, world);
+            p = PlayerSim.Tick(p, right, world, Stats);
         atExit = p;
         return p;
     }
@@ -79,7 +80,7 @@ public class MovementTests
         Assert.False(p.Grounded);
         Assert.True(p.CoyoteTicks > 0);
 
-        p = PlayerSim.Tick(p, new PlayerInput(InputButtons.Right | InputButtons.Jump), world);
+        p = PlayerSim.Tick(p, new PlayerInput(InputButtons.Right | InputButtons.Jump), world, Stats);
         Assert.Equal(-SimConfig.JUMP_SPEED, p.Velocity.Y);        // full jump, not an air jump
         Assert.Equal(SimConfig.TOTAL_JUMPS - 1, p.JumpsLeft);     // spent the first, kept the double
         Assert.Equal(0, p.CoyoteTicks);                          // grace consumed
@@ -94,22 +95,22 @@ public class MovementTests
         PlayerState p = RunOffLedge(world, out _);
 
         for (int i = 0; i < SimConfig.COYOTE_MAX_TICKS + 1; i++)
-            p = PlayerSim.Tick(p, Idle, world);
+            p = PlayerSim.Tick(p, Idle, world, Stats);
         Assert.Equal(0, p.CoyoteTicks);
         Assert.Equal(SimConfig.TOTAL_JUMPS, p.JumpsLeft);
 
-        p = PlayerSim.Tick(p, new PlayerInput(InputButtons.Jump), world); // first air jump
+        p = PlayerSim.Tick(p, new PlayerInput(InputButtons.Jump), world, Stats); // first air jump
         Assert.Equal(-SimConfig.AIR_JUMP_SPEED, p.Velocity.Y);
         Assert.Equal(1, p.JumpsLeft);
 
         p = TickN(p, Idle, world, 10);
-        p = PlayerSim.Tick(p, new PlayerInput(InputButtons.Jump), world); // second air jump
+        p = PlayerSim.Tick(p, new PlayerInput(InputButtons.Jump), world, Stats); // second air jump
         Assert.Equal(-SimConfig.AIR_JUMP_SPEED, p.Velocity.Y);
         Assert.Equal(0, p.JumpsLeft);
 
         p = TickN(p, Idle, world, 10);
         float vyBefore = p.Velocity.Y;
-        p = PlayerSim.Tick(p, new PlayerInput(InputButtons.Jump), world); // budget exhausted
+        p = PlayerSim.Tick(p, new PlayerInput(InputButtons.Jump), world, Stats); // budget exhausted
         Assert.True(p.Velocity.Y >= vyBefore);
     }
 
@@ -120,12 +121,12 @@ public class MovementTests
         TerrainMask world = LedgeWorld();
 
         PlayerState slow = Grounded() with { Position = new Vec2(240, 200), Velocity = new Vec2(60, 0) };
-        slow = PlayerSim.Tick(slow, Idle, world); // still on the ledge: grace computed from speed
+        slow = PlayerSim.Tick(slow, Idle, world, Stats); // still on the ledge: grace computed from speed
         byte slowGrace = slow.CoyoteTicks;
 
         // 900 px/s so that even after one tick of ground friction the grace caps.
         PlayerState fast = Grounded() with { Position = new Vec2(240, 200), Velocity = new Vec2(900, 0) };
-        fast = PlayerSim.Tick(fast, new PlayerInput(InputButtons.Right), world);
+        fast = PlayerSim.Tick(fast, new PlayerInput(InputButtons.Right), world, Stats);
         byte fastGrace = fast.CoyoteTicks;
 
         Assert.True(fastGrace > slowGrace);
@@ -136,7 +137,7 @@ public class MovementTests
     public void GroundJump_SpendsTheFirstJump_KeepsTheDouble()
     {
         PlayerState p = Grounded();
-        p = PlayerSim.Tick(p, JumpP, Flat);
+        p = PlayerSim.Tick(p, JumpP, Flat, Stats);
         Assert.Equal(SimConfig.TOTAL_JUMPS - 1, p.JumpsLeft);
     }
 
@@ -144,21 +145,21 @@ public class MovementTests
     public void Dash_BurstsAlongHeldKeys_AndCoolsDown()
     {
         PlayerState p = Grounded();
-        p = PlayerSim.Tick(p, new PlayerInput(InputButtons.Right | InputButtons.Dash), Flat);
+        p = PlayerSim.Tick(p, new PlayerInput(InputButtons.Right | InputButtons.Dash), Flat, Stats);
         Assert.True(p.Velocity.X >= SimConfig.DASH_SPEED); // impulse on top of run accel
         Assert.True(p.DashCooldown > 0);
 
         // Releasing and pressing again during cooldown does nothing.
-        p = PlayerSim.Tick(p, new PlayerInput(InputButtons.None), Flat);
+        p = PlayerSim.Tick(p, new PlayerInput(InputButtons.None), Flat, Stats);
         float coasting = p.Velocity.X;
-        p = PlayerSim.Tick(p, new PlayerInput(InputButtons.Right | InputButtons.Dash), Flat);
+        p = PlayerSim.Tick(p, new PlayerInput(InputButtons.Right | InputButtons.Dash), Flat, Stats);
         Assert.True(p.Velocity.X < coasting + SimConfig.GROUND_ACCEL * SimConfig.DT + 1);
 
         // After the cooldown expires a new dash works (re-press edge), any direction.
         p = TickN(p, Idle, Flat, SimConfig.DASH_COOLDOWN_TICKS);
         Assert.Equal(0, p.DashCooldown);
         float before = p.Velocity.X;
-        p = PlayerSim.Tick(p, new PlayerInput(InputButtons.Left | InputButtons.Dash), Flat);
+        p = PlayerSim.Tick(p, new PlayerInput(InputButtons.Left | InputButtons.Dash), Flat, Stats);
         Assert.True(p.Velocity.X < before - SimConfig.DASH_SPEED * 0.9f);
     }
 
@@ -166,7 +167,7 @@ public class MovementTests
     public void Dash_WithNoKeysHeld_DoesNothing_AndSavesTheCooldown()
     {
         PlayerState p = Grounded();
-        p = PlayerSim.Tick(p, new PlayerInput(InputButtons.Dash), Flat);
+        p = PlayerSim.Tick(p, new PlayerInput(InputButtons.Dash), Flat, Stats);
         Assert.Equal(0, p.Velocity.X);
         Assert.Equal(0, p.DashCooldown); // not spent on a no-direction press
     }
@@ -175,7 +176,7 @@ public class MovementTests
     public void DiagonalDash_UsesNormalizedEightWayDirection()
     {
         PlayerState p = Grounded();
-        p = PlayerSim.Tick(p, new PlayerInput(InputButtons.Right | InputButtons.Up | InputButtons.Dash), Flat);
+        p = PlayerSim.Tick(p, new PlayerInput(InputButtons.Right | InputButtons.Up | InputButtons.Dash), Flat, Stats);
 
         float component = SimConfig.DASH_SPEED / MathF.Sqrt(2);
         Assert.True(p.Velocity.X >= component);            // diagonal, not full-speed sideways
@@ -192,7 +193,7 @@ public class MovementTests
         p = TickN(p, Idle, Flat, 15);
         Assert.True(p.Velocity.Y > 300);
 
-        p = PlayerSim.Tick(p, new PlayerInput(InputButtons.Up | InputButtons.Dash), Flat);
+        p = PlayerSim.Tick(p, new PlayerInput(InputButtons.Up | InputButtons.Dash), Flat, Stats);
         Assert.True(p.Velocity.Y < 0);      // now moving up
         Assert.Equal(0, p.Velocity.X);      // no sideways drift toward anything
     }
@@ -227,7 +228,7 @@ public class MovementTests
             Grounded = false,
             JumpsLeft = 0,
         };
-        p = PlayerSim.Tick(p, JumpP, Flat);
+        p = PlayerSim.Tick(p, JumpP, Flat, Stats);
 
         Assert.Equal(-SimConfig.WALL_JUMP_KICK_X, p.Velocity.X); // pushed left, away from right wall
         Assert.Equal(-SimConfig.WALL_JUMP_SPEED_Y, p.Velocity.Y);

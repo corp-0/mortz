@@ -16,11 +16,11 @@ public enum MortarOutcome : byte
 /// </summary>
 public static class MortarSim
 {
-    public static MortarOutcome Tick(ref MortarState m, TerrainMask terrain, float dt)
+    public static MortarOutcome Tick(ref MortarState m, TerrainMask terrain, MatchConfig cfg, float dt)
     {
         m.Velocity = m.Velocity with
         {
-            Y = MathF.Min(m.Velocity.Y + SimConfig.MORTAR_GRAVITY * dt, SimConfig.MORTAR_MAX_FALL),
+            Y = MathF.Min(m.Velocity.Y + cfg.MortarGravity * dt, cfg.MortarMaxFall),
         };
 
         const float SUB_STEP = 4f;

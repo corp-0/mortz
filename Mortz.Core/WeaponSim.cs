@@ -14,7 +14,7 @@ public static class WeaponSim
     /// <summary>Press edges come from the pre-tick buttons; PlayerSim has
     /// already overwritten PrevButtons with this tick's by the time this runs.</summary>
     /// <returns>true when a shell fires this tick.</returns>
-    public static bool Tick(ref PlayerState p, PlayerInput input, InputButtons prevButtons)
+    public static bool Tick(ref PlayerState p, PlayerInput input, InputButtons prevButtons, PlayerStats stats)
     {
         if (p.RespawnTicks > 0)
             return false; // corpses don't fire or reload
@@ -29,17 +29,18 @@ public static class WeaponSim
             p.ReloadTicks = 0; // shooting scraps the shell being loaded
         }
 
-        if (p.ReloadTicks == 0 && (p.Ammo == 0 || (reloadPressed && p.Ammo < SimConfig.MORTAR_MAX_AMMO)))
-            p.ReloadTicks = SimConfig.MORTAR_RELOAD_TICKS;
-        if (p.ReloadTicks > 0 && --p.ReloadTicks == 0 && ++p.Ammo < SimConfig.MORTAR_MAX_AMMO)
-            p.ReloadTicks = SimConfig.MORTAR_RELOAD_TICKS; // next shell
+        if (p.ReloadTicks == 0 && (p.Ammo == 0 || (reloadPressed && p.Ammo < stats.MaxAmmo)))
+            p.ReloadTicks = stats.ReloadTicks;
+        if (p.ReloadTicks > 0 && --p.ReloadTicks == 0 && ++p.Ammo < stats.MaxAmmo)
+            p.ReloadTicks = stats.ReloadTicks; // next shell
 
         return fired;
     }
 
     /// <summary>The one spawn formula, shared so a predicted shell and the
     /// authoritative one fly the same path.</summary>
-    public static MortarState NewShell(ushort id, int spawnSeq, in PlayerState shooter, PlayerInput input)
+    public static MortarState NewShell(ushort id, int spawnSeq, in PlayerState shooter, PlayerInput input,
+        MatchConfig cfg)
     {
         Vec2 center = shooter.Position with { Y = shooter.Position.Y - SimConfig.PLAYER_HALF_HEIGHT };
         return new MortarState
@@ -48,7 +49,7 @@ public static class WeaponSim
             OwnerId = shooter.PeerId,
             SpawnSeq = spawnSeq,
             Position = center + input.AimDir * SimConfig.MORTAR_MUZZLE_OFFSET,
-            Velocity = input.AimDir * SimConfig.MORTAR_SPEED + shooter.Velocity * SimConfig.MORTAR_INHERIT,
+            Velocity = input.AimDir * cfg.MortarSpeed + shooter.Velocity * cfg.MortarInherit,
         };
     }
 }

@@ -37,6 +37,9 @@ public partial class GameMap : Node2D
 
     private readonly CarveLedger _ledger = new();
 
+    // Predicted carves use the match's radius; authoritative ones carry theirs.
+    private int _carveRadius;
+
     // Working copy of the destructible layer; carves punch it transparent.
     // The pristine original stays around to un-carve mispredictions.
     private Image _destructibleImage = null!;
@@ -44,9 +47,10 @@ public partial class GameMap : Node2D
     private ImageTexture _destructibleTexture = null!;
 
     /// <summary>Must be called right after instantiating, before entering the tree.</summary>
-    public void Initialize(MapPackage map, byte[] removedData)
+    public void Initialize(MapPackage map, MatchConfig config, byte[] removedData)
     {
         Mask = map.BuildMask();
+        _carveRadius = config.MortarCarveRadius;
 
         _pristineDestructible = map.Destructible;
         _destructibleImage = (Image)map.Destructible.Duplicate();
@@ -90,9 +94,9 @@ public partial class GameMap : Node2D
         if (_ledger.IsPending(spawnSeq))
             return;
         int x = (int)impact.X, y = (int)impact.Y;
-        Exploded?.Invoke(new Vector2(x, y), SimConfig.MORTAR_CARVE_RADIUS);
-        List<(int X, int Y)> removed = Carve(x, y, SimConfig.MORTAR_CARVE_RADIUS);
-        _ledger.AddPending(spawnSeq, x, y, SimConfig.MORTAR_CARVE_RADIUS, removed, Time.GetTicksMsec());
+        Exploded?.Invoke(new Vector2(x, y), _carveRadius);
+        List<(int X, int Y)> removed = Carve(x, y, _carveRadius);
+        _ledger.AddPending(spawnSeq, x, y, _carveRadius, removed, Time.GetTicksMsec());
     }
 
     private void OnCarve(CarveMsg msg)

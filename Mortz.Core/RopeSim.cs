@@ -9,7 +9,7 @@ namespace Mortz.Core;
 /// </summary>
 public static class RopeSim
 {
-    public static void Tick(ref PlayerState p, PlayerInput input, TerrainMask terrain, float dt)
+    public static void Tick(ref PlayerState p, PlayerInput input, TerrainMask terrain, PlayerStats stats, float dt)
     {
         if (p.RopeCooldown > 0)
             p.RopeCooldown--;
@@ -18,38 +18,38 @@ public static class RopeSim
         if (ropePressed)
         {
             if (p.Rope == RopeMode.None && p.RopeCooldown == 0)
-                Fire(ref p, input);
+                Fire(ref p, input, stats);
             else if (p.Rope == RopeMode.Flying)
-                Miss(ref p); // aborting the throw costs the same as whiffing it
+                Miss(ref p, stats); // aborting the throw costs the same as whiffing it
             else if (p.Rope == RopeMode.Attached)
-                ReleaseAttached(ref p);
+                ReleaseAttached(ref p, stats);
         }
 
         if (p.Rope == RopeMode.Flying)
-            FlyHook(ref p, terrain, dt);
+            FlyHook(ref p, terrain, stats, dt);
 
         if (p.Rope == RopeMode.Attached)
-            ApplyPull(ref p, dt);
+            ApplyPull(ref p, stats, dt);
     }
 
-    private static void Fire(ref PlayerState p, PlayerInput input)
+    private static void Fire(ref PlayerState p, PlayerInput input, PlayerStats stats)
     {
         p.Rope = RopeMode.Flying;
         p.RopePoint = BodyCenter(p);
-        p.RopeVelocity = input.AimDir * SimConfig.ROPE_SPEED;
+        p.RopeVelocity = input.AimDir * stats.RopeSpeed;
     }
 
     /// <summary>Let go of an attached rope: keeps velocity, short re-fire cooldown.</summary>
-    public static void ReleaseAttached(ref PlayerState p)
+    public static void ReleaseAttached(ref PlayerState p, PlayerStats stats)
     {
         Clear(ref p);
-        p.RopeCooldown = SimConfig.ROPE_RELEASE_COOLDOWN_TICKS;
+        p.RopeCooldown = stats.RopeReleaseCooldownTicks;
     }
 
-    private static void Miss(ref PlayerState p)
+    private static void Miss(ref PlayerState p, PlayerStats stats)
     {
         Clear(ref p);
-        p.RopeCooldown = SimConfig.ROPE_MISS_COOLDOWN_TICKS;
+        p.RopeCooldown = stats.RopeMissCooldownTicks;
     }
 
     private static void Clear(ref PlayerState p)
@@ -59,19 +59,19 @@ public static class RopeSim
         p.RopeLength = 0;
     }
 
-    private static void FlyHook(ref PlayerState p, TerrainMask terrain, float dt)
+    private static void FlyHook(ref PlayerState p, TerrainMask terrain, PlayerStats stats, float dt)
     {
         // Substep so the fast hook can't tunnel through thin terrain.
         const float SUB_STEP = 4f;
-        float distance = SimConfig.ROPE_SPEED * dt;
-        Vec2 dir = p.RopeVelocity * (1f / SimConfig.ROPE_SPEED);
+        float distance = stats.RopeSpeed * dt;
+        Vec2 dir = p.RopeVelocity * (1f / stats.RopeSpeed);
 
         for (float moved = 0; moved < distance; moved += SUB_STEP)
         {
             p.RopePoint += dir * MathF.Min(SUB_STEP, distance - moved);
             if (!terrain.Contains((int)p.RopePoint.X, (int)p.RopePoint.Y))
             {
-                Miss(ref p); // left the map, nothing to grab out there
+                Miss(ref p, stats); // left the map, nothing to grab out there
                 return;
             }
             if (terrain.IsSolid((int)p.RopePoint.X, (int)p.RopePoint.Y))
@@ -80,8 +80,8 @@ public static class RopeSim
                 return;
             }
         }
-        if ((p.RopePoint - BodyCenter(p)).Length() > SimConfig.ROPE_MAX_RANGE)
-            Miss(ref p); // out of range: fizzle, long cooldown
+        if ((p.RopePoint - BodyCenter(p)).Length() > stats.RopeMaxRange)
+            Miss(ref p, stats); // out of range: fizzle, long cooldown
     }
 
     private static void Attach(ref PlayerState p)
@@ -98,15 +98,15 @@ public static class RopeSim
     /// rest length also creeps shorter: without that, a vertical rope can't
     /// climb (you'd rise a pixel, go slack and hang bobbing at the floor).
     /// </summary>
-    private static void ApplyPull(ref PlayerState p, float dt)
+    private static void ApplyPull(ref PlayerState p, PlayerStats stats, float dt)
     {
-        p.RopeLength = MathF.Max(SimConfig.ROPE_MIN_LENGTH, p.RopeLength - SimConfig.ROPE_SHORTEN_SPEED * dt);
+        p.RopeLength = MathF.Max(SimConfig.ROPE_MIN_LENGTH, p.RopeLength - stats.RopeShortenSpeed * dt);
 
         Vec2 toAnchor = p.RopePoint - BodyCenter(p);
         float distance = toAnchor.Length();
         if (distance < p.RopeLength || distance < 1e-3f)
             return;
-        p.Velocity += toAnchor / distance * (SimConfig.ROPE_PULL_ACCEL * dt);
+        p.Velocity += toAnchor / distance * (stats.RopePullAccel * dt);
     }
 
     private static Vec2 BodyCenter(in PlayerState p) =>
