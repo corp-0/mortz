@@ -99,6 +99,10 @@ public static class SimConfig
     /// <summary>How long a gibbed body stays dead (and hidden) before respawning.</summary>
     public const float RESPAWN_DELAY = 2.0f;        // s
 
+    // ---- mode ----
+    /// <summary>Default first-to-X for the kills win conditions.</summary>
+    public const int KILL_TARGET = 20;
+
     // ---- dev tools ----
     /// <summary>Radius of the dev click-to-carve, the stand-in weapon until mortars exist.</summary>
     public const int DEBUG_CARVE_RADIUS = 24;

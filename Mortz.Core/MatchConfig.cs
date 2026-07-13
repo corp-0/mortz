@@ -1,6 +1,15 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Mortz.Core;
+
+/// <summary>What the score predicate reads: individual rows or team totals.
+/// In ruleset JSON: "PLAYER_KILLS" / "TEAM_KILLS" (case-insensitive).</summary>
+public enum WinCondition : byte
+{
+    PLAYER_KILLS = 0,
+    TEAM_KILLS = 1,
+}
 
 /// <summary>
 /// The host-tweakable half of the ruleset. Every value here is match data:
@@ -72,6 +81,18 @@ public sealed class MatchConfig
     public int BlastEdgeDamage { get; set; } = SimConfig.BLAST_EDGE_DAMAGE;
     public float RespawnDelay { get; set; } = SimConfig.RESPAWN_DELAY;
 
+    // ---- mode ----
+    // Teams and WinCondition are stored independently so toggling teams in the
+    // lobby never destroys the admin's win condition choice; TEAM_KILLS with
+    // teams off plays as PLAYER_KILLS (resolved in Scoreboard, not here).
+    public bool Teams { get; set; }
+    public WinCondition WinCondition { get; set; } = WinCondition.PLAYER_KILLS;
+    public int KillTarget { get; set; } = SimConfig.KILL_TARGET;
+    /// <summary>Off spares teammates from blast damage; self-damage always applies.</summary>
+    public bool FriendlyFire { get; set; } = true;
+    /// <summary>On, a suicide costs a kill (scores can go negative).</summary>
+    public bool SuicidePenalty { get; set; }
+
     public int RespawnDelayTicks => (int)(RespawnDelay * SimConfig.TICK_RATE);
 
     /// <summary>Force every field into its sane range; NaN lands on the minimum.</summary>
@@ -121,6 +142,10 @@ public sealed class MatchConfig
         BlastCoreFraction = C(BlastCoreFraction, 0, 1);
         BlastEdgeDamage = Math.Clamp(BlastEdgeDamage, 0, 250);
         RespawnDelay = C(RespawnDelay, 0, 4);
+
+        if (!Enum.IsDefined(WinCondition))
+            WinCondition = WinCondition.PLAYER_KILLS;
+        KillTarget = Math.Clamp(KillTarget, 1, 999);
     }
 
     private static float C(float v, float min, float max) =>
@@ -168,6 +193,11 @@ public sealed class MatchConfig
         w.Write(BlastCoreFraction);
         w.Write(BlastEdgeDamage);
         w.Write(RespawnDelay);
+        w.Write(Teams);
+        w.Write((byte)WinCondition);
+        w.Write(KillTarget);
+        w.Write(FriendlyFire);
+        w.Write(SuicidePenalty);
         return ms.ToArray();
     }
 
@@ -215,6 +245,11 @@ public sealed class MatchConfig
             BlastCoreFraction = r.ReadSingle(),
             BlastEdgeDamage = r.ReadInt32(),
             RespawnDelay = r.ReadSingle(),
+            Teams = r.ReadBoolean(),
+            WinCondition = (WinCondition)r.ReadByte(),
+            KillTarget = r.ReadInt32(),
+            FriendlyFire = r.ReadBoolean(),
+            SuicidePenalty = r.ReadBoolean(),
         };
         cfg.Clamp();
         return cfg;
@@ -225,6 +260,7 @@ public sealed class MatchConfig
         PropertyNameCaseInsensitive = true,
         ReadCommentHandling = JsonCommentHandling.Skip,
         AllowTrailingCommas = true,
+        Converters = { new JsonStringEnumConverter() },
     };
 
     /// <summary>Ruleset preset: JSON with any subset of the properties;

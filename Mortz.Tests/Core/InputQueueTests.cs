@@ -86,15 +86,40 @@ public class InputQueueTests
     }
 
     [Fact]
-    public void Drain_ReturnsTheNewerOfTheTwoConsumedInputs()
+    public void Drain_CarriesTheOvertakenButtons_IntoTheAppliedInput()
     {
         InputQueue q = new InputQueue();
         q.Enqueue(0, In(InputButtons.Left));
         q.Enqueue(1, In(InputButtons.Right));
         q.Enqueue(2, In(InputButtons.Jump));
 
-        Assert.Equal(InputButtons.Right, q.Next().Buttons);
+        // Seq 0 is overtaken but its buttons survive; the carry lasts one tick.
+        Assert.Equal(InputButtons.Left | InputButtons.Right, q.Next().Buttons);
         Assert.Equal(1, q.LastAppliedSeq); // ack covers the overtaken input too
         Assert.Equal(1, q.PendingCount);
+        Assert.Equal(InputButtons.Jump, q.Next().Buttons);
+    }
+
+    [Fact]
+    public void FireSeq_PointsAtThePressTick_EvenWhenOvertaken()
+    {
+        InputQueue q = new InputQueue();
+        q.Enqueue(0, In(InputButtons.None));
+        q.Next();
+        Assert.Equal(-1, q.FireSeq);
+
+        // The press tick gets overtaken by the drain; its edge keeps its seq.
+        q.Enqueue(1, In(InputButtons.Fire));
+        q.Enqueue(2, In(InputButtons.Fire)); // click held into the next tick
+        q.Enqueue(3, In(InputButtons.None));
+        Assert.True(q.Next().Fire);
+        Assert.Equal(1, q.FireSeq);
+        Assert.Equal(2, q.LastAppliedSeq);
+
+        // A fresh click later moves it; a plain applied press works too.
+        q.Enqueue(4, In(InputButtons.Fire));
+        q.Next(); // seq 3, releases
+        q.Next(); // seq 4, presses
+        Assert.Equal(4, q.FireSeq);
     }
 }

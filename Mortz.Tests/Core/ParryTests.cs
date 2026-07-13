@@ -56,9 +56,11 @@ public class ParryTests
         Assert.True(w.Players[2].RespawnTicks > 0);
         Assert.Equal(TestWorlds.Stats.MaxHealth, w.Players[1].Health); // blast stayed out of range
 
-        // Dying to your own parried shell is the OWNED case.
-        (int peerId, _, bool owned) = Assert.Single(w.Deaths);
+        // Dying to your own parried shell is the OWNED case, and the kill
+        // belongs to the parrier.
+        (int peerId, _, int killerId, bool owned) = Assert.Single(w.Deaths);
         Assert.Equal(2, peerId);
+        Assert.Equal(1, killerId);
         Assert.True(owned);
     }
 

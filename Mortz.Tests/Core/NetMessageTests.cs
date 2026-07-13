@@ -121,6 +121,42 @@ public class NetMessageTests : IDisposable
     }
 
     [Fact]
+    public void ScoreMsg_RoundTrips()
+    {
+        UseLoopback(receiverIsServer: false);
+        ScoreMsg received = default;
+        Action<ScoreMsg> handler = m => received = m;
+        ScoreMsg.Received += handler;
+        try
+        {
+            new ScoreMsg(123456789012, 42, -2, 7, 5, 3).Broadcast();
+        }
+        finally
+        {
+            ScoreMsg.Received -= handler;
+        }
+        Assert.Equal(new ScoreMsg(123456789012, 42, -2, 7, 5, 3), received);
+    }
+
+    [Fact]
+    public void MatchEndMsg_RoundTrips()
+    {
+        UseLoopback(receiverIsServer: false);
+        MatchEndMsg received = default;
+        Action<MatchEndMsg> handler = m => received = m;
+        MatchEndMsg.Received += handler;
+        try
+        {
+            new MatchEndMsg(true, 2).Broadcast();
+        }
+        finally
+        {
+            MatchEndMsg.Received -= handler;
+        }
+        Assert.Equal(new MatchEndMsg(true, 2), received);
+    }
+
+    [Fact]
     public void ClientToServerMsgs_RoundTrip_WithSender()
     {
         UseLoopback(receiverIsServer: true);

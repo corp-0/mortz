@@ -21,7 +21,7 @@ public sealed class SimWorld
     // Shells in flight, in spawn order.
     private readonly List<MortarState> _mortars = new();
     private readonly List<(int X, int Y, int Radius, int OwnerId, int SpawnSeq)> _explosions = new();
-    private readonly List<(int PeerId, Vec2 Position, bool Owned)> _deaths = new();
+    private readonly List<(int PeerId, Vec2 Position, int KillerId, bool Owned)> _deaths = new();
     private ushort _nextMortarId;
 
     // Only ever drawn from at AddPlayer; a fixed seed keeps tests reproducible,
@@ -37,9 +37,11 @@ public sealed class SimWorld
     public IReadOnlyList<(int X, int Y, int Radius, int OwnerId, int SpawnSeq)> Explosions => _explosions;
 
     /// <summary>Deaths from the last Step (blast or death pit), with the body
-    /// center at the moment of death; the server broadcasts these for gibs.
+    /// center at the moment of death; the server broadcasts these for gibs and
+    /// scores them. KillerId is the explosion's owner (a parried shell belongs
+    /// to the parrier), 0 for a death pit; the victim's own id is a suicide.
     /// Owned = a parried shell killed the very player who fired it.</summary>
-    public IReadOnlyList<(int PeerId, Vec2 Position, bool Owned)> Deaths => _deaths;
+    public IReadOnlyList<(int PeerId, Vec2 Position, int KillerId, bool Owned)> Deaths => _deaths;
 
     public SimWorld(TerrainMask terrain, MatchConfig config, int seed = 0)
     {
@@ -48,10 +50,14 @@ public sealed class SimWorld
         _rng = new Random(seed);
     }
 
-    public void AddPlayer(int peerId)
+    public void AddPlayer(int peerId, byte teamId = 0)
     {
         _stats[peerId] = PlayerStats.Resolve(Config);
-        _players[peerId] = FreshState(peerId) with { Skin = (byte)_rng.Next(SimConfig.SKIN_COUNT) };
+        _players[peerId] = FreshState(peerId) with
+        {
+            Skin = (byte)_rng.Next(SimConfig.SKIN_COUNT),
+            TeamId = teamId,
+        };
         _inputs[peerId] = new InputQueue();
     }
 
@@ -119,7 +125,7 @@ public sealed class SimWorld
             {
                 state = prev;
                 if (--state.RespawnTicks == 0)
-                    state = FreshState(id) with { Skin = prev.Skin };
+                    state = FreshState(id) with { Skin = prev.Skin, TeamId = prev.TeamId };
             }
             else
             {
@@ -128,12 +134,13 @@ public sealed class SimWorld
                 // Shells are world entities and this is the authoritative sim, so
                 // the spawn happens here; prediction runs the same WeaponSim but
                 // keeps its shells cosmetic.
+                // FireSeq, not LastAppliedSeq: a press overtaken by the
+                // backlog drain must still match the client's predicted shell.
                 if (WeaponSim.Tick(ref state, input, prev.PrevButtons, stats))
-                    _mortars.Add(WeaponSim.NewShell(_nextMortarId++, queue.LastAppliedSeq, state, input, Config));
+                    _mortars.Add(WeaponSim.NewShell(_nextMortarId++, queue.FireSeq, state, input, Config));
                 if (FellOutOfTheMap(state))
                 {
-                    // Death pit (a scored death once deathmatch exists).
-                    _deaths.Add((id, BodyCenter(state), false));
+                    _deaths.Add((id, BodyCenter(state), 0, false)); // death pit: no killer
                     state = Corpse(state);
                 }
             }
@@ -233,12 +240,12 @@ public sealed class SimWorld
             if (p.RespawnTicks > 0)
                 continue; // already gibbed, nothing left to hurt
             int damage = BlastSim.Damage(p, at, Config);
-            if (damage == 0)
+            if (damage == 0 || SparedByFriendlyFire(p, m.OwnerId))
                 continue;
             if (damage >= p.Health)
             {
                 // OWNED: the parried shell came back for its own shooter.
-                _deaths.Add((id, BodyCenter(p), m.Deflected && id == m.FiredBy));
+                _deaths.Add((id, BodyCenter(p), m.OwnerId, m.Deflected && id == m.FiredBy));
                 _players[id] = Corpse(p);
                 continue;
             }
@@ -246,6 +253,16 @@ public sealed class SimWorld
             _players[id] = p;
         }
     }
+
+    /// <summary>Friendly fire off spares teammates from blast damage; shells
+    /// still explode and carve. The shooter is never spared: point blank stays
+    /// suicide. A parried shell belongs to the parrier, so it hurts the
+    /// original shooter regardless of teams.</summary>
+    private bool SparedByFriendlyFire(in PlayerState victim, int shooterId) =>
+        !Config.FriendlyFire && Config.Teams &&
+        victim.PeerId != shooterId && victim.TeamId != 0 &&
+        _players.TryGetValue(shooterId, out PlayerState shooter) &&
+        shooter.TeamId == victim.TeamId;
 
     /// <summary>The body stays where it died (hidden by the view, gibs mark the
     /// spot) until Step's countdown respawns it. Rope drops so nothing renders.</summary>

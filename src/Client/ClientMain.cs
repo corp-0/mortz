@@ -120,6 +120,16 @@ public partial class ClientMain : Node
 
     private void OnLobbyState(LobbyStateMsg msg)
     {
+        if (_gameView != null)
+        {
+            // The match ended and the server reset to the lobby: drop the
+            // old world, the next match arrives with a fresh Welcome.
+            _gameView.QueueFree();
+            _gameView = null;
+            _lobby.ResetLocalReady();
+            if (_autoReady)
+                new SetReadyMsg(true).SendToServer();
+        }
         _menu.Visible = false;
         _lobby.Visible = true;
         _lobby.UpdatePlayers(msg.PeerIds, msg.Names, msg.ReadyFlags, Multiplayer.GetUniqueId());

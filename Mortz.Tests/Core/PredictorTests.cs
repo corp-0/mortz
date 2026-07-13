@@ -64,6 +64,50 @@ public class PredictorTests
         }
     }
 
+    /// <summary>
+    /// A snapshot can repeat an ack (the server starved for a tick, common
+    /// loopback jitter). PrevButtons for the replay must survive that: if the
+    /// acked input is no longer in history, a held fire button reads as a
+    /// fresh press edge and the replay spawns a phantom shell the server
+    /// never fired, whose predicted carve can only expire.
+    /// </summary>
+    [Fact]
+    public void RepeatedAck_MustNotPhantomFire_WhileFireIsHeld()
+    {
+        SimWorld server = new SimWorld(TestWorlds.Flat(), TestWorlds.Config);
+        server.AddPlayer(1);
+        Predictor predictor = new Predictor(server.Terrain, TestWorlds.Config);
+        predictor.Reconcile(server.Players[1], -1);
+
+        HashSet<int> predictedShellSeqs = new HashSet<int>();
+        void Observe()
+        {
+            foreach ((int seq, _) in predictor.Shells)
+                predictedShellSeqs.Add(seq);
+            foreach ((int seq, _) in predictor.DrainImpacts())
+                predictedShellSeqs.Add(seq);
+        }
+
+        PlayerInput held = new PlayerInput(InputButtons.Fire, 192); // fire held, aiming up
+        for (int t = 0; t < 12; t++)
+        {
+            predictor.LocalTick(held);
+            Observe();
+            if (t != 1)
+                server.EnqueueInput(1, t, held); // t=1's packet runs late...
+            if (t == 2)
+                server.EnqueueInput(1, 1, held); // ...arriving with t=2 (redundancy)
+            server.Step();
+            // Through the wire format: PrevButtons is not serialized, which is
+            // exactly what makes the replay depend on the history anchor.
+            PlayerState wireState = Snapshot.Deserialize(server.TakeSnapshot().Serialize()).Players[0];
+            predictor.Reconcile(wireState, server.Players[1].LastInputSeq);
+            Observe();
+        }
+
+        Assert.Equal([0], predictedShellSeqs.OrderBy(s => s)); // one press, one shell
+    }
+
     [Fact]
     public void PredictionConverges_AfterPacketLoss()
     {

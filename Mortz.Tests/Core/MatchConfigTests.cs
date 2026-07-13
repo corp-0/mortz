@@ -36,6 +36,48 @@ public class MatchConfigTests
     }
 
     [Fact]
+    public void ModeFields_RoundTripTheWire_AndClampHostileValues()
+    {
+        MatchConfig sent = new()
+        {
+            Teams = true,
+            WinCondition = WinCondition.TEAM_KILLS,
+            KillTarget = 5,
+            FriendlyFire = false,
+            SuicidePenalty = true,
+        };
+        MatchConfig got = MatchConfig.FromBytes(sent.ToBytes());
+
+        Assert.True(got.Teams);
+        Assert.Equal(WinCondition.TEAM_KILLS, got.WinCondition);
+        Assert.Equal(5, got.KillTarget);
+        Assert.False(got.FriendlyFire);
+        Assert.True(got.SuicidePenalty);
+
+        MatchConfig hostile = new() { WinCondition = (WinCondition)99, KillTarget = 0 };
+        got = MatchConfig.FromBytes(hostile.ToBytes());
+        Assert.Equal(WinCondition.PLAYER_KILLS, got.WinCondition);
+        Assert.Equal(1, got.KillTarget);
+    }
+
+    [Fact]
+    public void FromJson_ParsesWinConditionByName()
+    {
+        MatchConfig got = MatchConfig.FromJson("""
+            {
+                "teams": true,
+                "winCondition": "team_kills",
+                "killTarget": 30,
+            }
+            """);
+
+        Assert.True(got.Teams);
+        Assert.Equal(WinCondition.TEAM_KILLS, got.WinCondition);
+        Assert.Equal(30, got.KillTarget);
+        Assert.True(got.FriendlyFire); // untouched fields keep defaults
+    }
+
+    [Fact]
     public void FromJson_PartialPreset_OverridesOnlyNamedFields()
     {
         MatchConfig got = MatchConfig.FromJson("""

@@ -107,9 +107,13 @@ public sealed class Predictor
         Vec2 before = _state.Position;
 
         // PrevButtons is not on the wire; the acked input is ours, so restore
-        // it from history to keep jump edge detection correct during replay.
+        // it from history to keep press edge detection correct during replay.
+        // Never leave it at the wire default: with a button held, a lost
+        // anchor reads as a fresh press and the replay fires phantom shells.
         if (_history.TryGet(lastAppliedSeq, out PlayerInput acked))
             serverState.PrevButtons = acked.Buttons;
+        else if (Initialized)
+            serverState.PrevButtons = _state.PrevButtons; // ack outside the window: assume held
 
         // Shells from acked inputs stay: the server has spawned its copies,
         // but the owner keeps watching the local ones so nothing jumps back

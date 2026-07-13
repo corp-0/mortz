@@ -18,8 +18,14 @@ public partial class ServerMain : Node
     private enum Phase
     {
         LOBBY,
-        IN_GAME
+        IN_GAME,
+        /// <summary>Winner declared: the sim keeps running as a victory lap,
+        /// nothing scores, and the countdown sends everyone back to the lobby.</summary>
+        MATCH_END
     }
+
+    /// <summary>Victory lap length between the winning kill and the lobby.</summary>
+    private const float MATCH_END_SECONDS = 6;
 
     /// <summary>Map to load when --map is not passed.</summary>
     [Export] private string _defaultMap = "castlewars";
@@ -28,7 +34,9 @@ public partial class ServerMain : Node
 
     private SimWorld _sim = null!;
     private MapPackage _map = null!;
+    private Scoreboard _scores = null!;
     private Phase _phase = Phase.LOBBY;
+    private int _matchEndTicks;
     private readonly Dictionary<long, bool> _lobbyReady = new();
     private readonly Dictionary<long, string> _names = new();
 
@@ -88,11 +96,12 @@ public partial class ServerMain : Node
             GD.Print($"[server] mortar exploded at ({x},{y})");
             new CarveMsg(x, y, radius, owner, spawnSeq).Broadcast();
         }
-        foreach ((int peerId, Vec2 pos, bool owned) in _sim.Deaths)
+        foreach ((int peerId, Vec2 pos, int killerId, bool owned) in _sim.Deaths)
         {
             GD.Print($"[server] player {peerId} gibbed at ({(int)pos.X},{(int)pos.Y})" +
                      (owned ? " (OWNED)" : ""));
             new DeathMsg(peerId, (int)pos.X, (int)pos.Y, owned).Broadcast();
+            ScoreDeath(peerId, killerId);
         }
         if (_sim.Tick % NetConfig.TICKS_PER_SNAPSHOT == 0 && _sim.Players.Count > 0)
         {
@@ -102,6 +111,19 @@ public partial class ServerMain : Node
         }
         if (_netStats && _sim.Tick % SimConfig.TICK_RATE == 0)
             PrintNetStats();
+        if (_phase == Phase.MATCH_END && --_matchEndTicks == 0)
+            ReturnToLobby();
+    }
+
+    /// <summary>Fresh world on the same map and rules; everyone back to ready-up.</summary>
+    private void ReturnToLobby()
+    {
+        GD.Print($"[server] back to lobby ({_sim.Players.Count} player(s))");
+        foreach (int peerId in _sim.Players.Keys)
+            _lobbyReady[peerId] = false;
+        _sim = new SimWorld(_map.BuildMask(), _sim.Config, Random.Shared.Next());
+        _phase = Phase.LOBBY;
+        BroadcastLobbyState();
     }
 
     // One line per second: wire totals from ENet plus each player's input
@@ -124,7 +146,7 @@ public partial class ServerMain : Node
             playerName = playerName[..NetConfig.MAX_NAME_LENGTH];
         _names[peerId] = playerName;
 
-        if (_phase == Phase.IN_GAME)
+        if (_phase != Phase.LOBBY)
         {
             AddToGame(peerId);
             BroadcastRoster(); // after Welcome, so the joiner's GameView is listening
@@ -146,6 +168,7 @@ public partial class ServerMain : Node
             return;
         }
         _sim.RemovePlayer((int)peerId);
+        _scores.RemovePlayer((int)peerId); // their kills stay on the team total
         GD.Print($"[server] player {peerId} left ({_sim.Players.Count} in game)");
         BroadcastRoster();
     }
@@ -173,6 +196,7 @@ public partial class ServerMain : Node
         if (_phase != Phase.LOBBY || _lobbyReady.Count == 0 || _lobbyReady.ContainsValue(false))
             return;
         _phase = Phase.IN_GAME;
+        _scores = new Scoreboard(_sim.Config);
         GD.Print($"[server] all {_lobbyReady.Count} player(s) ready, starting match");
         foreach (long peerId in _lobbyReady.Keys)
             AddToGame(peerId);
@@ -212,10 +236,59 @@ public partial class ServerMain : Node
 
     private void AddToGame(long peerId)
     {
-        _sim.AddPlayer((int)peerId);
+        byte team = NextTeam();
+        _sim.AddPlayer((int)peerId, team);
+        _scores.AddPlayer((int)peerId, team);
         new WelcomeMsg(_map.MapId, _map.Hash, _sim.Config.ToBytes(), _sim.Terrain.SerializeRemoved()).SendTo(peerId);
-        GD.Print($"[server] player {peerId} joined ({_sim.Players.Count} in game)");
+        GD.Print($"[server] player {peerId} joined ({_sim.Players.Count} in game)" +
+                 (team != 0 ? $" on team {team}" : ""));
     }
+
+    /// <summary>Balanced fill: each joiner (match start iterates joins too)
+    /// lands on the smaller team. Proper lobby assignment with admin control
+    /// replaces this eventually.</summary>
+    private byte NextTeam()
+    {
+        if (!_sim.Config.Teams)
+            return 0;
+        int one = _sim.Players.Values.Count(p => p.TeamId == 1);
+        int two = _sim.Players.Values.Count(p => p.TeamId == 2);
+        return (byte)(one <= two ? 1 : 2);
+    }
+
+    private void ScoreDeath(int victimId, int killerId)
+    {
+        if (_phase != Phase.IN_GAME)
+            return; // victory lap: the board is closed
+        Scoreboard.MatchWinner? winner = _scores.RecordDeath(victimId, killerId);
+        if (!_scores.Rows.TryGetValue(victimId, out Scoreboard.Row victim))
+            return; // victim unknown to the board, nothing scored
+
+        bool suicide = killerId == 0 || killerId == victimId;
+        _scores.Rows.TryGetValue(killerId, out Scoreboard.Row killer);
+        int killerKills = suicide ? victim.Kills : killer.Kills;
+        new ScoreMsg(killerId, victimId, killerKills, victim.Deaths,
+            _scores.TeamKills(1), _scores.TeamKills(2)).Broadcast();
+
+        string teams = _sim.Config.Teams ? $", teams {_scores.TeamKills(1)}-{_scores.TeamKills(2)}" : "";
+        GD.Print(suicide
+            ? $"[server] {Name(victimId)} suicides ({victim.Kills} kills, {victim.Deaths} deaths{teams})"
+            : $"[server] {Name(killerId)} killed {Name(victimId)} ({killerKills} kills{teams})");
+        if (winner is { } w)
+            EndMatch(w);
+    }
+
+    private void EndMatch(Scoreboard.MatchWinner winner)
+    {
+        _phase = Phase.MATCH_END;
+        _matchEndTicks = (int)(MATCH_END_SECONDS * SimConfig.TICK_RATE);
+        string who = winner.ByTeam ? $"team {winner.Id}" : Name(winner.Id);
+        GD.Print($"[server] match over: {who} wins (first to {_sim.Config.KillTarget})");
+        new MatchEndMsg(winner.ByTeam, winner.Id).Broadcast();
+    }
+
+    private new string Name(long peerId) =>
+        _names.TryGetValue(peerId, out string? name) ? name : peerId.ToString();
 
     private void OnInputsReceived(long peerId, byte[] packet)
     {

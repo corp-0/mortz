@@ -78,6 +78,10 @@ public record struct PlayerState
     /// <summary>Sprite frame dealt by the server at join; survives respawns.</summary>
     public byte Skin;
 
+    /// <summary>0 = no team, 1/2 = the teams. Assigned in the lobby, frozen for
+    /// the match like every other rule; the sim reads it for friendly fire.</summary>
+    public byte TeamId;
+
     /// <summary>
     /// Newest input sequence the server applied to this player (-1 before any).
     /// Set by SimWorld, not PlayerSim; this is the ack prediction replays from.

@@ -48,5 +48,8 @@ public sealed class InputHistory
         return _items.GetRange(start, _items.Count - start);
     }
 
-    public void DropThrough(int seq) => _items.RemoveAll(i => i.Seq <= seq);
+    /// <summary>Drops everything older than <paramref name="seq"/>, keeping the
+    /// acked input itself: a later snapshot may repeat the same ack (server
+    /// starvation), and reconciliation needs it as the PrevButtons anchor.</summary>
+    public void DropThrough(int seq) => _items.RemoveAll(i => i.Seq < seq);
 }

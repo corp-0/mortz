@@ -37,6 +37,7 @@ public sealed record Snapshot(int Tick, PlayerState[] Players, MortarState[] Mor
             w.Write(p.Health);
             w.Write(p.RespawnTicks);
             w.Write(p.Skin);
+            w.Write(p.TeamId);
             w.Write(p.ParryTicks);
             w.Write(p.ParryCooldown);
             if (p.Rope != RopeMode.None)
@@ -90,6 +91,7 @@ public sealed record Snapshot(int Tick, PlayerState[] Players, MortarState[] Mor
                 Health = r.ReadByte(),
                 RespawnTicks = r.ReadByte(),
                 Skin = r.ReadByte(),
+                TeamId = r.ReadByte(),
                 ParryTicks = r.ReadByte(),
                 ParryCooldown = r.ReadUInt16(),
             };
