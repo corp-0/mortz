@@ -32,6 +32,10 @@ public partial class ServerMain : Node
     private readonly Dictionary<long, bool> _lobbyReady = new();
     private readonly Dictionary<long, string> _names = new();
 
+    /// <summary>Grants live lobby control via /admin
+    ///  Empty = no admin access. Never logged.</summary>
+    private string _adminPassword = "";
+
     public override void _Ready()
     {
         string mapId = CmdArgs.GetValue("--map") ?? _defaultMap;
@@ -44,11 +48,15 @@ public partial class ServerMain : Node
         }
         _map = map;
         MatchConfig? config = LoadRuleset();
-        if (config == null)
+        ServerConfig? serverConfig = ServerConfig.Load();
+        if (config == null || serverConfig == null)
         {
             GetTree().Quit(1);
             return;
         }
+        _adminPassword = CmdArgs.GetValue("--admin-password") ?? serverConfig.AdminPassword;
+        if (_adminPassword.Length > 0)
+            GD.Print("[server] admin password set");
         _sim = new SimWorld(map.BuildMask(), config, Random.Shared.Next());
 
         NetworkManager net = NetworkManager.Instance;

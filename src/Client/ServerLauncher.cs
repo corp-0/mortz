@@ -16,24 +16,23 @@ public static class ServerLauncher
 
     private static int _pid = -1;
 
-    public static bool Spawn(int port)
+    public static bool Spawn(int port, string adminPassword)
     {
+        string[] gameArgs = ["--server", "--port", port.ToString()];
+        if (adminPassword.Length > 0)
+            gameArgs = [.. gameArgs, "--admin-password", adminPassword];
+
         string exe;
         string[] args;
         if (OS.HasFeature("editor"))
         {
             exe = OS.GetExecutablePath();
-            args =
-            [
-                "--path", ProjectSettings.GlobalizePath("res://"),
-                "--headless",
-                "++", "--server", "--port", port.ToString(),
-            ];
+            args = ["--path", ProjectSettings.GlobalizePath("res://"), "--headless", "++", .. gameArgs];
         }
         else
         {
             exe = OS.GetExecutablePath().GetBaseDir().PathJoin(ServerExeName);
-            args = ["--headless", "++", "--server", "--port", port.ToString()];
+            args = ["--headless", "++", .. gameArgs];
         }
 
         GD.Print($"[client] spawning local server: {exe}");

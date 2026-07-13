@@ -54,9 +54,9 @@ public partial class ClientMain : Node
 
     // ---- menu and lobby intents (connected in ClientMain.tscn) ----
 
-    public void OnHostRequested(int port, string playerName)
+    public void OnHostRequested(int port, string playerName, string adminPassword)
     {
-        if (!ServerLauncher.Spawn(port))
+        if (!ServerLauncher.Spawn(port, adminPassword))
         {
             _menu.SetStatus("Failed to start local server.");
             return;

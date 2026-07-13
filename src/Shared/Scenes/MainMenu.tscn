@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://src/Client/MainMenu.cs" id="1_menu"]
 
-[node name="MainMenu" type="CenterContainer" node_paths=PackedStringArray("_homePanel", "_joinPanel", "_hostPanel", "_joinNameEdit", "_addressEdit", "_hostNameEdit", "_portEdit", "_status")]
+[node name="MainMenu" type="CenterContainer" node_paths=PackedStringArray("_homePanel", "_joinPanel", "_hostPanel", "_joinNameEdit", "_addressEdit", "_hostNameEdit", "_portEdit", "_adminPasswordEdit", "_status")]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -16,6 +16,7 @@ _joinNameEdit = NodePath("Menu/JoinPanel/PlayerNameEdit")
 _addressEdit = NodePath("Menu/JoinPanel/AddressEdit")
 _hostNameEdit = NodePath("Menu/HostPanel/PlayerNameEdit")
 _portEdit = NodePath("Menu/HostPanel/PortEdit")
+_adminPasswordEdit = NodePath("Menu/HostPanel/AdminPasswordEdit")
 _status = NodePath("Menu/Status")
 
 [node name="Menu" type="VBoxContainer" parent="."]
@@ -75,6 +76,11 @@ placeholder_text = "player name"
 [node name="PortEdit" type="LineEdit" parent="Menu/HostPanel"]
 layout_mode = 2
 placeholder_text = "port"
+
+[node name="AdminPasswordEdit" type="LineEdit" parent="Menu/HostPanel"]
+layout_mode = 2
+placeholder_text = "admin password (optional)"
+secret = true
 
 [node name="HostConfirmButton" type="Button" parent="Menu/HostPanel"]
 layout_mode = 2

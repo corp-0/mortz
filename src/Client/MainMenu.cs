@@ -9,7 +9,7 @@ namespace Mortz.Client;
 /// </summary>
 public partial class MainMenu : Control
 {
-    [Signal] public delegate void HostRequestedEventHandler(int port, string playerName);
+    [Signal] public delegate void HostRequestedEventHandler(int port, string playerName, string adminPassword);
     [Signal] public delegate void JoinRequestedEventHandler(string address, int port, string playerName);
 
     [Export] private Control _homePanel = null!;
@@ -19,6 +19,7 @@ public partial class MainMenu : Control
     [Export] private LineEdit _addressEdit = null!;
     [Export] private LineEdit _hostNameEdit = null!;
     [Export] private LineEdit _portEdit = null!;
+    [Export] private LineEdit _adminPasswordEdit = null!;
     [Export] private Label _status = null!;
 
     public override void _Ready() => _portEdit.Text = NetConfig.DEFAULT_PORT.ToString();
@@ -87,6 +88,6 @@ public partial class MainMenu : Control
             SetStatus("Invalid port.");
             return;
         }
-        EmitSignal(SignalName.HostRequested, port, playerName);
+        EmitSignal(SignalName.HostRequested, port, playerName, _adminPasswordEdit.Text);
     }
 }

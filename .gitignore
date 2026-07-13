@@ -1,5 +1,7 @@
 # Godot
 .godot/
+# local server settings (holds the admin password)
+server.json
 *.translation
 export_credentials.cfg
 mono_crash.*.json
