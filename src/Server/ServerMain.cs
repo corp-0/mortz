@@ -88,10 +88,11 @@ public partial class ServerMain : Node
             GD.Print($"[server] mortar exploded at ({x},{y})");
             new CarveMsg(x, y, radius, owner, spawnSeq).Broadcast();
         }
-        foreach ((int peerId, Vec2 pos) in _sim.Deaths)
+        foreach ((int peerId, Vec2 pos, bool owned) in _sim.Deaths)
         {
-            GD.Print($"[server] player {peerId} gibbed at ({(int)pos.X},{(int)pos.Y})");
-            new DeathMsg(peerId, (int)pos.X, (int)pos.Y).Broadcast();
+            GD.Print($"[server] player {peerId} gibbed at ({(int)pos.X},{(int)pos.Y})" +
+                     (owned ? " (OWNED)" : ""));
+            new DeathMsg(peerId, (int)pos.X, (int)pos.Y, owned).Broadcast();
         }
         if (_sim.Tick % NetConfig.TICKS_PER_SNAPSHOT == 0 && _sim.Players.Count > 0)
         {

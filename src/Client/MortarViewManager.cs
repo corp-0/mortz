@@ -24,7 +24,10 @@ public partial class MortarViewManager : Node2D
         _seenRemote.Clear();
         foreach (RenderMortar m in mortars)
         {
-            if (m.OwnerId == localId)
+            // Own shells are already on screen as predicted copies, except a
+            // deflected one: nobody predicted that trajectory, so the
+            // authoritative copy is the only one there is.
+            if (m.OwnerId == localId && !m.Deflected)
                 continue;
             _seenRemote.Add(m.Id);
             Place(_remote, m.Id, new Vector2(m.Position.X, m.Position.Y), m.Velocity);

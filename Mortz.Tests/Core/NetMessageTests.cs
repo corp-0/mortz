@@ -111,13 +111,13 @@ public class NetMessageTests : IDisposable
         DeathMsg.Received += handler;
         try
         {
-            new DeathMsg(123456789012, -5, 7).Broadcast();
+            new DeathMsg(123456789012, -5, 7, true).Broadcast();
         }
         finally
         {
             DeathMsg.Received -= handler;
         }
-        Assert.Equal(new DeathMsg(123456789012, -5, 7), received);
+        Assert.Equal(new DeathMsg(123456789012, -5, 7, true), received);
     }
 
     [Fact]

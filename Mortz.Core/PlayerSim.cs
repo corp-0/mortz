@@ -18,6 +18,10 @@ public static class PlayerSim
 
         if (p.DashCooldown > 0)
             p.DashCooldown--;
+        if (p.ParryCooldown > 0)
+            p.ParryCooldown--;
+        if (p.ParryTicks > 0)
+            p.ParryTicks--;
 
         // Horizontal drive.
         float target = input.MoveDir * stats.MaxRunSpeed;
@@ -68,6 +72,16 @@ public static class PlayerSim
         {
             p.Velocity += input.HeldDir * stats.DashSpeed;
             p.DashCooldown = stats.DashCooldownTicks;
+        }
+
+        // Parry: raise the bubble and charge the cooldown up front. SimWorld
+        // refunds it on a successful deflect (the deflection itself happens
+        // there, shells are world entities); a whiff pays in full.
+        bool parryPressed = input.Parry && (p.PrevButtons & InputButtons.Parry) == 0;
+        if (parryPressed && p.ParryCooldown == 0 && p.ParryTicks == 0)
+        {
+            p.ParryTicks = stats.ParryWindowTicks;
+            p.ParryCooldown = stats.ParryCooldownTicks;
         }
 
         RopeSim.Tick(ref p, input, terrain, stats, DT);

@@ -37,6 +37,8 @@ public sealed record Snapshot(int Tick, PlayerState[] Players, MortarState[] Mor
             w.Write(p.Health);
             w.Write(p.RespawnTicks);
             w.Write(p.Skin);
+            w.Write(p.ParryTicks);
+            w.Write(p.ParryCooldown);
             if (p.Rope != RopeMode.None)
                 WriteVec(w, p.RopePoint);
             if (p.Rope == RopeMode.Flying)
@@ -51,6 +53,7 @@ public sealed record Snapshot(int Tick, PlayerState[] Players, MortarState[] Mor
         {
             w.Write(m.Id);
             w.Write(m.OwnerId);
+            w.Write(m.Deflected);
             WriteVec(w, m.Position);
             WriteVec(w, m.Velocity);
         }
@@ -87,6 +90,8 @@ public sealed record Snapshot(int Tick, PlayerState[] Players, MortarState[] Mor
                 Health = r.ReadByte(),
                 RespawnTicks = r.ReadByte(),
                 Skin = r.ReadByte(),
+                ParryTicks = r.ReadByte(),
+                ParryCooldown = r.ReadUInt16(),
             };
             if (p.Rope != RopeMode.None)
                 p.RopePoint = ReadVec(r);
@@ -104,6 +109,7 @@ public sealed record Snapshot(int Tick, PlayerState[] Players, MortarState[] Mor
             {
                 Id = r.ReadUInt16(),
                 OwnerId = r.ReadInt32(),
+                Deflected = r.ReadBoolean(),
                 Position = ReadVec(r),
                 Velocity = ReadVec(r),
             };

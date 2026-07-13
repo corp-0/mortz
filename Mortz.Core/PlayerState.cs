@@ -53,6 +53,14 @@ public record struct PlayerState
     /// <summary>Slack threshold set at attach; the pull only acts at full stretch.</summary>
     public float RopeLength;
 
+    /// <summary>Ticks left on the active parry bubble; nonzero = deflecting shells.</summary>
+    public byte ParryTicks;
+
+    /// <summary>Ticks until the next parry. Charged in full at the press;
+    /// SimWorld zeroes it when the bubble deflects a shell, so only a whiff
+    /// pays. ushort: 20 s of ticks overflows a byte.</summary>
+    public ushort ParryCooldown;
+
     /// <summary>Aim byte from the last applied input, so remote clients can render the weapon.</summary>
     public byte Aim;
 

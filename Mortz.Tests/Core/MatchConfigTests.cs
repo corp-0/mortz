@@ -62,6 +62,8 @@ public class MatchConfigTests
         Assert.Equal(SimConfig.MORTAR_RELOAD_TICKS, stats.ReloadTicks);
         Assert.Equal(SimConfig.COYOTE_MAX_TICKS, stats.CoyoteMaxTicks);
         Assert.Equal(SimConfig.MAX_HEALTH, stats.MaxHealth);
+        Assert.Equal(SimConfig.PARRY_WINDOW_TICKS, stats.ParryWindowTicks);
+        Assert.Equal(SimConfig.PARRY_COOLDOWN_TICKS, stats.ParryCooldownTicks);
     }
 
     [Fact]
@@ -74,6 +76,8 @@ public class MatchConfigTests
             MortarReloadPerShell = 999,
             RespawnDelay = 999,
             CoyoteMax = 999,
+            ParryWindow = 999,
+            ParryCooldown = 999,
         };
         maxed.Clamp();
         PlayerStats stats = PlayerStats.Resolve(maxed);
@@ -83,5 +87,7 @@ public class MatchConfigTests
         Assert.InRange(stats.ReloadTicks, 1, 255);
         Assert.InRange(stats.CoyoteMaxTicks, 1, 255);
         Assert.InRange(maxed.RespawnDelayTicks, 1, 255);
+        Assert.InRange(stats.ParryWindowTicks, 1, 255);
+        Assert.InRange(stats.ParryCooldownTicks, 1, ushort.MaxValue);
     }
 }

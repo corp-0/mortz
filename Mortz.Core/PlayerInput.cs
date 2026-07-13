@@ -13,6 +13,7 @@ public enum InputButtons : ushort
     Down = 1 << 6,
     Fire = 1 << 7,
     Reload = 1 << 8,
+    Parry = 1 << 9,
 }
 
 /// <summary>
@@ -31,6 +32,7 @@ public readonly record struct PlayerInput(InputButtons Buttons, byte Aim = 0)
     public bool Down => (Buttons & InputButtons.Down) != 0;
     public bool Fire => (Buttons & InputButtons.Fire) != 0;
     public bool Reload => (Buttons & InputButtons.Reload) != 0;
+    public bool Parry => (Buttons & InputButtons.Parry) != 0;
 
     /// <summary>-1, 0 or +1 horizontal drive.</summary>
     public float MoveDir => (Right ? 1f : 0f) - (Left ? 1f : 0f);

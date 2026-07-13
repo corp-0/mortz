@@ -60,6 +60,11 @@ public sealed class MatchConfig
     public int MortarMaxAmmo { get; set; } = SimConfig.MORTAR_MAX_AMMO;
     public float MortarReloadPerShell { get; set; } = SimConfig.MORTAR_RELOAD_PER_SHELL;
 
+    // ---- parry ----
+    public float ParryRadius { get; set; } = SimConfig.PARRY_RADIUS;
+    public float ParryWindow { get; set; } = SimConfig.PARRY_WINDOW;
+    public float ParryCooldown { get; set; } = SimConfig.PARRY_COOLDOWN;
+
     // ---- health / blast ----
     public int MaxHealth { get; set; } = SimConfig.MAX_HEALTH;
     public int MortarDamage { get; set; } = SimConfig.MORTAR_DAMAGE;
@@ -107,6 +112,10 @@ public sealed class MatchConfig
         MortarMaxAmmo = Math.Clamp(MortarMaxAmmo, 1, 30);
         MortarReloadPerShell = C(MortarReloadPerShell, 0.1f, 4);
 
+        ParryRadius = C(ParryRadius, 8, 200);
+        ParryWindow = C(ParryWindow, 0, 4);       // byte ticks in PlayerState
+        ParryCooldown = C(ParryCooldown, 0, 120); // ushort ticks in PlayerState
+
         MaxHealth = Math.Clamp(MaxHealth, 1, 250);
         MortarDamage = Math.Clamp(MortarDamage, 0, 250);
         BlastCoreFraction = C(BlastCoreFraction, 0, 1);
@@ -151,6 +160,9 @@ public sealed class MatchConfig
         w.Write(MortarCarveRadius);
         w.Write(MortarMaxAmmo);
         w.Write(MortarReloadPerShell);
+        w.Write(ParryRadius);
+        w.Write(ParryWindow);
+        w.Write(ParryCooldown);
         w.Write(MaxHealth);
         w.Write(MortarDamage);
         w.Write(BlastCoreFraction);
@@ -195,6 +207,9 @@ public sealed class MatchConfig
             MortarCarveRadius = r.ReadInt32(),
             MortarMaxAmmo = r.ReadInt32(),
             MortarReloadPerShell = r.ReadSingle(),
+            ParryRadius = r.ReadSingle(),
+            ParryWindow = r.ReadSingle(),
+            ParryCooldown = r.ReadSingle(),
             MaxHealth = r.ReadInt32(),
             MortarDamage = r.ReadInt32(),
             BlastCoreFraction = r.ReadSingle(),

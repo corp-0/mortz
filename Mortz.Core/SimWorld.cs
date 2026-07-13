@@ -21,7 +21,7 @@ public sealed class SimWorld
     // Shells in flight, in spawn order.
     private readonly List<MortarState> _mortars = new();
     private readonly List<(int X, int Y, int Radius, int OwnerId, int SpawnSeq)> _explosions = new();
-    private readonly List<(int PeerId, Vec2 Position)> _deaths = new();
+    private readonly List<(int PeerId, Vec2 Position, bool Owned)> _deaths = new();
     private ushort _nextMortarId;
 
     // Only ever drawn from at AddPlayer; a fixed seed keeps tests reproducible,
@@ -37,8 +37,9 @@ public sealed class SimWorld
     public IReadOnlyList<(int X, int Y, int Radius, int OwnerId, int SpawnSeq)> Explosions => _explosions;
 
     /// <summary>Deaths from the last Step (blast or death pit), with the body
-    /// center at the moment of death; the server broadcasts these for gibs.</summary>
-    public IReadOnlyList<(int PeerId, Vec2 Position)> Deaths => _deaths;
+    /// center at the moment of death; the server broadcasts these for gibs.
+    /// Owned = a parried shell killed the very player who fired it.</summary>
+    public IReadOnlyList<(int PeerId, Vec2 Position, bool Owned)> Deaths => _deaths;
 
     public SimWorld(TerrainMask terrain, MatchConfig config, int seed = 0)
     {
@@ -132,7 +133,7 @@ public sealed class SimWorld
                 if (FellOutOfTheMap(state))
                 {
                     // Death pit (a scored death once deathmatch exists).
-                    _deaths.Add((id, BodyCenter(state)));
+                    _deaths.Add((id, BodyCenter(state), false));
                     state = Corpse(state);
                 }
             }
@@ -149,6 +150,8 @@ public sealed class SimWorld
         {
             MortarState m = _mortars[i];
             MortarOutcome outcome = MortarSim.Tick(ref m, Terrain, Config, SimConfig.DT);
+            if (outcome == MortarOutcome.Flying)
+                TryDeflect(ref m);
             if (outcome == MortarOutcome.Flying && DirectHit(m))
                 outcome = MortarOutcome.Exploded;
             if (outcome == MortarOutcome.Flying)
@@ -163,16 +166,47 @@ public sealed class SimWorld
     }
 
     /// <summary>
+    /// An active parry bubble flips an approaching shell straight back along
+    /// its trajectory and refunds the parrier's cooldown. The parrier takes
+    /// ownership (their kill now), FiredBy remembers who shot it for the OWNED
+    /// check, and SpawnSeq goes to -1 so the eventual carve matches nobody's
+    /// predicted one. The shooter's own predicted copy keeps flying straight
+    /// and its carve reverts on the ledger timeout, same artifact as a direct
+    /// hit today. The approach test doubles as the re-deflect guard: once
+    /// flipped, the shell is receding.
+    /// </summary>
+    private void TryDeflect(ref MortarState m)
+    {
+        foreach ((int id, PlayerState p) in _players)
+        {
+            if (p.ParryTicks == 0 || p.RespawnTicks > 0)
+                continue;
+            Vec2 toCenter = BodyCenter(p) - m.Position;
+            float radius = _stats[id].ParryRadius;
+            if (toCenter.LengthSquared() > radius * radius || Vec2.Dot(m.Velocity, toCenter) <= 0)
+                continue;
+            m.Velocity = -m.Velocity;
+            m.OwnerId = id;
+            m.Deflected = true;
+            m.SpawnSeq = -1;
+            _players[id] = p with { ParryCooldown = 0 };
+            return;
+        }
+    }
+
+    /// <summary>
     /// A shell touching someone else's body detonates on them. The shooter is
     /// immune to contact (the muzzle would pop diagonal shots at spawn), but
-    /// not to the blast. Checked once per tick: at 15 px/tick against a 32 px
-    /// body a shell can't pass through anyone between checks.
+    /// not to the blast. A raised parry bubble keeps shells off the body: they
+    /// deflect before they can ever reach it. Checked once per tick: at 15
+    /// px/tick against a 32 px body a shell can't pass through anyone between
+    /// checks.
     /// </summary>
     private bool DirectHit(in MortarState m)
     {
         foreach ((int id, PlayerState p) in _players)
         {
-            if (id == m.OwnerId || p.RespawnTicks > 0)
+            if (id == m.OwnerId || p.RespawnTicks > 0 || p.ParryTicks > 0)
                 continue;
             if (m.Position.X >= p.Position.X - SimConfig.PLAYER_HALF_WIDTH &&
                 m.Position.X < p.Position.X + SimConfig.PLAYER_HALF_WIDTH &&
@@ -203,7 +237,8 @@ public sealed class SimWorld
                 continue;
             if (damage >= p.Health)
             {
-                _deaths.Add((id, BodyCenter(p)));
+                // OWNED: the parried shell came back for its own shooter.
+                _deaths.Add((id, BodyCenter(p), m.Deflected && id == m.FiredBy));
                 _players[id] = Corpse(p);
                 continue;
             }

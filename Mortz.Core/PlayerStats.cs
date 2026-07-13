@@ -41,6 +41,10 @@ public sealed class PlayerStats
     public readonly byte ReloadTicks;
     public readonly byte MaxHealth;
 
+    public readonly float ParryRadius;
+    public readonly byte ParryWindowTicks;
+    public readonly ushort ParryCooldownTicks;
+
     /// <summary>Perk multipliers slot in here once perks exist: base times
     /// each perk's factor, re-clamped, then the tick/byte casts below.</summary>
     public static PlayerStats Resolve(MatchConfig cfg) => new(cfg);
@@ -77,6 +81,10 @@ public sealed class PlayerStats
         MaxAmmo = (byte)cfg.MortarMaxAmmo;
         ReloadTicks = (byte)Ticks(cfg.MortarReloadPerShell);
         MaxHealth = (byte)cfg.MaxHealth;
+
+        ParryRadius = cfg.ParryRadius;
+        ParryWindowTicks = (byte)Ticks(cfg.ParryWindow);
+        ParryCooldownTicks = (ushort)Ticks(cfg.ParryCooldown);
     }
 
     private static int Ticks(float seconds) => (int)(seconds * SimConfig.TICK_RATE);

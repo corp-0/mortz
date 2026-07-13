@@ -46,14 +46,14 @@ public partial class PlayerViewManager : Node2D
 
     public override void _UnhandledInput(InputEvent @event)
     {
-        if (@event is InputEventKey { PhysicalKeycode: Key.F3, Pressed: true, Echo: false })
+        if (@event.IsActionPressed("toggle_sim_boxes"))
             PlayerView.DrawSimBoxes = !PlayerView.DrawSimBoxes;
     }
 
     public void BeginFrame() => _placed.Clear();
 
     public void Place(int peerId, Vector2 feet, byte aim, byte skin, byte ammo, byte reloadTicks,
-        byte health, byte respawnTicks)
+        byte health, byte respawnTicks, byte parryTicks)
     {
         _placed.Add(peerId);
         bool isLocal = peerId == Multiplayer.GetUniqueId();
@@ -68,7 +68,7 @@ public partial class PlayerViewManager : Node2D
             AddChild(view);
             _views[peerId] = view;
         }
-        view.Apply(feet, aim, skin, ammo, reloadTicks, health, respawnTicks);
+        view.Apply(feet, aim, skin, ammo, reloadTicks, health, respawnTicks, parryTicks);
     }
 
     /// <summary>Despawn every view not placed since BeginFrame.</summary>

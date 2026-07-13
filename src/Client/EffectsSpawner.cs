@@ -32,6 +32,11 @@ public partial class EffectsSpawner : Node2D
     private void OnGroundRemoved(Vector2 center, List<(Vector2 Position, Color Color)> debris) =>
         AddChild(CarveBurst.Create(center, debris));
 
-    private void OnDeath(DeathMsg msg) =>
+    private void OnDeath(DeathMsg msg)
+    {
+        // The OWNED sfx hooks in here once audio exists.
+        if (msg.Owned)
+            GD.Print("[client] OWNED!");
         AddChild(GibBurst.Create(new Vector2(msg.X, msg.Y), _gameMap.Mask, _gameMap.Blood.Paint));
+    }
 }

@@ -23,7 +23,10 @@ public partial class PlayerView : Node2D
     [Export] private ProgressBar _reloadBar = null!;
     [Export] private Label _nameplate = null!;
 
+    private static readonly Color _shieldColor = new(0.4f, 0.9f, 1f, 0.8f);
+
     private bool _boxVisible;
+    private bool _shieldVisible;
     private int _lastHealth = -1;
     private float _hitFlash;
     private PlayerStats _stats = null!;
@@ -42,8 +45,13 @@ public partial class PlayerView : Node2D
     public void SetPlayerName(string name) => _nameplate.Text = name;
 
     public void Apply(Vector2 feet, byte aim, byte skin, byte ammo, byte reloadTicks, byte health,
-        byte respawnTicks)
+        byte respawnTicks, byte parryTicks)
     {
+        if ((parryTicks > 0) != _shieldVisible)
+        {
+            _shieldVisible = parryTicks > 0;
+            QueueRedraw();
+        }
         // Dead = gibbed: no body to show. Position keeps tracking so the local
         // player's camera lingers on the death spot until the respawn.
         Visible = respawnTicks == 0;
@@ -109,6 +117,9 @@ public partial class PlayerView : Node2D
 
     public override void _Draw()
     {
+        // Placeholder parry bubble until real shield art exists.
+        if (_shieldVisible)
+            DrawArc(Vector2.Zero, _stats.ParryRadius, 0, MathF.Tau, 48, _shieldColor, 2f, antialiased: true);
         _boxVisible = DrawSimBoxes;
         if (!DrawSimBoxes)
             return;

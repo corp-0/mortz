@@ -47,6 +47,7 @@ public static class WeaponSim
         {
             Id = id,
             OwnerId = shooter.PeerId,
+            FiredBy = shooter.PeerId,
             SpawnSeq = spawnSeq,
             Position = center + input.AimDir * SimConfig.MORTAR_MUZZLE_OFFSET,
             Velocity = input.AimDir * cfg.MortarSpeed + shooter.Velocity * cfg.MortarInherit,

@@ -80,6 +80,14 @@ public static class SimConfig
     public const int MORTAR_MAX_AMMO = 5;
     public const float MORTAR_RELOAD_PER_SHELL = 1.0f; // s
 
+    // ---- parry ----
+    // F raises a bubble that flips any incoming shell straight back along its
+    // path. The cooldown is charged in full at the press; a successful deflect
+    // refunds it, so good parries chain, only a whiff pays.
+    public const float PARRY_RADIUS = 40;     // px    around the body center
+    public const float PARRY_WINDOW = 0.5f;   // s     bubble uptime per press
+    public const float PARRY_COOLDOWN = 20f;  // s     the price of a whiff
+
     // ---- health / blast ----
     // The blast circle is MORTAR_CARVE_RADIUS. Inside the core fraction a hit
     // is a guaranteed kill; from there damage falls off linearly to the rim.
@@ -103,4 +111,6 @@ public static class SimConfig
     public const int ROPE_MISS_COOLDOWN_TICKS = (int)(ROPE_MISS_COOLDOWN * TICK_RATE);
     public const int MORTAR_RELOAD_TICKS = (int)(MORTAR_RELOAD_PER_SHELL * TICK_RATE);
     public const int RESPAWN_DELAY_TICKS = (int)(RESPAWN_DELAY * TICK_RATE);
+    public const int PARRY_WINDOW_TICKS = (int)(PARRY_WINDOW * TICK_RATE);
+    public const int PARRY_COOLDOWN_TICKS = (int)(PARRY_COOLDOWN * TICK_RATE);
 }
