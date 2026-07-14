@@ -127,7 +127,5 @@ public sealed class TerrainMask
         }
     }
 
-    public bool Contains(int x, int y) => InBounds(x, y);
-
     private bool InBounds(int x, int y) => x >= 0 && x < Width && y >= 0 && y < Height;
 }

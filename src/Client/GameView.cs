@@ -73,7 +73,7 @@ public partial class GameView : Node2D
                 continue;
             _players.Place(player.PeerId, new Vector2(player.Position.X, player.Position.Y),
                 player.Aim, player.Skin, player.Ammo, player.ReloadTicks, player.Health, player.RespawnTicks,
-                player.ParryTicks);
+                player.ParryTicks, player.DashCooldown);
             if (player.Rope != RopeMode.None)
                 _ropes.Segments.Add((BodyCenter(player.Position),
                     new Vector2(player.RopePoint.X, player.RopePoint.Y)));
@@ -84,7 +84,7 @@ public partial class GameView : Node2D
             PlayerState local = _localPlayer.State;
             Vector2 feet = new Vector2(local.Position.X, local.Position.Y) + _localPlayer.CorrectionOffset;
             _players.Place(localId, feet, _localPlayer.Aim, local.Skin, local.Ammo, local.ReloadTicks,
-                local.Health, local.RespawnTicks, local.ParryTicks);
+                local.Health, local.RespawnTicks, local.ParryTicks, local.DashCooldown);
             _hud.UpdateFrom(local);
             if (local.Rope != RopeMode.None)
                 _ropes.Segments.Add((BodyCenter(local.Position) + _localPlayer.CorrectionOffset,

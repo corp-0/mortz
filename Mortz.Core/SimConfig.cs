@@ -98,6 +98,8 @@ public static class SimConfig
     public const int BLAST_EDGE_DAMAGE = 35;        //        at the rim
     /// <summary>How long a gibbed body stays dead (and hidden) before respawning.</summary>
     public const float RESPAWN_DELAY = 2.0f;        // s
+    /// <summary>How far below the map bottom a faller survives before the pit claims them.</summary>
+    public const float DEATH_PIT_DEPTH = 300;       // px
 
     // ---- mode ----
     /// <summary>Default first-to-X for the kills win conditions.</summary>

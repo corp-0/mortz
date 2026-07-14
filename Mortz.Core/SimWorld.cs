@@ -277,10 +277,11 @@ public sealed class SimWorld
     private static Vec2 BodyCenter(in PlayerState p) =>
         p.Position with { Y = p.Position.Y - SimConfig.PLAYER_HALF_HEIGHT };
 
-    /// <summary>Body entirely below the bottom edge. Side/top exits aren't lethal
-    /// on their own; gravity brings them down here anyway.</summary>
+    /// <summary>Body entirely below the bottom edge plus a grace depth, so the
+    /// fall reads as a fall. Side/top exits aren't lethal on their own; gravity
+    /// brings them down here anyway.</summary>
     private bool FellOutOfTheMap(in PlayerState p) =>
-        p.Position.Y - SimConfig.PLAYER_HALF_HEIGHT * 2 > Terrain.Height;
+        p.Position.Y - SimConfig.PLAYER_HALF_HEIGHT * 2 > Terrain.Height + SimConfig.DEATH_PIT_DEPTH;
 
     public Snapshot TakeSnapshot() => new(Tick, _players.Values.ToArray(), _mortars.ToArray());
 }

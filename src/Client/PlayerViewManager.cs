@@ -53,7 +53,7 @@ public partial class PlayerViewManager : Node2D
     public void BeginFrame() => _placed.Clear();
 
     public void Place(int peerId, Vector2 feet, byte aim, byte skin, byte ammo, byte reloadTicks,
-        byte health, byte respawnTicks, byte parryTicks)
+        byte health, byte respawnTicks, byte parryTicks, byte dashCooldown)
     {
         _placed.Add(peerId);
         bool isLocal = peerId == Multiplayer.GetUniqueId();
@@ -68,7 +68,7 @@ public partial class PlayerViewManager : Node2D
             AddChild(view);
             _views[peerId] = view;
         }
-        view.Apply(feet, aim, skin, ammo, reloadTicks, health, respawnTicks, parryTicks);
+        view.Apply(feet, aim, skin, ammo, reloadTicks, health, respawnTicks, parryTicks, dashCooldown);
     }
 
     /// <summary>Despawn every view not placed since BeginFrame.</summary>

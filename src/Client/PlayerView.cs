@@ -15,6 +15,9 @@ public partial class PlayerView : Node2D
     public static bool DrawSimBoxes;
 
     private const float HIT_FLASH_TIME = 0.2f; // s
+    // local dashCooldown is predicted, so reconciliation can nudge it up a few
+    // ticks with no dash; a real dash raises it by the full cooldown.
+    private const int DASH_CORRECTION_SLACK = 5; // ticks
 
     [Export] private Sprite2D _body = null!;
     [Export] private Node2D _aimPivot = null!;
@@ -22,12 +25,15 @@ public partial class PlayerView : Node2D
     [Export] private Camera2D _camera = null!;
     [Export] private ProgressBar _reloadBar = null!;
     [Export] private Label _nameplate = null!;
+    [Export] private CpuParticles2D _dashDust = null!;
 
     private static readonly Color _shieldColor = new(0.4f, 0.9f, 1f, 0.8f);
 
     private bool _boxVisible;
     private bool _shieldVisible;
+    private bool _isLocal;
     private int _lastHealth = -1;
+    private int _lastDashCooldown = -1;
     private float _hitFlash;
     private PlayerStats _stats = null!;
 
@@ -38,6 +44,7 @@ public partial class PlayerView : Node2D
     /// remote players wear a nameplate; you know who you are.</summary>
     public void SetIsLocal(bool isLocal)
     {
+        _isLocal = isLocal;
         _camera.Enabled = isLocal;
         _nameplate.Visible = !isLocal;
     }
@@ -45,7 +52,7 @@ public partial class PlayerView : Node2D
     public void SetPlayerName(string name) => _nameplate.Text = name;
 
     public void Apply(Vector2 feet, byte aim, byte skin, byte ammo, byte reloadTicks, byte health,
-        byte respawnTicks, byte parryTicks)
+        byte respawnTicks, byte parryTicks, byte dashCooldown)
     {
         if ((parryTicks > 0) != _shieldVisible)
         {
@@ -58,6 +65,17 @@ public partial class PlayerView : Node2D
         UpdateReloadBar(ammo, reloadTicks);
         UpdateHealth(health);
         Position = new Vector2(feet.X, feet.Y - SimConfig.PLAYER_HALF_HEIGHT);
+
+        // DashCooldown only ever jumps up the tick a dash fires, then decays.
+        // A rising edge is that launch; ignore the first frame so a player
+        // already mid-cooldown when they come into view doesn't puff. The local
+        // player is predicted, so reconciliation can re-raise the value by a few
+        // ticks with no dash; require the rise to clear the slack for them only.
+        int dashRise = dashCooldown - _lastDashCooldown;
+        int minRise = _isLocal ? DASH_CORRECTION_SLACK : 1;
+        if (_lastDashCooldown >= 0 && dashRise >= minRise)
+            _dashDust.Restart();
+        _lastDashCooldown = dashCooldown;
         _body.Frame = skin % SimConfig.SKIN_COUNT;
 
         Vec2 aimDir = PlayerInput.AimToDir(aim);

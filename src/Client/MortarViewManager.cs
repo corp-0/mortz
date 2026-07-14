@@ -53,8 +53,14 @@ public partial class MortarViewManager : Node2D
         if (!pool.TryGetValue(key, out MortarView? view))
         {
             view = _mortarScene.Instantiate<MortarView>();
+            // Position before AddChild: the trail emits in world space
+            // (local_coords off), so a shell entering the tree at origin would
+            // streak from (0,0) on its first frame.
+            view.Position = position;
+            view.Rotation = MathF.Atan2(velocity.Y, velocity.X);
             AddChild(view);
             pool[key] = view;
+            return;
         }
         view.Position = position;
         view.Rotation = MathF.Atan2(velocity.Y, velocity.X);

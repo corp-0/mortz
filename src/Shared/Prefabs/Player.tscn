@@ -4,7 +4,14 @@
 [ext_resource type="Texture2D" uid="uid://dwe3tj73fx26j" path="res://Assets/BaseCannon.png" id="2_2h1fo"]
 [ext_resource type="Script" uid="uid://b7lehci78rb18" path="res://src/Client/PlayerView.cs" id="3_pview"]
 
-[node name="Player" type="Node2D" unique_id=1524314240 node_paths=PackedStringArray("_body", "_aimPivot", "_launcher", "_camera", "_reloadBar", "_nameplate")]
+[sub_resource type="Curve" id="Curve_dash"]
+_data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
+point_count = 2
+
+[sub_resource type="Gradient" id="Gradient_dash"]
+colors = PackedColorArray(0.82, 0.78, 0.7, 0.85, 0.6, 0.57, 0.5, 0)
+
+[node name="Player" type="Node2D" unique_id=1524314240 node_paths=PackedStringArray("_body", "_aimPivot", "_launcher", "_camera", "_reloadBar", "_nameplate", "_dashDust")]
 script = ExtResource("3_pview")
 _body = NodePath("PlayerSprite")
 _aimPivot = NodePath("AimPivot")
@@ -12,6 +19,7 @@ _launcher = NodePath("AimPivot/Launcher")
 _camera = NodePath("Camera2D")
 _reloadBar = NodePath("ReloadingTime")
 _nameplate = NodePath("Nameplate")
+_dashDust = NodePath("DashDust")
 
 [node name="PlayerSprite" type="Sprite2D" parent="." unique_id=1209316856]
 texture = ExtResource("1_el0ul")
@@ -39,6 +47,23 @@ offset_right = 11.0
 offset_bottom = 11.0
 max_value = 5.0
 show_percentage = false
+
+[node name="DashDust" type="CPUParticles2D" parent="." unique_id=771294055]
+emitting = false
+amount = 16
+lifetime = 0.35
+one_shot = true
+explosiveness = 1.0
+spread = 180.0
+gravity = Vector2(0, 300)
+initial_velocity_min = 60.0
+initial_velocity_max = 140.0
+damping_min = 80.0
+damping_max = 120.0
+scale_amount_min = 2.5
+scale_amount_max = 4.0
+scale_amount_curve = SubResource("Curve_dash")
+color_ramp = SubResource("Gradient_dash")
 
 [node name="Nameplate" type="Label" parent="." unique_id=252378163]
 anchors_preset = 10

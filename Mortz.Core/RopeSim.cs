@@ -68,12 +68,10 @@ public static class RopeSim
 
         for (float moved = 0; moved < distance; moved += SUB_STEP)
         {
+            // OOB reads as empty, not as a miss: a hook thrown from past the
+            // edge (death pit grace) can fly back in and attach. Range is the
+            // only limit out there.
             p.RopePoint += dir * MathF.Min(SUB_STEP, distance - moved);
-            if (!terrain.Contains((int)p.RopePoint.X, (int)p.RopePoint.Y))
-            {
-                Miss(ref p, stats); // left the map, nothing to grab out there
-                return;
-            }
             if (terrain.IsSolid((int)p.RopePoint.X, (int)p.RopePoint.Y))
             {
                 Attach(ref p);
