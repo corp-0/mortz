@@ -40,6 +40,7 @@ public partial class ServerMain : Node
     private Scoreboard.MatchWinner _winner;
     private readonly Dictionary<long, bool> _lobbyReady = new();
     private readonly Dictionary<long, string> _names = new();
+    private bool _debugCarveEnabled;
 
     /// <summary>Grants live lobby control via /admin
     ///  Empty = no admin access. Never logged.</summary>
@@ -73,7 +74,12 @@ public partial class ServerMain : Node
         net.PeerLeft += OnPeerLeft;
         net.InputsReceived += OnInputsReceived;
         SetReadyMsg.Received += OnSetReady;
-        DebugCarveMsg.Received += OnDebugCarve;
+        _debugCarveEnabled = CmdArgs.HasFlag("--enable-debug-carve");
+        if (_debugCarveEnabled)
+        {
+            DebugCarveMsg.Received += OnDebugCarve;
+            GD.Print("[server] debug carve enabled");
+        }
 
         int port = CmdArgs.GetInt("--port", NetConfig.DEFAULT_PORT);
         Error err = net.StartServer(port);
@@ -141,11 +147,9 @@ public partial class ServerMain : Node
 
     private void OnPeerJoined(long peerId, string playerName)
     {
-        playerName = playerName.Trim();
+        playerName = PlayerNameSanitizer.Sanitize(playerName);
         if (playerName.Length == 0)
             playerName = $"Player {peerId}";
-        else if (playerName.Length > NetConfig.MAX_NAME_LENGTH)
-            playerName = playerName[..NetConfig.MAX_NAME_LENGTH];
         _names[peerId] = playerName;
 
         if (_phase != Phase.LOBBY)
@@ -300,12 +304,16 @@ public partial class ServerMain : Node
 
     private void OnInputsReceived(long peerId, byte[] packet)
     {
-        foreach ((int seq, PlayerInput input) in InputPacket.Decode(packet))
+        if (!InputPacket.TryDecode(packet, out List<(int Seq, PlayerInput Input)> inputs))
+            return;
+        foreach ((int seq, PlayerInput input) in inputs)
             _sim.EnqueueInput((int)peerId, seq, input);
     }
 
     private void OnDebugCarve(long sender, DebugCarveMsg msg)
     {
+        if (msg.X < 0 || msg.X >= _map.Width || msg.Y < 0 || msg.Y >= _map.Height)
+            return;
         List<(int X, int Y)> removed = _sim.Terrain.CarveCircle(msg.X, msg.Y, SimConfig.DEBUG_CARVE_RADIUS);
         GD.Print($"[server] carve at ({msg.X},{msg.Y}) by {sender}: {removed.Count} px");
         if (removed.Count > 0)

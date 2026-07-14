@@ -29,8 +29,11 @@ public partial class NetworkManager : Node
     /// <summary>ack = newest input sequence the server applied for THIS client.</summary>
     [Signal] public delegate void SnapshotReceivedEventHandler(byte[] data, int ack);
 
-    // Peers that sent a valid Hello; only these take part in the game.
-    private readonly HashSet<long> _validatedPeers = new();
+    private readonly PeerAdmissionState _admission = new();
+    // Normal traffic is ~30 input datagrams/s and only occasional messages.
+    // These bursts tolerate jitter while bounding work from any one peer.
+    private readonly PeerRateLimiter _inputLimiter = new(capacity: 120, tokensPerSecond: 60);
+    private readonly PeerRateLimiter _messageLimiter = new(capacity: 64, tokensPerSecond: 32);
 
     // Artificial latency for netcode testing (client side, `--fake-lag <ms>`):
     // outgoing and incoming packets are each held for half the lag. Covers the
@@ -83,19 +86,25 @@ public partial class NetworkManager : Node
     {
         Multiplayer.MultiplayerPeer?.Close();
         Multiplayer.MultiplayerPeer = null;
-        _validatedPeers.Clear();
+        _admission.Reset();
+        _inputLimiter.Reset();
+        _messageLimiter.Reset();
     }
 
     private void OnPeerConnected(long id)
     {
         // Server waits for Hello before considering the peer part of the game.
+        if (IsServer)
+            _admission.Connected(id, Time.GetTicksMsec());
         GD.Print($"[net] peer {id} connected");
     }
 
     private void OnPeerDisconnected(long id)
     {
         GD.Print($"[net] peer {id} disconnected");
-        if (_validatedPeers.Remove(id))
+        _inputLimiter.Remove(id);
+        _messageLimiter.Remove(id);
+        if (_admission.Remove(id))
             EmitSignal(SignalName.PeerLeft, id);
     }
 
@@ -116,14 +125,24 @@ public partial class NetworkManager : Node
             Multiplayer.MultiplayerPeer.DisconnectPeer((int)sender);
             return;
         }
-        _validatedPeers.Add(sender);
-        EmitSignal(SignalName.PeerJoined, sender, playerName);
+        if (!_admission.TryValidate(sender))
+        {
+            GD.Print($"[net] peer {sender} rejected: duplicate or unsolicited Hello");
+            Multiplayer.MultiplayerPeer.DisconnectPeer((int)sender);
+            return;
+        }
+        EmitSignal(SignalName.PeerJoined, sender, PlayerNameSanitizer.Sanitize(playerName));
     }
 
     // ---- message envelope (everything generated rides here) ----
 
     private void SendEnvelope(ushort msgId, byte[] payload, long target, NetChannel channel)
     {
+        if (payload.Length > NetConfig.MAX_ENVELOPE_BYTES)
+        {
+            GD.PrintErr($"[net] refused oversized outgoing message id {msgId} ({payload.Length} bytes)");
+            return;
+        }
         if (_fakeLagMs > 0)
         {
             _delayedOutMsgs.Enqueue((Time.GetTicksMsec() + (ulong)(_fakeLagMs / 2), msgId, payload, target, channel));
@@ -137,7 +156,7 @@ public partial class NetworkManager : Node
         StringName endpoint = channel == NetChannel.RELIABLE ? MethodName.MsgReliable : MethodName.MsgUnreliable;
         if (target == NetTransport.BROADCAST)
         {
-            foreach (long peer in _validatedPeers)
+            foreach (long peer in _admission.ValidatedPeers)
                 RpcId(peer, endpoint, msgId, payload);
         }
         else
@@ -155,8 +174,14 @@ public partial class NetworkManager : Node
     private void ReceiveEnvelope(int msgId, byte[] payload)
     {
         long sender = Multiplayer.GetRemoteSenderId();
-        if (IsServer && !_validatedPeers.Contains(sender))
+        if (payload.Length > NetConfig.MAX_ENVELOPE_BYTES || msgId is < 0 or > ushort.MaxValue)
             return;
+        if (IsServer)
+        {
+            if (!_admission.IsValidated(sender) ||
+                !_messageLimiter.Allow(sender, Time.GetTicksMsec(), NetAbusePolicy.EnvelopeCost(payload.Length)))
+                return;
+        }
         if (_fakeLagMs > 0)
         {
             _delayedInMsgs.Enqueue((Time.GetTicksMsec() + (ulong)(_fakeLagMs / 2), msgId, sender, payload));
@@ -186,7 +211,10 @@ public partial class NetworkManager : Node
     {
         if (!IsServer) return;
         long sender = Multiplayer.GetRemoteSenderId();
-        if (_validatedPeers.Contains(sender))
+        if (!_admission.IsValidated(sender) ||
+            !_inputLimiter.Allow(sender, Time.GetTicksMsec()))
+            return;
+        if (InputPacket.TryDecode(packet, out _))
             EmitSignal(SignalName.InputsReceived, sender, packet);
     }
 
@@ -195,7 +223,7 @@ public partial class NetworkManager : Node
     /// <summary>Same snapshot bytes to every validated peer, each with its own input ack.</summary>
     public void BroadcastSnapshot(byte[] data, Func<long, int> ackFor)
     {
-        foreach (long peer in _validatedPeers)
+        foreach (long peer in _admission.ValidatedPeers)
             RpcId(peer, MethodName.ReceiveSnapshot, data, ackFor(peer));
     }
 
@@ -225,9 +253,17 @@ public partial class NetworkManager : Node
 
     public override void _Process(double delta)
     {
+        ulong now = Time.GetTicksMsec();
+        if (IsServer)
+        {
+            foreach (long peerId in _admission.Expire(now))
+            {
+                GD.Print($"[net] peer {peerId} rejected: Hello timeout");
+                Multiplayer.MultiplayerPeer.DisconnectPeer((int)peerId);
+            }
+        }
         if (_fakeLagMs <= 0)
             return;
-        ulong now = Time.GetTicksMsec();
         while (_delayedInputs.Count > 0 && _delayedInputs.Peek().Due <= now)
             RpcId(1, MethodName.SubmitInputs, _delayedInputs.Dequeue().Packet);
         while (_delayedSnapshots.Count > 0 && _delayedSnapshots.Peek().Due <= now)

@@ -10,9 +10,12 @@ public static class CmdArgs
 {
     private static string[] Args => OS.GetCmdlineUserArgs();
 
-    public static bool HasFlag(string flag)
+    public static bool HasFlag(string flag) => HasFlag(Args, flag);
+
+    /// <summary>Overload taking an explicit arg list, for tests.</summary>
+    public static bool HasFlag(IEnumerable<string> args, string flag)
     {
-        foreach (string a in Args)
+        foreach (string a in args)
             if (a == flag)
                 return true;
         return false;

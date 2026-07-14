@@ -200,7 +200,7 @@ public sealed class NetMessageGenerator : IIncrementalGenerator
         "int" => "r.ReadInt32()",
         "long" => "r.ReadInt64()",
         "float" => "r.ReadSingle()",
-        "string" => "r.ReadString()",
+        "string" => "global::Mortz.Core.Net.NetIo.ReadString(r)",
         "byte[]" => "r.ReadByteArray()",
         "int[]" => "r.ReadInt32Array()",
         "long[]" => "r.ReadInt64Array()",
@@ -226,24 +226,41 @@ public sealed class NetMessageGenerator : IIncrementalGenerator
         for (int id = 0; id < models.Length; id++)
             sb.AppendLine($"    public const ushort ID_{models[id].Name} = {id};");
         sb.AppendLine();
-        sb.AppendLine("    /// <summary>False = unknown id or wrong direction for this side; the caller drops it.</summary>");
+        sb.AppendLine("    /// <summary>False = malformed, unknown id, or wrong direction for this side.</summary>");
         sb.AppendLine("    public static bool Dispatch(ushort msgId, long sender, byte[] payload, bool isServer)");
         sb.AppendLine("    {");
-        sb.AppendLine("        using global::System.IO.MemoryStream ms = new global::System.IO.MemoryStream(payload);");
-        sb.AppendLine("        using global::System.IO.BinaryReader r = new global::System.IO.BinaryReader(ms);");
-        sb.AppendLine("        switch (msgId)");
+        sb.AppendLine("        if (payload.Length > global::Mortz.Core.NetConfig.MAX_ENVELOPE_BYTES)");
+        sb.AppendLine("            return false;");
+        sb.AppendLine("        try");
         sb.AppendLine("        {");
+        sb.AppendLine("            using global::System.IO.MemoryStream ms = new global::System.IO.MemoryStream(payload, writable: false);");
+        sb.AppendLine("            using global::System.IO.BinaryReader r = new global::System.IO.BinaryReader(ms);");
+        sb.AppendLine("            switch (msgId)");
+        sb.AppendLine("            {");
         foreach (MessageModel m in models)
         {
             string fqn = $"global::{m.Namespace}.{m.Name}";
             string wrongSide = m.Direction == 0 ? "isServer" : "!isServer";
-            sb.AppendLine($"            case ID_{m.Name}:");
-            sb.AppendLine($"                if ({wrongSide}) return false;");
-            sb.AppendLine($"                {fqn}.Raise(sender, {fqn}.Deserialize(r));");
-            sb.AppendLine("                return true;");
+            sb.AppendLine($"                case ID_{m.Name}:");
+            sb.AppendLine("                {");
+            sb.AppendLine($"                    if ({wrongSide}) return false;");
+            sb.AppendLine($"                    {fqn} message = {fqn}.Deserialize(r);");
+            sb.AppendLine("                    if (ms.Position != ms.Length) return false;");
+            sb.AppendLine($"                    {fqn}.Raise(sender, message);");
+            sb.AppendLine("                    return true;");
+            sb.AppendLine("                }");
         }
-        sb.AppendLine("            default:");
-        sb.AppendLine("                return false;");
+        sb.AppendLine("                default:");
+        sb.AppendLine("                    return false;");
+        sb.AppendLine("            }");
+        sb.AppendLine("        }");
+        sb.AppendLine("        catch (global::System.IO.IOException)");
+        sb.AppendLine("        {");
+        sb.AppendLine("            return false;");
+        sb.AppendLine("        }");
+        sb.AppendLine("        catch (global::System.IO.InvalidDataException)");
+        sb.AppendLine("        {");
+        sb.AppendLine("            return false;");
         sb.AppendLine("        }");
         sb.AppendLine("    }");
         sb.AppendLine("}");

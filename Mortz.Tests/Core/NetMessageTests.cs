@@ -1,3 +1,4 @@
+using Mortz.Core;
 using Mortz.Core.Net;
 using Mortz.Core.Net.Messages;
 using Xunit;
@@ -210,5 +211,104 @@ public class NetMessageTests : IDisposable
     public void Dispatch_DropsUnknownId()
     {
         Assert.False(NetRegistry.Dispatch(ushort.MaxValue, SENDER, [], isServer: false));
+    }
+
+    [Fact]
+    public void Dispatch_RejectsEveryClientMessageTruncationAndTrailingBytes()
+    {
+        (ushort Id, byte[] Payload)[] messages = [
+            Capture(NetRegistry.ID_SetReadyMsg, () => new SetReadyMsg(true).SendToServer()),
+            Capture(NetRegistry.ID_DebugCarveMsg, () => new DebugCarveMsg(10, 20).SendToServer()),
+        ];
+
+        int raised = 0;
+        Action<long, SetReadyMsg> ready = (_, _) => raised++;
+        Action<long, DebugCarveMsg> carve = (_, _) => raised++;
+        SetReadyMsg.Received += ready;
+        DebugCarveMsg.Received += carve;
+        try
+        {
+            foreach ((ushort id, byte[] payload) in messages)
+            {
+                for (int length = 0; length < payload.Length; length++)
+                    Assert.False(NetRegistry.Dispatch(id, SENDER, payload[..length], isServer: true));
+                Assert.False(NetRegistry.Dispatch(id, SENDER, [.. payload, 0xA5], isServer: true));
+            }
+        }
+        finally
+        {
+            SetReadyMsg.Received -= ready;
+            DebugCarveMsg.Received -= carve;
+        }
+        Assert.Equal(0, raised);
+    }
+
+    [Fact]
+    public void Dispatch_RejectsNegativeHugeAndTruncatedArrayLengths()
+    {
+        Assert.False(NetRegistry.Dispatch(NetRegistry.ID_RosterMsg, SENDER,
+            Bytes(w => w.Write(-1)), isServer: false));
+        Assert.False(NetRegistry.Dispatch(NetRegistry.ID_RosterMsg, SENDER,
+            Bytes(w => w.Write(NetConfig.MAX_ARRAY_ELEMENTS + 1)), isServer: false));
+        Assert.False(NetRegistry.Dispatch(NetRegistry.ID_RosterMsg, SENDER,
+            Bytes(w => { w.Write(2); w.Write(123L); }), isServer: false));
+
+        // Welcome's first array follows two strings. Its byte-array limit is
+        // deliberately larger than collection element limits for terrain masks.
+        Assert.False(NetRegistry.Dispatch(NetRegistry.ID_WelcomeMsg, SENDER,
+            Bytes(w =>
+            {
+                w.Write("");
+                w.Write("");
+                w.Write(NetConfig.MAX_BYTE_ARRAY_BYTES + 1);
+            }), isServer: false));
+    }
+
+    [Fact]
+    public void Dispatch_RejectsOversizedAndMalformedStrings()
+    {
+        Assert.False(NetRegistry.Dispatch(NetRegistry.ID_WelcomeMsg, SENDER,
+            Bytes(w => w.Write(new string('x', NetConfig.MAX_STRING_BYTES + 1))), isServer: false));
+        Assert.False(NetRegistry.Dispatch(NetRegistry.ID_WelcomeMsg, SENDER,
+            [0x80, 0x80, 0x80, 0x80, 0x10], isServer: false));
+    }
+
+    [Fact]
+    public void Dispatch_RejectsEnvelopeAboveCap()
+    {
+        byte[] oversized = new byte[NetConfig.MAX_ENVELOPE_BYTES + 1];
+        Assert.False(NetRegistry.Dispatch(NetRegistry.ID_SetReadyMsg, SENDER, oversized, isServer: true));
+    }
+
+    [Fact]
+    public void Dispatch_RandomPayloadsNeverThrow()
+    {
+        var random = new Random(781_223);
+        ushort[] ids = [NetRegistry.ID_SetReadyMsg, NetRegistry.ID_DebugCarveMsg];
+        for (int i = 0; i < 10_000; i++)
+        {
+            byte[] payload = new byte[random.Next(0, 129)];
+            random.NextBytes(payload);
+            ushort id = ids[random.Next(ids.Length)];
+            Exception? error = Record.Exception(() =>
+                NetRegistry.Dispatch(id, SENDER, payload, isServer: true));
+            Assert.Null(error);
+        }
+    }
+
+    private static (ushort Id, byte[] Payload) Capture(ushort id, Action send)
+    {
+        byte[] payload = [];
+        NetTransport.Send = (_, bytes, _, _) => payload = bytes;
+        send();
+        return (id, payload);
+    }
+
+    private static byte[] Bytes(Action<BinaryWriter> write)
+    {
+        using var stream = new MemoryStream();
+        using var writer = new BinaryWriter(stream);
+        write(writer);
+        return stream.ToArray();
     }
 }

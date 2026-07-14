@@ -11,6 +11,17 @@ public static class NetConfig
     public const int MAX_PLAYERS = 8;
     public const int MAX_NAME_LENGTH = 24;
 
+    /// <summary>Hard protocol limits applied before generated payloads allocate.</summary>
+    // Current largest payload is a deflated 1-bit-per-map-pixel late-join mask.
+    // 1 MiB leaves ample room for existing maps without accepting multi-MiB RPCs.
+    public const int MAX_ENVELOPE_BYTES = 1024 * 1024;
+    public const int MAX_STRING_BYTES = 4 * 1024;
+    public const int MAX_BYTE_ARRAY_BYTES = MAX_ENVELOPE_BYTES;
+    public const int MAX_ARRAY_ELEMENTS = 64 * 1024;
+
+    /// <summary>Peers must complete Hello shortly after ENet connects.</summary>
+    public const int HELLO_TIMEOUT_MS = 5_000;
+
     /// <summary>
     /// A snapshot is broadcast every N simulation ticks. 30 Hz halves both
     /// payload and per-packet framing cost vs every tick; interpolation hides
