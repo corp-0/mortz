@@ -79,6 +79,10 @@ public static class SimConfig
     // the reload; banked shells are kept.
     public const int MORTAR_MAX_AMMO = 5;
     public const float MORTAR_RELOAD_PER_SHELL = 1.0f; // s
+    // Backstop so a shell always retires, even at zero gravity or under custom rules.
+    public const float MORTAR_MAX_LIFETIME = 15f; // s
+    // Hard cap; past this the oldest shell is retired to make room.
+    public const int MAX_ACTIVE_MORTARS = 128;
 
     // ---- parry ----
     // F raises a bubble that flips any incoming shell straight back along its
@@ -121,6 +125,7 @@ public static class SimConfig
     public const int ROPE_RELEASE_COOLDOWN_TICKS = (int)(ROPE_RELEASE_COOLDOWN * TICK_RATE);
     public const int ROPE_MISS_COOLDOWN_TICKS = (int)(ROPE_MISS_COOLDOWN * TICK_RATE);
     public const int MORTAR_RELOAD_TICKS = (int)(MORTAR_RELOAD_PER_SHELL * TICK_RATE);
+    public const int MORTAR_MAX_LIFETIME_TICKS = (int)(MORTAR_MAX_LIFETIME * TICK_RATE);
     public const int RESPAWN_DELAY_TICKS = (int)(RESPAWN_DELAY * TICK_RATE);
     public const int PARRY_WINDOW_TICKS = (int)(PARRY_WINDOW * TICK_RATE);
     public const int PARRY_COOLDOWN_TICKS = (int)(PARRY_COOLDOWN * TICK_RATE);

@@ -8,6 +8,9 @@ namespace Mortz.Core;
 /// </summary>
 public sealed class SimWorld
 {
+    public enum MortarEventKind : byte { Spawn, Deflect, End }
+    public readonly record struct MortarEvent(MortarEventKind Kind, MortarState State);
+
     public int Tick { get; private set; }
     public TerrainMask Terrain { get; }
     public MatchConfig Config { get; }
@@ -17,11 +20,14 @@ public sealed class SimWorld
     private readonly SortedDictionary<int, InputQueue> _inputs = new();
     // Resolved per player at join; perk selections feed in here eventually.
     private readonly SortedDictionary<int, PlayerStats> _stats = new();
+    private readonly SortedDictionary<int, byte> _netSlots = new();
 
     // Shells in flight, in spawn order.
     private readonly List<MortarState> _mortars = new();
+    private readonly List<MortarState> _forcedMortarExplosions = new();
     private readonly List<(int X, int Y, int Radius, int OwnerId, int SpawnSeq)> _explosions = new();
     private readonly List<(int FiredBy, int SpawnSeq)> _shellRetirements = new();
+    private readonly List<MortarEvent> _mortarEvents = new();
     private readonly List<(int PeerId, Vec2 Position, int KillerId, bool Owned)> _deaths = new();
     private ushort _nextMortarId;
 
@@ -41,6 +47,11 @@ public sealed class SimWorld
     /// these reliably to the original shooter; snapshots remain only a fallback.</summary>
     public IReadOnlyList<(int FiredBy, int SpawnSeq)> ShellRetirements => _shellRetirements;
 
+    /// <summary>Ordered authoritative shell lifecycle changes from the last
+    /// Step. Reliable delivery replaces repeating complete shells in every
+    /// player snapshot.</summary>
+    public IReadOnlyList<MortarEvent> MortarEvents => _mortarEvents;
+
     /// <summary>Deaths from the last Step (blast or death pit), with the body
     /// center at the moment of death; the server broadcasts these for gibs and
     /// scores them. KillerId is the explosion's owner (a parried shell belongs
@@ -57,6 +68,10 @@ public sealed class SimWorld
 
     public void AddPlayer(int peerId, byte teamId = 0)
     {
+        byte slot = Enumerable.Range(1, NetConfig.MAX_PLAYERS)
+            .Select(i => (byte)i)
+            .First(i => !_netSlots.ContainsValue(i));
+        _netSlots[peerId] = slot;
         _stats[peerId] = PlayerStats.Resolve(Config);
         _players[peerId] = FreshState(peerId) with
         {
@@ -72,6 +87,7 @@ public sealed class SimWorld
         return new PlayerState
         {
             PeerId = peerId,
+            NetSlot = _netSlots[peerId],
             Position = FindSpawn(peerId),
             Grounded = true,
             JumpsLeft = stats.TotalJumps,
@@ -104,6 +120,7 @@ public sealed class SimWorld
         _players.Remove(peerId);
         _inputs.Remove(peerId);
         _stats.Remove(peerId);
+        _netSlots.Remove(peerId);
     }
 
     public void EnqueueInput(int peerId, int seq, PlayerInput input)
@@ -120,6 +137,8 @@ public sealed class SimWorld
     {
         _explosions.Clear();
         _shellRetirements.Clear();
+        _mortarEvents.Clear();
+        _forcedMortarExplosions.Clear();
         _deaths.Clear();
         foreach (int id in _players.Keys.ToArray())
         {
@@ -154,7 +173,7 @@ public sealed class SimWorld
                 foreach ((int seq, PlayerInput consumed) in queue.Consumed)
                 {
                     if (WeaponSim.Tick(ref state, consumed, prevButtons, stats))
-                        _mortars.Add(WeaponSim.NewShell(_nextMortarId++, seq, state, consumed, Config));
+                        SpawnMortar(WeaponSim.NewShell(_nextMortarId++, seq, state, consumed, Config));
                     prevButtons = consumed.Buttons;
                 }
                 state.PrevButtons = queue.RawAppliedInput.Buttons;
@@ -168,8 +187,24 @@ public sealed class SimWorld
             state.LastInputSeq = queue.LastAppliedSeq;
             _players[id] = state;
         }
+        foreach (MortarState forced in _forcedMortarExplosions)
+            Explode(forced);
+        _forcedMortarExplosions.Clear();
         StepMortars();
         Tick++;
+    }
+
+    private void SpawnMortar(MortarState mortar)
+    {
+        if (_mortars.Count >= SimConfig.MAX_ACTIVE_MORTARS)
+        {
+            MortarState retired = _mortars[0];
+            _mortars.RemoveAt(0);
+            _forcedMortarExplosions.Add(retired);
+            _mortarEvents.Add(new MortarEvent(MortarEventKind.End, retired));
+        }
+        _mortars.Add(mortar);
+        _mortarEvents.Add(new MortarEvent(MortarEventKind.Spawn, mortar));
     }
 
     private void StepMortars()
@@ -190,6 +225,7 @@ public sealed class SimWorld
             if (outcome == MortarOutcome.Exploded)
                 Explode(m);
             _mortars.RemoveAt(i);
+            _mortarEvents.Add(new MortarEvent(MortarEventKind.End, m));
         }
     }
 
@@ -218,6 +254,7 @@ public sealed class SimWorld
                 _shellRetirements.Add((m.FiredBy, m.SpawnSeq));
             m.OwnerId = id;
             m.Deflected = true;
+            _mortarEvents.Add(new MortarEvent(MortarEventKind.Deflect, m));
             _players[id] = p with { ParryCooldown = 0 };
             return;
         }
@@ -309,5 +346,6 @@ public sealed class SimWorld
     private bool FellOutOfTheMap(in PlayerState p) =>
         p.Position.Y - SimConfig.PLAYER_HALF_HEIGHT * 2 > Terrain.Height + SimConfig.DEATH_PIT_DEPTH;
 
-    public Snapshot TakeSnapshot() => new(Tick, _players.Values.ToArray(), _mortars.ToArray());
+    public Snapshot TakeSnapshot(bool includeMortars = true) =>
+        new(Tick, _players.Values.ToArray(), includeMortars ? _mortars.ToArray() : []);
 }

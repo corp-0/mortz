@@ -14,6 +14,15 @@ namespace Mortz.Client;
 /// </summary>
 public partial class ClientMain : Node
 {
+    private sealed class PendingTerrain
+    {
+        public required MapPackage Map;
+        public required MatchConfig Config;
+        public required WelcomeMsg Welcome;
+        public required byte[][] Chunks;
+        public int Received;
+    }
+
     private const int CONNECT_RETRIES = 5;
 
     [Export] private PackedScene _gameViewScene = null!;
@@ -27,6 +36,7 @@ public partial class ClientMain : Node
     private string _pendingAddress = "";
     private int _pendingPort;
     private string _playerName = "";
+    private PendingTerrain? _pendingTerrain;
 
     public override void _Ready()
     {
@@ -36,6 +46,7 @@ public partial class ClientMain : Node
         net.Disconnected += OnDisconnected;
         LobbyStateMsg.Received += OnLobbyState;
         WelcomeMsg.Received += OnWelcome;
+        TerrainChunkMsg.Received += OnTerrainChunk;
         MatchEndMsg.Received += OnMatchEnd;
 
         string? autoConnect = CmdArgs.GetValue("--connect");
@@ -128,6 +139,7 @@ public partial class ClientMain : Node
             Engine.TimeScale = 1;
             _gameView.QueueFree();
             _gameView = null;
+            _pendingTerrain = null;
             _lobby.ResetLocalReady();
             if (_autoReady)
                 new SetReadyMsg(true).SendToServer();
@@ -149,12 +161,84 @@ public partial class ClientMain : Node
         }
         GD.Print($"[client] map '{map.DisplayName}' verified");
 
+        if (msg.TerrainEncoding > (byte)TerrainSyncEncoding.CarveLog ||
+            msg.TerrainBytes is < 0 or > NetConfig.MAX_TERRAIN_SYNC_BYTES ||
+            msg.TerrainChunks is < 1 or > NetConfig.MAX_TERRAIN_SYNC_CHUNKS)
+        {
+            RejectWelcome("Invalid terrain sync metadata.");
+            return;
+        }
+
+        _pendingTerrain = new PendingTerrain
+        {
+            Map = map,
+            Config = MatchConfig.FromBytes(msg.Config),
+            Welcome = msg,
+            Chunks = new byte[msg.TerrainChunks][],
+        };
+    }
+
+    private void OnTerrainChunk(TerrainChunkMsg msg)
+    {
+        PendingTerrain? pending = _pendingTerrain;
+        if (pending == null || msg.TransferId != pending.Welcome.TerrainTransferId)
+            return;
+        if (msg.Count != pending.Welcome.TerrainChunks || msg.Index < 0 || msg.Index >= msg.Count ||
+            msg.Data.Length > NetConfig.TERRAIN_CHUNK_BYTES)
+        {
+            RejectWelcome("Invalid terrain sync chunk.");
+            return;
+        }
+        if (pending.Chunks[msg.Index] != null)
+            return;
+        pending.Chunks[msg.Index] = msg.Data;
+        pending.Received++;
+        if (pending.Received != pending.Chunks.Length)
+            return;
+
+        byte[] data = new byte[pending.Welcome.TerrainBytes];
+        int offset = 0;
+        foreach (byte[] chunk in pending.Chunks)
+        {
+            if (offset + chunk.Length > data.Length)
+            {
+                RejectWelcome("Terrain sync length mismatch.");
+                return;
+            }
+            Buffer.BlockCopy(chunk, 0, data, offset, chunk.Length);
+            offset += chunk.Length;
+        }
+        if (offset != data.Length)
+        {
+            RejectWelcome("Terrain sync length mismatch.");
+            return;
+        }
+
         _menu.Visible = false;
         _lobby.Visible = false;
-        _gameView = _gameViewScene.Instantiate<GameView>();
-        // FromBytes clamps, so a hostile host can't feed us degenerate numbers.
-        _gameView.Initialize(map, MatchConfig.FromBytes(msg.Config), msg.RemovedData);
-        AddChild(_gameView);
+        GameView gameView = _gameViewScene.Instantiate<GameView>();
+        try
+        {
+            gameView.Initialize(pending.Map, pending.Config,
+                (TerrainSyncEncoding)pending.Welcome.TerrainEncoding, data);
+        }
+        catch (IOException e)
+        {
+            gameView.Free();
+            RejectWelcome($"Invalid terrain sync: {e.Message}");
+            return;
+        }
+        _gameView = gameView;
+        AddChild(gameView);
+        _pendingTerrain = null;
+    }
+
+    private void RejectWelcome(string reason)
+    {
+        GD.PrintErr($"[client] {reason} Disconnecting.");
+        _pendingTerrain = null;
+        NetworkManager.Instance.ResetPeer();
+        ShowMenu(reason);
     }
 
     /// <summary>Slow-motion victory lap, same factor as the server so the
@@ -168,6 +252,7 @@ public partial class ClientMain : Node
         Engine.TimeScale = 1;
         _gameView?.QueueFree();
         _gameView = null;
+        _pendingTerrain = null;
         NetworkManager.Instance.ResetPeer();
         if (_spawnedLocalServer)
         {

@@ -230,7 +230,7 @@ public class PredictorTests
     }
 
     /// <summary>The client carves off these events, so an impact must surface
-    /// with the seq that fired the shell, and fizzles must stay silent.</summary>
+    /// with the seq that fired the shell.</summary>
     [Fact]
     public void PredictedImpact_IsReportedWithSpawnSeq()
     {

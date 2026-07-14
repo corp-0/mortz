@@ -33,7 +33,7 @@ public class NetMessageTests : IDisposable
         RosterMsg.Received += handler;
         try
         {
-            new RosterMsg([1, 77890011223], ["Gilles", "Player 2"]).Broadcast();
+            new RosterMsg([1, 77890011223], ["Gilles", "Player 2"], [3, 7], [1, 2], [1, 2]).Broadcast();
         }
         finally
         {
@@ -41,6 +41,9 @@ public class NetMessageTests : IDisposable
         }
         Assert.Equal([1, 77890011223], received.PeerIds);
         Assert.Equal(["Gilles", "Player 2"], received.Names);
+        Assert.Equal([3, 7], received.Skins);
+        Assert.Equal([1, 2], received.Teams);
+        Assert.Equal([1, 2], received.Slots);
     }
 
     [Fact]
@@ -73,7 +76,8 @@ public class NetMessageTests : IDisposable
         byte[] config = TestWorlds.Config.ToBytes();
         try
         {
-            new WelcomeMsg("castlewars", "abc123", config, [9, 8, 7]).SendTo(5);
+            new WelcomeMsg("castlewars", "abc123", config,
+                (byte)TerrainSyncEncoding.CarveLog, 17, 12345, 2).SendTo(5);
         }
         finally
         {
@@ -82,7 +86,10 @@ public class NetMessageTests : IDisposable
         Assert.Equal("castlewars", received.MapId);
         Assert.Equal("abc123", received.MapHash);
         Assert.Equal(config, received.Config);
-        Assert.Equal([9, 8, 7], received.RemovedData);
+        Assert.Equal((byte)TerrainSyncEncoding.CarveLog, received.TerrainEncoding);
+        Assert.Equal(17, received.TerrainTransferId);
+        Assert.Equal(12345, received.TerrainBytes);
+        Assert.Equal(2, received.TerrainChunks);
     }
 
     [Fact]
@@ -130,13 +137,13 @@ public class NetMessageTests : IDisposable
         DeathMsg.Received += handler;
         try
         {
-            new DeathMsg(123456789012, -5, 7, true).Broadcast();
+            new DeathMsg(1234567890, -5, 7, true).Broadcast();
         }
         finally
         {
             DeathMsg.Received -= handler;
         }
-        Assert.Equal(new DeathMsg(123456789012, -5, 7, true), received);
+        Assert.Equal(new DeathMsg(1234567890, -5, 7, true), received);
     }
 
     [Fact]
@@ -212,7 +219,7 @@ public class NetMessageTests : IDisposable
         SetReadyMsg.Received += readyHandler;
         try
         {
-            new RosterMsg([1], ["x"]).Broadcast();
+            new RosterMsg([1], ["x"], [2], [0], [1]).Broadcast();
             Assert.False(NetRegistry.Dispatch(NetRegistry.ID_RosterMsg, SENDER, captured, isServer: true));
             new SetReadyMsg(true).SendToServer();
             Assert.False(NetRegistry.Dispatch(NetRegistry.ID_SetReadyMsg, SENDER, captured, isServer: false));
@@ -271,8 +278,7 @@ public class NetMessageTests : IDisposable
         Assert.False(NetRegistry.Dispatch(NetRegistry.ID_RosterMsg, SENDER,
             Bytes(w => { w.Write(2); w.Write(123L); }), isServer: false));
 
-        // Welcome's first array follows two strings. Its byte-array limit is
-        // deliberately larger than collection element limits for terrain masks.
+        // Welcome's config array follows two strings.
         Assert.False(NetRegistry.Dispatch(NetRegistry.ID_WelcomeMsg, SENDER,
             Bytes(w =>
             {

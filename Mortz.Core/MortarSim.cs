@@ -3,10 +3,9 @@ namespace Mortz.Core;
 public enum MortarOutcome : byte
 {
     Flying = 0,
-    /// <summary>Hit terrain; Position is the impact point.</summary>
+    /// <summary>Hit terrain or reached its in-play lifetime; Position is the
+    /// authoritative detonation point.</summary>
     Exploded = 1,
-    /// <summary>Left the map with nothing left to hit.</summary>
-    Fizzled = 2,
 }
 
 /// <summary>
@@ -18,6 +17,9 @@ public static class MortarSim
 {
     public static MortarOutcome Tick(ref MortarState m, TerrainMask terrain, MatchConfig cfg, float dt)
     {
+        if (++m.AgeTicks >= SimConfig.MORTAR_MAX_LIFETIME_TICKS)
+            return MortarOutcome.Exploded;
+
         m.Velocity = m.Velocity with
         {
             Y = MathF.Min(m.Velocity.Y + cfg.MortarGravity * dt, cfg.MortarMaxFall),
@@ -35,13 +37,14 @@ public static class MortarSim
             if (terrain.IsSolid((int)m.Position.X, (int)m.Position.Y))
                 return MortarOutcome.Exploded;
             if (OutOfPlay(m.Position, terrain))
-                return MortarOutcome.Fizzled;
+                return MortarOutcome.Exploded;
         }
         return MortarOutcome.Flying;
     }
 
     /// <summary>Above the map the shell keeps flying (OOB is empty and gravity
-    /// brings it back down); past a side or the bottom it can't hit anything anymore.</summary>
+    /// can bring it back down); crossing a side or the bottom detonates at the
+    /// last simulated position.</summary>
     private static bool OutOfPlay(Vec2 pos, TerrainMask terrain) =>
         pos.X < 0 || pos.X >= terrain.Width || pos.Y >= terrain.Height;
 }

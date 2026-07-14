@@ -5,19 +5,22 @@ public static class NetConfig
 {
     /// <summary>Bumped on semantic wire changes. Message shape changes are caught
     /// automatically by NetRegistry.SCHEMA_HASH; both ride in Hello.</summary>
-    public const int PROTOCOL_VERSION = 27;
+    public const int PROTOCOL_VERSION = 28;
 
     public const int DEFAULT_PORT = 7777;
     public const int MAX_PLAYERS = 8;
     public const int MAX_NAME_LENGTH = 24;
 
     /// <summary>Hard protocol limits applied before generated payloads allocate.</summary>
-    // Current largest payload is a deflated 1-bit-per-map-pixel late-join mask.
-    // 1 MiB leaves ample room for existing maps without accepting multi-MiB RPCs.
-    public const int MAX_ENVELOPE_BYTES = 1024 * 1024;
+    // Large terrain state is chunked separately; ordinary envelopes stay small.
+    public const int MAX_ENVELOPE_BYTES = 64 * 1024;
     public const int MAX_STRING_BYTES = 4 * 1024;
     public const int MAX_BYTE_ARRAY_BYTES = MAX_ENVELOPE_BYTES;
     public const int MAX_ARRAY_ELEMENTS = 64 * 1024;
+    public const int TERRAIN_CHUNK_BYTES = 12 * 1024;
+    public const int MAX_TERRAIN_SYNC_BYTES = 4 * 1024 * 1024;
+    public const int MAX_TERRAIN_SYNC_CHUNKS =
+        (MAX_TERRAIN_SYNC_BYTES + TERRAIN_CHUNK_BYTES - 1) / TERRAIN_CHUNK_BYTES;
 
     /// <summary>Peers must complete Hello shortly after ENet connects.</summary>
     public const int HELLO_TIMEOUT_MS = 5_000;
@@ -28,6 +31,10 @@ public static class NetConfig
     /// the gap. Real-session data: 60 Hz uncompressed burned ~10 MB in 15 min.
     /// </summary>
     public const int TICKS_PER_SNAPSHOT = 2;
+
+    /// <summary>Shells simulate locally between compact authoritative
+    /// corrections. Lifecycle events are reliable and immediate.</summary>
+    public const int TICKS_PER_MORTAR_CORRECTION = 12; // 5 Hz
 
     /// <summary>
     /// How far in the past remote entities are rendered, in ticks (~67 ms =

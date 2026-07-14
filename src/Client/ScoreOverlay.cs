@@ -42,7 +42,8 @@ public partial class ScoreOverlay : Control
     private void OnRoster(RosterMsg msg)
     {
         _names.Clear();
-        for (int i = 0; i < msg.PeerIds.Length; i++)
+        int count = Math.Min(msg.PeerIds.Length, msg.Names.Length);
+        for (int i = 0; i < count; i++)
             _names[msg.PeerIds[i]] = msg.Names[i];
     }
 

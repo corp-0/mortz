@@ -1,8 +1,8 @@
 namespace Mortz.Core;
 
 /// <summary>
-/// One mortar shell in flight. Server-authoritative only: clients render these
-/// straight from snapshots, no prediction. Ids wrap; they only have to be
+/// One mortar shell in flight. Server-authoritative; clients run a cosmetic
+/// replica between lifecycle events and low-rate corrections. Ids wrap; they only have to be
 /// unique among shells alive at the same time so clients can match them
 /// across snapshots for interpolation.
 /// </summary>
@@ -29,4 +29,6 @@ public record struct MortarState
     public int SpawnSeq;
     public Vec2 Position;
     public Vec2 Velocity;
+    /// <summary>Sim-only lifetime counter; never serialized.</summary>
+    public ushort AgeTicks;
 }

@@ -220,11 +220,18 @@ public partial class NetworkManager : Node
 
     // ---- hot path: snapshots down ----
 
-    /// <summary>Same snapshot bytes to every validated peer, each with its own input ack.</summary>
-    public void BroadcastSnapshot(byte[] data, Func<long, int> ackFor)
+    /// <summary>Each peer gets a snapshot with its own full prediction record;
+    /// other players are compact render-only records.</summary>
+    public int BroadcastSnapshot(Func<long, byte[]> dataFor, Func<long, int> ackFor)
     {
+        int payloadBytes = 0;
         foreach (long peer in _admission.ValidatedPeers)
+        {
+            byte[] data = dataFor(peer);
+            payloadBytes += data.Length + sizeof(int); // app payload incl. ack
             RpcId(peer, MethodName.ReceiveSnapshot, data, ackFor(peer));
+        }
+        return payloadBytes;
     }
 
     [Rpc(TransferMode = MultiplayerPeer.TransferModeEnum.Unreliable)]

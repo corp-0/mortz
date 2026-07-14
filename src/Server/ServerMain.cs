@@ -41,6 +41,12 @@ public partial class ServerMain : Node
     private readonly Dictionary<long, bool> _lobbyReady = new();
     private readonly Dictionary<long, string> _names = new();
     private bool _debugCarveEnabled;
+    private long _snapshotPayloadBytes;
+    private long _mortarPayloadBytes;
+    private long _inputPayloadBytes;
+    private readonly List<TerrainCarve> _carveHistory = new();
+    private bool _carveLogComplete = true;
+    private int _nextTerrainTransferId;
 
     /// <summary>Grants live lobby control via /admin
     ///  Empty = no admin access. Never logged.</summary>
@@ -98,10 +104,12 @@ public partial class ServerMain : Node
         if (_phase == Phase.LOBBY)
             return;
         _sim.Step();
+        BroadcastMortarEvents();
         foreach ((int x, int y, int radius, int owner, int spawnSeq) in _sim.Explosions)
         {
             GD.Print($"[server] mortar exploded at ({x},{y})");
-            new CarveMsg(x, y, radius, owner, spawnSeq).Broadcast();
+            RecordCarve(x, y, radius);
+            new CarveMsg(PackCoordinate(x), PackCoordinate(y), PackRadius(radius), owner, spawnSeq).Broadcast();
         }
         foreach ((int firedBy, int spawnSeq) in _sim.ShellRetirements)
             new ShellRetireMsg(spawnSeq).SendTo(firedBy);
@@ -109,19 +117,37 @@ public partial class ServerMain : Node
         {
             GD.Print($"[server] player {peerId} gibbed at ({(int)pos.X},{(int)pos.Y})" +
                      (owned ? " (OWNED)" : ""));
-            new DeathMsg(peerId, (int)pos.X, (int)pos.Y, owned).Broadcast();
+            new DeathMsg(peerId, PackCoordinate((int)pos.X), PackCoordinate((int)pos.Y), owned).Broadcast();
             ScoreDeath(peerId, killerId);
         }
         if (_sim.Tick % NetConfig.TICKS_PER_SNAPSHOT == 0 && _sim.Players.Count > 0)
         {
-            byte[] snapshot = _sim.TakeSnapshot().Serialize();
-            NetworkManager.Instance.BroadcastSnapshot(snapshot,
+            Snapshot snapshot = _sim.TakeSnapshot(includeMortars: false);
+            _snapshotPayloadBytes += NetworkManager.Instance.BroadcastSnapshot(
+                peerId => snapshot.SerializeFor((int)peerId),
                 peerId => _sim.Players.TryGetValue((int)peerId, out PlayerState p) ? p.LastInputSeq : -1);
+        }
+        if (_sim.Tick % NetConfig.TICKS_PER_MORTAR_CORRECTION == 0 && _sim.Mortars.Count > 0)
+        {
+            byte[] states = MortarWire.SerializeCorrections(_sim.Mortars);
+            new MortarCorrectionMsg(_sim.Tick, states).Broadcast();
+            _mortarPayloadBytes += (sizeof(int) + sizeof(int) + states.Length) * _sim.Players.Count;
         }
         if (_netStats && _sim.Tick % SimConfig.TICK_RATE == 0)
             PrintNetStats();
         if (_phase == Phase.MATCH_END && --_matchEndTicks == 0)
             ReturnToLobby();
+    }
+
+    private void BroadcastMortarEvents()
+    {
+        if (_sim.MortarEvents.Count == 0)
+            return;
+        foreach (byte[] events in MortarWire.SerializeLifecycleBatches(_sim.Tick, _sim.MortarEvents))
+        {
+            new MortarLifecycleMsg(events).Broadcast();
+            _mortarPayloadBytes += (sizeof(int) + events.Length) * _sim.Players.Count;
+        }
     }
 
     /// <summary>Fresh world on the same map and rules; everyone back to ready-up.</summary>
@@ -132,6 +158,8 @@ public partial class ServerMain : Node
         foreach (int peerId in _sim.Players.Keys)
             _lobbyReady[peerId] = false;
         _sim = new SimWorld(_map.BuildMask(), _sim.Config, Random.Shared.Next());
+        _carveHistory.Clear();
+        _carveLogComplete = true;
         _phase = Phase.LOBBY;
         BroadcastLobbyState();
     }
@@ -144,7 +172,12 @@ public partial class ServerMain : Node
         string peers = string.Join(" ", _sim.Players.Keys.Select(
             id => $"peer={id} pending={_sim.PendingInputs(id)} ack={_sim.Players[id].LastInputSeq}"));
         GD.Print($"[stats] unix={Time.GetUnixTimeFromSystem():F3} tick={_sim.Tick} " +
-                 $"sent={sent:F0}B/{sentPk:F0}pk recv={recv:F0}B/{recvPk:F0}pk {peers}");
+                 $"sent={sent:F0}B/{sentPk:F0}pk recv={recv:F0}B/{recvPk:F0}pk " +
+                 $"snap_app={_snapshotPayloadBytes}B mortar_app={_mortarPayloadBytes}B " +
+                 $"input_app={_inputPayloadBytes}B {peers}");
+        _snapshotPayloadBytes = 0;
+        _mortarPayloadBytes = 0;
+        _inputPayloadBytes = 0;
     }
 
     private void OnPeerJoined(long peerId, string playerName)
@@ -216,9 +249,12 @@ public partial class ServerMain : Node
     /// the lobby gets names through the lobby state instead.</summary>
     private void BroadcastRoster()
     {
-        long[] peers = _names.Keys.ToArray();
+        long[] peers = _names.Keys.Where(p => _sim.Players.ContainsKey((int)p)).ToArray();
         string[] names = peers.Select(p => _names[p]).ToArray();
-        new RosterMsg(peers, names).Broadcast();
+        byte[] skins = peers.Select(p => _sim.Players[(int)p].Skin).ToArray();
+        byte[] teams = peers.Select(p => _sim.Players[(int)p].TeamId).ToArray();
+        byte[] slots = peers.Select(p => _sim.Players[(int)p].NetSlot).ToArray();
+        new RosterMsg(peers, names, skins, teams, slots).Broadcast();
     }
 
     /// <summary>The host's ruleset preset (--ruleset path.json), or defaults
@@ -247,11 +283,62 @@ public partial class ServerMain : Node
         byte team = NextTeam();
         _sim.AddPlayer((int)peerId, team);
         _scores.AddPlayer((int)peerId, team);
-        new WelcomeMsg(_map.MapId, _map.Hash, _sim.Config.ToBytes(), _sim.Terrain.SerializeRemoved()).SendTo(peerId);
+        SendWelcome(peerId);
+        SendLiveMortars(peerId);
         if (_phase == Phase.MATCH_END)
             new MatchEndMsg(_winner.ByTeam, _winner.Id).SendTo(peerId); // sync their slow motion and banner
         GD.Print($"[server] player {peerId} joined ({_sim.Players.Count} in game)" +
                  (team != 0 ? $" on team {team}" : ""));
+    }
+
+    private void SendLiveMortars(long peerId)
+    {
+        if (_sim.Mortars.Count == 0)
+            return;
+        SimWorld.MortarEvent[] spawns = _sim.Mortars
+            .Select(m => new SimWorld.MortarEvent(SimWorld.MortarEventKind.Spawn, m))
+            .ToArray();
+        foreach (byte[] events in MortarWire.SerializeLifecycleBatches(_sim.Tick, spawns))
+        {
+            new MortarLifecycleMsg(events).SendTo(peerId);
+            _mortarPayloadBytes += sizeof(int) + events.Length;
+        }
+    }
+
+    private void SendWelcome(long peerId)
+    {
+        TerrainSyncPayload terrain = _carveLogComplete
+            ? TerrainSync.Build(_sim.Terrain, _carveHistory)
+            : new TerrainSyncPayload(TerrainSyncEncoding.RemovedBitmap, _sim.Terrain.SerializeRemoved());
+        if (terrain.Data.Length > NetConfig.MAX_TERRAIN_SYNC_BYTES)
+            throw new InvalidDataException($"Terrain sync is too large: {terrain.Data.Length} bytes.");
+        int count = Math.Max(1, (terrain.Data.Length + NetConfig.TERRAIN_CHUNK_BYTES - 1) /
+            NetConfig.TERRAIN_CHUNK_BYTES);
+        int transferId = ++_nextTerrainTransferId;
+        new WelcomeMsg(_map.MapId, _map.Hash, _sim.Config.ToBytes(), (byte)terrain.Encoding,
+            transferId, terrain.Data.Length, checked((short)count)).SendTo(peerId);
+        for (int i = 0; i < count; i++)
+        {
+            int offset = i * NetConfig.TERRAIN_CHUNK_BYTES;
+            int length = Math.Min(NetConfig.TERRAIN_CHUNK_BYTES, terrain.Data.Length - offset);
+            byte[] chunk = terrain.Data.AsSpan(offset, Math.Max(0, length)).ToArray();
+            new TerrainChunkMsg(transferId, (short)i, (short)count, chunk).SendTo(peerId);
+        }
+        GD.Print($"[server] terrain sync to {peerId}: {terrain.Encoding}, " +
+                 $"{terrain.Data.Length} B in {count} chunk(s), {_carveHistory.Count} carve(s)");
+    }
+
+    private void RecordCarve(int x, int y, int radius)
+    {
+        if (_carveHistory.Count >= TerrainSync.MAX_CARVES)
+        {
+            _carveLogComplete = false;
+            return; // bitmap remains exact once the log stops growing
+        }
+        _carveHistory.Add(new TerrainCarve(
+            (short)Math.Clamp(x, short.MinValue, short.MaxValue),
+            (short)Math.Clamp(y, short.MinValue, short.MaxValue),
+            (byte)Math.Clamp(radius, 0, byte.MaxValue)));
     }
 
     /// <summary>Balanced fill: each joiner (match start iterates joins too)
@@ -308,6 +395,7 @@ public partial class ServerMain : Node
     {
         if (!InputPacket.TryDecode(packet, out List<(int Seq, PlayerInput Input)> inputs))
             return;
+        _inputPayloadBytes += packet.Length;
         foreach ((int seq, PlayerInput input) in inputs)
             _sim.EnqueueInput((int)peerId, seq, input);
     }
@@ -319,6 +407,15 @@ public partial class ServerMain : Node
         List<(int X, int Y)> removed = _sim.Terrain.CarveCircle(msg.X, msg.Y, SimConfig.DEBUG_CARVE_RADIUS);
         GD.Print($"[server] carve at ({msg.X},{msg.Y}) by {sender}: {removed.Count} px");
         if (removed.Count > 0)
-            new CarveMsg(msg.X, msg.Y, SimConfig.DEBUG_CARVE_RADIUS, 0, -1).Broadcast();
+        {
+            RecordCarve(msg.X, msg.Y, SimConfig.DEBUG_CARVE_RADIUS);
+            new CarveMsg(PackCoordinate(msg.X), PackCoordinate(msg.Y), SimConfig.DEBUG_CARVE_RADIUS, 0, -1).Broadcast();
+        }
     }
+
+    private static short PackCoordinate(int value) =>
+        (short)Math.Clamp(value, short.MinValue, short.MaxValue);
+
+    private static byte PackRadius(int value) =>
+        (byte)Math.Clamp(value, 0, byte.MaxValue);
 }

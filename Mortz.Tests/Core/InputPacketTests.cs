@@ -21,6 +21,7 @@ public class InputPacketTests
             (12, new PlayerInput(InputButtons.Right)),
         ], decoded);
         Assert.True(InputPacket.TryDecode(InputPacket.Encode(history.Newest(4)), out _));
+        Assert.Equal(11, InputPacket.Encode(history.Newest(4)).Length); // 1-byte seq + count + inputs
     }
 
     [Fact]
@@ -45,17 +46,30 @@ public class InputPacketTests
     [Fact]
     public void TryDecode_RejectsZeroExcessiveCountsAndUndefinedButtons()
     {
-        byte[] zeroCount = new byte[5];
+        byte[] zeroCount = [0, 0];
         Assert.False(InputPacket.TryDecode(zeroCount, out _));
 
-        byte[] excessive = new byte[5 + (NetConfig.INPUT_REDUNDANCY + 1) * 3];
-        excessive[4] = NetConfig.INPUT_REDUNDANCY + 1;
+        byte[] excessive = new byte[2 + (NetConfig.INPUT_REDUNDANCY + 1) * 3];
+        excessive[1] = NetConfig.INPUT_REDUNDANCY + 1;
         Assert.False(InputPacket.TryDecode(excessive, out _));
 
         byte[] undefined = InputPacket.Encode([(1, new PlayerInput(InputButtons.Left))]);
-        undefined[5] = 0;
-        undefined[6] = 0x80;
+        undefined[2] = 0;
+        undefined[3] = 0x80;
         Assert.False(InputPacket.TryDecode(undefined, out _));
+    }
+
+    [Fact]
+    public void SequenceVarint_RoundTripsFullIntRangeAndRejectsOverflow()
+    {
+        foreach (int seq in new[] { 0, 127, 128, 16_384, int.MaxValue, int.MinValue, -1 })
+        {
+            byte[] packet = InputPacket.Encode([(seq, new PlayerInput(InputButtons.Left))]);
+            Assert.True(InputPacket.TryDecode(packet, out List<(int Seq, PlayerInput Input)> decoded));
+            Assert.Equal(seq, decoded[0].Seq);
+        }
+        Assert.False(InputPacket.TryDecode([0x80, 0x80, 0x80, 0x80, 0x10, 1, 0, 0, 0], out _));
+        Assert.False(InputPacket.TryDecode([0x80, 0x00, 1, 1, 0, 0], out _));
     }
 
     [Fact]

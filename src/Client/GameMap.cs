@@ -47,7 +47,8 @@ public partial class GameMap : Node2D
     private ImageTexture _destructibleTexture = null!;
 
     /// <summary>Must be called right after instantiating, before entering the tree.</summary>
-    public void Initialize(MapPackage map, MatchConfig config, byte[] removedData)
+    public void Initialize(MapPackage map, MatchConfig config,
+        TerrainSyncEncoding terrainEncoding, byte[] terrainData)
     {
         Mask = map.BuildMask();
         _carveRadius = config.MortarCarveRadius;
@@ -55,7 +56,7 @@ public partial class GameMap : Node2D
         _pristineDestructible = map.Destructible;
         _destructibleImage = (Image)map.Destructible.Duplicate();
         int alreadyRemoved = 0;
-        Mask.ApplyRemoved(removedData, (x, y) =>
+        TerrainSync.Apply(Mask, terrainEncoding, terrainData, (x, y) =>
         {
             _destructibleImage.SetPixel(x, y, _hole);
             alreadyRemoved++;

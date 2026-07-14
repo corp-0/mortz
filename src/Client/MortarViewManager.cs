@@ -4,7 +4,8 @@ using Mortz.Core;
 namespace Mortz.Client;
 
 /// <summary>
-/// Pools of mortar shell views. Everyone else's shells render from snapshots;
+/// Pools of mortar shell views. Everyone else's shells render from reliable
+/// lifecycle events, local ballistics, and low-rate corrections;
 /// the local player's own authoritative copies are hidden because the
 /// predicted ones are already on screen (and at present time, not
 /// interpolation-delay time).

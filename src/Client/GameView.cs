@@ -25,15 +25,19 @@ public partial class GameView : Node2D
     public event Action<Snapshot>? SnapshotApplied;
 
     private readonly SnapshotInterpolator _interpolator = new();
+    private MortarReplicaSet _remoteMortars = null!;
+    private readonly Dictionary<byte, int> _peersBySlot = new();
 
     public int NewestSnapshotTick => _interpolator.NewestTick;
     public float RenderTick => _interpolator.RenderTick;
 
     /// <summary>Must be called right after instantiating, before entering the tree.</summary>
-    public void Initialize(MapPackage map, MatchConfig config, byte[] removedData)
+    public void Initialize(MapPackage map, MatchConfig config,
+        TerrainSyncEncoding terrainEncoding, byte[] terrainData)
     {
-        _gameMap.Initialize(map, config, removedData);
+        _gameMap.Initialize(map, config, terrainEncoding, terrainData);
         _localPlayer.Initialize(new Predictor(_gameMap.Mask, config));
+        _remoteMortars = new MortarReplicaSet(_gameMap.Mask, config);
         // Remote players render with the base stats until perks exist.
         PlayerStats stats = PlayerStats.Resolve(config);
         _players.Configure(stats);
@@ -45,6 +49,9 @@ public partial class GameView : Node2D
         NetworkManager.Instance.SnapshotReceived += OnSnapshotReceived;
         CarveMsg.Received += OnCarve;
         ShellRetireMsg.Received += OnShellRetire;
+        MortarLifecycleMsg.Received += OnMortarLifecycle;
+        MortarCorrectionMsg.Received += OnMortarCorrection;
+        RosterMsg.Received += OnRoster;
     }
 
     public override void _ExitTree()
@@ -52,15 +59,34 @@ public partial class GameView : Node2D
         NetworkManager.Instance.SnapshotReceived -= OnSnapshotReceived;
         CarveMsg.Received -= OnCarve;
         ShellRetireMsg.Received -= OnShellRetire;
+        MortarLifecycleMsg.Received -= OnMortarLifecycle;
+        MortarCorrectionMsg.Received -= OnMortarCorrection;
+        RosterMsg.Received -= OnRoster;
     }
 
     private void OnSnapshotReceived(byte[] data, int ack)
     {
-        Snapshot snapshot = Snapshot.Deserialize(data);
+        Snapshot snapshot;
+        try
+        {
+            snapshot = Snapshot.Deserialize(data, _peersBySlot);
+        }
+        catch (InvalidDataException)
+        {
+            return; // reliable roster for a new slot has not arrived yet
+        }
         _interpolator.Add(snapshot);
         _localPlayer.Reconcile(snapshot, ack);
-        RetireDeflectedShells(snapshot);
         SnapshotApplied?.Invoke(snapshot);
+    }
+
+    private void OnRoster(RosterMsg msg)
+    {
+        _peersBySlot.Clear();
+        int count = Math.Min(msg.PeerIds.Length, msg.Slots.Length);
+        for (int i = 0; i < count; i++)
+            if (msg.Slots[i] is > 0 and <= NetConfig.MAX_PLAYERS)
+                _peersBySlot[msg.Slots[i]] = (int)msg.PeerIds[i];
     }
 
     /// <summary>Our shell exploded server-side; retire the predicted copy so it
@@ -74,8 +100,8 @@ public partial class GameView : Node2D
 
     /// <summary>Reliable retirement is the delivery guarantee when a parry takes
     /// over one of our shells. Settle the carve even if its impact was queued but
-    /// had not reached GameMap yet; the snapshot path below is the low-latency
-    /// fallback because cross-channel delivery order is not guaranteed.</summary>
+    /// had not reached GameMap yet; the lifecycle deflect path below is the
+    /// low-latency fallback and both paths are idempotent.</summary>
     private void OnShellRetire(ShellRetireMsg msg)
     {
         bool hadPrediction = _localPlayer.RetireShell(msg.SpawnSeq);
@@ -84,23 +110,59 @@ public partial class GameView : Node2D
             GD.Print($"[client] retired shell seq {msg.SpawnSeq} (reliable server event)");
     }
 
-    /// <summary>A parry took one of our shells over (a deflected shell in the
-    /// snapshot). This may arrive before the reliable retirement message, so
-    /// retire immediately; both paths are idempotent. Revert its carve if it
-    /// already laid one because the deflected carve is -1 and cannot confirm it.</summary>
-    private void RetireDeflectedShells(Snapshot snapshot)
+    private void OnMortarLifecycle(MortarLifecycleMsg msg)
     {
-        foreach (MortarState m in snapshot.Mortars)
+        if (!MortarWire.TryReadLifecycle(msg.Events, out int tick,
+            out List<SimWorld.MortarEvent> events))
         {
-            if (!m.Deflected || m.FiredBy != Multiplayer.GetUniqueId())
-                continue;
-            bool hadShell = _localPlayer.RetireShell(m.SpawnSeq);
-            bool hadCarve = _gameMap.RevertPredictedCarve(m.SpawnSeq);
-            if (hadShell || hadCarve)
+            GD.PrintErr("[client] dropped malformed mortar lifecycle batch");
+            return;
+        }
+        foreach (SimWorld.MortarEvent e in events)
+        {
+            switch (e.Kind)
             {
-                GD.Print($"[client] retired shell seq {m.SpawnSeq} (deflected)");
+                case SimWorld.MortarEventKind.Spawn:
+                    _remoteMortars.Spawn(e.State, tick, NewestSnapshotTick);
+                    break;
+                case SimWorld.MortarEventKind.Deflect:
+                    _remoteMortars.Deflect(e.State, tick, NewestSnapshotTick);
+                    RetireDeflectedPrediction(e.State);
+                    break;
+                case SimWorld.MortarEventKind.End:
+                    RetireEndedMortar(e.State.Id);
+                    break;
             }
         }
+    }
+
+    private void RetireDeflectedPrediction(in MortarState state)
+    {
+        if (state.FiredBy != Multiplayer.GetUniqueId())
+            return;
+        bool hadShell = _localPlayer.RetireShell(state.SpawnSeq);
+        bool hadCarve = _gameMap.RevertPredictedCarve(state.SpawnSeq);
+        if (hadShell || hadCarve)
+            GD.Print($"[client] retired shell seq {state.SpawnSeq} (deflected)");
+    }
+
+    private void RetireEndedMortar(ushort id)
+    {
+        if (_remoteMortars.TryEnd(id, out MortarState state) &&
+            state.FiredBy == Multiplayer.GetUniqueId())
+            _localPlayer.RetireShell(state.SpawnSeq);
+    }
+
+    private void OnMortarCorrection(MortarCorrectionMsg msg)
+    {
+        if (!_remoteMortars.Correct(msg.States, msg.Tick, NewestSnapshotTick))
+            GD.PrintErr("[client] dropped malformed mortar correction");
+    }
+
+    public override void _PhysicsProcess(double delta)
+    {
+        if (_remoteMortars != null)
+            _remoteMortars.Tick();
     }
 
     public override void _Process(double delta)
@@ -142,7 +204,7 @@ public partial class GameView : Node2D
         }
 
         _players.Prune();
-        _mortars.SyncRemote(state.Mortars);
+        _mortars.SyncRemote(_remoteMortars.Render());
         _mortars.SyncPredicted(_localPlayer.Shells);
     }
 

@@ -7,7 +7,6 @@ namespace Mortz.Core;
 /// </summary>
 public static class InputPacket
 {
-    private const int HEADER_BYTES = sizeof(int) + sizeof(byte);
     private const int BYTES_PER_INPUT = sizeof(ushort) + sizeof(byte);
     private const InputButtons DEFINED_BUTTONS = InputButtons.Left | InputButtons.Right |
         InputButtons.Jump | InputButtons.Dash | InputButtons.Rope | InputButtons.Up |
@@ -19,7 +18,7 @@ public static class InputPacket
             return [];
         using MemoryStream ms = new MemoryStream();
         using BinaryWriter w = new BinaryWriter(ms);
-        w.Write(inputs[^1].Seq);
+        WriteVarUInt(w, unchecked((uint)inputs[^1].Seq));
         w.Write((byte)inputs.Count);
         foreach ((int _, PlayerInput input) in inputs)
         {
@@ -43,17 +42,17 @@ public static class InputPacket
         out List<(int Seq, PlayerInput Input)> result)
     {
         result = [];
-        if (data.Length < HEADER_BYTES)
+        int offset = 0;
+        if (!TryReadVarUInt(data, ref offset, out uint newestRaw) || offset >= data.Length)
             return false;
 
-        int newestSeq = System.Buffers.Binary.BinaryPrimitives.ReadInt32LittleEndian(data);
-        int count = data[sizeof(int)];
+        int newestSeq = unchecked((int)newestRaw);
+        int count = data[offset++];
         if (count is < 1 or > NetConfig.INPUT_REDUNDANCY ||
-            data.Length != HEADER_BYTES + count * BYTES_PER_INPUT)
+            data.Length != offset + count * BYTES_PER_INPUT)
             return false;
 
-        var decoded = new List<(int Seq, PlayerInput Input)>(count);
-        int offset = HEADER_BYTES;
+        List<(int Seq, PlayerInput Input)> decoded = new(count);
         for (int i = 0; i < count; i++)
         {
             InputButtons buttons = (InputButtons)System.Buffers.Binary.BinaryPrimitives
@@ -66,5 +65,33 @@ public static class InputPacket
         }
         result = decoded;
         return true;
+    }
+
+    private static void WriteVarUInt(BinaryWriter w, uint value)
+    {
+        while (value >= 0x80)
+        {
+            w.Write((byte)(value | 0x80));
+            value >>= 7;
+        }
+        w.Write((byte)value);
+    }
+
+    private static bool TryReadVarUInt(ReadOnlySpan<byte> data, ref int offset, out uint value)
+    {
+        value = 0;
+        int start = offset;
+        for (int shift = 0; shift <= 28; shift += 7)
+        {
+            if (offset >= data.Length)
+                return false;
+            byte next = data[offset++];
+            if (shift == 28 && (next & 0xF0) != 0)
+                return false;
+            value |= (uint)(next & 0x7F) << shift;
+            if ((next & 0x80) == 0)
+                return offset - start == 1 || next != 0; // reject non-canonical overlong forms
+        }
+        return false;
     }
 }

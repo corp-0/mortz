@@ -66,9 +66,10 @@ public sealed class SnapshotBuffer
                 np.Ammo, np.ReloadTicks, np.Health, np.RespawnTicks, np.ParryTicks, np.DashCooldown));
         }
 
-        // Shells matched by id like players. New this interval: rendered at
-        // the newer position. Gone from the newer snapshot: exploded, drop it
-        // (the carve event is the visual).
+        // Full-snapshot path for tests and recordings; live traffic uses
+        // MortarReplicaSet. Shells matched by id like players. New this interval:
+        // rendered at the newer position. Gone from the newer snapshot: exploded,
+        // drop it (the carve event is the visual).
         List<RenderMortar> mortars = new List<RenderMortar>();
         foreach (MortarState nm in newer.Mortars)
         {

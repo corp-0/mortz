@@ -65,7 +65,7 @@ public class NetworkPolicyTests
     {
         Assert.Equal(1, NetAbusePolicy.EnvelopeCost(0));
         Assert.Equal(2, NetAbusePolicy.EnvelopeCost(4096));
-        Assert.True(NetAbusePolicy.EnvelopeCost(NetConfig.MAX_ENVELOPE_BYTES) > 64);
+        Assert.True(NetAbusePolicy.EnvelopeCost(NetConfig.MAX_ENVELOPE_BYTES) > 16);
     }
 
     [Fact]

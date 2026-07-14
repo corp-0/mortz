@@ -217,7 +217,7 @@ public class MortarTests
     }
 
     [Fact]
-    public void ShellLeavingTheMapBottom_FizzlesSilently()
+    public void ShellLeavingTheMapBottom_ExplodesAtBoundary()
     {
         // No terrain at all: everything fired downward just falls out.
         TerrainMask world = new TerrainMask(400, 300, (_, _) => false, (_, _) => false);
@@ -235,7 +235,32 @@ public class MortarTests
             explosions += w.Explosions.Count;
         }
         Assert.Empty(w.Mortars);
-        Assert.Equal(0, explosions);
+        Assert.Equal(1, explosions);
+        Assert.True(w.Explosions[0].Y >= world.Height);
+    }
+
+    [Fact]
+    public void ShellReachingMaxLifetime_DetonatesAtItsCurrentPosition()
+    {
+        MatchConfig config = new() { MortarSpeed = 100, MortarGravity = 0 };
+        config.Clamp();
+        SimWorld w = new SimWorld(TestWorlds.Flat(), config);
+        w.AddPlayer(1);
+        int seq = 0;
+
+        StepWith(w, ref seq, InputButtons.Fire, AIM_UP);
+        List<(int X, int Y, int Radius, int OwnerId, int SpawnSeq)> explosions = new();
+        for (int t = 1; t <= SimConfig.MORTAR_MAX_LIFETIME_TICKS && w.Mortars.Count > 0; t++)
+        {
+            StepWith(w, ref seq, InputButtons.None, AIM_UP);
+            explosions.AddRange(w.Explosions);
+        }
+
+        Assert.Empty(w.Mortars);
+        (int X, int Y, int Radius, int OwnerId, int SpawnSeq) explosion = Assert.Single(explosions);
+        Assert.Equal(1, explosion.OwnerId);
+        Assert.Equal(0, explosion.SpawnSeq);
+        Assert.True(explosion.Y < 0, "the long-lived upward shell should detonate above the map");
     }
 
     [Fact]

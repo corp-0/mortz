@@ -21,6 +21,7 @@ public partial class PlayerViewManager : Node2D
     private readonly Dictionary<int, PlayerView> _views = new();
     private readonly HashSet<int> _placed = new();
     private readonly Dictionary<int, string> _names = new();
+    private readonly Dictionary<int, byte> _skins = new();
 
     // Everyone renders with the base stats until perks make them per-player.
     private PlayerStats _stats = null!;
@@ -38,8 +39,13 @@ public partial class PlayerViewManager : Node2D
     private void OnRoster(RosterMsg msg)
     {
         _names.Clear();
-        for (int i = 0; i < msg.PeerIds.Length; i++)
+        _skins.Clear();
+        int count = Math.Min(msg.PeerIds.Length, Math.Min(msg.Names.Length, msg.Skins.Length));
+        for (int i = 0; i < count; i++)
+        {
             _names[(int)msg.PeerIds[i]] = msg.Names[i];
+            _skins[(int)msg.PeerIds[i]] = msg.Skins[i];
+        }
         foreach ((int peerId, PlayerView view) in _views)
             view.SetPlayerName(_names.GetValueOrDefault(peerId, ""));
     }
@@ -57,6 +63,8 @@ public partial class PlayerViewManager : Node2D
     {
         _placed.Add(peerId);
         bool isLocal = peerId == Multiplayer.GetUniqueId();
+        if (_skins.TryGetValue(peerId, out byte rosterSkin))
+            skin = rosterSkin;
         if (!isLocal)
             RemotePlaced?.Invoke(feet);
         if (!_views.TryGetValue(peerId, out PlayerView? view))
