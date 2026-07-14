@@ -27,6 +27,8 @@ public partial class LocalPlayerController : Node2D
     public Func<int, InputButtons, InputButtons>? ButtonFilter { get; set; }
     /// <summary>Debug/E2E hook: pins the aim regardless of the mouse.</summary>
     public byte? AimOverride { get; set; }
+    /// <summary>Debug/E2E hook: recomputes the aim each tick (e.g. seek an enemy).</summary>
+    public Func<byte>? AimProvider { get; set; }
 
     private Predictor _predictor = null!;
     private Vector2 _correctionOffset;
@@ -58,6 +60,8 @@ public partial class LocalPlayerController : Node2D
             buttons = ButtonFilter(_predictor.NextSeq, buttons);
         if (AimOverride is { } aim)
             _aim = aim;
+        if (AimProvider != null)
+            _aim = AimProvider();
 
         _predictor.LocalTick(new PlayerInput(buttons, _aim));
         if (_predictor.NextSeq % NetConfig.TICKS_PER_INPUT_PACKET == 0)
@@ -81,7 +85,7 @@ public partial class LocalPlayerController : Node2D
                 continue;
             if (!_predictor.Initialized)
                 GD.Print("[client] prediction initialized");
-            Vec2 correction = _predictor.Reconcile(player, ack);
+            Vec2 correction = _predictor.Reconcile(player, ack, snapshot.Tick);
             if (correction.Length() > SNAP_DISTANCE)
                 _correctionOffset = Vector2.Zero;
             else
@@ -93,6 +97,12 @@ public partial class LocalPlayerController : Node2D
 
     /// <summary>Predicted terrain impacts since the last drain, for predicted carving.</summary>
     public List<(int SpawnSeq, Vec2 Position)> DrainImpacts() => _predictor.DrainImpacts();
+
+    /// <summary>Retire one of our shells the server ended early; true if it was still flying.</summary>
+    public bool RetireShell(int spawnSeq) => _predictor.RetireShell(spawnSeq);
+
+    /// <summary>True if a predicted shell for this seq is still live.</summary>
+    public bool HasPredictedShell(int spawnSeq) => _predictor.HasShell(spawnSeq);
 
     private Vector2 BodyCenter() =>
         new(State.Position.X, State.Position.Y - SimConfig.PLAYER_HALF_HEIGHT);

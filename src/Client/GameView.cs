@@ -1,5 +1,6 @@
 using Godot;
 using Mortz.Core;
+using Mortz.Core.Net.Messages;
 using Mortz.Net;
 using Mortz.Shared;
 
@@ -39,18 +40,67 @@ public partial class GameView : Node2D
         _hud.Configure(stats);
     }
 
-    public override void _Ready() =>
+    public override void _Ready()
+    {
         NetworkManager.Instance.SnapshotReceived += OnSnapshotReceived;
+        CarveMsg.Received += OnCarve;
+        ShellRetireMsg.Received += OnShellRetire;
+    }
 
-    public override void _ExitTree() =>
+    public override void _ExitTree()
+    {
         NetworkManager.Instance.SnapshotReceived -= OnSnapshotReceived;
+        CarveMsg.Received -= OnCarve;
+        ShellRetireMsg.Received -= OnShellRetire;
+    }
 
     private void OnSnapshotReceived(byte[] data, int ack)
     {
         Snapshot snapshot = Snapshot.Deserialize(data);
         _interpolator.Add(snapshot);
         _localPlayer.Reconcile(snapshot, ack);
+        RetireDeflectedShells(snapshot);
         SnapshotApplied?.Invoke(snapshot);
+    }
+
+    /// <summary>Our shell exploded server-side; retire the predicted copy so it
+    /// can't fly on and carve a ghost. Deflected shells carry -1 and are skipped.</summary>
+    private void OnCarve(CarveMsg msg)
+    {
+        if (msg.SpawnSeq >= 0 && msg.OwnerId == Multiplayer.GetUniqueId() &&
+            _localPlayer.RetireShell(msg.SpawnSeq))
+            GD.Print($"[client] retired shell seq {msg.SpawnSeq} (authoritative explosion)");
+    }
+
+    /// <summary>Reliable retirement is the delivery guarantee when a parry takes
+    /// over one of our shells. Settle the carve even if its impact was queued but
+    /// had not reached GameMap yet; the snapshot path below is the low-latency
+    /// fallback because cross-channel delivery order is not guaranteed.</summary>
+    private void OnShellRetire(ShellRetireMsg msg)
+    {
+        bool hadPrediction = _localPlayer.RetireShell(msg.SpawnSeq);
+        bool hadCarve = _gameMap.RevertPredictedCarve(msg.SpawnSeq);
+        if (hadPrediction || hadCarve)
+            GD.Print($"[client] retired shell seq {msg.SpawnSeq} (reliable server event)");
+    }
+
+    /// <summary>A parry took one of our shells over (a deflected shell in the
+    /// snapshot). This may arrive before the reliable retirement message, so
+    /// retire immediately; both paths are idempotent. Revert its carve if it
+    /// already laid one because the deflected carve is -1 and cannot confirm it.</summary>
+    private void RetireDeflectedShells(Snapshot snapshot)
+    {
+        foreach (MortarState m in snapshot.Mortars)
+        {
+            if (!m.Deflected || m.FiredBy != Multiplayer.GetUniqueId())
+                continue;
+            bool hadShell = _localPlayer.RetireShell(m.SpawnSeq);
+            bool hadCarve = _gameMap.RevertPredictedCarve(m.SpawnSeq);
+            if (hadShell || hadCarve)
+            {
+                GD.Print($"[client] retired shell seq {m.SpawnSeq} (deflected)");
+            }
+        }
     }
 
     public override void _Process(double delta)

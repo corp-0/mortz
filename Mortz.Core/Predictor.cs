@@ -26,6 +26,8 @@ public sealed class Predictor
     private readonly PlayerStats _stats;
     private readonly List<(int SpawnSeq, MortarState Shell)> _shells = new();
     private readonly List<(int SpawnSeq, Vec2 Position)> _impacts = new();
+    private readonly HashSet<int> _retired = new();
+    private int _lastReconciledTick = -1;
     private PlayerState _state;
 
     /// <param name="terrain">The client's mask; carve events mutate it in place.</param>
@@ -57,6 +59,27 @@ public sealed class Predictor
         List<(int, Vec2)> drained = new(_impacts);
         _impacts.Clear();
         return drained;
+    }
+
+    /// <summary>The server ended this shell early (direct hit or parry). Drop the
+    /// local copy and remember the seq so a replay can't respawn it.</summary>
+    /// <returns>True if a still-flying shell was dropped.</returns>
+    public bool RetireShell(int spawnSeq)
+    {
+        bool dropped = _shells.RemoveAll(s => s.SpawnSeq == spawnSeq) > 0;
+        bool droppedImpact = _impacts.RemoveAll(i => i.SpawnSeq == spawnSeq) > 0;
+        _retired.Add(spawnSeq);
+        return dropped || droppedImpact;
+    }
+
+    /// <summary>True if a predicted shell for this seq is still live. The deflection
+    /// retire checks this: a deflected shell is only ours if we predicted it.</summary>
+    public bool HasShell(int spawnSeq)
+    {
+        foreach ((int seq, MortarState _) in _shells)
+            if (seq == spawnSeq)
+                return true;
+        return false;
     }
 
     /// <summary>Record and immediately apply this tick's local input.</summary>
@@ -102,23 +125,27 @@ public sealed class Predictor
     /// Returns how far the predicted position moved (old - new); feed it to
     /// a decaying visual offset so corrections ease in over a few frames.
     /// </summary>
-    public Vec2 Reconcile(PlayerState serverState, int lastAppliedSeq)
+    /// <param name="serverTick">Snapshot tick; a tick no newer than the last one
+    /// reconciled is an out-of-order straggler and is dropped (replaying from
+    /// already-pruned history would mispredict). -1 skips the check.</param>
+    public Vec2 Reconcile(PlayerState serverState, int lastAppliedSeq, int serverTick = -1)
     {
-        Vec2 before = _state.Position;
+        if (serverTick >= 0)
+        {
+            if (serverTick <= _lastReconciledTick)
+                return Vec2.Zero;
+            _lastReconciledTick = serverTick;
+        }
 
-        // PrevButtons is not on the wire; the acked input is ours, so restore
-        // it from history to keep press edge detection correct during replay.
-        // Never leave it at the wire default: with a button held, a lost
-        // anchor reads as a fresh press and the replay fires phantom shells.
-        if (_history.TryGet(lastAppliedSeq, out PlayerInput acked))
-            serverState.PrevButtons = acked.Buttons;
-        else if (Initialized)
-            serverState.PrevButtons = _state.PrevButtons; // ack outside the window: assume held
+        Vec2 before = _state.Position;
 
         // Shells from acked inputs stay: the server has spawned its copies,
         // but the owner keeps watching the local ones so nothing jumps back
         // in time. Shells from unacked inputs are re-derived by the replay.
         _shells.RemoveAll(s => s.SpawnSeq > lastAppliedSeq);
+        // These impacts came from the unacked trajectory we are about to replace.
+        // Keeping them would let the view carve a position the replay invalidated.
+        _impacts.RemoveAll(i => i.SpawnSeq > lastAppliedSeq);
         List<(int SpawnSeq, MortarState Shell)> rebuilt = new();
 
         PlayerState state = serverState;
@@ -126,7 +153,9 @@ public sealed class Predictor
         {
             InputButtons prevButtons = state.PrevButtons;
             state = PlayerSim.Tick(state, input, _terrain, _stats);
-            if (WeaponSim.Tick(ref state, input, prevButtons, _stats))
+            // Run the weapon even for a retired shot: its ammo and reload were
+            // real, only the shell must not come back.
+            if (WeaponSim.Tick(ref state, input, prevButtons, _stats) && !_retired.Contains(seq))
                 rebuilt.Add((seq, WeaponSim.NewShell((ushort)seq, seq, state, input, _cfg)));
             StepShells(rebuilt); // fast-forward in lockstep with the replay
         }
@@ -136,6 +165,7 @@ public sealed class Predictor
         Initialized = true;
         _state = state;
         _history.DropThrough(lastAppliedSeq);
+        _retired.RemoveWhere(seq => seq <= lastAppliedSeq);
 
         return wasInitialized ? before - _state.Position : Vec2.Zero;
     }

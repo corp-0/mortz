@@ -15,17 +15,17 @@ public record struct MortarState
     public int OwnerId;
 
     /// <summary>PeerId that fired the shell, set at spawn and never transferred.
-    /// Not in snapshots; the server compares it to a kill's victim to spot the
-    /// OWNED case (a parried shell coming back for its own shooter).</summary>
+    /// Serialized so a deflected shell's original owner can distinguish its
+    /// client-local SpawnSeq from another player's identical sequence number.</summary>
     public int FiredBy;
 
     /// <summary>Set by a parry. On the wire: nobody predicted this trajectory,
     /// so even the new owner renders the authoritative copy.</summary>
     public bool Deflected;
 
-    /// <summary>Input sequence that fired the shell. Not in snapshots; it rides
-    /// the carve broadcast so the owner's client can match the authoritative
-    /// explosion to its predicted one.</summary>
+    /// <summary>Input sequence that fired the shell. Rides the carve broadcast and
+    /// the snapshot so the owner can match its predicted carve and spot a shell a
+    /// parry took over.</summary>
     public int SpawnSeq;
     public Vec2 Position;
     public Vec2 Velocity;

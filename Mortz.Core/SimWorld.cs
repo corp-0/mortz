@@ -21,6 +21,7 @@ public sealed class SimWorld
     // Shells in flight, in spawn order.
     private readonly List<MortarState> _mortars = new();
     private readonly List<(int X, int Y, int Radius, int OwnerId, int SpawnSeq)> _explosions = new();
+    private readonly List<(int FiredBy, int SpawnSeq)> _shellRetirements = new();
     private readonly List<(int PeerId, Vec2 Position, int KillerId, bool Owned)> _deaths = new();
     private ushort _nextMortarId;
 
@@ -35,6 +36,10 @@ public sealed class SimWorld
     /// as carves. Owner and firing seq let the owner's client match its
     /// predicted carve to the authoritative one.</summary>
     public IReadOnlyList<(int X, int Y, int Radius, int OwnerId, int SpawnSeq)> Explosions => _explosions;
+
+    /// <summary>Predicted shells the server took over this Step. The server sends
+    /// these reliably to the original shooter; snapshots remain only a fallback.</summary>
+    public IReadOnlyList<(int FiredBy, int SpawnSeq)> ShellRetirements => _shellRetirements;
 
     /// <summary>Deaths from the last Step (blast or death pit), with the body
     /// center at the moment of death; the server broadcasts these for gibs and
@@ -114,6 +119,7 @@ public sealed class SimWorld
     public void Step()
     {
         _explosions.Clear();
+        _shellRetirements.Clear();
         _deaths.Clear();
         foreach (int id in _players.Keys.ToArray())
         {
@@ -130,14 +136,29 @@ public sealed class SimWorld
             else
             {
                 PlayerStats stats = _stats[id];
-                state = PlayerSim.Tick(prev, input, Terrain, stats);
+                // The effective input may contain carried actions. Force any raw
+                // press consumed by the drain to be an edge against the simulated
+                // state, then restore the raw applied buttons as the next replay
+                // anchor; carried buttons are one-tick actions, not held state.
+                PlayerState simPrev = prev with
+                {
+                    PrevButtons = prev.PrevButtons & ~queue.PressedButtons,
+                };
+                state = PlayerSim.Tick(simPrev, input, Terrain, stats);
                 // Shells are world entities and this is the authoritative sim, so
                 // the spawn happens here; prediction runs the same WeaponSim but
-                // keeps its shells cosmetic.
-                // FireSeq, not LastAppliedSeq: a press overtaken by the
-                // backlog drain must still match the client's predicted shell.
-                if (WeaponSim.Tick(ref state, input, prev.PrevButtons, stats))
-                    _mortars.Add(WeaponSim.NewShell(_nextMortarId++, queue.FireSeq, state, input, Config));
+                // keeps its shells cosmetic. Run the weapon per consumed input, not
+                // just the applied one, so a fire the drain overtook still fires
+                // with its own aim and seq, and reload advances a step per input.
+                InputButtons prevButtons = prev.PrevButtons;
+                foreach ((int seq, PlayerInput consumed) in queue.Consumed)
+                {
+                    if (WeaponSim.Tick(ref state, consumed, prevButtons, stats))
+                        _mortars.Add(WeaponSim.NewShell(_nextMortarId++, seq, state, consumed, Config));
+                    prevButtons = consumed.Buttons;
+                }
+                state.PrevButtons = queue.RawAppliedInput.Buttons;
+                state.Aim = queue.RawAppliedInput.Aim;
                 if (FellOutOfTheMap(state))
                 {
                     _deaths.Add((id, BodyCenter(state), 0, false)); // death pit: no killer
@@ -176,11 +197,11 @@ public sealed class SimWorld
     /// An active parry bubble flips an approaching shell straight back along
     /// its trajectory and refunds the parrier's cooldown. The parrier takes
     /// ownership (their kill now), FiredBy remembers who shot it for the OWNED
-    /// check, and SpawnSeq goes to -1 so the eventual carve matches nobody's
-    /// predicted one. The shooter's own predicted copy keeps flying straight
-    /// and its carve reverts on the ledger timeout, same artifact as a direct
-    /// hit today. The approach test doubles as the re-deflect guard: once
-    /// flipped, the shell is receding.
+    /// check, and SpawnSeq is kept so the original shooter can recognise its
+    /// deflected shell in a snapshot and retire the predicted copy that would
+    /// otherwise keep flying straight. The eventual carve still matches nobody:
+    /// Explode broadcasts -1 for a deflected shell. The approach test doubles
+    /// as the re-deflect guard: once flipped, the shell is receding.
     /// </summary>
     private void TryDeflect(ref MortarState m)
     {
@@ -193,9 +214,10 @@ public sealed class SimWorld
             if (toCenter.LengthSquared() > radius * radius || Vec2.Dot(m.Velocity, toCenter) <= 0)
                 continue;
             m.Velocity = -m.Velocity;
+            if (!m.Deflected)
+                _shellRetirements.Add((m.FiredBy, m.SpawnSeq));
             m.OwnerId = id;
             m.Deflected = true;
-            m.SpawnSeq = -1;
             _players[id] = p with { ParryCooldown = 0 };
             return;
         }
@@ -232,7 +254,11 @@ public sealed class SimWorld
     {
         Vec2 at = m.Position;
         Terrain.CarveCircle((int)at.X, (int)at.Y, Config.MortarCarveRadius);
-        _explosions.Add(((int)at.X, (int)at.Y, Config.MortarCarveRadius, m.OwnerId, m.SpawnSeq));
+        // A deflected shell keeps the shooter's seq for snapshot retirement, but
+        // its carve belongs to no prediction: broadcast -1 so the new owner can't
+        // match it.
+        int carveSeq = m.Deflected ? -1 : m.SpawnSeq;
+        _explosions.Add(((int)at.X, (int)at.Y, Config.MortarCarveRadius, m.OwnerId, carveSeq));
 
         foreach (int id in _players.Keys.ToArray())
         {

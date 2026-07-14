@@ -5,10 +5,13 @@ namespace Mortz.Core;
 /// format is hand-rolled binary, quantized to keep the broadcast cheap:
 /// points in 1/4 px, velocities in 1/4 px/s, both i16 (maps up to ~8k px a
 /// side). LastInputSeq stays off the wire; each client gets its own ack
-/// beside the packet instead of everyone's inside it. Reconciling from a
-/// deserialized state can therefore miss by up to 1/8 px, which the
-/// correction offset eats invisibly. Bump <see cref="NetConfig.PROTOCOL_VERSION"/>
-/// on any layout change.
+/// beside the packet instead of everyone's inside it. PrevButtons does ride
+/// the snapshot because queue draining and respawn make it impossible to infer
+/// from the raw acked input. Only the owner needs it for reconciliation, but
+/// carrying two bytes per player keeps the snapshot self-contained and avoids
+/// another per-peer sidecar. Reconciling from a deserialized state can miss by
+/// up to 1/8 px, which the correction offset eats invisibly. Bump
+/// <see cref="NetConfig.PROTOCOL_VERSION"/> on any layout change.
 /// </summary>
 public sealed record Snapshot(int Tick, PlayerState[] Players, MortarState[] Mortars)
 {
@@ -40,6 +43,7 @@ public sealed record Snapshot(int Tick, PlayerState[] Players, MortarState[] Mor
             w.Write(p.TeamId);
             w.Write(p.ParryTicks);
             w.Write(p.ParryCooldown);
+            w.Write((ushort)p.PrevButtons);
             if (p.Rope != RopeMode.None)
                 WriteVec(w, p.RopePoint);
             if (p.Rope == RopeMode.Flying)
@@ -48,13 +52,16 @@ public sealed record Snapshot(int Tick, PlayerState[] Players, MortarState[] Mor
                 w.Write(Quantize(p.RopeLength));
         }
         // OwnerId rides along so clients can hide their own shells and render
-        // the predicted copies instead.
+        // the predicted copies instead; SpawnSeq lets the shooter spot a shell
+        // the server took over (a deflect) and retire its predicted copy.
         w.Write((byte)Mortars.Length);
         foreach (MortarState m in Mortars)
         {
             w.Write(m.Id);
             w.Write(m.OwnerId);
+            w.Write(m.FiredBy);
             w.Write(m.Deflected);
+            w.Write(m.SpawnSeq);
             WriteVec(w, m.Position);
             WriteVec(w, m.Velocity);
         }
@@ -94,6 +101,7 @@ public sealed record Snapshot(int Tick, PlayerState[] Players, MortarState[] Mor
                 TeamId = r.ReadByte(),
                 ParryTicks = r.ReadByte(),
                 ParryCooldown = r.ReadUInt16(),
+                PrevButtons = (InputButtons)r.ReadUInt16(),
             };
             if (p.Rope != RopeMode.None)
                 p.RopePoint = ReadVec(r);
@@ -111,7 +119,9 @@ public sealed record Snapshot(int Tick, PlayerState[] Players, MortarState[] Mor
             {
                 Id = r.ReadUInt16(),
                 OwnerId = r.ReadInt32(),
+                FiredBy = r.ReadInt32(),
                 Deflected = r.ReadBoolean(),
+                SpawnSeq = r.ReadInt32(),
                 Position = ReadVec(r),
                 Velocity = ReadVec(r),
             };
@@ -130,4 +140,3 @@ public sealed record Snapshot(int Tick, PlayerState[] Players, MortarState[] Mor
 
     private static Vec2 ReadVec(BinaryReader r) => new(r.ReadInt16() / 4f, r.ReadInt16() / 4f);
 }
-

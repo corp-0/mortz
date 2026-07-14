@@ -103,6 +103,8 @@ public partial class ServerMain : Node
             GD.Print($"[server] mortar exploded at ({x},{y})");
             new CarveMsg(x, y, radius, owner, spawnSeq).Broadcast();
         }
+        foreach ((int firedBy, int spawnSeq) in _sim.ShellRetirements)
+            new ShellRetireMsg(spawnSeq).SendTo(firedBy);
         foreach ((int peerId, Vec2 pos, int killerId, bool owned) in _sim.Deaths)
         {
             GD.Print($"[server] player {peerId} gibbed at ({(int)pos.X},{(int)pos.Y})" +

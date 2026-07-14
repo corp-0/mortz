@@ -4,21 +4,38 @@ namespace Mortz.Core;
 
 /// <summary>
 /// Bookkeeping for predicted destruction: which predicted carves still await
-/// server confirmation, and which confirmed circles are recent enough to
-/// guard restores. Pure logic; the view owns the actual pixels.
+/// server confirmation, which confirmed circles are recent enough to guard
+/// restores, and which shots have already settled (confirmed or cancelled) so a
+/// stale replay can't carve them twice. Pure logic; the view owns the pixels.
 /// </summary>
 public sealed class CarveLedger
 {
     private const ulong PENDING_TIMEOUT_MS = 2000;
     /// <summary>How long confirmed circles are remembered to guard restores.</summary>
     private const ulong CONFIRM_MEMORY_MS = 3000;
+    /// <summary>How long a settled shot's seq blocks a re-carve.</summary>
+    private const ulong SETTLED_MEMORY_MS = 3000;
 
     public sealed record PendingCarve(int X, int Y, int Radius, List<(int X, int Y)> Removed, ulong Expiry);
 
     private readonly Dictionary<int, PendingCarve> _pending = new();
     private readonly List<(int X, int Y, int Radius, ulong Expiry)> _recentConfirmed = new();
+    private readonly List<(int SpawnSeq, ulong Expiry)> _settled = new();
 
     public bool IsPending(int spawnSeq) => _pending.ContainsKey(spawnSeq);
+
+    /// <summary>Has this shot already settled (carve arrived, or a parry cancelled
+    /// it)? A settled shot must not be predicted again, or it carves a ghost.</summary>
+    public bool IsSettled(int spawnSeq)
+    {
+        foreach ((int seq, ulong _) in _settled)
+            if (seq == spawnSeq)
+                return true;
+        return false;
+    }
+
+    /// <summary>The shot is done; remember it so no late impact re-carves it.</summary>
+    public void MarkSettled(int spawnSeq, ulong now) => _settled.Add((spawnSeq, now + SETTLED_MEMORY_MS));
 
     public void AddPending(int spawnSeq, int x, int y, int radius, List<(int X, int Y)> removed, ulong now) =>
         _pending[spawnSeq] = new PendingCarve(x, y, radius, removed, now + PENDING_TIMEOUT_MS);
@@ -39,6 +56,7 @@ public sealed class CarveLedger
     public IReadOnlyList<(int SpawnSeq, PendingCarve Pending)> Expire(ulong now)
     {
         _recentConfirmed.RemoveAll(c => c.Expiry < now);
+        _settled.RemoveAll(s => s.Expiry < now);
         List<(int SpawnSeq, PendingCarve Pending)>? expired = null;
         foreach ((int seq, PendingCarve pending) in _pending)
             if (pending.Expiry < now)

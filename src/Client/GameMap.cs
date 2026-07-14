@@ -85,13 +85,13 @@ public partial class GameMap : Node2D
     }
 
     /// <summary>
-    /// Predicted destruction: the local player's shell landed, so the hole
-    /// happens now instead of a round trip later. Deduped by spawnSeq because
-    /// reconcile replays can re-report an impact.
+    /// Predicted destruction: the shell landed, so the hole happens now instead
+    /// of a round trip later. Skipped if the shot is already pending or settled;
+    /// carving it twice would leave a hole the server never confirms.
     /// </summary>
     public void PredictCarve(int spawnSeq, Vector2 impact)
     {
-        if (_ledger.IsPending(spawnSeq))
+        if (_ledger.IsPending(spawnSeq) || _ledger.IsSettled(spawnSeq))
             return;
         int x = (int)impact.X, y = (int)impact.Y;
         Exploded?.Invoke(new Vector2(x, y), _carveRadius);
@@ -99,12 +99,30 @@ public partial class GameMap : Node2D
         _ledger.AddPending(spawnSeq, x, y, _carveRadius, removed, Time.GetTicksMsec());
     }
 
+    /// <summary>A parry took over the shell that made this predicted carve. Revert
+    /// it now instead of waiting for the timeout: the deflected shell's carve is
+    /// -1 and never confirms this seq. Returns true if a pending carve was reverted.</summary>
+    public bool RevertPredictedCarve(int spawnSeq)
+    {
+        _ledger.MarkSettled(spawnSeq, Time.GetTicksMsec());
+        if (!_ledger.TryConfirm(spawnSeq, out CarveLedger.PendingCarve? pending))
+            return false;
+        GD.Print($"[client] predicted carve seq {spawnSeq} deflected, reverting");
+        Restore(pending, confirmedX: 0, confirmedY: 0, confirmedRadius: -1);
+        return true;
+    }
+
     private void OnCarve(CarveMsg msg)
     {
         (int x, int y, int radius) = (msg.X, msg.Y, msg.Radius);
-        _ledger.RecordConfirmed(x, y, radius, Time.GetTicksMsec());
+        ulong now = Time.GetTicksMsec();
+        _ledger.RecordConfirmed(x, y, radius, now);
 
-        if (msg.OwnerId == Multiplayer.GetUniqueId() && _ledger.TryConfirm(msg.SpawnSeq, out CarveLedger.PendingCarve? pending))
+        bool mine = msg.OwnerId == Multiplayer.GetUniqueId() && msg.SpawnSeq >= 0;
+        if (mine)
+            _ledger.MarkSettled(msg.SpawnSeq, now);
+
+        if (mine && _ledger.TryConfirm(msg.SpawnSeq, out CarveLedger.PendingCarve? pending))
         {
             // Our shell, already predicted (boom included). Usually a perfect
             // match and both steps are no-ops; on a mispredict this moves the

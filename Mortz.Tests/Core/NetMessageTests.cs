@@ -104,6 +104,24 @@ public class NetMessageTests : IDisposable
     }
 
     [Fact]
+    public void ShellRetireMsg_RoundTrips()
+    {
+        UseLoopback(receiverIsServer: false);
+        ShellRetireMsg received = default;
+        Action<ShellRetireMsg> handler = m => received = m;
+        ShellRetireMsg.Received += handler;
+        try
+        {
+            new ShellRetireMsg(314).SendTo(7);
+        }
+        finally
+        {
+            ShellRetireMsg.Received -= handler;
+        }
+        Assert.Equal(new ShellRetireMsg(314), received);
+    }
+
+    [Fact]
     public void DeathMsg_RoundTrips()
     {
         UseLoopback(receiverIsServer: false);

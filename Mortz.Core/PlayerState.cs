@@ -10,8 +10,7 @@ public enum RopeMode : byte
 /// <summary>
 /// Complete simulation state of one player. Prediction copies and re-ticks
 /// these, so anything that affects gameplay has to live here, not in nodes.
-/// It also has to be on the wire (except PrevButtons, which comes back from
-/// input history), or replaying from a server state drifts.
+/// It also has to be on the wire, or replaying from a server state drifts.
 /// </summary>
 public record struct PlayerState
 {
@@ -90,6 +89,8 @@ public record struct PlayerState
     /// </summary>
     public int LastInputSeq;
 
-    /// <summary>Buttons held last tick, for press-edge detection (jump, dash, rope).</summary>
+    /// <summary>Authoritative raw buttons held on the newest consumed input, for
+    /// press-edge detection (jump, dash, rope, weapon). Serialized because queue
+    /// draining and respawn mean it cannot safely be inferred from the ack.</summary>
     public InputButtons PrevButtons;
 }

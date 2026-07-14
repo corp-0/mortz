@@ -288,6 +288,20 @@ public class PredictorTests
     }
 
     [Fact]
+    public void SnapshotRoundTrip_PreservesAuthoritativePrevButtons()
+    {
+        PlayerState player = new PlayerState
+        {
+            PeerId = 1,
+            PrevButtons = InputButtons.Jump | InputButtons.Rope | InputButtons.Fire,
+        };
+
+        PlayerState restored = Snapshot.Deserialize(new Snapshot(1, [player], []).Serialize()).Players[0];
+
+        Assert.Equal(player.PrevButtons, restored.PrevButtons);
+    }
+
+    [Fact]
     public void Reconcile_ReportsCorrectionWhenServerDisagrees()
     {
         SimWorld server = new SimWorld(TestWorlds.Flat(), TestWorlds.Config);
