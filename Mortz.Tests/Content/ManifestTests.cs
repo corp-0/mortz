@@ -97,7 +97,7 @@ public class ManifestTests
     [Fact]
     public void SpawnPointsParseInAuthoredOrderAndRoundTrip()
     {
-        const string text = """
+        const string TEXT = """
             format_version = 1
             name = "Arena"
             suggested_players = 2
@@ -111,7 +111,7 @@ public class ManifestTests
             y = 250
             """;
 
-        ContentReadResult<MapManifest> result = ContentManifestReader.ReadMap(text);
+        ContentReadResult<MapManifest> result = ContentManifestReader.ReadMap(TEXT);
 
         MapManifest manifest = Assert.IsType<MapManifest>(result.Value);
         Assert.Equal([new MapSpawnPoint(100, 250), new MapSpawnPoint(300, 250)],

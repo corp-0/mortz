@@ -12,7 +12,7 @@ namespace Mortz.Tests.Core;
 /// </summary>
 public class CarveLedgerTests
 {
-    private static readonly List<(int X, int Y)> NoPixels = new();
+    private static readonly List<(int X, int Y)> _noPixels = new();
 
     [Fact]
     public void SettledShot_StaysSuppressed_SoItIsNotCarvedTwice()
@@ -21,7 +21,7 @@ public class CarveLedgerTests
 
         // The first predicted carve for seq 7 is allowed through.
         Assert.False(ledger.IsPending(7) || ledger.IsSettled(7));
-        ledger.AddPending(7, 10, 10, 4, NoPixels, now: 0);
+        ledger.AddPending(7, 10, 10, 4, _noPixels, now: 0);
         Assert.True(ledger.IsPending(7)); // a duplicate while pending is suppressed
 
         // The server's carve confirms it: pending clears, shot is now settled.

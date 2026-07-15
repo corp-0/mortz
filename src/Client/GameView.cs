@@ -114,7 +114,7 @@ public partial class GameView : Node2D
     private void OnMortarLifecycle(MortarLifecycleMsg msg)
     {
         if (!MortarWire.TryReadLifecycle(msg.Events, out int tick,
-            out List<SimWorld.MortarEvent> events))
+                out List<SimWorld.MortarEvent> events))
         {
             GD.PrintErr("[client] dropped malformed mortar lifecycle batch");
             return;
@@ -167,7 +167,7 @@ public partial class GameView : Node2D
 
     public override void _PhysicsProcess(double delta)
     {
-        if (!_finalKillReplay.MatchFrozen && _remoteMortars != null)
+        if (!_finalKillReplay.MatchFrozen)
             _remoteMortars.Tick();
     }
 

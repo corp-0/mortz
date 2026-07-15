@@ -126,7 +126,7 @@ public class DrainFidelityTests
         Predictor predictor = new Predictor(server.Terrain, TestWorlds.NoSpawnProtectionConfig);
         predictor.Reconcile(server.Players[1], -1);
 
-        const int Fire_T = 30;
+        const int FIRE_T = 30;
         Vec2 predictedVel = Vec2.Zero;
         Vec2 serverVel = Vec2.Zero;
         HashSet<int> seenMortars = new HashSet<int>();
@@ -135,10 +135,10 @@ public class DrainFidelityTests
         // in one delayed packet and land together on tick 33.
         for (int t = 0; t < 60; t++)
         {
-            PlayerInput input = t == Fire_T ? Fire(AIM_UP) : Idle(t <= Fire_T ? AIM_UP : AIM_RIGHT);
+            PlayerInput input = t == FIRE_T ? Fire(AIM_UP) : Idle(t <= FIRE_T ? AIM_UP : AIM_RIGHT);
             predictor.LocalTick(input);
             foreach ((int seq, MortarState shell) in predictor.Shells)
-                if (seq == Fire_T)
+                if (seq == FIRE_T)
                     predictedVel = shell.Velocity;
 
             if (t < 30 || t > 33)
@@ -152,7 +152,7 @@ public class DrainFidelityTests
             }
             server.Step();
             foreach (MortarState m in server.Mortars)
-                if (m.SpawnSeq == Fire_T && seenMortars.Add(m.Id))
+                if (m.SpawnSeq == FIRE_T && seenMortars.Add(m.Id))
                     serverVel = m.Velocity;
 
             predictor.Reconcile(server.Players[1], server.Players[1].LastInputSeq);

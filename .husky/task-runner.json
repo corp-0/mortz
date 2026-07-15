@@ -14,6 +14,13 @@
          "command": "git",
          "args": ["add", "${staged}"],
          "include": ["**/*.cs"]
+      },
+      {
+         "name": "validate-staged",
+         "group": "pre-commit",
+         "command": "dotnet",
+         "args": ["format", "Mortz.sln", "--verify-no-changes", "--severity", "warn", "--include", "${staged}"],
+         "include": ["**/*.cs"]
       }
    ]
 }

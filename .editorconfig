@@ -10,6 +10,12 @@ trim_trailing_whitespace = true
 indent_style = space
 indent_size = 4
 
+# The naming severities below only pick the level; without this the build never
+# reports violations at all. Rider flags the key as unsupported (it runs its own
+# naming inspections, not Roslyn's IDE rules) but dotnet build needs it, and a
+# .globalconfig does not work as a substitute.
+dotnet_diagnostic.IDE1006.severity = warning
+
 # Constants are SCREAMING_SNAKE_CASE (Godot convention), not .NET PascalCase
 dotnet_naming_rule.constants_screaming_snake.symbols = constants
 dotnet_naming_rule.constants_screaming_snake.style = screaming_snake
