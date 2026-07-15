@@ -10,10 +10,10 @@ public class FirstBloodTrackerTests
     {
         FirstBloodTracker tracker = new();
 
-        Assert.False(tracker.TryClaim(killerKnown: false, suicide: false, teamKill: false));
-        Assert.False(tracker.TryClaim(killerKnown: true, suicide: true, teamKill: false));
-        Assert.False(tracker.TryClaim(killerKnown: true, suicide: false, teamKill: true));
-        Assert.True(tracker.TryClaim(killerKnown: true, suicide: false, teamKill: false));
+        Assert.False(tracker.TryClaim(creditedKill: false));
+        Assert.False(tracker.TryClaim(creditedKill: false));
+        Assert.False(tracker.TryClaim(creditedKill: false));
+        Assert.True(tracker.TryClaim(creditedKill: true));
     }
 
     [Fact]
@@ -21,18 +21,18 @@ public class FirstBloodTrackerTests
     {
         FirstBloodTracker tracker = new();
 
-        Assert.True(tracker.TryClaim(killerKnown: true, suicide: false, teamKill: false));
-        Assert.False(tracker.TryClaim(killerKnown: true, suicide: false, teamKill: false));
+        Assert.True(tracker.TryClaim(creditedKill: true));
+        Assert.False(tracker.TryClaim(creditedKill: true));
     }
 
     [Fact]
     public void ResetStartsANewMatch()
     {
         FirstBloodTracker tracker = new();
-        Assert.True(tracker.TryClaim(killerKnown: true, suicide: false, teamKill: false));
+        Assert.True(tracker.TryClaim(creditedKill: true));
 
         tracker.Reset();
 
-        Assert.True(tracker.TryClaim(killerKnown: true, suicide: false, teamKill: false));
+        Assert.True(tracker.TryClaim(creditedKill: true));
     }
 }

@@ -3,17 +3,6 @@ using Mortz.Core;
 
 namespace Mortz.Client;
 
-public readonly record struct PlayerViewState(
-    Vector2 Feet,
-    byte Aim,
-    byte Skin,
-    byte Ammo,
-    byte ReloadTicks,
-    byte Health,
-    byte RespawnTicks,
-    byte ParryTicks,
-    byte DashCooldown);
-
 /// <summary>
 /// Visual shell for one player, local or remote. GameView owns the lifecycle
 /// and pushes state in through Apply every frame; nothing here simulates or
@@ -26,15 +15,12 @@ public partial class PlayerView : Node2D
     public static bool DrawSimBoxes;
 
     private const float HIT_FLASH_TIME = 0.2f; // s
-    // local dashCooldown is predicted, so reconciliation can nudge it up a few
-    // ticks with no dash; a real dash raises it by the full cooldown.
-    private const int DASH_CORRECTION_SLACK = 5; // ticks
 
     [Export] private Sprite2D _body = null!;
     [Export] private Node2D _aimPivot = null!;
     [Export] private Sprite2D _launcher = null!;
     [Export] private Camera2D _camera = null!;
-    [Export] private ProgressBar _reloadBar = null!;
+    [Export] private PlayerReloadIndicator _reloadBar = null!;
     [Export] private Label _nameplate = null!;
     [Export] private CpuParticles2D _dashDust = null!;
 
@@ -46,9 +32,14 @@ public partial class PlayerView : Node2D
     private float _hitFlash;
     private PlayerStats _stats = null!;
     private PlayerViewState? _previous;
+    private SfxHandle _reloadSound;
 
     /// <summary>Must be called before the first Apply (PlayerViewManager does).</summary>
-    public void Configure(PlayerStats stats) => _stats = stats;
+    public void Configure(PlayerStats stats)
+    {
+        _stats = stats;
+        _reloadBar.Configure(stats);
+    }
 
     /// <summary>Only the local player's camera drives the screen, and only
     /// remote players wear a nameplate; you know who you are.</summary>
@@ -61,10 +52,12 @@ public partial class PlayerView : Node2D
 
     public void SetPlayerName(string name) => _nameplate.Text = name;
 
+    public override void _ExitTree() => _reloadSound.Stop();
+
     public void Apply(in PlayerViewState next)
     {
         if (_previous is { } previous)
-            PlayTransitions(previous, next);
+            PlayTransitions(PlayerViewTransitions.Between(previous, next, _isLocal));
 
         if ((next.ParryTicks > 0) != _shieldVisible)
         {
@@ -74,7 +67,7 @@ public partial class PlayerView : Node2D
         // Dead = gibbed: no body to show. Position keeps tracking so the local
         // player's camera lingers on the death spot until the respawn.
         Visible = next.RespawnTicks == 0;
-        UpdateReloadBar(next);
+        _reloadBar.Apply(next.Ammo, next.ReloadTicks);
         Position = new Vector2(next.Feet.X, next.Feet.Y - SimConfig.PLAYER_HALF_HEIGHT);
         _body.Frame = next.Skin % SimConfig.SKIN_COUNT;
 
@@ -94,45 +87,24 @@ public partial class PlayerView : Node2D
 
     /// <summary>Everything that fires once on an edge rather than tracking a
     /// value, so none of it can run before there is a frame to compare to.</summary>
-    private void PlayTransitions(in PlayerViewState previous, in PlayerViewState next)
+    private void PlayTransitions(PlayerViewTransition transitions)
     {
-        if (previous.ParryTicks == 0 && next.ParryTicks > 0)
+        if (transitions.HasFlag(PlayerViewTransition.ParryRaised))
             Sfx.PlayAttached(Sfx.Sounds.ParryRaise, this);
-
-        // Ammo rising mid-reload is one shell landing and the next starting.
-        if (next.ReloadTicks > 0 && (previous.ReloadTicks == 0 || next.Ammo > previous.Ammo))
-            Sfx.PlayAttached(Sfx.Sounds.MortarReload, this);
-
-        int minRise = _isLocal ? DASH_CORRECTION_SLACK : 1;
-        if (next.DashCooldown - previous.DashCooldown >= minRise)
+        if (transitions.HasFlag(PlayerViewTransition.ShellReloadStarted))
+        {
+            _reloadSound.Stop();
+            _reloadSound = Sfx.PlayAttached(Sfx.Sounds.MortarReload, this);
+        }
+        else if (transitions.HasFlag(PlayerViewTransition.ReloadStopped))
+        {
+            _reloadSound.Stop();
+            _reloadSound = default;
+        }
+        if (transitions.HasFlag(PlayerViewTransition.Dashed))
             _dashDust.Restart();
-
-        if (next.Health < previous.Health)
+        if (transitions.HasFlag(PlayerViewTransition.TookDamage))
             _hitFlash = HIT_FLASH_TIME;
-    }
-
-    /// <summary>
-    /// Visible only while a reload runs. The range is pinned when the bar
-    /// appears (min = shells held then, max = a full magazine), so a one-shell
-    /// top-up sweeps the same visual distance as a five-shell reload sweeps
-    /// per shell. Interruption and completion both zero ReloadTicks, which
-    /// hides it again.
-    /// </summary>
-    private void UpdateReloadBar(in PlayerViewState state)
-    {
-        if (state.ReloadTicks == 0)
-        {
-            _reloadBar.Visible = false;
-            return;
-        }
-        if (!_reloadBar.Visible)
-        {
-            _reloadBar.MinValue = state.Ammo;
-            _reloadBar.MaxValue = _stats.MaxAmmo;
-            _reloadBar.Visible = true;
-        }
-        // Shells banked plus the fraction of the one being loaded.
-        _reloadBar.Value = state.Ammo + 1.0 - (double)state.ReloadTicks / _stats.ReloadTicks;
     }
 
     public override void _Process(double delta)

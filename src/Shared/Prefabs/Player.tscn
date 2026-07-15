@@ -3,6 +3,7 @@
 [ext_resource type="Texture2D" uid="uid://bixaxn83876w6" path="res://Assets/ScifiCritters4.PNG" id="1_el0ul"]
 [ext_resource type="Texture2D" uid="uid://dwe3tj73fx26j" path="res://Assets/BaseCannon.png" id="2_2h1fo"]
 [ext_resource type="Script" uid="uid://b7lehci78rb18" path="res://src/Client/PlayerView.cs" id="3_pview"]
+[ext_resource type="Script" path="res://src/Client/PlayerReloadIndicator.cs" id="4_reload"]
 
 [sub_resource type="Curve" id="Curve_dash"]
 _data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
@@ -47,6 +48,7 @@ offset_right = 11.0
 offset_bottom = 11.0
 max_value = 5.0
 show_percentage = false
+script = ExtResource("4_reload")
 
 [node name="DashDust" type="CPUParticles2D" parent="." unique_id=771294055]
 emitting = false

@@ -11,8 +11,33 @@ public sealed class Scoreboard
 {
     public record struct Row(byte TeamId, int Kills, int Deaths);
 
+    public enum DeathKind
+    {
+        Kill,
+        Fall,
+        Suicide,
+        TeamKill,
+        Uncredited,
+    }
+
     /// <summary>Id is a team id when ByTeam, a peer id otherwise.</summary>
     public readonly record struct MatchWinner(bool ByTeam, int Id);
+
+    /// <summary>The complete result of applying one death to the board. This is
+    /// the single source of truth for attribution: presentation and networking
+    /// must not independently re-classify the same death.</summary>
+    public readonly record struct DeathResult(
+        int KillerId,
+        int VictimId,
+        DeathKind Kind,
+        Row? Killer,
+        Row Victim,
+        int Team1Kills,
+        int Team2Kills,
+        MatchWinner? Winner)
+    {
+        public bool CreditedKill => Kind == DeathKind.Kill;
+    }
 
     private readonly MatchConfig _config;
     // 1-based by TeamId ([0] never read); two teams in v1, sized here only.
@@ -36,24 +61,54 @@ public sealed class Scoreboard
     /// never a kill, minus one kill when the penalty is on. A killer who
     /// already left credits nobody. A teamkill awards nothing.
     /// </summary>
-    public MatchWinner? RecordDeath(int victimId, int killerId)
+    public DeathResult? ScoreDeath(int victimId, int killerId)
     {
         if (!_rows.TryGetValue(victimId, out Row victim))
             return null;
         _rows[victimId] = victim with { Deaths = victim.Deaths + 1 };
 
-        if (killerId == 0 || killerId == victimId)
+        DeathKind kind;
+        if (killerId == 0)
         {
+            kind = DeathKind.Fall;
             if (_config.SuicidePenalty)
                 AddKills(victimId, -1);
         }
-        else if (_rows.TryGetValue(killerId, out Row killer) &&
-                 !(_config.Teams && killer.TeamId != 0 && killer.TeamId == victim.TeamId))
+        else if (killerId == victimId)
         {
+            kind = DeathKind.Suicide;
+            if (_config.SuicidePenalty)
+                AddKills(victimId, -1);
+        }
+        else if (!_rows.TryGetValue(killerId, out Row killer))
+        {
+            kind = DeathKind.Uncredited;
+        }
+        else if (_config.Teams && killer.TeamId != 0 && killer.TeamId == victim.TeamId)
+        {
+            kind = DeathKind.TeamKill;
+        }
+        else
+        {
+            kind = DeathKind.Kill;
             AddKills(killerId, +1);
         }
-        return CheckWinner();
+
+        return new DeathResult(
+            killerId,
+            victimId,
+            kind,
+            _rows.TryGetValue(killerId, out Row killerAfter) ? killerAfter : null,
+            _rows[victimId],
+            TeamKills(1),
+            TeamKills(2),
+            CheckWinner());
     }
+
+    /// <summary>Compatibility convenience for callers interested only in the
+    /// win condition. New match orchestration should consume <see cref="ScoreDeath"/>.</summary>
+    public MatchWinner? RecordDeath(int victimId, int killerId) =>
+        ScoreDeath(victimId, killerId)?.Winner;
 
     /// <summary>Suicide penalties subtract from the team total too: the team
     /// score is the sum of what its members did, good and bad.</summary>

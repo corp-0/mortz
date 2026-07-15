@@ -5,9 +5,9 @@ public sealed class FirstBloodTracker
 {
     private bool _claimed;
 
-    public bool TryClaim(bool killerKnown, bool suicide, bool teamKill)
+    public bool TryClaim(bool creditedKill)
     {
-        if (_claimed || !killerKnown || suicide || teamKill)
+        if (_claimed || !creditedKill)
             return false;
         _claimed = true;
         return true;

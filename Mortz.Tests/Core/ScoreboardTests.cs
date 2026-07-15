@@ -178,4 +178,37 @@ public class ScoreboardTests
         Assert.Null(s.RecordDeath(victimId: 99, killerId: 1));
         Assert.Equal(0, s.Rows[1].Kills);
     }
+
+    [Theory]
+    [InlineData(0, Scoreboard.DeathKind.Fall)]
+    [InlineData(2, Scoreboard.DeathKind.Suicide)]
+    [InlineData(99, Scoreboard.DeathKind.Uncredited)]
+    public void ScoreDeath_ClassifiesUncreditedDeaths(int killerId, Scoreboard.DeathKind expected)
+    {
+        Scoreboard s = new Scoreboard(Cfg());
+        s.AddPlayer(1, 0);
+        s.AddPlayer(2, 0);
+
+        Scoreboard.DeathResult result = s.ScoreDeath(victimId: 2, killerId)!.Value;
+
+        Assert.Equal(expected, result.Kind);
+        Assert.False(result.CreditedKill);
+    }
+
+    [Fact]
+    public void ScoreDeath_ReturnsFinalRowsTalliesAndWinner()
+    {
+        Scoreboard s = new Scoreboard(Cfg(teams: true, win: WinCondition.TEAM_KILLS, target: 1));
+        s.AddPlayer(1, 1);
+        s.AddPlayer(2, 2);
+
+        Scoreboard.DeathResult result = s.ScoreDeath(victimId: 2, killerId: 1)!.Value;
+
+        Assert.Equal(Scoreboard.DeathKind.Kill, result.Kind);
+        Assert.True(result.CreditedKill);
+        Assert.Equal(1, result.Killer!.Value.Kills);
+        Assert.Equal(1, result.Victim.Deaths);
+        Assert.Equal(1, result.Team1Kills);
+        Assert.Equal(new Scoreboard.MatchWinner(true, 1), result.Winner);
+    }
 }

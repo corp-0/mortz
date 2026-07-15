@@ -25,7 +25,8 @@ public partial class Lobby : Control
     {
         foreach (Node child in _playerList.GetChildren())
             child.QueueFree();
-        for (int i = 0; i < peerIds.Length; i++)
+        int count = Math.Min(peerIds.Length, Math.Min(playerNames.Length, readyFlags.Length));
+        for (int i = 0; i < count; i++)
         {
             string self = peerIds[i] == localId ? " (you)" : "";
             string state = readyFlags[i] != 0 ? "ready" : "not ready";

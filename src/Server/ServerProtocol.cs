@@ -1,0 +1,222 @@
+using Godot;
+using Mortz.Core;
+using Mortz.Core.Net.Messages;
+using Mortz.Net;
+using Mortz.Shared;
+
+namespace Mortz.Server;
+
+/// <summary>Translates server session state into the wire protocol. Transfer
+/// ids, replication cadence, payload accounting and late-join synchronization
+/// live here instead of leaking into lifecycle orchestration.</summary>
+internal sealed class ServerProtocol
+{
+    private readonly NetworkManager _network;
+    private readonly MapPackage _map;
+    private readonly PlayerDirectory _players;
+    private readonly bool _printNetStats;
+    private long _snapshotPayloadBytes;
+    private long _mortarPayloadBytes;
+    private long _inputPayloadBytes;
+    private int _nextTerrainTransferId;
+
+    public ServerProtocol(NetworkManager network, MapPackage map, PlayerDirectory players,
+        bool printNetStats)
+    {
+        _network = network;
+        _map = map;
+        _players = players;
+        _printNetStats = printNetStats;
+    }
+
+    public void BroadcastLobby(LobbySession lobby)
+    {
+        IReadOnlyList<LobbyPlayer> players = lobby.Players;
+        new LobbyStateMsg(
+            players.Select(player => player.PeerId).ToArray(),
+            players.Select(player => _players.Name(player.PeerId)).ToArray(),
+            players.Select(player => player.Ready ? (byte)1 : (byte)0).ToArray())
+            .Broadcast();
+    }
+
+    public void BroadcastRoster(MatchSession match)
+    {
+        long[] peerIds = _players.PeerIds
+            .Where(peerId => match.World.Players.ContainsKey((int)peerId))
+            .ToArray();
+        new RosterMsg(
+            peerIds,
+            peerIds.Select(_players.Name).ToArray(),
+            peerIds.Select(peerId => match.World.Players[(int)peerId].Skin).ToArray(),
+            peerIds.Select(peerId => match.World.Players[(int)peerId].TeamId).ToArray(),
+            peerIds.Select(peerId => match.World.Players[(int)peerId].NetSlot).ToArray())
+            .Broadcast();
+    }
+
+    public void SyncPlayer(long peerId, MatchSession match)
+    {
+        SendWelcome(peerId, match);
+        SendLiveMortars(peerId, match);
+        if (match.Winner is { } winner)
+            new MatchEndMsg(winner.ByTeam, winner.Id).SendTo(peerId);
+    }
+
+    public void Publish(MatchFrame frame, MatchSession match)
+    {
+        BroadcastMortarEvents(frame.Tick, frame.MortarEvents, match.World.Players.Count);
+
+        foreach (ServerExplosion explosion in frame.Explosions)
+        {
+            GD.Print($"[server] mortar exploded at ({explosion.X},{explosion.Y})");
+            BroadcastCarve(explosion);
+        }
+        foreach ((int firedBy, int spawnSeq) in frame.ShellRetirements)
+            new ShellRetireMsg(spawnSeq).SendTo(firedBy);
+        foreach (ServerDeath death in frame.Deaths)
+        {
+            GD.Print($"[server] player {death.PeerId} gibbed at " +
+                     $"({(int)death.Position.X},{(int)death.Position.Y})" +
+                     (death.Owned ? " (OWNED)" : ""));
+            new DeathMsg(death.PeerId, PackCoordinate((int)death.Position.X),
+                PackCoordinate((int)death.Position.Y)).Broadcast();
+        }
+        foreach (ScoredElimination elimination in frame.Eliminations)
+            BroadcastElimination(elimination, match.Config);
+
+        if (frame.Tick % NetConfig.TICKS_PER_SNAPSHOT == 0 && match.World.Players.Count > 0)
+            BroadcastSnapshot(match);
+        if (frame.Tick % NetConfig.TICKS_PER_MORTAR_CORRECTION == 0 && match.World.Mortars.Count > 0)
+            BroadcastMortarCorrections(match);
+        if (_printNetStats && frame.Tick % SimConfig.TICK_RATE == 0)
+            PrintStats(match);
+
+        if (frame.MatchEnded is { } winner)
+        {
+            string who = winner.ByTeam ? $"team {winner.Id}" : _players.Name(winner.Id);
+            GD.Print($"[server] match over: {who} wins (first to {match.Config.KillTarget})");
+            new MatchEndMsg(winner.ByTeam, winner.Id).Broadcast();
+        }
+    }
+
+    public void RecordInputPayload(int bytes) => _inputPayloadBytes += bytes;
+
+    public void BroadcastDebugCarve(ServerExplosion explosion) => BroadcastCarve(explosion);
+
+    private void BroadcastMortarEvents(int tick, IReadOnlyList<SimWorld.MortarEvent> mortarEvents,
+        int playerCount)
+    {
+        if (mortarEvents.Count == 0)
+            return;
+        foreach (byte[] events in MortarWire.SerializeLifecycleBatches(tick, mortarEvents))
+        {
+            new MortarLifecycleMsg(events).Broadcast();
+            _mortarPayloadBytes += (sizeof(int) + events.Length) * playerCount;
+        }
+    }
+
+    private void BroadcastSnapshot(MatchSession match)
+    {
+        Snapshot snapshot = match.World.TakeSnapshot(includeMortars: false);
+        _snapshotPayloadBytes += _network.BroadcastSnapshot(
+            peerId => snapshot.SerializeFor((int)peerId),
+            peerId => match.World.Players.TryGetValue((int)peerId, out PlayerState player)
+                ? player.LastInputSeq
+                : -1);
+    }
+
+    private void BroadcastMortarCorrections(MatchSession match)
+    {
+        byte[] states = MortarWire.SerializeCorrections(match.World.Mortars);
+        new MortarCorrectionMsg(match.World.Tick, states).Broadcast();
+        _mortarPayloadBytes += (sizeof(int) + sizeof(int) + states.Length) * match.World.Players.Count;
+    }
+
+    private void BroadcastElimination(ScoredElimination elimination, MatchConfig config)
+    {
+        Scoreboard.DeathResult score = elimination.Score;
+        EliminationFlags flags = score.Kind switch
+        {
+            Scoreboard.DeathKind.Fall => EliminationFlags.SUICIDE | EliminationFlags.FALL,
+            Scoreboard.DeathKind.Suicide => EliminationFlags.SUICIDE,
+            Scoreboard.DeathKind.TeamKill => EliminationFlags.TEAM_KILL,
+            _ => EliminationFlags.NONE,
+        };
+        if (elimination.Owned)
+            flags |= EliminationFlags.OWNED;
+        if (elimination.FirstBlood)
+            flags |= EliminationFlags.FIRST_BLOOD;
+
+        bool suicide = score.Kind is Scoreboard.DeathKind.Fall or Scoreboard.DeathKind.Suicide;
+        int killerKills = suicide ? score.Victim.Kills : score.Killer?.Kills ?? 0;
+        new EliminationMsg(score.KillerId, score.VictimId, flags, killerKills,
+            score.Victim.Deaths, score.Team1Kills, score.Team2Kills).Broadcast();
+
+        string teams = config.Teams ? $", teams {score.Team1Kills}-{score.Team2Kills}" : "";
+        GD.Print(suicide
+            ? $"[server] {_players.Name(score.VictimId)} suicides " +
+              $"({score.Victim.Kills} kills, {score.Victim.Deaths} deaths{teams})"
+            : $"[server] {_players.Name(score.KillerId)} killed {_players.Name(score.VictimId)} " +
+              $"({killerKills} kills{teams})");
+    }
+
+    private void SendWelcome(long peerId, MatchSession match)
+    {
+        TerrainSyncPayload terrain = match.TerrainHistory.Build(match.World.Terrain);
+        if (terrain.Data.Length > NetConfig.MAX_TERRAIN_SYNC_BYTES)
+            throw new InvalidDataException($"Terrain sync is too large: {terrain.Data.Length} bytes.");
+        int chunkCount = Math.Max(1,
+            (terrain.Data.Length + NetConfig.TERRAIN_CHUNK_BYTES - 1) / NetConfig.TERRAIN_CHUNK_BYTES);
+        int transferId = ++_nextTerrainTransferId;
+        new WelcomeMsg(_map.MapId, _map.Hash, match.Config.ToBytes(), (byte)terrain.Encoding,
+            transferId, terrain.Data.Length, checked((short)chunkCount)).SendTo(peerId);
+        for (int i = 0; i < chunkCount; i++)
+        {
+            int offset = i * NetConfig.TERRAIN_CHUNK_BYTES;
+            int length = Math.Min(NetConfig.TERRAIN_CHUNK_BYTES, terrain.Data.Length - offset);
+            byte[] chunk = terrain.Data.AsSpan(offset, Math.Max(0, length)).ToArray();
+            new TerrainChunkMsg(transferId, (short)i, (short)chunkCount, chunk).SendTo(peerId);
+        }
+        GD.Print($"[server] terrain sync to {peerId}: {terrain.Encoding}, " +
+                 $"{terrain.Data.Length} B in {chunkCount} chunk(s), " +
+                 $"{match.TerrainHistory.CarveCount} carve(s)");
+    }
+
+    private void SendLiveMortars(long peerId, MatchSession match)
+    {
+        if (match.World.Mortars.Count == 0)
+            return;
+        SimWorld.MortarEvent[] spawns = match.World.Mortars
+            .Select(mortar => new SimWorld.MortarEvent(SimWorld.MortarEventKind.Spawn, mortar))
+            .ToArray();
+        foreach (byte[] events in MortarWire.SerializeLifecycleBatches(match.World.Tick, spawns))
+        {
+            new MortarLifecycleMsg(events).SendTo(peerId);
+            _mortarPayloadBytes += sizeof(int) + events.Length;
+        }
+    }
+
+    private static void BroadcastCarve(ServerExplosion explosion) =>
+        new CarveMsg(PackCoordinate(explosion.X), PackCoordinate(explosion.Y),
+            PackRadius(explosion.Radius), explosion.OwnerId, explosion.SpawnSeq).Broadcast();
+
+    private void PrintStats(MatchSession match)
+    {
+        (double sent, double recv, double sentPackets, double recvPackets) = _network.PopWireStats();
+        string peers = string.Join(" ", match.World.Players.Keys.Select(peerId =>
+            $"peer={peerId} pending={match.World.PendingInputs(peerId)} " +
+            $"ack={match.World.Players[peerId].LastInputSeq}"));
+        GD.Print($"[stats] unix={Time.GetUnixTimeFromSystem():F3} tick={match.World.Tick} " +
+                 $"sent={sent:F0}B/{sentPackets:F0}pk recv={recv:F0}B/{recvPackets:F0}pk " +
+                 $"snap_app={_snapshotPayloadBytes}B mortar_app={_mortarPayloadBytes}B " +
+                 $"input_app={_inputPayloadBytes}B {peers}");
+        _snapshotPayloadBytes = 0;
+        _mortarPayloadBytes = 0;
+        _inputPayloadBytes = 0;
+    }
+
+    private static short PackCoordinate(int value) =>
+        (short)Math.Clamp(value, short.MinValue, short.MaxValue);
+
+    private static byte PackRadius(int value) =>
+        (byte)Math.Clamp(value, 0, byte.MaxValue);
+}
