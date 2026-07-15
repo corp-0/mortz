@@ -14,17 +14,13 @@ namespace Mortz.Client;
 /// </summary>
 public partial class GameView : Node2D
 {
-    private const float IMPACT_HOLD_SECONDS = 0.12f;
-    private const float REPLAY_ZOOM = 1.65f;
-
     [Export] private GameMap _gameMap = null!;
-    [Export] private EffectsSpawner _effects = null!;
     [Export] private RopeOverlay _ropes = null!;
     [Export] private LocalPlayerController _localPlayer = null!;
     [Export] private PlayerViewManager _players = null!;
     [Export] private MortarViewManager _mortars = null!;
     [Export] private Hud _hud = null!;
-    [Export] private Camera2D _replayCamera = null!;
+    [Export] private FinalKillReplay _finalKillReplay = null!;
 
     /// <summary>Diagnostics tap: a snapshot was buffered and reconciled.</summary>
     public event Action<Snapshot>? SnapshotApplied;
@@ -32,19 +28,6 @@ public partial class GameView : Node2D
     private readonly SnapshotInterpolator _interpolator = new();
     private MortarReplicaSet _remoteMortars = null!;
     private readonly Dictionary<byte, int> _peersBySlot = new();
-    private readonly ReplayHistory _replayHistory = new();
-    private FinalKillMsg? _pendingFinalKill;
-    private FinalKillMsg _finalKill;
-    private ReplayClip? _replayClip;
-    private float _replayCursor;
-    private float _impactHold;
-    private bool _impactPlayed;
-    private bool _replaying;
-    private bool _matchFrozen;
-    private Vector2 _replayCameraStart;
-    private Vector2 _replayCameraStartZoom;
-    private Vector2 _replayCameraStartOffset;
-    private float _replayCameraStartRotation;
 
     public int NewestSnapshotTick => _interpolator.NewestTick;
     public float RenderTick => _interpolator.RenderTick;
@@ -70,20 +53,16 @@ public partial class GameView : Node2D
         MortarLifecycleMsg.Received += OnMortarLifecycle;
         MortarCorrectionMsg.Received += OnMortarCorrection;
         RosterMsg.Received += OnRoster;
-        FinalKillMsg.Received += OnFinalKill;
     }
 
     public override void _ExitTree()
     {
-        ClientClock.Reset();
-        _replayCamera.Enabled = false;
         NetworkManager.Instance.SnapshotReceived -= OnSnapshotReceived;
         CarveMsg.Received -= OnCarve;
         ShellRetireMsg.Received -= OnShellRetire;
         MortarLifecycleMsg.Received -= OnMortarLifecycle;
         MortarCorrectionMsg.Received -= OnMortarCorrection;
         RosterMsg.Received -= OnRoster;
-        FinalKillMsg.Received -= OnFinalKill;
     }
 
     private void OnSnapshotReceived(byte[] data, int ack)
@@ -186,34 +165,15 @@ public partial class GameView : Node2D
             GD.PrintErr("[client] dropped malformed mortar correction");
     }
 
-    private void OnFinalKill(FinalKillMsg msg)
-    {
-        if (_matchFrozen)
-            return;
-        _matchFrozen = true;
-        _localPlayer.Frozen = true;
-        _pendingFinalKill = msg;
-    }
-
     public override void _PhysicsProcess(double delta)
     {
-        if (!_matchFrozen && _remoteMortars != null)
+        if (!_finalKillReplay.MatchFrozen && _remoteMortars != null)
             _remoteMortars.Tick();
     }
 
     public override void _Process(double delta)
     {
-        if (_pendingFinalKill is { } finalKill)
-        {
-            BeginReplay(finalKill);
-            _pendingFinalKill = null;
-        }
-        if (_replaying)
-        {
-            AdvanceReplay((float)delta);
-            return;
-        }
-        if (_matchFrozen)
+        if (_finalKillReplay.ConsumeFrame((float)delta))
             return;
 
         // Predicted destruction: our shells carve the instant they land.
@@ -265,146 +225,13 @@ public partial class GameView : Node2D
         _mortars.SyncRemote(remoteMortars);
         _mortars.SyncPredicted(predictedMortars);
 
-        ReplayMortar[] replayMortars =
-        [
-            .. remoteMortars
-                .Where(mortar => mortar.OwnerId != localId || mortar.Deflected)
-                .Select(mortar => new ReplayMortar(
-                    mortar.Id,
-                    new Vector2(mortar.Position.X, mortar.Position.Y),
-                    mortar.Velocity)),
-            .. predictedMortars.Select(entry => new ReplayMortar(
-                (1L << 32) | (uint)entry.SpawnSeq,
-                new Vector2(entry.Shell.Position.X, entry.Shell.Position.Y),
-                entry.Shell.Velocity)),
-        ];
-        _replayHistory.Add(new ReplayFrame(
+        _finalKillReplay.Record(
             RenderTick,
-            replayPlayers.ToArray(),
-            replayMortars,
-            _ropes.Segments.ToArray()));
-    }
-
-    private void BeginReplay(FinalKillMsg finalKill)
-    {
-        ReplayClip? clip = _replayHistory.Capture(finalKill.Tick);
-        if (clip == null)
-        {
-            _effects.PlayWithoutReplay(finalKill);
-            return;
-        }
-
-        _finalKill = finalKill;
-        _replayClip = clip;
-        _replayCursor = clip.StartTick;
-        _impactHold = 0;
-        _impactPlayed = false;
-        _replaying = true;
-        ClientClock.BeginReplay();
-        _effects.BeginReplay();
-        _mortars.BeginReplay();
-        _gameMap.BeginReplayTerrain(finalKill);
-
-        ReplayFrame first = clip.Sample(clip.StartTick);
-        CloneGameplayCamera(first, finalKill);
-        _replayCamera.Enabled = true;
-        _players.SetReplayActive(true);
-        RenderReplayFrame(first, hideVictim: false);
-    }
-
-    private void AdvanceReplay(float delta)
-    {
-        ReplayClip clip = _replayClip!;
-        if (_impactHold > 0)
-        {
-            _impactHold -= delta;
-            if (_impactHold > 0)
-                return;
-            EndReplay();
-            return;
-        }
-
-        _replayCursor = Math.Min(
-            clip.EndTick,
-            _replayCursor + delta * SimConfig.TICK_RATE * ClientClock.TimeScale);
-        float progress = (clip.EndTick - clip.StartTick) > 0
-            ? (_replayCursor - clip.StartTick) / (clip.EndTick - clip.StartTick)
-            : 1f;
-        bool atImpact = _replayCursor >= clip.EndTick;
-        RenderReplayFrame(clip.Sample(_replayCursor), hideVictim: atImpact);
-        UpdateReplayCamera(progress);
-        if (!atImpact || _impactPlayed)
-            return;
-        _impactPlayed = true;
-        _gameMap.ShowReplayImpact();
-        _effects.PlayReplayImpact(_finalKill);
-        _impactHold = IMPACT_HOLD_SECONDS;
-    }
-
-    private void RenderReplayFrame(ReplayFrame frame, bool hideVictim)
-    {
-        _players.BeginFrame();
-        foreach (ReplayPlayer player in frame.Players)
-        {
-            PlayerViewState state = player.State;
-            if (hideVictim && player.PeerId == _finalKill.VictimId)
-                state = state with { RespawnTicks = 1, Health = 0 };
-            _players.Place(player.PeerId, state);
-        }
-        _players.Prune();
-        _mortars.SyncReplay(frame.Mortars);
-        _ropes.Segments.Clear();
-        _ropes.Segments.AddRange(frame.Ropes);
-    }
-
-    private void UpdateReplayCamera(float progress)
-    {
-        float eased = progress * progress * (3f - 2f * progress);
-        Vector2 focus = new(_finalKill.ImpactX, _finalKill.ImpactY);
-        _replayCamera.GlobalPosition = _replayCameraStart.Lerp(focus, eased);
-        _replayCamera.Zoom = _replayCameraStartZoom.Lerp(
-            _replayCameraStartZoom * REPLAY_ZOOM, eased);
-        _replayCamera.Offset = _replayCameraStartOffset.Lerp(Vector2.Zero, eased);
-        _replayCamera.GlobalRotation = Mathf.LerpAngle(_replayCameraStartRotation, 0, eased);
-    }
-
-    private void CloneGameplayCamera(ReplayFrame first, FinalKillMsg finalKill)
-    {
-        Camera2D? gameplayCamera = GetViewport().GetCamera2D();
-        if (gameplayCamera != null && gameplayCamera != _replayCamera)
-        {
-            _replayCamera.GlobalTransform = gameplayCamera.GlobalTransform;
-            _replayCamera.Zoom = gameplayCamera.Zoom;
-            _replayCamera.Offset = gameplayCamera.Offset;
-            _replayCamera.IgnoreRotation = gameplayCamera.IgnoreRotation;
-            _replayCamera.AnchorMode = gameplayCamera.AnchorMode;
-        }
-        else
-        {
-            int localId = Multiplayer.GetUniqueId();
-            int localIndex = Array.FindIndex(first.Players, player => player.PeerId == localId);
-            _replayCamera.GlobalPosition = localIndex >= 0
-                ? first.Players[localIndex].State.Feet -
-                  new Vector2(0, SimConfig.PLAYER_HALF_HEIGHT)
-                : new Vector2(finalKill.ImpactX, finalKill.ImpactY);
-            _replayCamera.GlobalRotation = 0;
-            _replayCamera.Zoom = Vector2.One;
-            _replayCamera.Offset = Vector2.Zero;
-        }
-
-        _replayCameraStart = _replayCamera.GlobalPosition;
-        _replayCameraStartZoom = _replayCamera.Zoom;
-        _replayCameraStartOffset = _replayCamera.Offset;
-        _replayCameraStartRotation = _replayCamera.GlobalRotation;
-    }
-
-    private void EndReplay()
-    {
-        _replaying = false;
-        _mortars.EndReplay();
-        _effects.EndReplay();
-        _gameMap.EndReplayTerrain();
-        _replayClip = null;
+            replayPlayers,
+            remoteMortars,
+            predictedMortars,
+            _ropes.Segments,
+            localId);
     }
 
     private static Vector2 BodyCenter(Vec2 feet) =>

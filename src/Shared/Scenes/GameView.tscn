@@ -1,4 +1,4 @@
-[gd_scene load_steps=17 format=3 uid="uid://cjwh1mbdhwqhh"]
+[gd_scene load_steps=18 format=3 uid="uid://cjwh1mbdhwqhh"]
 
 [ext_resource type="Script" uid="uid://b4yn6nnq4p213" path="res://src/Client/GameView.cs" id="1_gview"]
 [ext_resource type="PackedScene" uid="uid://pb6yifh4403o" path="res://src/Shared/Scenes/GameMap.tscn" id="2_gmap"]
@@ -16,17 +16,17 @@
 [ext_resource type="Script" path="res://src/Client/ShellRow.cs" id="14_shells"]
 [ext_resource type="Script" path="res://src/Client/ScoreOverlay.cs" id="15_score"]
 [ext_resource type="Script" path="res://src/Client/Audio/KillAnnouncer.cs" id="16_announcer"]
+[ext_resource type="Script" path="res://src/Client/FinalKillReplay.cs" id="17_replay"]
 
-[node name="GameView" type="Node2D" unique_id=1808596722 node_paths=PackedStringArray("_gameMap", "_effects", "_ropes", "_localPlayer", "_players", "_mortars", "_hud", "_replayCamera")]
+[node name="GameView" type="Node2D" unique_id=1808596722 node_paths=PackedStringArray("_gameMap", "_ropes", "_localPlayer", "_players", "_mortars", "_hud", "_finalKillReplay")]
 script = ExtResource("1_gview")
 _gameMap = NodePath("GameMap")
-_effects = NodePath("Effects")
 _ropes = NodePath("RopeOverlay")
 _localPlayer = NodePath("LocalPlayer")
 _players = NodePath("Players")
 _mortars = NodePath("Mortars")
 _hud = NodePath("Hud")
-_replayCamera = NodePath("ReplayCamera")
+_finalKillReplay = NodePath("FinalKillReplay")
 
 [node name="GameMap" parent="." unique_id=1523337900 instance=ExtResource("2_gmap")]
 
@@ -50,6 +50,16 @@ _mortarScene = ExtResource("9_mortar")
 
 [node name="ReplayCamera" type="Camera2D" parent="."]
 enabled = false
+
+[node name="FinalKillReplay" type="Node" parent="." node_paths=PackedStringArray("_gameMap", "_effects", "_ropes", "_localPlayer", "_players", "_mortars", "_replayCamera")]
+script = ExtResource("17_replay")
+_gameMap = NodePath("../GameMap")
+_effects = NodePath("../Effects")
+_ropes = NodePath("../RopeOverlay")
+_localPlayer = NodePath("../LocalPlayer")
+_players = NodePath("../Players")
+_mortars = NodePath("../Mortars")
+_replayCamera = NodePath("../ReplayCamera")
 
 [node name="KillAnnouncer" type="Node" parent="."]
 script = ExtResource("16_announcer")
