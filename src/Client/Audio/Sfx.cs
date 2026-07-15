@@ -252,7 +252,7 @@ public partial class Sfx : Node
         sound != null && GodotObject.IsInstanceValid(sound) && sound.Stream != null;
 
     private static float CurrentTimeScale() =>
-        Mathf.Clamp((float)Engine.TimeScale, 0.05f, 1f);
+        Mathf.Clamp(ClientClock.TimeScale, 0.05f, 1f);
 
     private static void ConfigurePlayer(Node player, SoundEffect sound, Vector2 position, float pitch)
     {

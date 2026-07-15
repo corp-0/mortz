@@ -89,18 +89,18 @@ public partial class EffectsSpawner : Node2D
             Vector2 impact = new(final.ImpactX, final.ImpactY);
             Sfx.PlayAt(Sfx.Sounds.ShellImpact, impact);
             CarveBurst explosion = CarveBurst.Explosion(impact, final.BlastRadius);
-            explosion.PlaybackSpeed = 0.3f;
+            explosion.PlaybackSpeed = ClientClock.TimeScale;
             _replayEffects.AddChild(explosion);
             if (_replayDebris.Count > 0)
             {
                 CarveBurst debris = CarveBurst.Create(impact, _replayDebris);
-                debris.PlaybackSpeed = 0.3f;
+                debris.PlaybackSpeed = ClientClock.TimeScale;
                 _replayEffects.AddChild(debris);
             }
         }
         Sfx.PlayAt(Sfx.Sounds.DeathScream, death);
         GibBurst gibs = GibBurst.Create(death, _gameMap.Mask, (_, _, _) => { });
-        gibs.PlaybackSpeed = 0.3f;
+        gibs.PlaybackSpeed = ClientClock.TimeScale;
         _replayEffects.AddChild(gibs);
     }
 

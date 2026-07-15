@@ -12,7 +12,7 @@ namespace Mortz.Server;
 /// forwards engine/network callbacks.</summary>
 public partial class ServerMain : Node
 {
-    private const float MATCH_END_SECONDS = 6;
+    private const float MATCH_END_SECONDS = 7;
 
     [Export] private string _defaultMap = "castlewars";
 

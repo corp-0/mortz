@@ -95,6 +95,27 @@ public class SfxTests
         missing.Free();
     }
 
+    [Fact]
+    public void TimeScaledSoundsFollowClientClockWhileAnnouncementsDoNot()
+    {
+        using Fixture f = new();
+
+        SfxHandle scaled = Sfx.Play(f.Sounds.ShellWhoosh);
+        AudioStreamPlayer scaledPlayer = Assert.IsType<AudioStreamPlayer>(f.Manager.GetChild(0));
+        ClientClock.BeginReplay();
+        f.Manager._Process(0);
+        Assert.Equal(ClientClock.REPLAY_TIME_SCALE, scaledPlayer.PitchScale, precision: 3);
+        scaled.Stop();
+
+        SfxHandle announcement = Sfx.Play(f.Sounds.RegularKill);
+        AudioStreamPlayer announcementPlayer = Assert.IsType<AudioStreamPlayer>(f.Manager.GetChild(0));
+        Assert.Equal(1f, announcementPlayer.PitchScale, precision: 3);
+        announcement.Stop();
+
+        ClientClock.Reset();
+        f.Manager._Process(0);
+    }
+
     private sealed class Fixture : IDisposable
     {
         public Sfx Manager { get; } = new();
@@ -109,6 +130,7 @@ public class SfxTests
 
         public void Dispose()
         {
+            ClientClock.Reset();
             Manager._ExitTree();
             Manager.Free();
         }

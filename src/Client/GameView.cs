@@ -14,7 +14,6 @@ namespace Mortz.Client;
 /// </summary>
 public partial class GameView : Node2D
 {
-    private const float REPLAY_SPEED = 0.3f;
     private const float IMPACT_HOLD_SECONDS = 0.12f;
     private const float REPLAY_ZOOM = 1.65f;
 
@@ -76,6 +75,8 @@ public partial class GameView : Node2D
 
     public override void _ExitTree()
     {
+        ClientClock.Reset();
+        _replayCamera.Enabled = false;
         NetworkManager.Instance.SnapshotReceived -= OnSnapshotReceived;
         CarveMsg.Received -= OnCarve;
         ShellRetireMsg.Received -= OnShellRetire;
@@ -299,6 +300,7 @@ public partial class GameView : Node2D
         _impactHold = 0;
         _impactPlayed = false;
         _replaying = true;
+        ClientClock.BeginReplay();
         _effects.BeginReplay();
         _mortars.BeginReplay();
         _gameMap.BeginReplayTerrain(finalKill);
@@ -324,7 +326,7 @@ public partial class GameView : Node2D
 
         _replayCursor = Math.Min(
             clip.EndTick,
-            _replayCursor + delta * SimConfig.TICK_RATE * REPLAY_SPEED);
+            _replayCursor + delta * SimConfig.TICK_RATE * ClientClock.TimeScale);
         float progress = (clip.EndTick - clip.StartTick) > 0
             ? (_replayCursor - clip.StartTick) / (clip.EndTick - clip.StartTick)
             : 1f;
@@ -399,8 +401,6 @@ public partial class GameView : Node2D
     private void EndReplay()
     {
         _replaying = false;
-        _replayCamera.Enabled = false;
-        _players.SetReplayActive(false);
         _mortars.EndReplay();
         _effects.EndReplay();
         _gameMap.EndReplayTerrain();

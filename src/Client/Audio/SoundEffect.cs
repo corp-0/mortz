@@ -38,5 +38,7 @@ public partial class SoundEffect : Resource
     public StringName BusName => Bus.ToGodotName();
     [Export] public float MaxDistance { get; private set; } = 2200f;
     [Export] public SoundPriority Priority { get; private set; } = SoundPriority.GAMEPLAY;
+    /// <summary>Whether pitch follows the client-only presentation clock
+    /// (currently the final-kill replay). Announcements opt out.</summary>
     [Export] public bool TimeScaled { get; private set; } = true;
 }
