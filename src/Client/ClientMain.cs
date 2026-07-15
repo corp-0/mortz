@@ -74,7 +74,6 @@ public partial class ClientMain : Node
         LobbyStateMsg.Received += OnLobbyState;
         WelcomeMsg.Received += OnWelcome;
         TerrainChunkMsg.Received += OnTerrainChunk;
-        MatchEndMsg.Received += OnMatchEnd;
         _subscribed = true;
     }
 
@@ -89,7 +88,6 @@ public partial class ClientMain : Node
         LobbyStateMsg.Received -= OnLobbyState;
         WelcomeMsg.Received -= OnWelcome;
         TerrainChunkMsg.Received -= OnTerrainChunk;
-        MatchEndMsg.Received -= OnMatchEnd;
         _subscribed = false;
     }
 
@@ -148,7 +146,6 @@ public partial class ClientMain : Node
             return;
         if (returningFromMatch)
         {
-            Engine.TimeScale = 1;
             DisposeGameView();
             _pendingMatch = null;
             _lobby.ResetLocalReady();
@@ -225,12 +222,6 @@ public partial class ClientMain : Node
         ReturnToMenu(reason, stopLocalServer: true);
     }
 
-    private void OnMatchEnd(MatchEndMsg message)
-    {
-        if (_session.CanEnterSlowMotion)
-            Engine.TimeScale = SimConfig.MATCH_END_TIME_SCALE;
-    }
-
     private void OnDisconnected()
     {
         GD.Print("[client] disconnected from server");
@@ -241,7 +232,6 @@ public partial class ClientMain : Node
 
     private void ReturnToMenu(string status, bool stopLocalServer)
     {
-        Engine.TimeScale = 1;
         DisposeGameView();
         _pendingMatch = null;
         _session.ReturnToMenu();

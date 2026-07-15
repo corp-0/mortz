@@ -17,6 +17,12 @@ internal readonly record struct ServerDeath(
 internal readonly record struct ScoredElimination(
     Scoreboard.DeathResult Score, bool Owned, bool FirstBlood);
 
+internal readonly record struct FinalKillEvent(
+    int Tick,
+    ScoredElimination Elimination,
+    ServerDeath Death,
+    ServerExplosion? Explosion);
+
 internal readonly record struct MatchFrame(
     int Tick,
     SimWorld.MortarEvent[] MortarEvents,
@@ -25,6 +31,7 @@ internal readonly record struct MatchFrame(
     ServerDeath[] Deaths,
     ScoredElimination[] Eliminations,
     Scoreboard.MatchWinner? MatchEnded,
+    FinalKillEvent? FinalKill,
     bool ReturnToLobby);
 
 /// <summary>All state whose lifetime is exactly one match. It advances the
@@ -41,6 +48,7 @@ internal sealed class MatchSession
     public TerrainHistory TerrainHistory { get; } = new();
     public MatchStage Stage { get; private set; } = MatchStage.Playing;
     public Scoreboard.MatchWinner? Winner { get; private set; }
+    public FinalKillEvent? FinalKill { get; private set; }
     public MatchConfig Config => World.Config;
 
     public MatchSession(TerrainMask terrain, MatchConfig config, int seed, int victoryLapTicks)
@@ -64,11 +72,21 @@ internal sealed class MatchSession
         Scores.RemovePlayer(peerId);
     }
 
-    public void EnqueueInput(int peerId, int seq, PlayerInput input) =>
-        World.EnqueueInput(peerId, seq, input);
+    public void EnqueueInput(int peerId, int seq, PlayerInput input)
+    {
+        if (Stage == MatchStage.Playing)
+            World.EnqueueInput(peerId, seq, input);
+    }
 
     public MatchFrame Step()
     {
+        if (Stage == MatchStage.VictoryLap)
+        {
+            bool returnToLobby = --_ticksUntilLobby <= 0;
+            return new MatchFrame(
+                World.Tick, [], [], [], [], [], null, null, returnToLobby);
+        }
+
         World.Step();
 
         ServerExplosion[] explosions = World.Explosions
@@ -82,16 +100,22 @@ internal sealed class MatchSession
             .ToArray();
         List<ScoredElimination> eliminations = new();
         Scoreboard.MatchWinner? matchEnded = null;
+        FinalKillEvent? finalKill = null;
         foreach (ServerDeath death in deaths)
         {
             ScoredElimination? scored = ScoreDeath(death);
             if (scored is not { } elimination)
                 continue;
             eliminations.Add(elimination);
-            matchEnded ??= elimination.Score.Winner;
+            if (matchEnded == null && elimination.Score.Winner is { } winner)
+            {
+                matchEnded = winner;
+                ServerExplosion? explosion = FindExplosion(death, explosions);
+                finalKill = new FinalKillEvent(World.Tick, elimination, death, explosion);
+                FinalKill = finalKill;
+            }
         }
 
-        bool returnToLobby = Stage == MatchStage.VictoryLap && --_ticksUntilLobby == 0;
         return new MatchFrame(
             World.Tick,
             World.MortarEvents.ToArray(),
@@ -100,7 +124,8 @@ internal sealed class MatchSession
             deaths,
             eliminations.ToArray(),
             matchEnded,
-            returnToLobby);
+            finalKill,
+            false);
     }
 
     internal ScoredElimination? ScoreDeath(ServerDeath death)
@@ -125,12 +150,34 @@ internal sealed class MatchSession
 
     public ServerExplosion? DebugCarve(int x, int y)
     {
+        if (Stage != MatchStage.Playing)
+            return null;
         List<(int X, int Y)> removed = World.Terrain.CarveCircle(x, y, SimConfig.DEBUG_CARVE_RADIUS);
         if (removed.Count == 0)
             return null;
         ServerExplosion explosion = new(x, y, SimConfig.DEBUG_CARVE_RADIUS, 0, -1);
         TerrainHistory.Record(x, y, SimConfig.DEBUG_CARVE_RADIUS);
         return explosion;
+    }
+
+    private static ServerExplosion? FindExplosion(
+        ServerDeath death, IReadOnlyList<ServerExplosion> explosions)
+    {
+        ServerExplosion? nearest = null;
+        float nearestDistance = float.MaxValue;
+        foreach (ServerExplosion explosion in explosions)
+        {
+            if (explosion.OwnerId != death.KillerId)
+                continue;
+            float dx = explosion.X - death.Position.X;
+            float dy = explosion.Y - death.Position.Y;
+            float distance = dx * dx + dy * dy;
+            if (distance >= nearestDistance)
+                continue;
+            nearest = explosion;
+            nearestDistance = distance;
+        }
+        return nearest;
     }
 
     private byte NextTeam()

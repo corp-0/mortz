@@ -42,6 +42,4 @@ internal sealed class ClientSession
     }
 
     public void ReturnToMenu() => Stage = ClientSessionStage.Menu;
-
-    public bool CanEnterSlowMotion => Stage == ClientSessionStage.Playing;
 }

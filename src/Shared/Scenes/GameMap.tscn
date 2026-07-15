@@ -3,11 +3,12 @@
 [ext_resource type="Script" path="res://src/Client/GameMap.cs" id="1_gmap"]
 [ext_resource type="Script" path="res://src/Client/BloodOverlay.cs" id="2_blood"]
 
-[node name="GameMap" type="Node2D" node_paths=PackedStringArray("_background", "_solid", "_destructible", "_blood") unique_id=597678534]
+[node name="GameMap" type="Node2D" node_paths=PackedStringArray("_background", "_solid", "_destructible", "_replayTerrain", "_blood") unique_id=597678534]
 script = ExtResource("1_gmap")
 _background = NodePath("Background")
 _solid = NodePath("Solid")
 _destructible = NodePath("Destructible")
+_replayTerrain = NodePath("ReplayTerrain")
 _blood = NodePath("BloodOverlay")
 
 [node name="Background" type="Sprite2D" parent="." unique_id=941216397]
@@ -17,6 +18,10 @@ centered = false
 centered = false
 
 [node name="Destructible" type="Sprite2D" parent="." unique_id=1110667298]
+centered = false
+
+[node name="ReplayTerrain" type="Sprite2D" parent="."]
+visible = false
 centered = false
 
 [node name="BloodOverlay" type="Sprite2D" parent="."]

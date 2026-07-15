@@ -23,6 +23,7 @@ public partial class GameMap : Node2D
     [Export] private Sprite2D _background = null!;
     [Export] private Sprite2D _solid = null!;
     [Export] private Sprite2D _destructible = null!;
+    [Export] private Sprite2D _replayTerrain = null!;
     [Export] private BloodOverlay _blood = null!;
 
     /// <summary>Collision mask kept in lockstep with the server via carve events.</summary>
@@ -45,6 +46,11 @@ public partial class GameMap : Node2D
     private Image _destructibleImage = null!;
     private Image _pristineDestructible = null!;
     private ImageTexture _destructibleTexture = null!;
+    private Image _replayTerrainImage = null!;
+    private ImageTexture _replayTerrainTexture = null!;
+    private readonly List<(Vector2 Center, List<(Vector2 Position, Color Color)> Pixels)>
+        _recentCarves = [];
+    private List<(Vector2 Position, Color Color)> _activeReplayPixels = [];
 
     /// <summary>Must be called right after instantiating, before entering the tree.</summary>
     public void Initialize(MapPackage map, MatchConfig config,
@@ -62,11 +68,15 @@ public partial class GameMap : Node2D
             alreadyRemoved++;
         });
         _destructibleTexture = ImageTexture.CreateFromImage(_destructibleImage);
+        _replayTerrainImage = Image.CreateEmpty(
+            Mask.Width, Mask.Height, false, Image.Format.Rgba8);
+        _replayTerrainTexture = ImageTexture.CreateFromImage(_replayTerrainImage);
         GD.Print($"[client] late-join sync: {alreadyRemoved} px already removed");
 
         _background.Texture = ImageTexture.CreateFromImage(map.Background);
         _solid.Texture = ImageTexture.CreateFromImage(map.Solid);
         _destructible.Texture = _destructibleTexture;
+        _replayTerrain.Texture = _replayTerrainTexture;
         _blood.Initialize(Mask.Width, Mask.Height);
     }
 
@@ -153,10 +163,57 @@ public partial class GameMap : Node2D
             debris.Add((new Vector2(px, py), _destructibleImage.GetPixel(px, py)));
             _destructibleImage.SetPixel(px, py, _hole);
         }
+        RememberCarve(new Vector2(x, y), debris);
         _destructibleTexture.Update(_destructibleImage);
         if (withDebris)
             GroundRemoved?.Invoke(new Vector2(x, y), debris);
         return removed;
+    }
+
+    /// <summary>Visually rebuild just the pixels removed by the winning blast.
+    /// The real image and collision mask remain carved; recorded actors therefore
+    /// see the pre-impact floor without gameplay state being rolled back.</summary>
+    public void BeginReplayTerrain(FinalKillMsg final)
+    {
+        EndReplayTerrain();
+        if (!final.Flags.HasFlag(FinalKillFlags.EXPLOSION))
+            return;
+        Vector2 impact = new(final.ImpactX, final.ImpactY);
+        int index = _recentCarves.FindLastIndex(
+            carve => carve.Center.DistanceSquaredTo(impact) <= 4f);
+        if (index < 0)
+            return;
+
+        _activeReplayPixels = _recentCarves[index].Pixels;
+        foreach ((Vector2 position, Color color) in _activeReplayPixels)
+            _replayTerrainImage.SetPixel((int)position.X, (int)position.Y, color);
+        _replayTerrainTexture.Update(_replayTerrainImage);
+        _replayTerrain.Visible = true;
+    }
+
+    /// <summary>The replay reached the authoritative impact: reveal the real
+    /// carved terrain underneath the temporary pre-impact pixels.</summary>
+    public void ShowReplayImpact() => _replayTerrain.Visible = false;
+
+    public void EndReplayTerrain()
+    {
+        _replayTerrain.Visible = false;
+        if (_activeReplayPixels.Count == 0)
+            return;
+        foreach ((Vector2 position, Color _) in _activeReplayPixels)
+            _replayTerrainImage.SetPixel((int)position.X, (int)position.Y, _hole);
+        _replayTerrainTexture.Update(_replayTerrainImage);
+        _activeReplayPixels = [];
+    }
+
+    private void RememberCarve(
+        Vector2 center, List<(Vector2 Position, Color Color)> pixels)
+    {
+        if (pixels.Count == 0)
+            return;
+        _recentCarves.Add((center, pixels));
+        if (_recentCarves.Count > 16)
+            _recentCarves.RemoveAt(0);
     }
 
     /// <summary>

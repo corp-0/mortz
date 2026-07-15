@@ -6,14 +6,15 @@ namespace Mortz.Tests.Server;
 
 public class MatchSessionTests
 {
-    private static MatchSession Session(bool teams = false)
+    private static MatchSession Session(bool teams = false, int killTarget = 20,
+        int victoryLapTicks = 10)
     {
         TerrainMask terrain = new(128, 128, (_, _) => false, (_, _) => false);
         return new MatchSession(terrain, new MatchConfig
         {
             Teams = teams,
-            KillTarget = 20,
-        }, seed: 1, victoryLapTicks: 10);
+            KillTarget = killTarget,
+        }, seed: 1, victoryLapTicks);
     }
 
     [Fact]
@@ -59,5 +60,33 @@ public class MatchSessionTests
         Assert.Equal(Scoreboard.DeathKind.TeamKill, teamKill.Score.Kind);
         Assert.False(teamKill.FirstBlood);
         Assert.True(credited.FirstBlood);
+    }
+
+    [Fact]
+    public void VictoryLapFreezesWorldRejectsInputsAndUsesSeparateCountdown()
+    {
+        MatchSession match = Session(killTarget: 1, victoryLapTicks: 3);
+        match.AddPlayer(1);
+        match.AddPlayer(2);
+
+        ScoredElimination winner = match.ScoreDeath(
+            new ServerDeath(2, new Vec2(40, 50), 1, false))!.Value;
+        Assert.NotNull(winner.Score.Winner);
+        Assert.Equal(MatchStage.VictoryLap, match.Stage);
+
+        match.EnqueueInput(1, 0, new PlayerInput(InputButtons.Right, 0));
+        Assert.Equal(0, match.World.PendingInputs(1));
+        Assert.Null(match.DebugCarve(20, 20));
+
+        MatchFrame first = match.Step();
+        MatchFrame second = match.Step();
+        MatchFrame third = match.Step();
+
+        Assert.Equal(0, match.World.Tick);
+        Assert.False(first.ReturnToLobby);
+        Assert.False(second.ReturnToLobby);
+        Assert.True(third.ReturnToLobby);
+        Assert.Empty(first.MortarEvents);
+        Assert.Empty(first.Explosions);
     }
 }

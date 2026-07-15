@@ -29,6 +29,7 @@ public partial class PlayerView : Node2D
     private bool _boxVisible;
     private bool _shieldVisible;
     private bool _isLocal;
+    private bool _replayActive;
     private float _hitFlash;
     private PlayerStats _stats = null!;
     private PlayerViewState? _previous;
@@ -46,17 +47,23 @@ public partial class PlayerView : Node2D
     public void SetIsLocal(bool isLocal)
     {
         _isLocal = isLocal;
-        _camera.Enabled = isLocal;
+        _camera.Enabled = isLocal && !_replayActive;
         _nameplate.Visible = !isLocal;
+    }
+
+    public void SetReplayActive(bool active)
+    {
+        _replayActive = active;
+        _camera.Enabled = _isLocal && !active;
     }
 
     public void SetPlayerName(string name) => _nameplate.Text = name;
 
     public override void _ExitTree() => _reloadSound.Stop();
 
-    public void Apply(in PlayerViewState next)
+    public void Apply(in PlayerViewState next, bool playTransitions = true)
     {
-        if (_previous is { } previous)
+        if (playTransitions && _previous is { } previous)
             PlayTransitions(PlayerViewTransitions.Between(previous, next, _isLocal));
 
         if ((next.ParryTicks > 0) != _shieldVisible)

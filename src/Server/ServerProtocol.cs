@@ -59,10 +59,22 @@ internal sealed class ServerProtocol
         SendLiveMortars(peerId, match);
         if (match.Winner is { } winner)
             new MatchEndMsg(winner.ByTeam, winner.Id).SendTo(peerId);
+        if (match.FinalKill is { } finalKill)
+            ToMessage(finalKill).SendTo(peerId);
     }
 
     public void Publish(MatchFrame frame, MatchSession match)
     {
+        // The world tick is intentionally frozen during VictoryLap. Do not let
+        // the repeated value trigger periodic snapshot/correction broadcasts.
+        if (match.Stage == MatchStage.VictoryLap && frame.MatchEnded == null)
+            return;
+
+        // Reliable ordering matters: clients arm effect suppression before the
+        // matching carve/death packets arrive, then replay them cosmetically.
+        if (frame.FinalKill is { } finalKill)
+            ToMessage(finalKill).Broadcast();
+
         BroadcastMortarEvents(frame.Tick, frame.MortarEvents, match.World.Players.Count);
 
         foreach (ServerExplosion explosion in frame.Explosions)
@@ -219,4 +231,35 @@ internal sealed class ServerProtocol
 
     private static byte PackRadius(int value) =>
         (byte)Math.Clamp(value, 0, byte.MaxValue);
+
+    private static FinalKillMsg ToMessage(FinalKillEvent finalKill)
+    {
+        Scoreboard.DeathKind kind = finalKill.Elimination.Score.Kind;
+        FinalKillFlags flags = kind switch
+        {
+            Scoreboard.DeathKind.Fall => FinalKillFlags.FALL,
+            Scoreboard.DeathKind.Suicide => FinalKillFlags.SUICIDE,
+            Scoreboard.DeathKind.TeamKill => FinalKillFlags.TEAM_KILL,
+            _ => FinalKillFlags.NONE,
+        };
+        if (finalKill.Elimination.Owned)
+            flags |= FinalKillFlags.OWNED;
+
+        ServerDeath death = finalKill.Death;
+        ServerExplosion? explosion = finalKill.Explosion;
+        if (explosion != null)
+            flags |= FinalKillFlags.EXPLOSION;
+        int impactX = explosion?.X ?? (int)death.Position.X;
+        int impactY = explosion?.Y ?? (int)death.Position.Y;
+        return new FinalKillMsg(
+            finalKill.Tick,
+            finalKill.Elimination.Score.KillerId,
+            finalKill.Elimination.Score.VictimId,
+            flags,
+            PackCoordinate((int)death.Position.X),
+            PackCoordinate((int)death.Position.Y),
+            PackCoordinate(impactX),
+            PackCoordinate(impactY),
+            PackRadius(explosion?.Radius ?? 0));
+    }
 }

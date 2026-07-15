@@ -20,6 +20,7 @@ public partial class CarveBurst : Node2D
 
     private readonly List<Particle> _particles = new();
     private float _age;
+    public float PlaybackSpeed { get; set; } = 1f;
 
     private static readonly Color[] _fire =
     {
@@ -68,6 +69,7 @@ public partial class CarveBurst : Node2D
 
     public override void _Process(double delta)
     {
+        delta *= PlaybackSpeed;
         _age += (float)delta;
         if (_age >= LIFETIME)
         {

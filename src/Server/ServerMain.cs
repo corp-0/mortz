@@ -71,8 +71,6 @@ public partial class ServerMain : Node
             return;
 
         MatchFrame frame = match.Step();
-        if (frame.MatchEnded != null)
-            Engine.TimeScale = SimConfig.MATCH_END_TIME_SCALE;
         _protocol.Publish(frame, match);
         if (frame.ReturnToLobby)
             ReturnToLobby(match);
@@ -164,8 +162,7 @@ public partial class ServerMain : Node
         if (_lobby is not { CanStart: true } lobby)
             return;
 
-        int victoryLapTicks = (int)(MATCH_END_SECONDS * SimConfig.TICK_RATE *
-            SimConfig.MATCH_END_TIME_SCALE);
+        int victoryLapTicks = (int)(MATCH_END_SECONDS * SimConfig.TICK_RATE);
         MatchSession match = new(_map.BuildMask(), _rules, Random.Shared.Next(), victoryLapTicks);
         _match = match;
         _lobby = null;
@@ -185,7 +182,6 @@ public partial class ServerMain : Node
 
     private void ReturnToLobby(MatchSession completedMatch)
     {
-        Engine.TimeScale = 1;
         _lobby = LobbySession.For(_players.PeerIds);
         _match = null;
         GD.Print($"[server] back to lobby ({completedMatch.World.Players.Count} player(s))");

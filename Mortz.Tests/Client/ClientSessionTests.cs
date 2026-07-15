@@ -17,11 +17,9 @@ public class ClientSessionTests
         Assert.True(session.TryEnterMatch());
 
         Assert.Equal(ClientSessionStage.Playing, session.Stage);
-        Assert.True(session.CanEnterSlowMotion);
 
         session.ReturnToMenu();
         Assert.Equal(ClientSessionStage.Menu, session.Stage);
-        Assert.False(session.CanEnterSlowMotion);
     }
 
     [Fact]

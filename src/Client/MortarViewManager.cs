@@ -16,8 +16,10 @@ public partial class MortarViewManager : Node2D
 
     private readonly Dictionary<ushort, MortarView> _remote = new();
     private readonly Dictionary<int, MortarView> _predicted = new();
+    private readonly Dictionary<long, MortarView> _replay = new();
     private readonly HashSet<ushort> _seenRemote = new();
     private readonly HashSet<int> _seenPredicted = new();
+    private readonly HashSet<long> _seenReplay = new();
 
     public void SyncRemote(IReadOnlyList<RenderMortar> mortars)
     {
@@ -49,6 +51,25 @@ public partial class MortarViewManager : Node2D
         }
         Prune(_predicted, _seenPredicted);
     }
+
+    public void BeginReplay()
+    {
+        Clear(_remote);
+        Clear(_predicted);
+    }
+
+    internal void SyncReplay(IReadOnlyList<ReplayMortar> mortars)
+    {
+        _seenReplay.Clear();
+        foreach (ReplayMortar mortar in mortars)
+        {
+            _seenReplay.Add(mortar.Key);
+            Place(_replay, mortar.Key, mortar.Position, mortar.Velocity, playFire: false);
+        }
+        Prune(_replay, _seenReplay);
+    }
+
+    public void EndReplay() => Clear(_replay);
 
     private void Place<TKey>(Dictionary<TKey, MortarView> pool, TKey key, Vector2 position,
         Vec2 velocity, bool playFire)
@@ -83,5 +104,16 @@ public partial class MortarViewManager : Node2D
             view.QueueFree();
             pool.Remove(key);
         }
+    }
+
+    private static void Clear<TKey>(Dictionary<TKey, MortarView> pool)
+        where TKey : notnull
+    {
+        foreach (MortarView view in pool.Values)
+        {
+            view.Visible = false;
+            view.QueueFree();
+        }
+        pool.Clear();
     }
 }

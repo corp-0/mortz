@@ -27,6 +27,7 @@ public partial class GibBurst : Node2D
     private TerrainMask _mask = null!;
     private Action<int, int, Color> _paint = null!;
     private float _age;
+    public float PlaybackSpeed { get; set; } = 1f;
 
     public static GibBurst Create(Vector2 center, TerrainMask mask, Action<int, int, Color> paint)
     {
@@ -61,6 +62,7 @@ public partial class GibBurst : Node2D
 
     public override void _Process(double delta)
     {
+        delta *= PlaybackSpeed;
         _age += (float)delta;
         if (_age >= LIFETIME || _particles.Count == 0)
         {

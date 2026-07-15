@@ -187,6 +187,28 @@ public class NetMessageTests : IDisposable
     }
 
     [Fact]
+    public void FinalKillMsg_RoundTrips()
+    {
+        UseLoopback(receiverIsServer: false);
+        FinalKillMsg received = default;
+        Action<FinalKillMsg> handler = m => received = m;
+        FinalKillMsg.Received += handler;
+        FinalKillMsg expected = new(
+            781, 12, 42,
+            FinalKillFlags.EXPLOSION | FinalKillFlags.OWNED,
+            -5, 700, 20, 680, 48);
+        try
+        {
+            expected.Broadcast();
+        }
+        finally
+        {
+            FinalKillMsg.Received -= handler;
+        }
+        Assert.Equal(expected, received);
+    }
+
+    [Fact]
     public void ClientToServerMsgs_RoundTrip_WithSender()
     {
         UseLoopback(receiverIsServer: true);

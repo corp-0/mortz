@@ -22,6 +22,7 @@ public partial class PlayerViewManager : Node2D
     private readonly HashSet<int> _placed = new();
     private readonly Dictionary<int, string> _names = new();
     private readonly Dictionary<int, byte> _skins = new();
+    private bool _replayActive;
 
     // Everyone renders with the base stats until perks make them per-player.
     private PlayerStats _stats = null!;
@@ -71,11 +72,19 @@ public partial class PlayerViewManager : Node2D
             view = _playerScene.Instantiate<PlayerView>();
             view.Configure(_stats);
             view.SetIsLocal(isLocal);
+            view.SetReplayActive(_replayActive);
             view.SetPlayerName(_names.GetValueOrDefault(peerId, ""));
             AddChild(view);
             _views[peerId] = view;
         }
-        view.Apply(state);
+        view.Apply(state, playTransitions: !_replayActive);
+    }
+
+    public void SetReplayActive(bool active)
+    {
+        _replayActive = active;
+        foreach (PlayerView view in _views.Values)
+            view.SetReplayActive(active);
     }
 
     /// <summary>Despawn every view not placed since BeginFrame.</summary>

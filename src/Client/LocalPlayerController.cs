@@ -41,12 +41,16 @@ public partial class LocalPlayerController : Node2D
     public byte Aim => _aim;
     public Vector2 CorrectionOffset => _correctionOffset;
     public IReadOnlyList<(int SpawnSeq, MortarState Shell)> Shells => _predictor.Shells;
+    public bool Frozen { get; set; }
 
     /// <summary>Must be called right after instantiating, before entering the tree.</summary>
     public void Initialize(Predictor predictor) => _predictor = predictor;
 
     public override void _PhysicsProcess(double delta)
     {
+        if (Frozen)
+            return;
+
         InputButtons buttons = InputSampler.Sample();
 
         if (_predictor.Initialized)

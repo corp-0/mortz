@@ -17,14 +17,16 @@
 [ext_resource type="Script" path="res://src/Client/ScoreOverlay.cs" id="15_score"]
 [ext_resource type="Script" path="res://src/Client/Audio/KillAnnouncer.cs" id="16_announcer"]
 
-[node name="GameView" type="Node2D" unique_id=1808596722 node_paths=PackedStringArray("_gameMap", "_ropes", "_localPlayer", "_players", "_mortars", "_hud")]
+[node name="GameView" type="Node2D" unique_id=1808596722 node_paths=PackedStringArray("_gameMap", "_effects", "_ropes", "_localPlayer", "_players", "_mortars", "_hud", "_replayCamera")]
 script = ExtResource("1_gview")
 _gameMap = NodePath("GameMap")
+_effects = NodePath("Effects")
 _ropes = NodePath("RopeOverlay")
 _localPlayer = NodePath("LocalPlayer")
 _players = NodePath("Players")
 _mortars = NodePath("Mortars")
 _hud = NodePath("Hud")
+_replayCamera = NodePath("ReplayCamera")
 
 [node name="GameMap" parent="." unique_id=1523337900 instance=ExtResource("2_gmap")]
 
@@ -45,6 +47,9 @@ _playerScene = ExtResource("4_player")
 [node name="Mortars" type="Node2D" parent="."]
 script = ExtResource("8_mortars")
 _mortarScene = ExtResource("9_mortar")
+
+[node name="ReplayCamera" type="Camera2D" parent="."]
+enabled = false
 
 [node name="KillAnnouncer" type="Node" parent="."]
 script = ExtResource("16_announcer")
