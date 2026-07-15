@@ -37,6 +37,7 @@ public partial class EffectsSpawner : Node2D
 
     private void OnDeath(DeathMsg msg)
     {
+        Sfx.PlayAt(Sfx.Sounds.DeathScream, new Vector2(msg.X, msg.Y));
         AddChild(GibBurst.Create(new Vector2(msg.X, msg.Y), _gameMap.Mask, _gameMap.Blood.Paint));
     }
 }

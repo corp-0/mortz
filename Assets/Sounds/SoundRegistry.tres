@@ -1,15 +1,39 @@
 [gd_resource type="Resource" script_class="SoundRegistry" format=3 uid="uid://0gok5648oexn"]
 
 [ext_resource type="Script" uid="uid://d104v7xlmkhkc" path="res://src/Client/Audio/SoundRegistry.cs" id="1"]
+[ext_resource type="AudioStream" uid="uid://djdyqhvlj48wg" path="res://Assets/Sounds/malescream_1.ogg" id="1_pk3n4"]
 [ext_resource type="Resource" uid="uid://cosmsb2e0cyha" path="res://Assets/Sounds/first_blood.tres" id="1_r7fwr"]
 [ext_resource type="Resource" path="res://Assets/Sounds/mortar_fire.tres" id="2"]
+[ext_resource type="AudioStream" uid="uid://b1wcunuxu5ls1" path="res://Assets/Sounds/malescream_2.ogg" id="2_ox5b5"]
 [ext_resource type="Resource" path="res://Assets/Sounds/shell_whoosh.tres" id="3"]
+[ext_resource type="AudioStream" uid="uid://cv2ulxnatgwrm" path="res://Assets/Sounds/malescream_3.ogg" id="3_2oxye"]
 [ext_resource type="Resource" uid="uid://n40shrfn7i7a" path="res://Assets/Sounds/mortar_reload.tres" id="3_k3oql"]
 [ext_resource type="Resource" path="res://Assets/Sounds/shell_impact.tres" id="4"]
+[ext_resource type="AudioStream" uid="uid://b7hyrv23ifscb" path="res://Assets/Sounds/malescream_4.ogg" id="4_g5vpd"]
 [ext_resource type="Resource" path="res://Assets/Sounds/parry_raise.tres" id="5"]
+[ext_resource type="AudioStream" uid="uid://b4gcm0u56xn6x" path="res://Assets/Sounds/malescream_5.ogg" id="5_haxh4"]
 [ext_resource type="Resource" path="res://Assets/Sounds/parry_success.tres" id="6"]
+[ext_resource type="AudioStream" uid="uid://di7ap87rwqh1h" path="res://Assets/Sounds/malescream_6.ogg" id="6_p6q71"]
 [ext_resource type="Resource" path="res://Assets/Sounds/regular_kill.tres" id="7"]
+[ext_resource type="Script" uid="uid://ds47gmtfre85k" path="res://src/Client/Audio/SoundEffect.cs" id="7_graqg"]
 [ext_resource type="Resource" uid="uid://bkkkoim76s6me" path="res://Assets/Sounds/owned.tres" id="8"]
+
+[sub_resource type="AudioStreamRandomizer" id="AudioStreamRandomizer_vptec"]
+streams_count = 6
+stream_0/stream = ExtResource("1_pk3n4")
+stream_1/stream = ExtResource("2_ox5b5")
+stream_1/weight = 0.0
+stream_2/stream = ExtResource("3_2oxye")
+stream_3/stream = ExtResource("4_g5vpd")
+stream_4/stream = ExtResource("5_haxh4")
+stream_5/stream = ExtResource("6_p6q71")
+
+[sub_resource type="Resource" id="Resource_npbm6"]
+script = ExtResource("7_graqg")
+Stream = SubResource("AudioStreamRandomizer_vptec")
+Bus = 3
+MaxDistance = 900.0
+metadata/_custom_type_script = "uid://ds47gmtfre85k"
 
 [resource]
 script = ExtResource("1")
@@ -17,6 +41,7 @@ MortarFire = ExtResource("2")
 MortarReload = ExtResource("3_k3oql")
 ShellWhoosh = ExtResource("3")
 ShellImpact = ExtResource("4")
+DeathScream = SubResource("Resource_npbm6")
 ParryRaise = ExtResource("5")
 ParrySuccess = ExtResource("6")
 RegularKill = ExtResource("7")

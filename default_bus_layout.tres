@@ -1,4 +1,10 @@
-[gd_resource type="AudioBusLayout" format=3]
+[gd_resource type="AudioBusLayout" load_steps=2 format=3]
+
+[sub_resource type="AudioEffectReverb" id="AudioEffectReverb_death"]
+room_size = 0.8
+damping = 0.65
+wet = 0.35
+dry = 1.0
 
 [resource]
 bus/0/name = &"Master"
@@ -25,3 +31,11 @@ bus/3/mute = false
 bus/3/bypass_fx = false
 bus/3/volume_db = -3.0
 bus/3/send = &"Master"
+bus/4/name = &"DeathSfx"
+bus/4/solo = false
+bus/4/mute = false
+bus/4/bypass_fx = false
+bus/4/volume_db = -3.0
+bus/4/send = &"Master"
+bus/4/effect/0/effect = SubResource("AudioEffectReverb_death")
+bus/4/effect/0/enabled = true

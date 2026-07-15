@@ -14,6 +14,7 @@ public enum SoundBus
     SFX,
     UI,
     MUSIC,
+    DEATH_SFX,
 }
 
 public static class SoundBusExtensions
@@ -23,6 +24,7 @@ public static class SoundBusExtensions
         SoundBus.SFX => "Sfx",
         SoundBus.UI => "UI",
         SoundBus.MUSIC => "Music",
+        SoundBus.DEATH_SFX => "DeathSfx",
         _ => throw new ArgumentOutOfRangeException(nameof(bus), bus, null),
     };
 }

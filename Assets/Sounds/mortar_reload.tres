@@ -6,6 +6,5 @@
 [resource]
 script = ExtResource("2_nn8e4")
 Stream = ExtResource("1_xtklj")
-Bus = 0
-MaxDistance = 1800.0
+MaxDistance = 450.0
 metadata/_custom_type_script = "uid://ds47gmtfre85k"

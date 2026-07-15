@@ -10,6 +10,7 @@ public partial class SoundRegistry : Resource
     [Export] public SoundEffect MortarReload { get; private set; } = null!;
     [Export] public SoundEffect ShellWhoosh { get; private set; } = null!;
     [Export] public SoundEffect ShellImpact { get; private set; } = null!;
+    [Export] public SoundEffect DeathScream { get; private set; } = null!;
 
     [ExportGroup("Parry")]
     [Export] public SoundEffect ParryRaise { get; private set; } = null!;
@@ -26,6 +27,7 @@ public partial class SoundRegistry : Resource
         yield return (nameof(MortarReload), MortarReload);
         yield return (nameof(ShellWhoosh), ShellWhoosh);
         yield return (nameof(ShellImpact), ShellImpact);
+        yield return (nameof(DeathScream), DeathScream);
         yield return (nameof(ParryRaise), ParryRaise);
         yield return (nameof(ParrySuccess), ParrySuccess);
         yield return (nameof(RegularKill), RegularKill);
