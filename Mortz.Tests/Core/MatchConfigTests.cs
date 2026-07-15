@@ -1,3 +1,4 @@
+using System.Reflection;
 using Mortz.Core;
 using Xunit;
 
@@ -5,16 +6,61 @@ namespace Mortz.Tests.Core;
 
 public class MatchConfigTests
 {
+    /// <summary>Reflection so a new rule that nobody added to the codec fails
+    /// here instead of silently arriving at its default on every client.</summary>
+    [Fact]
+    public void WireBlob_CarriesEveryRule()
+    {
+        MatchConfig expected = new();
+        foreach (PropertyInfo property in WritableRules())
+        {
+            object current = property.GetValue(expected)!;
+            object changed = property.PropertyType switch
+            {
+                Type type when type == typeof(float) => (float)current + 0.01f,
+                Type type when type == typeof(int) => (int)current + 1,
+                Type type when type == typeof(bool) => !(bool)current,
+                Type type when type == typeof(WinCondition) => WinCondition.TEAM_KILLS,
+                _ => throw new InvalidOperationException($"Unhandled rule type {property.PropertyType}"),
+            };
+            property.SetValue(expected, changed);
+        }
+        expected.Clamp();
+
+        MatchConfig actual = MatchConfig.FromBytes(expected.ToBytes());
+
+        foreach (PropertyInfo property in WritableRules())
+            Assert.Equal(property.GetValue(expected), property.GetValue(actual));
+    }
+
+    private static IEnumerable<PropertyInfo> WritableRules() =>
+        typeof(MatchConfig).GetProperties().Where(property => property.CanWrite);
+
     [Fact]
     public void WireBlob_RoundTrips()
     {
-        MatchConfig sent = new() { Gravity = 750, MortarMaxAmmo = 8, GroundFriction = 0 };
+        MatchConfig sent = new()
+        {
+            Gravity = 750,
+            MortarMaxAmmo = 8,
+            GroundFriction = 0,
+            SpawnImmunity = 2.25f,
+        };
         MatchConfig got = MatchConfig.FromBytes(sent.ToBytes());
 
         Assert.Equal(750, got.Gravity);
         Assert.Equal(8, got.MortarMaxAmmo);
         Assert.Equal(0, got.GroundFriction);
+        Assert.Equal(2.25f, got.SpawnImmunity);
         Assert.Equal(SimConfig.MAX_RUN_SPEED, got.MaxRunSpeed); // untouched fields keep defaults
+    }
+
+    [Fact]
+    public void WireBlob_RejectsTrailingBytes()
+    {
+        byte[] valid = new MatchConfig().ToBytes();
+
+        Assert.Throws<InvalidDataException>(() => MatchConfig.FromBytes([.. valid, 0]));
     }
 
     [Fact]
@@ -26,6 +72,7 @@ public class MatchConfigTests
             MortarCarveRadius = 100000,
             MaxHealth = 9999,
             MortarReloadPerShell = -3,
+            SpawnImmunity = 999,
         };
         MatchConfig got = MatchConfig.FromBytes(hostile.ToBytes());
 
@@ -33,6 +80,7 @@ public class MatchConfigTests
         Assert.Equal(128, got.MortarCarveRadius);
         Assert.Equal(250, got.MaxHealth);
         Assert.Equal(0.1f, got.MortarReloadPerShell);
+        Assert.Equal(4, got.SpawnImmunity);
     }
 
     [Fact]
@@ -94,6 +142,19 @@ public class MatchConfigTests
     }
 
     [Fact]
+    public void FromJson_AllowsRulesetsToTuneSpawnImmunity()
+    {
+        MatchConfig config = MatchConfig.FromJson("""
+            {
+                "spawnImmunity": 2.5,
+            }
+            """);
+
+        Assert.Equal(2.5f, config.SpawnImmunity);
+        Assert.Equal(150, config.SpawnImmunityTicks);
+    }
+
+    [Fact]
     public void DefaultResolvedStats_MatchTheSimConfigConsts()
     {
         PlayerStats stats = PlayerStats.Resolve(new MatchConfig());
@@ -106,6 +167,8 @@ public class MatchConfigTests
         Assert.Equal(SimConfig.MAX_HEALTH, stats.MaxHealth);
         Assert.Equal(SimConfig.PARRY_WINDOW_TICKS, stats.ParryWindowTicks);
         Assert.Equal(SimConfig.PARRY_COOLDOWN_TICKS, stats.ParryCooldownTicks);
+        Assert.Equal(SimConfig.SPAWN_IMMUNITY, new MatchConfig().SpawnImmunity);
+        Assert.Equal(SimConfig.SPAWN_IMMUNITY_TICKS, new MatchConfig().SpawnImmunityTicks);
     }
 
     [Fact]
@@ -117,6 +180,7 @@ public class MatchConfigTests
             RopeMissCooldown = 999,
             MortarReloadPerShell = 999,
             RespawnDelay = 999,
+            SpawnImmunity = 999,
             CoyoteMax = 999,
             ParryWindow = 999,
             ParryCooldown = 999,
@@ -129,6 +193,7 @@ public class MatchConfigTests
         Assert.InRange(stats.ReloadTicks, 1, 255);
         Assert.InRange(stats.CoyoteMaxTicks, 1, 255);
         Assert.InRange(maxed.RespawnDelayTicks, 1, 255);
+        Assert.InRange(maxed.SpawnImmunityTicks, 1, 255);
         Assert.InRange(stats.ParryWindowTicks, 1, 255);
         Assert.InRange(stats.ParryCooldownTicks, 1, ushort.MaxValue);
     }

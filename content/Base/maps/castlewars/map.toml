@@ -1,0 +1,19 @@
+format_version = 1
+name = "castle wars"
+suggested_players = 4
+
+[[spawn_points]]
+x = 536
+y = 552
+
+[[spawn_points]]
+x = 1072
+y = 1148
+
+[[spawn_points]]
+x = 1608
+y = 936
+
+[[spawn_points]]
+x = 2144
+y = 764

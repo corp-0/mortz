@@ -53,7 +53,12 @@ public class FriendlyFireTests
 
     private static SimWorld World(bool friendlyFire, byte shooterTeam, byte victimTeam)
     {
-        MatchConfig cfg = new() { Teams = true, FriendlyFire = friendlyFire };
+        MatchConfig cfg = new()
+        {
+            Teams = true,
+            FriendlyFire = friendlyFire,
+            SpawnImmunity = 0,
+        };
         SimWorld w = new SimWorld(TestWorlds.Flat(), cfg);
         w.AddPlayer(SHOOTER, shooterTeam);
         w.AddPlayer(VICTIM, victimTeam);

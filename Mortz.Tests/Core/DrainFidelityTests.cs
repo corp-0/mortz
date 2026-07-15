@@ -30,7 +30,7 @@ public class DrainFidelityTests
     [Fact]
     public void OvertakenFirePress_KeepsTheAimItWasPressedWith()
     {
-        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.Config);
+        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         w.AddPlayer(1);
         w.EnqueueInput(1, 0, Idle(AIM_UP));
         w.Step();
@@ -50,7 +50,7 @@ public class DrainFidelityTests
     [Fact]
     public void OvertakenRopePress_KeepsTheAimItWasPressedWith()
     {
-        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.Config);
+        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         w.AddPlayer(1);
         w.EnqueueInput(1, 0, Idle(AIM_UP));
         w.Step();
@@ -70,7 +70,7 @@ public class DrainFidelityTests
     [Fact]
     public void ReleaseAndSecondJumpInsideBunch_PreservesTheSecondPressEdge()
     {
-        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.Config);
+        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         w.AddPlayer(1);
         w.EnqueueInput(1, 0, Idle(AIM_UP));
         w.Step();
@@ -96,7 +96,7 @@ public class DrainFidelityTests
     [Fact]
     public void TwoClicksInOneBunch_FireTwoShells()
     {
-        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.Config);
+        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         w.AddPlayer(1);
         w.EnqueueInput(1, 0, Idle(AIM_UP));
         w.Step();
@@ -121,9 +121,9 @@ public class DrainFidelityTests
     [Fact]
     public void ServerShell_FliesTheWayTheClientPredicted_AcrossAJitterBunch()
     {
-        SimWorld server = new SimWorld(TestWorlds.Flat(), TestWorlds.Config);
+        SimWorld server = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         server.AddPlayer(1);
-        Predictor predictor = new Predictor(server.Terrain, TestWorlds.Config);
+        Predictor predictor = new Predictor(server.Terrain, TestWorlds.NoSpawnProtectionConfig);
         predictor.Reconcile(server.Players[1], -1);
 
         const int Fire_T = 30;
@@ -171,9 +171,9 @@ public class DrainFidelityTests
     [Fact]
     public void EveryPredictedShell_HasAnAuthoritativeTwin_AcrossAJitterBunch()
     {
-        SimWorld server = new SimWorld(TestWorlds.Flat(), TestWorlds.Config);
+        SimWorld server = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         server.AddPlayer(1);
-        Predictor predictor = new Predictor(server.Terrain, TestWorlds.Config);
+        Predictor predictor = new Predictor(server.Terrain, TestWorlds.NoSpawnProtectionConfig);
         predictor.Reconcile(server.Players[1], -1);
 
         HashSet<int> predictedSeqs = new HashSet<int>();

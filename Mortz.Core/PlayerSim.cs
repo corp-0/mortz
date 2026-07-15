@@ -16,6 +16,8 @@ public static class PlayerSim
 
         const float DT = SimConfig.DT;
 
+        if (p.SpawnImmunityTicks > 0)
+            p.SpawnImmunityTicks--;
         if (p.DashCooldown > 0)
             p.DashCooldown--;
         if (p.ParryCooldown > 0)

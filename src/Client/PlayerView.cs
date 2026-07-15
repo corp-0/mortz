@@ -15,6 +15,8 @@ public partial class PlayerView : Node2D
     public static bool DrawSimBoxes;
 
     private const float HIT_FLASH_TIME = 0.2f; // s
+    private const int IMMUNITY_TOGGLES_PER_SECOND = 10;
+    internal const byte IMMUNITY_FLICKER_TICKS = SimConfig.TICK_RATE / IMMUNITY_TOGGLES_PER_SECOND;
 
     [Export] private Sprite2D _body = null!;
     [Export] private Node2D _aimPivot = null!;
@@ -74,6 +76,9 @@ public partial class PlayerView : Node2D
         // Dead = gibbed: no body to show. Position keeps tracking so the local
         // player's camera lingers on the death spot until the respawn.
         Visible = next.RespawnTicks == 0;
+        bool spawnProtectedVisible = SpawnProtectedSpriteVisible(next.SpawnImmunityTicks);
+        _body.Visible = spawnProtectedVisible;
+        _aimPivot.Visible = spawnProtectedVisible;
         _reloadBar.Apply(next.Ammo, next.ReloadTicks);
         Position = new Vector2(next.Feet.X, next.Feet.Y - SimConfig.PLAYER_HALF_HEIGHT);
         _body.Frame = next.Skin % SimConfig.SKIN_COUNT;
@@ -91,6 +96,9 @@ public partial class PlayerView : Node2D
             QueueRedraw();
         _previous = next;
     }
+
+    internal static bool SpawnProtectedSpriteVisible(byte immunityTicks) =>
+        immunityTicks == 0 || (immunityTicks / IMMUNITY_FLICKER_TICKS & 1) == 0;
 
     /// <summary>Everything that fires once on an edge rather than tracking a
     /// value, so none of it can run before there is a frame to compare to.</summary>

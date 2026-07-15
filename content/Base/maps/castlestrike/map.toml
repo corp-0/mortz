@@ -1,0 +1,35 @@
+format_version = 1
+name = "Castle Strike"
+suggested_players = 8
+
+[[spawn_points]]
+x = 600
+y = 1012
+
+[[spawn_points]]
+x = 1200
+y = 728
+
+[[spawn_points]]
+x = 1800
+y = 728
+
+[[spawn_points]]
+x = 2400
+y = 1524
+
+[[spawn_points]]
+x = 3000
+y = 1792
+
+[[spawn_points]]
+x = 3600
+y = 1940
+
+[[spawn_points]]
+x = 4200
+y = 968
+
+[[spawn_points]]
+x = 4800
+y = 1832

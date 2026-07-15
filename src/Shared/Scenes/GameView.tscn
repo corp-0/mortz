@@ -1,22 +1,22 @@
-[gd_scene load_steps=18 format=3 uid="uid://cjwh1mbdhwqhh"]
+[gd_scene format=3 uid="uid://cjwh1mbdhwqhh"]
 
 [ext_resource type="Script" uid="uid://b4yn6nnq4p213" path="res://src/Client/GameView.cs" id="1_gview"]
 [ext_resource type="PackedScene" uid="uid://pb6yifh4403o" path="res://src/Shared/Scenes/GameMap.tscn" id="2_gmap"]
 [ext_resource type="Script" uid="uid://jylbysmnxgfg" path="res://src/Client/RopeOverlay.cs" id="3_ropes"]
 [ext_resource type="PackedScene" uid="uid://4ksxyg8c7l8k" path="res://src/Shared/Prefabs/Player.tscn" id="4_player"]
-[ext_resource type="Script" path="res://src/Client/EffectsSpawner.cs" id="5_effects"]
-[ext_resource type="Script" path="res://src/Client/LocalPlayerController.cs" id="6_local"]
-[ext_resource type="Script" path="res://src/Client/PlayerViewManager.cs" id="7_players"]
-[ext_resource type="Script" path="res://src/Client/MortarViewManager.cs" id="8_mortars"]
-[ext_resource type="PackedScene" path="res://src/Shared/Prefabs/Mortar.tscn" id="9_mortar"]
-[ext_resource type="Script" path="res://src/Client/Diagnostics/NetStatsProbe.cs" id="10_netstats"]
-[ext_resource type="Script" path="res://src/Client/Diagnostics/LagProbes.cs" id="11_lagprobes"]
-[ext_resource type="Script" path="res://src/Client/Diagnostics/E2eHooks.cs" id="12_e2e"]
-[ext_resource type="Script" path="res://src/Client/Hud.cs" id="13_hud"]
-[ext_resource type="Script" path="res://src/Client/ShellRow.cs" id="14_shells"]
-[ext_resource type="Script" path="res://src/Client/ScoreOverlay.cs" id="15_score"]
-[ext_resource type="Script" path="res://src/Client/Audio/KillAnnouncer.cs" id="16_announcer"]
-[ext_resource type="Script" path="res://src/Client/FinalKillReplay.cs" id="17_replay"]
+[ext_resource type="Script" uid="uid://djway50o388at" path="res://src/Client/EffectsSpawner.cs" id="5_effects"]
+[ext_resource type="Script" uid="uid://b1k2giw7spnjd" path="res://src/Client/LocalPlayerController.cs" id="6_local"]
+[ext_resource type="Script" uid="uid://bctks7k1e0fq4" path="res://src/Client/PlayerViewManager.cs" id="7_players"]
+[ext_resource type="Script" uid="uid://ca0vlxw757bdg" path="res://src/Client/MortarViewManager.cs" id="8_mortars"]
+[ext_resource type="PackedScene" uid="uid://bs35s8cifnvm2" path="res://src/Shared/Prefabs/Mortar.tscn" id="9_mortar"]
+[ext_resource type="Script" uid="uid://da7tme6kkv2xu" path="res://src/Client/Diagnostics/NetStatsProbe.cs" id="10_netstats"]
+[ext_resource type="Script" uid="uid://b3jq6f2xj1ct" path="res://src/Client/Diagnostics/LagProbes.cs" id="11_lagprobes"]
+[ext_resource type="Script" uid="uid://c4xs1n8kwl65d" path="res://src/Client/Diagnostics/E2eHooks.cs" id="12_e2e"]
+[ext_resource type="Script" uid="uid://bgioe7kfejn27" path="res://src/Client/Hud.cs" id="13_hud"]
+[ext_resource type="Script" uid="uid://bmyqbmcpf8of4" path="res://src/Client/ShellRow.cs" id="14_shells"]
+[ext_resource type="Script" uid="uid://dii768us1krot" path="res://src/Client/ScoreOverlay.cs" id="15_score"]
+[ext_resource type="Script" uid="uid://ukkp1bwihfne" path="res://src/Client/Audio/KillAnnouncer.cs" id="16_announcer"]
+[ext_resource type="Script" uid="uid://6aqxhxbup147" path="res://src/Client/FinalKillReplay.cs" id="17_replay"]
 
 [node name="GameView" type="Node2D" unique_id=1808596722 node_paths=PackedStringArray("_gameMap", "_ropes", "_localPlayer", "_players", "_mortars", "_hud", "_finalKillReplay")]
 script = ExtResource("1_gview")
@@ -30,28 +30,28 @@ _finalKillReplay = NodePath("FinalKillReplay")
 
 [node name="GameMap" parent="." unique_id=1523337900 instance=ExtResource("2_gmap")]
 
-[node name="Effects" type="Node2D" parent="." node_paths=PackedStringArray("_gameMap")]
+[node name="Effects" type="Node2D" parent="." unique_id=700736968 node_paths=PackedStringArray("_gameMap")]
 script = ExtResource("5_effects")
 _gameMap = NodePath("../GameMap")
 
 [node name="RopeOverlay" type="Node2D" parent="." unique_id=409740464]
 script = ExtResource("3_ropes")
 
-[node name="LocalPlayer" type="Node2D" parent="."]
+[node name="LocalPlayer" type="Node2D" parent="." unique_id=891937492]
 script = ExtResource("6_local")
 
-[node name="Players" type="Node2D" parent="."]
+[node name="Players" type="Node2D" parent="." unique_id=1679075492]
 script = ExtResource("7_players")
 _playerScene = ExtResource("4_player")
 
-[node name="Mortars" type="Node2D" parent="."]
+[node name="Mortars" type="Node2D" parent="." unique_id=1931858666]
 script = ExtResource("8_mortars")
 _mortarScene = ExtResource("9_mortar")
 
-[node name="ReplayCamera" type="Camera2D" parent="."]
+[node name="ReplayCamera" type="Camera2D" parent="." unique_id=1800253533]
 enabled = false
 
-[node name="FinalKillReplay" type="Node" parent="." node_paths=PackedStringArray("_gameMap", "_effects", "_ropes", "_localPlayer", "_players", "_mortars", "_replayCamera")]
+[node name="FinalKillReplay" type="Node" parent="." unique_id=1859975862 node_paths=PackedStringArray("_gameMap", "_effects", "_ropes", "_localPlayer", "_players", "_mortars", "_replayCamera")]
 script = ExtResource("17_replay")
 _gameMap = NodePath("../GameMap")
 _effects = NodePath("../Effects")
@@ -61,23 +61,23 @@ _players = NodePath("../Players")
 _mortars = NodePath("../Mortars")
 _replayCamera = NodePath("../ReplayCamera")
 
-[node name="KillAnnouncer" type="Node" parent="."]
+[node name="KillAnnouncer" type="Node" parent="." unique_id=1595954289]
 script = ExtResource("16_announcer")
 
-[node name="Hud" type="CanvasLayer" parent="." node_paths=PackedStringArray("_healthLabel", "_shells", "_damageFlash")]
+[node name="Hud" type="CanvasLayer" parent="." unique_id=1180743937 node_paths=PackedStringArray("_healthLabel", "_shells", "_damageFlash")]
 script = ExtResource("13_hud")
 _healthLabel = NodePath("Corner/HealthLabel")
 _shells = NodePath("Corner/Shells")
 _damageFlash = NodePath("DamageFlash")
 
-[node name="DamageFlash" type="ColorRect" parent="Hud"]
+[node name="DamageFlash" type="ColorRect" parent="Hud" unique_id=1688209399]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 mouse_filter = 2
 color = Color(1, 0, 0, 0)
 
-[node name="Corner" type="HBoxContainer" parent="Hud"]
+[node name="Corner" type="HBoxContainer" parent="Hud" unique_id=528481457]
 anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
@@ -87,17 +87,18 @@ offset_right = 360.0
 offset_bottom = -12.0
 theme_override_constants/separation = 12
 
-[node name="HealthLabel" type="Label" parent="Hud/Corner"]
+[node name="HealthLabel" type="Label" parent="Hud/Corner" unique_id=1019751700]
 layout_mode = 2
 theme_override_font_sizes/font_size = 28
 text = "100"
 
-[node name="Shells" type="Control" parent="Hud/Corner"]
+[node name="Shells" type="Control" parent="Hud/Corner" unique_id=1116263738]
 layout_mode = 2
 size_flags_vertical = 4
 script = ExtResource("14_shells")
 
-[node name="ScoreOverlay" type="Control" parent="Hud" node_paths=PackedStringArray("_feed", "_scoreLabel", "_winnerLabel")]
+[node name="ScoreOverlay" type="Control" parent="Hud" unique_id=2120322481 node_paths=PackedStringArray("_feed", "_scoreLabel", "_winnerLabel")]
+layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -107,8 +108,8 @@ _feed = NodePath("Feed")
 _scoreLabel = NodePath("Score")
 _winnerLabel = NodePath("Winner")
 
-[node name="Feed" type="VBoxContainer" parent="Hud/ScoreOverlay"]
-anchors_preset = 1
+[node name="Feed" type="VBoxContainer" parent="Hud/ScoreOverlay" unique_id=56782331]
+layout_mode = 0
 anchor_left = 1.0
 anchor_right = 1.0
 offset_left = -430.0
@@ -117,7 +118,8 @@ offset_right = -12.0
 grow_horizontal = 0
 mouse_filter = 2
 
-[node name="Score" type="Label" parent="Hud/ScoreOverlay"]
+[node name="Score" type="Label" parent="Hud/ScoreOverlay" unique_id=1010263953]
+layout_mode = 0
 offset_left = 12.0
 offset_top = 12.0
 offset_right = 160.0
@@ -125,9 +127,9 @@ offset_bottom = 40.0
 theme_override_font_sizes/font_size = 20
 text = "K 0 / D 0"
 
-[node name="Winner" type="Label" parent="Hud/ScoreOverlay"]
+[node name="Winner" type="Label" parent="Hud/ScoreOverlay" unique_id=286652282]
 visible = false
-anchors_preset = 8
+layout_mode = 0
 anchor_left = 0.5
 anchor_top = 0.35
 anchor_right = 0.5
@@ -137,19 +139,19 @@ grow_vertical = 2
 theme_override_font_sizes/font_size = 42
 horizontal_alignment = 1
 
-[node name="Diagnostics" type="Node" parent="."]
+[node name="Diagnostics" type="Node" parent="." unique_id=576473914]
 
-[node name="NetStats" type="Node" parent="Diagnostics" node_paths=PackedStringArray("_gameView", "_localPlayer")]
+[node name="NetStats" type="Node" parent="Diagnostics" unique_id=1243434994 node_paths=PackedStringArray("_gameView", "_localPlayer")]
 script = ExtResource("10_netstats")
 _gameView = NodePath("../..")
 _localPlayer = NodePath("../../LocalPlayer")
 
-[node name="LagProbes" type="Node" parent="Diagnostics" node_paths=PackedStringArray("_localPlayer", "_players")]
+[node name="LagProbes" type="Node" parent="Diagnostics" unique_id=2108162909 node_paths=PackedStringArray("_localPlayer", "_players")]
 script = ExtResource("11_lagprobes")
 _localPlayer = NodePath("../../LocalPlayer")
 _players = NodePath("../../Players")
 
-[node name="E2eHooks" type="Node" parent="Diagnostics" node_paths=PackedStringArray("_gameView", "_localPlayer", "_gameMap")]
+[node name="E2eHooks" type="Node" parent="Diagnostics" unique_id=176005610 node_paths=PackedStringArray("_gameView", "_localPlayer", "_gameMap")]
 script = ExtResource("12_e2e")
 _gameView = NodePath("../..")
 _localPlayer = NodePath("../../LocalPlayer")

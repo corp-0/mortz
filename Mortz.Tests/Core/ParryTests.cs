@@ -17,7 +17,7 @@ public class ParryTests
     /// peer 2 fires once at FIRE_TICK, until the exit condition or the tick cap.</summary>
     private static SimWorld RunExchange(Func<SimWorld, bool> done, int maxTicks)
     {
-        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.Config);
+        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         w.AddPlayer(1);
         w.AddPlayer(2);
         for (int t = 0; t < maxTicks && !done(w); t++)
@@ -37,7 +37,7 @@ public class ParryTests
         // Exact reversal on X (gravity only ever touches Y). The parrier owns
         // the shell now; FiredBy still points at the original shooter.
         Assert.Single(w.Mortars);
-        Assert.Equal(-TestWorlds.Config.MortarSpeed, w.Mortars[0].Velocity.X);
+        Assert.Equal(-TestWorlds.NoSpawnProtectionConfig.MortarSpeed, w.Mortars[0].Velocity.X);
         Assert.Equal(1, w.Mortars[0].OwnerId);
         Assert.Equal(2, w.Mortars[0].FiredBy);
         Assert.True(w.Mortars[0].Deflected);
@@ -67,7 +67,7 @@ public class ParryTests
     [Fact]
     public void WhiffedParry_PaysTheFullCooldown_AndBlocksTheNextPress()
     {
-        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.Config);
+        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         w.AddPlayer(1);
 
         w.EnqueueInput(1, 0, new PlayerInput(InputButtons.Parry));

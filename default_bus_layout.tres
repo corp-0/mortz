@@ -1,18 +1,10 @@
-[gd_resource type="AudioBusLayout" load_steps=2 format=3]
+[gd_resource type="AudioBusLayout" format=3 uid="uid://bebvex8an0eju"]
 
 [sub_resource type="AudioEffectReverb" id="AudioEffectReverb_death"]
-room_size = 0.8
 damping = 0.65
 wet = 0.35
-dry = 1.0
 
 [resource]
-bus/0/name = &"Master"
-bus/0/solo = false
-bus/0/mute = false
-bus/0/bypass_fx = false
-bus/0/volume_db = 0.0
-bus/0/send = &""
 bus/1/name = &"Sfx"
 bus/1/solo = false
 bus/1/mute = false

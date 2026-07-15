@@ -16,9 +16,9 @@ public class StaleSnapshotTests
     [Fact]
     public void StaleSnapshot_ArrivingAfterANewerOne_IsIgnored()
     {
-        SimWorld server = new SimWorld(TestWorlds.Flat(), TestWorlds.Config);
+        SimWorld server = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         server.AddPlayer(1);
-        Predictor predictor = new Predictor(server.Terrain, TestWorlds.Config);
+        Predictor predictor = new Predictor(server.Terrain, TestWorlds.NoSpawnProtectionConfig);
         predictor.Reconcile(server.Players[1], -1, server.Tick);
 
         // Run right for a while, reconciling each fresh (increasing-tick) snapshot.

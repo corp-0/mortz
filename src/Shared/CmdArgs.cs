@@ -22,10 +22,12 @@ public static class CmdArgs
     }
 
     /// <summary>Value following <paramref name="flag"/>, or null.</summary>
-    public static string? GetValue(string flag)
+    public static string? GetValue(string flag) => GetValue(Args, flag);
+
+    /// <summary>Overload taking an explicit arg list, for tests.</summary>
+    public static string? GetValue(IReadOnlyList<string> args, string flag)
     {
-        string[] args = Args;
-        for (int i = 0; i < args.Length - 1; i++)
+        for (int i = 0; i < args.Count - 1; i++)
             if (args[i] == flag)
                 return args[i + 1];
         return null;

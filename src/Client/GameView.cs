@@ -196,7 +196,7 @@ public partial class GameView : Node2D
             PlayerViewState viewState = new(
                 new Vector2(player.Position.X, player.Position.Y), player.Aim, player.Skin,
                 player.Ammo, player.ReloadTicks, player.Health, player.RespawnTicks,
-                player.ParryTicks, player.DashCooldown);
+                player.ParryTicks, player.DashCooldown, player.SpawnImmunityTicks);
             _players.Place(player.PeerId, viewState);
             replayPlayers.Add(new ReplayPlayer(player.PeerId, viewState));
             if (player.Rope != RopeMode.None)
@@ -210,7 +210,8 @@ public partial class GameView : Node2D
             Vector2 feet = new Vector2(local.Position.X, local.Position.Y) + _localPlayer.CorrectionOffset;
             PlayerViewState viewState = new(
                 feet, _localPlayer.Aim, local.Skin, local.Ammo, local.ReloadTicks,
-                local.Health, local.RespawnTicks, local.ParryTicks, local.DashCooldown);
+                local.Health, local.RespawnTicks, local.ParryTicks, local.DashCooldown,
+                local.SpawnImmunityTicks);
             _players.Place(localId, viewState);
             replayPlayers.Add(new ReplayPlayer(localId, viewState));
             _hud.UpdateFrom(local);
@@ -222,8 +223,8 @@ public partial class GameView : Node2D
         _players.Prune();
         IReadOnlyList<RenderMortar> remoteMortars = _remoteMortars.Render();
         IReadOnlyList<(int SpawnSeq, MortarState Shell)> predictedMortars = _localPlayer.Shells;
-        _mortars.SyncRemote(remoteMortars);
         _mortars.SyncPredicted(predictedMortars);
+        _mortars.SyncRemote(remoteMortars);
 
         _finalKillReplay.Record(
             RenderTick,

@@ -1,0 +1,11 @@
+format_version = 1
+name = "brt garden"
+suggested_players = 2
+
+[[spawn_points]]
+x = 426
+y = 360
+
+[[spawn_points]]
+x = 853
+y = 104

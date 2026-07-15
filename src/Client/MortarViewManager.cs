@@ -29,15 +29,20 @@ public partial class MortarViewManager : Node2D
         {
             // Own shells are already on screen as predicted copies, except a
             // deflected one: nobody predicted that trajectory, so the
-            // authoritative copy is the only one there is.
-            if (m.OwnerId == localId && !m.Deflected)
+            // authoritative copy is the only one there is. Same once the
+            // prediction is retired and the server still has the shell.
+            if (!ShouldRenderAuthoritative(m, localId, _seenPredicted))
                 continue;
             _seenRemote.Add(m.Id);
             Place(_remote, m.Id, new Vector2(m.Position.X, m.Position.Y), m.Velocity,
-                playFire: false);
+                playFire: m.OwnerId == localId && !m.Deflected);
         }
         Prune(_remote, _seenRemote);
     }
+
+    internal static bool ShouldRenderAuthoritative(in RenderMortar mortar, int localId,
+        IReadOnlySet<int> predictedSeqs) =>
+        mortar.OwnerId != localId || mortar.Deflected || !predictedSeqs.Contains(mortar.SpawnSeq);
 
     /// <summary>Own shells, rendered from prediction (keyed by the input seq that fired).</summary>
     public void SyncPredicted(IReadOnlyList<(int SpawnSeq, MortarState Shell)> shells)

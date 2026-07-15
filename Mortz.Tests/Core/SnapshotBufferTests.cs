@@ -89,4 +89,20 @@ public class SnapshotBufferTests
         InterpolatedState mid = buf.Sample(11f)!;
         Assert.Equal(500, mid.Players.First(p => p.PeerId == 2).Position.X, 3);
     }
+
+    [Fact]
+    public void Sample_TakesSpawnImmunityAndShellSeq_FromTheNewerSnapshot()
+    {
+        SnapshotBuffer buffer = new();
+        buffer.Add(new Snapshot(10,
+            [new PlayerState { PeerId = 1, SpawnImmunityTicks = 10 }],
+            [new MortarState { Id = 7, SpawnSeq = 41 }]));
+        buffer.Add(new Snapshot(12,
+            [new PlayerState { PeerId = 1, SpawnImmunityTicks = 8 }],
+            [new MortarState { Id = 7, SpawnSeq = 41 }]));
+
+        InterpolatedState sample = buffer.Sample(11)!;
+        Assert.Equal(8, Assert.Single(sample.Players).SpawnImmunityTicks);
+        Assert.Equal(41, Assert.Single(sample.Mortars).SpawnSeq);
+    }
 }

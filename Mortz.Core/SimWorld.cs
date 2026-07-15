@@ -21,6 +21,7 @@ public sealed class SimWorld
     // Resolved per player at join; perk selections feed in here eventually.
     private readonly SortedDictionary<int, PlayerStats> _stats = new();
     private readonly SortedDictionary<int, byte> _netSlots = new();
+    private readonly Vec2[] _spawnPoints;
 
     // Shells in flight, in spawn order.
     private readonly List<MortarState> _mortars = new();
@@ -59,11 +60,13 @@ public sealed class SimWorld
     /// Owned = a parried shell killed the very player who fired it.</summary>
     public IReadOnlyList<(int PeerId, Vec2 Position, int KillerId, bool Owned)> Deaths => _deaths;
 
-    public SimWorld(TerrainMask terrain, MatchConfig config, int seed = 0)
+    public SimWorld(TerrainMask terrain, MatchConfig config, int seed = 0,
+        IReadOnlyList<Vec2>? spawnPoints = null)
     {
         Terrain = terrain;
         Config = config;
         _rng = new Random(seed);
+        _spawnPoints = spawnPoints?.ToArray() ?? [];
     }
 
     public void AddPlayer(int peerId, byte teamId = 0)
@@ -73,7 +76,7 @@ public sealed class SimWorld
             .First(i => !_netSlots.ContainsValue(i));
         _netSlots[peerId] = slot;
         _stats[peerId] = PlayerStats.Resolve(Config);
-        _players[peerId] = FreshState(peerId) with
+        _players[peerId] = FreshState(peerId, lastInputSeq: -1) with
         {
             Skin = (byte)_rng.Next(SimConfig.SKIN_COUNT),
             TeamId = teamId,
@@ -81,28 +84,34 @@ public sealed class SimWorld
         _inputs[peerId] = new InputQueue();
     }
 
-    private PlayerState FreshState(int peerId)
+    private PlayerState FreshState(int peerId, int lastInputSeq)
     {
         PlayerStats stats = _stats[peerId];
+        Vec2 spawn = FindSpawn(peerId);
         return new PlayerState
         {
             PeerId = peerId,
             NetSlot = _netSlots[peerId],
-            Position = FindSpawn(peerId),
-            Grounded = true,
+            Position = spawn,
+            Grounded = PlayerSim.OnGround(Terrain, spawn),
             JumpsLeft = stats.TotalJumps,
             Ammo = stats.MaxAmmo,
             Health = stats.MaxHealth,
-            LastInputSeq = -1,
+            SpawnImmunityTicks = (byte)Config.SpawnImmunityTicks,
+            SpawnImmunityFireThroughSeq = lastInputSeq + Config.SpawnImmunityTicks,
+            LastInputSeq = lastInputSeq,
         };
     }
 
     /// <summary>
-    /// Stable-per-peer spawn x, then the highest standing spot in that column.
-    /// Manifest-defined spawn points replace this eventually.
+    /// Authored spawn points, handed out by net slot. Maps without any fall
+    /// back to the old stable-per-peer column search.
     /// </summary>
     private Vec2 FindSpawn(int peerId)
     {
+        if (_spawnPoints.Length > 0)
+            return _spawnPoints[(_netSlots[peerId] - 1) % _spawnPoints.Length];
+
         // Long math: ENet peer ids are large random ints, int multiply overflows.
         int margin = (int)SimConfig.PLAYER_HALF_WIDTH * 3;
         float x = margin + (int)(Math.Abs((long)peerId * 193) % (Terrain.Width - 2 * margin));
@@ -150,7 +159,11 @@ public sealed class SimWorld
             {
                 state = prev;
                 if (--state.RespawnTicks == 0)
-                    state = FreshState(id) with { Skin = prev.Skin, TeamId = prev.TeamId };
+                    state = FreshState(id, queue.LastAppliedSeq) with
+                    {
+                        Skin = prev.Skin,
+                        TeamId = prev.TeamId,
+                    };
             }
             else
             {
@@ -172,7 +185,7 @@ public sealed class SimWorld
                 InputButtons prevButtons = prev.PrevButtons;
                 foreach ((int seq, PlayerInput consumed) in queue.Consumed)
                 {
-                    if (WeaponSim.Tick(ref state, consumed, prevButtons, stats))
+                    if (WeaponSim.Tick(ref state, consumed, prevButtons, stats, seq))
                         SpawnMortar(WeaponSim.NewShell(_nextMortarId++, seq, state, consumed, Config));
                     prevButtons = consumed.Buttons;
                 }
@@ -300,8 +313,8 @@ public sealed class SimWorld
         foreach (int id in _players.Keys.ToArray())
         {
             PlayerState p = _players[id];
-            if (p.RespawnTicks > 0)
-                continue; // already gibbed, nothing left to hurt
+            if (!CombatEligibility.CanTakeDamage(p))
+                continue; // already gibbed or protected, nothing to hurt
             int damage = BlastSim.Damage(p, at, Config);
             if (damage == 0 || SparedByFriendlyFire(p, m.OwnerId))
                 continue;
@@ -335,6 +348,7 @@ public sealed class SimWorld
         Health = 0,
         Rope = RopeMode.None,
         RespawnTicks = (byte)Config.RespawnDelayTicks,
+        SpawnImmunityTicks = 0,
     };
 
     private static Vec2 BodyCenter(in PlayerState p) =>

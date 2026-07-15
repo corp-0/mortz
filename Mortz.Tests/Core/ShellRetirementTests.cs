@@ -25,7 +25,7 @@ public class ShellRetirementTests
     [Fact]
     public void Deflection_PreservesShotIdentity_SoTheShooterCanRetireItsPrediction()
     {
-        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.Config);
+        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         w.AddPlayer(1); // parrier, spawns at x=241
         w.AddPlayer(2); // shooter, spawns at x=130, fires level into the bubble
 
@@ -72,9 +72,9 @@ public class ShellRetirementTests
     [Fact]
     public void RetiredShell_LeavesFlight_AndNeverReturnsOnReplay()
     {
-        SimWorld server = new SimWorld(TestWorlds.Flat(), TestWorlds.Config);
+        SimWorld server = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         server.AddPlayer(1);
-        Predictor predictor = new Predictor(server.Terrain, TestWorlds.Config);
+        Predictor predictor = new Predictor(server.Terrain, TestWorlds.NoSpawnProtectionConfig);
         predictor.Reconcile(server.Players[1], -1);
 
         // Fire straight up so the shell stays airborne for the whole test, then
@@ -99,9 +99,9 @@ public class ShellRetirementTests
         TerrainMask terrain = new TerrainMask(TestWorlds.WIDTH, TestWorlds.HEIGHT,
             solid: (_, _) => false,
             destructible: (_, y) => y >= TestWorlds.FLOOR_Y);
-        SimWorld server = new SimWorld(terrain, TestWorlds.Config);
+        SimWorld server = new SimWorld(terrain, TestWorlds.NoSpawnProtectionConfig);
         server.AddPlayer(1);
-        Predictor predictor = new Predictor(terrain, TestWorlds.Config);
+        Predictor predictor = new Predictor(terrain, TestWorlds.NoSpawnProtectionConfig);
         predictor.Reconcile(server.Players[1], -1);
 
         predictor.LocalTick(new PlayerInput(InputButtons.Fire, 64)); // point-blank floor impact
@@ -116,9 +116,9 @@ public class ShellRetirementTests
         TerrainMask terrain = new TerrainMask(TestWorlds.WIDTH, TestWorlds.HEIGHT,
             solid: (_, _) => false,
             destructible: (_, y) => y >= TestWorlds.FLOOR_Y);
-        SimWorld server = new SimWorld(terrain, TestWorlds.Config);
+        SimWorld server = new SimWorld(terrain, TestWorlds.NoSpawnProtectionConfig);
         server.AddPlayer(1);
-        Predictor predictor = new Predictor(terrain, TestWorlds.Config);
+        Predictor predictor = new Predictor(terrain, TestWorlds.NoSpawnProtectionConfig);
         PlayerState spawn = server.Players[1];
         predictor.Reconcile(spawn, -1);
 

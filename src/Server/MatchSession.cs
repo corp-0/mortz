@@ -51,9 +51,10 @@ internal sealed class MatchSession
     public FinalKillEvent? FinalKill { get; private set; }
     public MatchConfig Config => World.Config;
 
-    public MatchSession(TerrainMask terrain, MatchConfig config, int seed, int victoryLapTicks)
+    public MatchSession(TerrainMask terrain, MatchConfig config, int seed, int victoryLapTicks,
+        IReadOnlyList<Vec2>? spawnPoints = null)
     {
-        World = new SimWorld(terrain, config, seed);
+        World = new SimWorld(terrain, config, seed, spawnPoints);
         Scores = new Scoreboard(config);
         _victoryLapTicks = Math.Max(1, victoryLapTicks);
     }

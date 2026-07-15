@@ -18,7 +18,11 @@ public static class ServerLauncher
 
     public static bool Spawn(int port, string adminPassword)
     {
-        string[] gameArgs = ["--server", "--port", port.ToString()];
+        string[] gameArgs =
+        [
+            "--server", "--port", port.ToString(),
+            "--content-root", ContentRoot.Resolve(),
+        ];
         if (adminPassword.Length > 0)
             gameArgs = [.. gameArgs, "--admin-password", adminPassword];
 

@@ -1,13 +1,13 @@
 using System.IO.Compression;
 using System.Text;
-using System.Text.Json;
+using Mortz.Content;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 
 namespace Mortz.Tools;
 
 /// <summary>
-/// Converts an OpenLieroX .lxl level into a Mortz map package (3 PNGs + map.json).
+/// Converts an OpenLieroX .lxl level into a Mortz map package (3 PNGs + map.toml).
 ///
 /// .lxl image format (version 0): 32-byte id, uint32 version, 64-byte name,
 /// uint32 width/height/type, 32-byte theme, uint32 object count, then a
@@ -22,7 +22,7 @@ namespace Mortz.Tools;
 /// </summary>
 internal static class ConvertLxl
 {
-    private static readonly Rgba32 _borderColor = new Rgba32(0x26, 0x26, 0x26);
+    private static readonly Rgba32 _borderColor = new(0x26, 0x26, 0x26);
 
     public static void Run(string[] args)
     {
@@ -44,6 +44,12 @@ internal static class ConvertLxl
         }
         if (lxlPath == null || mapId == null)
             throw new Exception("usage: convert-lxl <path.lxl> <mapId> [--scale N] [--players N] [--out DIR]");
+        if (!ContentManifestReader.IsLogicalId(mapId))
+            throw new Exception($"bad mapId '{mapId}': lowercase letters, digits, '_' and '-' only, starting with a letter or digit");
+        if (scale <= 0)
+            throw new Exception("--scale must be positive");
+        if (players <= 0)
+            throw new Exception("--players must be positive");
         outRoot ??= Path.Combine(Program.RepoRoot(), "content", "Base", "maps");
 
         byte[] bytes = File.ReadAllBytes(lxlPath);
@@ -67,21 +73,20 @@ internal static class ConvertLxl
         if (read < w * h * 7)
             throw new Exception($"decompressed {read} bytes, expected at least {w * h * 7}");
 
-        string outDir = Path.Combine(outRoot, mapId);
-        Directory.CreateDirectory(outDir);
-        WriteLayers(data, w, h, scale, outDir);
+        LayerBytes layers = WriteLayers(data, w, h, scale);
+        MapPackageWriter.Write(outRoot, new MapPackageWriteRequest(
+            mapId,
+            new MapManifest(MapManifest.CURRENT_FORMAT_VERSION, name, players),
+            layers.Background,
+            layers.Solid,
+            layers.Destructible));
 
-        string json = JsonSerializer.Serialize(
-            new { name, suggestedPlayers = players },
-            new JsonSerializerOptions { WriteIndented = true });
-        File.WriteAllText(Path.Combine(outDir, "map.json"), json);
-
-        Console.WriteLine($"wrote {outDir}");
+        Console.WriteLine($"wrote {Path.Combine(outRoot, mapId)}");
     }
 
     // data = back RGB, front RGB, material byte per pixel. Writes the three
     // layer PNGs, nearest-neighbor scaled by an integer factor.
-    private static void WriteLayers(byte[] data, int w, int h, int scale, string outDir)
+    private static LayerBytes WriteLayers(byte[] data, int w, int h, int scale)
     {
         int pixels = w * h;
         int ow = w * scale;
@@ -91,46 +96,51 @@ internal static class ConvertLxl
         Rgba32[] dirt = new Rgba32[ow * oh];
 
         for (int y = 0; y < h; y++)
-        for (int x = 0; x < w; x++)
-        {
-            int i = y * w + x;
-            Rgba32 backColor = Rgb(data, i * 3);
-            Rgba32 frontColor = Rgb(data, pixels * 3 + i * 3);
-            byte mat = data[pixels * 6 + i];
-            for (int sy = 0; sy < scale; sy++)
-            for (int sx = 0; sx < scale; sx++)
+            for (int x = 0; x < w; x++)
             {
-                int o = (y * scale + sy) * ow + x * scale + sx;
-                back[o] = backColor;
-                if ((mat & 4) != 0) solid[o] = frontColor;
-                else if ((mat & 2) != 0) dirt[o] = frontColor;
+                int i = y * w + x;
+                Rgba32 backColor = Rgb(data, i * 3);
+                Rgba32 frontColor = Rgb(data, pixels * 3 + i * 3);
+                byte mat = data[pixels * 6 + i];
+                for (int sy = 0; sy < scale; sy++)
+                    for (int sx = 0; sx < scale; sx++)
+                    {
+                        int o = (y * scale + sy) * ow + x * scale + sx;
+                        back[o] = backColor;
+                        if ((mat & 4) != 0) solid[o] = frontColor;
+                        else if ((mat & 2) != 0) dirt[o] = frontColor;
+                    }
             }
-        }
 
         // Enclose everything but the bottom: out of bounds reads as empty, so
         // an open side or sky would let players drift out and eat every rope
         // hook. The bottom stays as authored (open bottom = death pit).
         int border = 4 * scale;
         for (int y = 0; y < oh; y++)
-        for (int x = 0; x < ow; x++)
-        {
-            if (y >= border && x >= border && x < ow - border)
-                continue;
-            int o = y * ow + x;
-            solid[o] = _borderColor;
-            dirt[o] = default; // transparent
-        }
+            for (int x = 0; x < ow; x++)
+            {
+                if (y >= border && x >= border && x < ow - border)
+                    continue;
+                int o = y * ow + x;
+                solid[o] = _borderColor;
+                dirt[o] = default; // transparent
+            }
 
-        Save(back, ow, oh, Path.Combine(outDir, "background.png"));
-        Save(solid, ow, oh, Path.Combine(outDir, "solid.png"));
-        Save(dirt, ow, oh, Path.Combine(outDir, "destructible.png"));
+        return new LayerBytes(
+            EncodePng(back, ow, oh),
+            EncodePng(solid, ow, oh),
+            EncodePng(dirt, ow, oh));
     }
 
-    private static Rgba32 Rgb(byte[] data, int ofs) => new Rgba32(data[ofs], data[ofs + 1], data[ofs + 2]);
+    private static Rgba32 Rgb(byte[] data, int ofs) => new(data[ofs], data[ofs + 1], data[ofs + 2]);
 
-    private static void Save(Rgba32[] rgba, int w, int h, string path)
+    private static byte[] EncodePng(Rgba32[] rgba, int w, int h)
     {
         using Image<Rgba32> image = Image.LoadPixelData<Rgba32>(rgba, w, h);
-        image.SaveAsPng(path);
+        using MemoryStream stream = new();
+        image.SaveAsPng(stream);
+        return stream.ToArray();
     }
+
+    private readonly record struct LayerBytes(byte[] Background, byte[] Solid, byte[] Destructible);
 }

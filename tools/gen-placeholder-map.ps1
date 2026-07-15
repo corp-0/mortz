@@ -1,5 +1,5 @@
 # Generates the placeholder map package maps/arena01/ (background.png,
-# solid.png, destructible.png, map.json). Deterministic (fixed RNG seed),
+# solid.png, destructible.png, map.toml). Deterministic (fixed RNG seed),
 # safe to re-run. Requires Windows PowerShell (System.Drawing / GDI+).
 
 $ErrorActionPreference = 'Stop'
@@ -89,12 +89,27 @@ for ($i = 0; $i -lt 16000; $i++) {
 $bmp.Save((Join-Path $outDir 'destructible.png'), [System.Drawing.Imaging.ImageFormat]::Png)
 $bmp.Dispose()
 
-# ---------- map.json ----------
+# ---------- map.toml ----------
 @'
-{
-  "name": "Arena 01",
-  "suggestedPlayers": 4
-}
-'@ | Out-File -Encoding ascii (Join-Path $outDir 'map.json')
+format_version = 1
+name = "Arena 01"
+suggested_players = 4
+
+[[spawn_points]]
+x = 256
+y = 430
+
+[[spawn_points]]
+x = 512
+y = 522
+
+[[spawn_points]]
+x = 768
+y = 248
+
+[[spawn_points]]
+x = 1024
+y = 240
+'@ | Out-File -Encoding ascii (Join-Path $outDir 'map.toml')
 
 Write-Host "map package written to $outDir"

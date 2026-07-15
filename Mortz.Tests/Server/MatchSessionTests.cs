@@ -7,14 +7,26 @@ namespace Mortz.Tests.Server;
 public class MatchSessionTests
 {
     private static MatchSession Session(bool teams = false, int killTarget = 20,
-        int victoryLapTicks = 10)
+        int victoryLapTicks = 10, IReadOnlyList<Vec2>? spawnPoints = null)
     {
         TerrainMask terrain = new(128, 128, (_, _) => false, (_, _) => false);
         return new MatchSession(terrain, new MatchConfig
         {
             Teams = teams,
             KillTarget = killTarget,
-        }, seed: 1, victoryLapTicks);
+        }, seed: 1, victoryLapTicks, spawnPoints);
+    }
+
+    [Fact]
+    public void AuthoredSpawnPoints_ReachTheWorld()
+    {
+        MatchSession match = Session(spawnPoints: [new Vec2(32, 64), new Vec2(96, 64)]);
+
+        match.AddPlayer(50);
+        match.AddPlayer(10);
+
+        Assert.Equal(new Vec2(32, 64), match.World.Players[50].Position);
+        Assert.Equal(new Vec2(96, 64), match.World.Players[10].Position);
     }
 
     [Fact]

@@ -10,11 +10,13 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Remove="Mortz.Tests\**" />
+    <Compile Remove="Mortz.Content\**" />
     <Compile Remove="Mortz.Core\**" />
     <Compile Remove="Mortz.Net.Gen\**" />
     <Compile Remove="tools\**" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="Mortz.Core\Mortz.Core.csproj" />
+    <ProjectReference Include="Mortz.Content\Mortz.Content.csproj" />
   </ItemGroup>
 </Project>

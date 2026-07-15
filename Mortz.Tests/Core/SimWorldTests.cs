@@ -8,8 +8,8 @@ public class SimWorldTests
     [Fact]
     public void SameInputs_ProduceIdenticalState_Determinism()
     {
-        SimWorld a = new SimWorld(TestWorlds.Flat(), TestWorlds.Config);
-        SimWorld b = new SimWorld(TestWorlds.Flat(), TestWorlds.Config);
+        SimWorld a = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
+        SimWorld b = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         foreach (SimWorld? w in new[] { a, b })
         {
             w.AddPlayer(1);
@@ -36,7 +36,7 @@ public class SimWorldTests
     [Fact]
     public void PlayersSpawnStandingOnTerrain()
     {
-        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.Config);
+        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         w.AddPlayer(1);
         w.AddPlayer(2);
         w.AddPlayer(1282034813); // real ENet peer ids are large: must not overflow off-map
@@ -56,7 +56,7 @@ public class SimWorldTests
         TerrainMask world = new TerrainMask(400, 300,
             solid: (x, y) => y >= 250 && x < 300,
             destructible: (_, _) => false);
-        SimWorld w = new SimWorld(world, TestWorlds.Config);
+        SimWorld w = new SimWorld(world, TestWorlds.NoSpawnProtectionConfig);
         w.AddPlayer(1);
         Vec2 spawn = w.Players[1].Position;
         Assert.True(PlayerSim.OnGround(world, spawn));
@@ -87,7 +87,7 @@ public class SimWorldTests
     [Fact]
     public void AddAndRemovePlayers_ReflectedInSnapshot()
     {
-        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.Config);
+        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         w.AddPlayer(3);
         w.AddPlayer(5);
         w.Step();
@@ -103,7 +103,7 @@ public class SimWorldTests
     [Fact]
     public void SnapshotSerialization_RoundTrips()
     {
-        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.Config);
+        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         w.AddPlayer(1);
         w.AddPlayer(42);
         for (int t = 0; t < 30; t++)

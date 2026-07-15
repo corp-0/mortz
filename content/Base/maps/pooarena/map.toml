@@ -1,0 +1,11 @@
+format_version = 1
+name = "Poo Arena"
+suggested_players = 2
+
+[[spawn_points]]
+x = 466
+y = 588
+
+[[spawn_points]]
+x = 933
+y = 588

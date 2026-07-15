@@ -163,7 +163,8 @@ public partial class ServerMain : Node
             return;
 
         int victoryLapTicks = (int)(MATCH_END_SECONDS * SimConfig.TICK_RATE);
-        MatchSession match = new(_map.BuildMask(), _rules, Random.Shared.Next(), victoryLapTicks);
+        MatchSession match = new(_map.BuildMask(), _rules, Random.Shared.Next(), victoryLapTicks,
+            _map.SpawnPoints);
         _match = match;
         _lobby = null;
         GD.Print($"[server] all {lobby.Count} player(s) ready, starting match");
@@ -174,6 +175,9 @@ public partial class ServerMain : Node
 
     private void AddToMatch(long peerId, MatchSession match)
     {
+        if (_map.SpawnPoints.Length > 0 && match.World.Players.Count >= _map.SpawnPoints.Length)
+            GD.PushWarning($"[server] map '{_map.MapId}' only has {_map.SpawnPoints.Length} spawn " +
+                $"point(s) for {match.World.Players.Count + 1} players, so some will share one");
         byte team = match.AddPlayer((int)peerId);
         _protocol.SyncPlayer(peerId, match);
         GD.Print($"[server] player {peerId} joined ({match.World.Players.Count} in game)" +

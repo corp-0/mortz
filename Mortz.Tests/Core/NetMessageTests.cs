@@ -73,7 +73,7 @@ public class NetMessageTests : IDisposable
         WelcomeMsg received = default;
         Action<WelcomeMsg> handler = m => received = m;
         WelcomeMsg.Received += handler;
-        byte[] config = TestWorlds.Config.ToBytes();
+        byte[] config = TestWorlds.NoSpawnProtectionConfig.ToBytes();
         try
         {
             new WelcomeMsg("castlewars", "abc123", config,

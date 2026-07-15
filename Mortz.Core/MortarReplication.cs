@@ -241,7 +241,7 @@ public sealed class MortarReplicaSet
     /// interpolated in the past, but shells share the local player's gameplay
     /// timeline so an authoritative hit does not appear two body-widths short.</summary>
     public IReadOnlyList<RenderMortar> Render() => _states.Values
-        .Select(state => new RenderMortar(state.Id, state.OwnerId, state.Deflected,
+        .Select(state => new RenderMortar(state.Id, state.OwnerId, state.Deflected, state.SpawnSeq,
             state.Position, state.Velocity))
         .ToArray();
 

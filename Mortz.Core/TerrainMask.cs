@@ -42,6 +42,18 @@ public sealed class TerrainMask
         _original = (TerrainMaterial[])_cells.Clone();
     }
 
+    private TerrainMask(int width, int height, TerrainMaterial[] cells, TerrainMaterial[] original)
+    {
+        Width = width;
+        Height = height;
+        _cells = cells;
+        _original = original;
+    }
+
+    /// <summary>Detached copy: carves on it don't touch the original.</summary>
+    public TerrainMask Copy() => new(Width, Height,
+        (TerrainMaterial[])_cells.Clone(), (TerrainMaterial[])_original.Clone());
+
     public TerrainMaterial Get(int x, int y) =>
         InBounds(x, y) ? _cells[y * Width + x] : TerrainMaterial.Empty;
 

@@ -1,0 +1,19 @@
+format_version = 1
+name = "Christmas Tree"
+suggested_players = 4
+
+[[spawn_points]]
+x = 512
+y = 336
+
+[[spawn_points]]
+x = 1024
+y = 336
+
+[[spawn_points]]
+x = 1536
+y = 788
+
+[[spawn_points]]
+x = 2048
+y = 1836

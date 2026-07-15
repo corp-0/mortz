@@ -12,4 +12,5 @@ public readonly record struct PlayerViewState(
     byte Health,
     byte RespawnTicks,
     byte ParryTicks,
-    byte DashCooldown);
+    byte DashCooldown,
+    byte SpawnImmunityTicks);

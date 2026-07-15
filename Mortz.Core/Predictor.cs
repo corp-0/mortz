@@ -90,7 +90,7 @@ public sealed class Predictor
         {
             InputButtons prevButtons = _state.PrevButtons;
             _state = PlayerSim.Tick(_state, input, _terrain, _stats);
-            if (WeaponSim.Tick(ref _state, input, prevButtons, _stats))
+            if (WeaponSim.Tick(ref _state, input, prevButtons, _stats, NextSeq))
                 _shells.Add((NextSeq, WeaponSim.NewShell((ushort)NextSeq, NextSeq, _state, input, _cfg)));
             StepShells(_shells);
         }
@@ -155,7 +155,7 @@ public sealed class Predictor
             state = PlayerSim.Tick(state, input, _terrain, _stats);
             // Run the weapon even for a retired shot: its ammo and reload were
             // real, only the shell must not come back.
-            if (WeaponSim.Tick(ref state, input, prevButtons, _stats) && !_retired.Contains(seq))
+            if (WeaponSim.Tick(ref state, input, prevButtons, _stats, seq) && !_retired.Contains(seq))
                 rebuilt.Add((seq, WeaponSim.NewShell((ushort)seq, seq, state, input, _cfg)));
             StepShells(rebuilt); // fast-forward in lockstep with the replay
         }

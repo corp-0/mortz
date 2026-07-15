@@ -14,7 +14,8 @@ public static class WeaponSim
     /// <summary>Press edges come from the pre-tick buttons; PlayerSim has
     /// already overwritten PrevButtons with this tick's by the time this runs.</summary>
     /// <returns>true when a shell fires this tick.</returns>
-    public static bool Tick(ref PlayerState p, PlayerInput input, InputButtons prevButtons, PlayerStats stats)
+    public static bool Tick(ref PlayerState p, PlayerInput input, InputButtons prevButtons,
+        PlayerStats stats, int inputSeq)
     {
         if (p.RespawnTicks > 0)
             return false; // corpses don't fire or reload
@@ -22,7 +23,7 @@ public static class WeaponSim
         bool firePressed = input.Fire && (prevButtons & InputButtons.Fire) == 0;
         bool reloadPressed = input.Reload && (prevButtons & InputButtons.Reload) == 0;
 
-        bool fired = firePressed && p.Ammo > 0;
+        bool fired = firePressed && p.Ammo > 0 && CombatEligibility.CanFire(p, inputSeq);
         if (fired)
         {
             p.Ammo--;

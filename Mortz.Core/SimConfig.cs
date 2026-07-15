@@ -102,6 +102,8 @@ public static class SimConfig
     public const int BLAST_EDGE_DAMAGE = 35;        //        at the rim
     /// <summary>How long a gibbed body stays dead (and hidden) before respawning.</summary>
     public const float RESPAWN_DELAY = 2.0f;        // s
+    /// <summary>Newly spawned players cannot shoot or take blast damage during this window.</summary>
+    public const float SPAWN_IMMUNITY = 1.75f;      // s
     /// <summary>How far below the map bottom a faller survives before the pit claims them.</summary>
     public const float DEATH_PIT_DEPTH = 300;       // px
 
@@ -122,6 +124,7 @@ public static class SimConfig
     public const int MORTAR_RELOAD_TICKS = (int)(MORTAR_RELOAD_PER_SHELL * TICK_RATE);
     public const int MORTAR_MAX_LIFETIME_TICKS = (int)(MORTAR_MAX_LIFETIME * TICK_RATE);
     public const int RESPAWN_DELAY_TICKS = (int)(RESPAWN_DELAY * TICK_RATE);
+    public const int SPAWN_IMMUNITY_TICKS = (int)(SPAWN_IMMUNITY * TICK_RATE);
     public const int PARRY_WINDOW_TICKS = (int)(PARRY_WINDOW * TICK_RATE);
     public const int PARRY_COOLDOWN_TICKS = (int)(PARRY_COOLDOWN * TICK_RATE);
 }

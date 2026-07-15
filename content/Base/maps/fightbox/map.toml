@@ -1,0 +1,11 @@
+format_version = 1
+name = "Fight Box"
+suggested_players = 2
+
+[[spawn_points]]
+x = 426
+y = 444
+
+[[spawn_points]]
+x = 853
+y = 444

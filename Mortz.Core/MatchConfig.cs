@@ -80,6 +80,7 @@ public sealed class MatchConfig
     public float BlastCoreFraction { get; set; } = SimConfig.BLAST_CORE_FRACTION;
     public int BlastEdgeDamage { get; set; } = SimConfig.BLAST_EDGE_DAMAGE;
     public float RespawnDelay { get; set; } = SimConfig.RESPAWN_DELAY;
+    public float SpawnImmunity { get; set; } = SimConfig.SPAWN_IMMUNITY;
 
     // ---- mode ----
     // Teams and WinCondition are stored independently so toggling teams in the
@@ -94,6 +95,7 @@ public sealed class MatchConfig
     public bool SuicidePenalty { get; set; }
 
     public int RespawnDelayTicks => (int)(RespawnDelay * SimConfig.TICK_RATE);
+    public int SpawnImmunityTicks => (int)(SpawnImmunity * SimConfig.TICK_RATE);
 
     /// <summary>Force every field into its sane range; NaN lands on the minimum.</summary>
     public void Clamp()
@@ -142,6 +144,7 @@ public sealed class MatchConfig
         BlastCoreFraction = C(BlastCoreFraction, 0, 1);
         BlastEdgeDamage = Math.Clamp(BlastEdgeDamage, 0, 250);
         RespawnDelay = C(RespawnDelay, 0, 4);
+        SpawnImmunity = C(SpawnImmunity, 0, 4);
 
         if (!Enum.IsDefined(WinCondition))
             WinCondition = WinCondition.PLAYER_KILLS;
@@ -151,109 +154,9 @@ public sealed class MatchConfig
     private static float C(float v, float min, float max) =>
         float.IsNaN(v) ? min : Math.Clamp(v, min, max);
 
-    public byte[] ToBytes()
-    {
-        using MemoryStream ms = new();
-        using BinaryWriter w = new(ms);
-        w.Write(MaxRunSpeed);
-        w.Write(GroundAccel);
-        w.Write(GroundFriction);
-        w.Write(AirAccel);
-        w.Write(Gravity);
-        w.Write(MaxFallSpeed);
-        w.Write(TotalJumps);
-        w.Write(JumpSpeed);
-        w.Write(AirJumpSpeed);
-        w.Write(WallSlideMaxFall);
-        w.Write(WallJumpSpeedY);
-        w.Write(WallJumpKickX);
-        w.Write(CoyoteBase);
-        w.Write(CoyoteBonusPer100Speed);
-        w.Write(CoyoteMax);
-        w.Write(DashSpeed);
-        w.Write(DashCooldown);
-        w.Write(RopeSpeed);
-        w.Write(RopeMaxRange);
-        w.Write(RopePullAccel);
-        w.Write(RopeShortenSpeed);
-        w.Write(RopeReleaseCooldown);
-        w.Write(RopeMissCooldown);
-        w.Write(MortarSpeed);
-        w.Write(MortarInherit);
-        w.Write(MortarGravity);
-        w.Write(MortarMaxFall);
-        w.Write(MortarCarveRadius);
-        w.Write(MortarMaxAmmo);
-        w.Write(MortarReloadPerShell);
-        w.Write(ParryRadius);
-        w.Write(ParryWindow);
-        w.Write(ParryCooldown);
-        w.Write(MaxHealth);
-        w.Write(MortarDamage);
-        w.Write(BlastCoreFraction);
-        w.Write(BlastEdgeDamage);
-        w.Write(RespawnDelay);
-        w.Write(Teams);
-        w.Write((byte)WinCondition);
-        w.Write(KillTarget);
-        w.Write(FriendlyFire);
-        w.Write(SuicidePenalty);
-        return ms.ToArray();
-    }
+    public byte[] ToBytes() => MatchConfigWire.Serialize(this);
 
-    public static MatchConfig FromBytes(byte[] data)
-    {
-        using MemoryStream ms = new(data);
-        using BinaryReader r = new(ms);
-        MatchConfig cfg = new()
-        {
-            MaxRunSpeed = r.ReadSingle(),
-            GroundAccel = r.ReadSingle(),
-            GroundFriction = r.ReadSingle(),
-            AirAccel = r.ReadSingle(),
-            Gravity = r.ReadSingle(),
-            MaxFallSpeed = r.ReadSingle(),
-            TotalJumps = r.ReadInt32(),
-            JumpSpeed = r.ReadSingle(),
-            AirJumpSpeed = r.ReadSingle(),
-            WallSlideMaxFall = r.ReadSingle(),
-            WallJumpSpeedY = r.ReadSingle(),
-            WallJumpKickX = r.ReadSingle(),
-            CoyoteBase = r.ReadSingle(),
-            CoyoteBonusPer100Speed = r.ReadSingle(),
-            CoyoteMax = r.ReadSingle(),
-            DashSpeed = r.ReadSingle(),
-            DashCooldown = r.ReadSingle(),
-            RopeSpeed = r.ReadSingle(),
-            RopeMaxRange = r.ReadSingle(),
-            RopePullAccel = r.ReadSingle(),
-            RopeShortenSpeed = r.ReadSingle(),
-            RopeReleaseCooldown = r.ReadSingle(),
-            RopeMissCooldown = r.ReadSingle(),
-            MortarSpeed = r.ReadSingle(),
-            MortarInherit = r.ReadSingle(),
-            MortarGravity = r.ReadSingle(),
-            MortarMaxFall = r.ReadSingle(),
-            MortarCarveRadius = r.ReadInt32(),
-            MortarMaxAmmo = r.ReadInt32(),
-            MortarReloadPerShell = r.ReadSingle(),
-            ParryRadius = r.ReadSingle(),
-            ParryWindow = r.ReadSingle(),
-            ParryCooldown = r.ReadSingle(),
-            MaxHealth = r.ReadInt32(),
-            MortarDamage = r.ReadInt32(),
-            BlastCoreFraction = r.ReadSingle(),
-            BlastEdgeDamage = r.ReadInt32(),
-            RespawnDelay = r.ReadSingle(),
-            Teams = r.ReadBoolean(),
-            WinCondition = (WinCondition)r.ReadByte(),
-            KillTarget = r.ReadInt32(),
-            FriendlyFire = r.ReadBoolean(),
-            SuicidePenalty = r.ReadBoolean(),
-        };
-        cfg.Clamp();
-        return cfg;
-    }
+    public static MatchConfig FromBytes(byte[] data) => MatchConfigWire.Deserialize(data);
 
     private static readonly JsonSerializerOptions _jsonOptions = new()
     {

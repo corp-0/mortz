@@ -1,0 +1,11 @@
+format_version = 1
+name = "Blast Fur-nace"
+suggested_players = 2
+
+[[spawn_points]]
+x = 533
+y = 152
+
+[[spawn_points]]
+x = 1066
+y = 120

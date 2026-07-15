@@ -8,7 +8,7 @@ public class BandwidthTests
     [Fact]
     public void RecipientSnapshot_UsesSlotsAndCompactRemoteRecords()
     {
-        SimWorld world = new(TestWorlds.Flat(), TestWorlds.Config);
+        SimWorld world = new(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         for (int peer = 1; peer <= NetConfig.MAX_PLAYERS; peer++)
             world.AddPlayer(peer);
 
@@ -17,12 +17,16 @@ public class BandwidthTests
         Dictionary<byte, int> peersBySlot = snapshot.Players.ToDictionary(p => p.NetSlot, p => p.PeerId);
         Snapshot restored = Snapshot.Deserialize(data, peersBySlot);
 
-        // 4 tick + 1 count/format + 24 local + 7*13 remote + 2 mortar count.
-        Assert.Equal(122, data.Length);
+        // 4 tick + 1 count/format + 29 local + 7*14 remote + 2 mortar count.
+        Assert.Equal(134, data.Length);
         Assert.Equal(8, restored.Players.Length);
         Assert.Equal(0, restored.Players[0].Skin); // static value comes from RosterMsg
         Assert.Equal(snapshot.Players[0].PrevButtons, restored.Players[0].PrevButtons);
+        Assert.Equal(snapshot.Players[0].SpawnImmunityFireThroughSeq,
+            restored.Players[0].SpawnImmunityFireThroughSeq);
         Assert.Equal(snapshot.Players[1].Position, restored.Players[1].Position);
+        Assert.Equal(snapshot.Players[1].SpawnImmunityTicks,
+            restored.Players[1].SpawnImmunityTicks);
         Assert.Equal(0, restored.Players[1].Skin); // static value comes from RosterMsg
         Assert.Equal(Vec2.Zero, restored.Players[1].Velocity); // render-only remote record
     }
@@ -205,7 +209,12 @@ public class BandwidthTests
     [Fact]
     public void ExtremeOpeningVolley_IsBoundedAndRetiresOldestShells()
     {
-        MatchConfig config = new() { MortarMaxAmmo = 30, MortarGravity = 0 };
+        MatchConfig config = new()
+        {
+            MortarMaxAmmo = 30,
+            MortarGravity = 0,
+            SpawnImmunity = 0,
+        };
         config.Clamp();
         SimWorld world = new(TestWorlds.Flat(), config);
         for (int peer = 1; peer <= NetConfig.MAX_PLAYERS; peer++)

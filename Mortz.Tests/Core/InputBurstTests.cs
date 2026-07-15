@@ -20,7 +20,7 @@ public class InputBurstTests
     [Fact]
     public void BurstDrain_MustNotEatAOneTickFirePress()
     {
-        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.Config);
+        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         w.AddPlayer(1);
         w.EnqueueInput(1, 0, new PlayerInput(InputButtons.None, AIM_UP));
         w.Step();
@@ -39,7 +39,7 @@ public class InputBurstTests
     [Fact]
     public void BurstDrain_MustFireAtTheSeqTheClientPredicted()
     {
-        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.Config);
+        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         w.AddPlayer(1);
         w.EnqueueInput(1, 0, new PlayerInput(InputButtons.None, AIM_UP));
         w.Step();
@@ -66,9 +66,9 @@ public class InputBurstTests
     [Fact]
     public void JitterBunchedDelivery_MustConfirmThePredictedCarve()
     {
-        SimWorld server = new SimWorld(TestWorlds.Flat(), TestWorlds.Config);
+        SimWorld server = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         server.AddPlayer(1);
-        Predictor predictor = new Predictor(server.Terrain, TestWorlds.Config);
+        Predictor predictor = new Predictor(server.Terrain, TestWorlds.NoSpawnProtectionConfig);
         predictor.Reconcile(server.Players[1], -1);
 
         // Replays re-report impacts; the client dedups by seq (PredictCarve).

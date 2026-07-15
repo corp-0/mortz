@@ -63,7 +63,8 @@ public sealed class SnapshotBuffer
             // while attached, and the flying hook is too fast to bother lerping.
             // Ammo/reload/health too: they step at most once per snapshot anyway.
             result.Add(new RenderPlayer(np.PeerId, pos, np.Aim, np.Skin, np.Rope, np.RopePoint,
-                np.Ammo, np.ReloadTicks, np.Health, np.RespawnTicks, np.ParryTicks, np.DashCooldown));
+                np.Ammo, np.ReloadTicks, np.Health, np.RespawnTicks, np.SpawnImmunityTicks,
+                np.ParryTicks, np.DashCooldown));
         }
 
         // Full-snapshot path for tests and recordings; live traffic uses
@@ -82,15 +83,18 @@ public sealed class SnapshotBuffer
                     break;
                 }
             }
-            mortars.Add(new RenderMortar(nm.Id, nm.OwnerId, nm.Deflected, pos, nm.Velocity));
+            mortars.Add(new RenderMortar(nm.Id, nm.OwnerId, nm.Deflected, nm.SpawnSeq,
+                pos, nm.Velocity));
         }
         return new InterpolatedState(result, mortars);
     }
 }
 
 public readonly record struct RenderPlayer(int PeerId, Vec2 Position, byte Aim, byte Skin, RopeMode Rope, Vec2 RopePoint,
-    byte Ammo, byte ReloadTicks, byte Health, byte RespawnTicks, byte ParryTicks, byte DashCooldown);
+    byte Ammo, byte ReloadTicks, byte Health, byte RespawnTicks, byte SpawnImmunityTicks,
+    byte ParryTicks, byte DashCooldown);
 
-public readonly record struct RenderMortar(ushort Id, int OwnerId, bool Deflected, Vec2 Position, Vec2 Velocity);
+public readonly record struct RenderMortar(ushort Id, int OwnerId, bool Deflected, int SpawnSeq,
+    Vec2 Position, Vec2 Velocity);
 
 public sealed record InterpolatedState(IReadOnlyList<RenderPlayer> Players, IReadOnlyList<RenderMortar> Mortars);

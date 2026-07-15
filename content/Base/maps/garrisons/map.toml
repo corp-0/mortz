@@ -1,0 +1,11 @@
+format_version = 1
+name = "Garrisons"
+suggested_players = 2
+
+[[spawn_points]]
+x = 426
+y = 336
+
+[[spawn_points]]
+x = 853
+y = 336

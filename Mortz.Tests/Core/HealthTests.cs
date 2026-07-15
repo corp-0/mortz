@@ -20,7 +20,7 @@ public class HealthTests
     [Fact]
     public void NewPlayer_SpawnsWithFullHealth()
     {
-        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.Config);
+        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         w.AddPlayer(1);
         Assert.Equal(SimConfig.MAX_HEALTH, w.Players[1].Health);
     }
@@ -28,7 +28,7 @@ public class HealthTests
     [Fact]
     public void GrazeChipsHealth_DamageSticks_SecondGrazeKills_CorpseIsUntouchable()
     {
-        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.Config);
+        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         w.AddPlayer(SHOOTER);
         w.AddPlayer(VICTIM);
         w.AddPlayer(BACKUP);
@@ -45,7 +45,7 @@ public class HealthTests
         // Shot 1: shooter suicides at own feet, victim catches the graze ring.
         Step(w, ref seq, 1, InputButtons.Fire);
         (int ex, int ey, _, _, _) = Assert.Single(w.Explosions);
-        int expected = BlastSim.Damage(victimBefore, new Vec2(ex, ey), TestWorlds.Config);
+        int expected = BlastSim.Damage(victimBefore, new Vec2(ex, ey), TestWorlds.NoSpawnProtectionConfig);
         Assert.InRange(expected, SimConfig.BLAST_EDGE_DAMAGE, SimConfig.MORTAR_DAMAGE - 1); // setup guard: a graze, not a core hit
         Assert.Equal([SHOOTER], w.Deaths.Select(d => d.PeerId)); // victim survived
 
@@ -82,7 +82,7 @@ public class HealthTests
     [Fact]
     public void Death_LeavesAFrozenCorpseForTheDelay_ThenRespawns()
     {
-        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.Config);
+        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         w.AddPlayer(1);
         w.EnqueueInput(1, 0, new PlayerInput(InputButtons.Fire, AIM_DOWN)); // point blank suicide
         w.Step();
@@ -118,18 +118,31 @@ public class HealthTests
             new PlayerInput(InputButtons.Right | InputButtons.Jump), TestWorlds.Flat(), TestWorlds.Stats);
         Assert.Equal(dead, after);
 
-        bool fired = WeaponSim.Tick(ref dead, new PlayerInput(InputButtons.Fire), InputButtons.None, TestWorlds.Stats);
+        bool fired = WeaponSim.Tick(ref dead, new PlayerInput(InputButtons.Fire),
+            InputButtons.None, TestWorlds.Stats, inputSeq: 0);
         Assert.False(fired);
         Assert.Equal(3, dead.Ammo);
     }
 
     [Fact]
-    public void SnapshotRoundTrips_HealthAndRespawn()
+    public void SnapshotRoundTrips_HealthRespawnAndSpawnImmunity()
     {
-        PlayerState[] players = [new PlayerState { PeerId = 1, Health = 62, RespawnTicks = 90 }];
+        PlayerState[] players =
+        [
+            new PlayerState
+            {
+                PeerId = 1,
+                Health = 62,
+                RespawnTicks = 90,
+                SpawnImmunityTicks = 73,
+                SpawnImmunityFireThroughSeq = 140,
+            },
+        ];
         Snapshot restored = Snapshot.Deserialize(new Snapshot(42, players, []).Serialize());
         Assert.Equal(62, restored.Players[0].Health);
         Assert.Equal(90, restored.Players[0].RespawnTicks);
+        Assert.Equal(73, restored.Players[0].SpawnImmunityTicks);
+        Assert.Equal(140, restored.Players[0].SpawnImmunityFireThroughSeq);
     }
 
     /// <summary>Left taps + settle put the shooter where the blast reaches the

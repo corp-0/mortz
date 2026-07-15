@@ -1,0 +1,11 @@
+format_version = 1
+name = "Base of Nowhere"
+suggested_players = 2
+
+[[spawn_points]]
+x = 426
+y = 148
+
+[[spawn_points]]
+x = 853
+y = 116

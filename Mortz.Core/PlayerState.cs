@@ -76,6 +76,17 @@ public record struct PlayerState
     /// server counts it down and respawns at 0.</summary>
     public byte RespawnTicks;
 
+    /// <summary>Ticks of spawn protection left; nonzero = can't shoot, can't be
+    /// hurt. PlayerSim counts it down so prediction and the server agree on the
+    /// first tick a shot is allowed. Clients flicker the body while it runs.</summary>
+    public byte SpawnImmunityTicks;
+
+    /// <summary>Last input seq that still counts as protected. The tick timer
+    /// runs on sim time, so a click pressed while protected can reach the server
+    /// after the timer expired and fire anyway; this fence catches those. Rides
+    /// in the owner's full snapshot so replay agrees.</summary>
+    public int SpawnImmunityFireThroughSeq;
+
     /// <summary>Sprite frame dealt by the server at join; survives respawns.</summary>
     public byte Skin;
 

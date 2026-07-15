@@ -1,0 +1,19 @@
+format_version = 1
+name = "Arena 01"
+suggested_players = 4
+
+[[spawn_points]]
+x = 256
+y = 430
+
+[[spawn_points]]
+x = 512
+y = 522
+
+[[spawn_points]]
+x = 768
+y = 248
+
+[[spawn_points]]
+x = 1024
+y = 240

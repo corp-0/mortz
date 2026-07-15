@@ -27,7 +27,7 @@ public class MortarTests
     [Fact]
     public void FirePress_SpawnsOneShell_HoldingDoesNotRepeat()
     {
-        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.Config);
+        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         w.AddPlayer(1);
         int seq = 0;
 
@@ -44,7 +44,7 @@ public class MortarTests
     [Fact]
     public void NoCooldown_BackToBackPressesAllFire()
     {
-        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.Config);
+        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         w.AddPlayer(1);
         int seq = 0;
 
@@ -61,7 +61,7 @@ public class MortarTests
     [Fact]
     public void EmptyMagazine_AutoReloadsOneShellPerSecond()
     {
-        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.Config);
+        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         w.AddPlayer(1);
         int seq = 0;
 
@@ -94,7 +94,7 @@ public class MortarTests
     [Fact]
     public void ManualReload_TopsUpOneShellQuickly()
     {
-        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.Config);
+        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         w.AddPlayer(1);
         int seq = 0;
 
@@ -111,7 +111,7 @@ public class MortarTests
     [Fact]
     public void ReloadAtFullMagazine_DoesNothing()
     {
-        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.Config);
+        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         w.AddPlayer(1);
         int seq = 0;
 
@@ -126,7 +126,7 @@ public class MortarTests
     [Fact]
     public void FiringMidReload_KeepsBankedShells_ScrapsTheOneInProgress()
     {
-        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.Config);
+        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         w.AddPlayer(1);
         int seq = 0;
 
@@ -161,7 +161,7 @@ public class MortarTests
     [Fact]
     public void ShellFallsInAnArc()
     {
-        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.Config);
+        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         w.AddPlayer(1);
         int seq = 0;
 
@@ -179,7 +179,7 @@ public class MortarTests
     [Fact]
     public void ImpactOnDestructible_CarvesAndReportsExplosion()
     {
-        SimWorld w = new SimWorld(DestructibleFloor(), TestWorlds.Config);
+        SimWorld w = new SimWorld(DestructibleFloor(), TestWorlds.NoSpawnProtectionConfig);
         w.AddPlayer(1);
         int seq = 0;
         Vec2 feet = w.Players[1].Position;
@@ -203,7 +203,7 @@ public class MortarTests
     [Fact]
     public void ImpactOnSolid_ExplodesWithoutCarving()
     {
-        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.Config);
+        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         w.AddPlayer(1);
         int seq = 0;
 
@@ -221,7 +221,7 @@ public class MortarTests
     {
         // No terrain at all: everything fired downward just falls out.
         TerrainMask world = new TerrainMask(400, 300, (_, _) => false, (_, _) => false);
-        SimWorld w = new SimWorld(world, TestWorlds.Config);
+        SimWorld w = new SimWorld(world, TestWorlds.NoSpawnProtectionConfig);
         w.AddPlayer(1);
         int seq = 0;
 
@@ -242,7 +242,7 @@ public class MortarTests
     [Fact]
     public void ShellReachingMaxLifetime_DetonatesAtItsCurrentPosition()
     {
-        MatchConfig config = new() { MortarSpeed = 100, MortarGravity = 0 };
+        MatchConfig config = new() { MortarSpeed = 100, MortarGravity = 0, SpawnImmunity = 0 };
         config.Clamp();
         SimWorld w = new SimWorld(TestWorlds.Flat(), config);
         w.AddPlayer(1);
@@ -266,7 +266,7 @@ public class MortarTests
     [Fact]
     public void SelfBlast_KillsAndRespawnsTheShooter()
     {
-        SimWorld w = new SimWorld(DestructibleFloor(), TestWorlds.Config);
+        SimWorld w = new SimWorld(DestructibleFloor(), TestWorlds.NoSpawnProtectionConfig);
         w.AddPlayer(1);
         int seq = 0;
         StepWith(w, ref seq, InputButtons.Fire, AIM_UP); // spend one shell first
@@ -294,7 +294,7 @@ public class MortarTests
     [Fact]
     public void DirectHit_ExplodesOnContact_KillsTheTarget_NotTheShooter()
     {
-        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.Config);
+        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         w.AddPlayer(1); // spawns at x=241
         w.AddPlayer(2); // spawns at x=130
         int seq = 0;
@@ -341,7 +341,7 @@ public class MortarTests
     [Fact]
     public void SnapshotRoundTrips_Mortars()
     {
-        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.Config);
+        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         w.AddPlayer(1);
         int seq = 0;
         StepWith(w, ref seq, InputButtons.Fire, AIM_UP);

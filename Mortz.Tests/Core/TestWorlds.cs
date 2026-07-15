@@ -12,8 +12,10 @@ public static class TestWorlds
     public const float WALL_RIGHT = 392;
 
     /// <summary>Default ruleset; asserts keep reading expected values off the SimConfig consts.</summary>
-    public static readonly MatchConfig Config = new();
-    public static readonly PlayerStats Stats = PlayerStats.Resolve(Config);
+    public static readonly MatchConfig ProductionConfig = new();
+    /// <summary>For tests that shoot the moment they spawn, which spawn protection would block.</summary>
+    public static readonly MatchConfig NoSpawnProtectionConfig = new() { SpawnImmunity = 0 };
+    public static readonly PlayerStats Stats = PlayerStats.Resolve(ProductionConfig);
 
     public static TerrainMask Flat(
         Func<int, int, bool>? extraSolid = null,

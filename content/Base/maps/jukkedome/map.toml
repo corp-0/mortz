@@ -1,0 +1,11 @@
+format_version = 1
+name = "Jukke Dome"
+suggested_players = 2
+
+[[spawn_points]]
+x = 666
+y = 244
+
+[[spawn_points]]
+x = 1333
+y = 244
