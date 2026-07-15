@@ -28,7 +28,7 @@ public partial class E2eHooks : Node
     public override void _Ready()
     {
         _gameView.SnapshotApplied += LogHeartbeat;
-        ScoreMsg.Received += LogScore;
+        EliminationMsg.Received += LogScore;
         MatchEndMsg.Received += LogMatchEnd;
         if (CmdArgs.HasFlag("--test-fire"))
         {
@@ -111,15 +111,15 @@ public partial class E2eHooks : Node
 
     public override void _ExitTree()
     {
-        ScoreMsg.Received -= LogScore;
+        EliminationMsg.Received -= LogScore;
         MatchEndMsg.Received -= LogMatchEnd;
     }
 
     /// <summary>Score echoes prove the wire end to end until the kill feed UI
     /// exists; peer ids, not names, this side stays dumb.</summary>
-    private static void LogScore(ScoreMsg m)
+    private static void LogScore(EliminationMsg m)
     {
-        bool suicide = m.KillerId == 0 || m.KillerId == m.VictimId;
+        bool suicide = (m.Flags & EliminationFlags.SUICIDE) != 0;
         GD.Print(suicide
             ? $"[client] score: {m.VictimId} suicides ({m.KillerKills} kills, {m.VictimDeaths} deaths)"
             : $"[client] score: {m.KillerId} killed {m.VictimId} ({m.KillerKills} kills), " +

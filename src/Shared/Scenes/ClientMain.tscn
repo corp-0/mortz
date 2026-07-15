@@ -1,19 +1,25 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene format=3 uid="uid://cvsgjdvwcbnme"]
 
-[ext_resource type="Script" path="res://src/Client/ClientMain.cs" id="1_cmain"]
-[ext_resource type="PackedScene" path="res://src/Shared/Scenes/GameView.tscn" id="2_gview"]
+[ext_resource type="Script" uid="uid://c4clg3b07l4dn" path="res://src/Client/ClientMain.cs" id="1_cmain"]
+[ext_resource type="PackedScene" uid="uid://cjwh1mbdhwqhh" path="res://src/Shared/Scenes/GameView.tscn" id="2_gview"]
 [ext_resource type="PackedScene" path="res://src/Shared/Scenes/MainMenu.tscn" id="3_menu"]
-[ext_resource type="PackedScene" path="res://src/Shared/Scenes/Lobby.tscn" id="4_lobby"]
+[ext_resource type="PackedScene" uid="uid://lccou7q7borc" path="res://src/Shared/Scenes/Lobby.tscn" id="4_lobby"]
+[ext_resource type="Script" uid="uid://b46f55d4mmx7l" path="res://src/Client/Audio/Sfx.cs" id="5_sfx"]
+[ext_resource type="Resource" uid="uid://0gok5648oexn" path="res://Assets/Sounds/SoundRegistry.tres" id="6_sounds"]
 
-[node name="ClientMain" type="Node" node_paths=PackedStringArray("_menu", "_lobby")]
+[node name="ClientMain" type="Node" unique_id=50431991 node_paths=PackedStringArray("_menu", "_lobby")]
 script = ExtResource("1_cmain")
 _gameViewScene = ExtResource("2_gview")
 _menu = NodePath("MainMenu")
 _lobby = NodePath("Lobby")
 
-[node name="MainMenu" parent="." instance=ExtResource("3_menu")]
+[node name="Sfx" type="Node" parent="." unique_id=552139458]
+script = ExtResource("5_sfx")
+_sounds = ExtResource("6_sounds")
 
-[node name="Lobby" parent="." instance=ExtResource("4_lobby")]
+[node name="MainMenu" parent="." unique_id=1401714884 instance=ExtResource("3_menu")]
+
+[node name="Lobby" parent="." unique_id=1904857573 instance=ExtResource("4_lobby")]
 
 [connection signal="HostRequested" from="MainMenu" to="." method="OnHostRequested"]
 [connection signal="JoinRequested" from="MainMenu" to="." method="OnJoinRequested"]

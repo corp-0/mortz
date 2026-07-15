@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="SoundEffect" format=3 uid="uid://cosmsb2e0cyha"]
+
+[ext_resource type="AudioStream" uid="uid://dmyty2whnd30" path="res://Assets/Sounds/first_blood_freesound.org.wav" id="1_itrj0"]
+[ext_resource type="Script" uid="uid://ds47gmtfre85k" path="res://src/Client/Audio/SoundEffect.cs" id="2_kby64"]
+
+[resource]
+script = ExtResource("2_kby64")
+Stream = ExtResource("1_itrj0")
+Bus = 1
+Priority = 2
+TimeScaled = false
+metadata/_custom_type_script = "uid://ds47gmtfre85k"

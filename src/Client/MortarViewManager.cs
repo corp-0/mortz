@@ -31,7 +31,8 @@ public partial class MortarViewManager : Node2D
             if (m.OwnerId == localId && !m.Deflected)
                 continue;
             _seenRemote.Add(m.Id);
-            Place(_remote, m.Id, new Vector2(m.Position.X, m.Position.Y), m.Velocity);
+            Place(_remote, m.Id, new Vector2(m.Position.X, m.Position.Y), m.Velocity,
+                playFire: false);
         }
         Prune(_remote, _seenRemote);
     }
@@ -43,12 +44,14 @@ public partial class MortarViewManager : Node2D
         foreach ((int seq, MortarState shell) in shells)
         {
             _seenPredicted.Add(seq);
-            Place(_predicted, seq, new Vector2(shell.Position.X, shell.Position.Y), shell.Velocity);
+            Place(_predicted, seq, new Vector2(shell.Position.X, shell.Position.Y), shell.Velocity,
+                playFire: true);
         }
         Prune(_predicted, _seenPredicted);
     }
 
-    private void Place<TKey>(Dictionary<TKey, MortarView> pool, TKey key, Vector2 position, Vec2 velocity)
+    private void Place<TKey>(Dictionary<TKey, MortarView> pool, TKey key, Vector2 position,
+        Vec2 velocity, bool playFire)
         where TKey : notnull
     {
         if (!pool.TryGetValue(key, out MortarView? view))
@@ -60,6 +63,9 @@ public partial class MortarViewManager : Node2D
             view.Position = position;
             view.Rotation = MathF.Atan2(velocity.Y, velocity.X);
             AddChild(view);
+            if (playFire)
+                Sfx.PlayAt(Sfx.Sounds.MortarFire, position);
+            Sfx.PlayAttached(Sfx.Sounds.ShellWhoosh, view);
             pool[key] = view;
             return;
         }

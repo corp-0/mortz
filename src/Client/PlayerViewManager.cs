@@ -58,15 +58,14 @@ public partial class PlayerViewManager : Node2D
 
     public void BeginFrame() => _placed.Clear();
 
-    public void Place(int peerId, Vector2 feet, byte aim, byte skin, byte ammo, byte reloadTicks,
-        byte health, byte respawnTicks, byte parryTicks, byte dashCooldown)
+    public void Place(int peerId, PlayerViewState state)
     {
         _placed.Add(peerId);
         bool isLocal = peerId == Multiplayer.GetUniqueId();
         if (_skins.TryGetValue(peerId, out byte rosterSkin))
-            skin = rosterSkin;
+            state = state with { Skin = rosterSkin };
         if (!isLocal)
-            RemotePlaced?.Invoke(feet);
+            RemotePlaced?.Invoke(state.Feet);
         if (!_views.TryGetValue(peerId, out PlayerView? view))
         {
             view = _playerScene.Instantiate<PlayerView>();
@@ -76,7 +75,7 @@ public partial class PlayerViewManager : Node2D
             AddChild(view);
             _views[peerId] = view;
         }
-        view.Apply(feet, aim, skin, ammo, reloadTicks, health, respawnTicks, parryTicks, dashCooldown);
+        view.Apply(state);
     }
 
     /// <summary>Despawn every view not placed since BeginFrame.</summary>

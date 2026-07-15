@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="SoundRegistry" format=3 uid="uid://0gok5648oexn"]
+
+[ext_resource type="Script" uid="uid://d104v7xlmkhkc" path="res://src/Client/Audio/SoundRegistry.cs" id="1"]
+[ext_resource type="Resource" uid="uid://cosmsb2e0cyha" path="res://Assets/Sounds/first_blood.tres" id="1_r7fwr"]
+[ext_resource type="Resource" path="res://Assets/Sounds/mortar_fire.tres" id="2"]
+[ext_resource type="Resource" path="res://Assets/Sounds/shell_whoosh.tres" id="3"]
+[ext_resource type="Resource" uid="uid://n40shrfn7i7a" path="res://Assets/Sounds/mortar_reload.tres" id="3_k3oql"]
+[ext_resource type="Resource" path="res://Assets/Sounds/shell_impact.tres" id="4"]
+[ext_resource type="Resource" path="res://Assets/Sounds/parry_raise.tres" id="5"]
+[ext_resource type="Resource" path="res://Assets/Sounds/parry_success.tres" id="6"]
+[ext_resource type="Resource" path="res://Assets/Sounds/regular_kill.tres" id="7"]
+[ext_resource type="Resource" uid="uid://bkkkoim76s6me" path="res://Assets/Sounds/owned.tres" id="8"]
+
+[resource]
+script = ExtResource("1")
+MortarFire = ExtResource("2")
+MortarReload = ExtResource("3_k3oql")
+ShellWhoosh = ExtResource("3")
+ShellImpact = ExtResource("4")
+ParryRaise = ExtResource("5")
+ParrySuccess = ExtResource("6")
+RegularKill = ExtResource("7")
+FirstBlood = ExtResource("1_r7fwr")
+Owned = ExtResource("8")

@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="SoundEffect" format=3 uid="uid://n40shrfn7i7a"]
+
+[ext_resource type="AudioStream" uid="uid://bshi61148en0t" path="res://Assets/Sounds/reload.wav" id="1_xtklj"]
+[ext_resource type="Script" uid="uid://ds47gmtfre85k" path="res://src/Client/Audio/SoundEffect.cs" id="2_nn8e4"]
+
+[resource]
+script = ExtResource("2_nn8e4")
+Stream = ExtResource("1_xtklj")
+Bus = 0
+MaxDistance = 1800.0
+metadata/_custom_type_script = "uid://ds47gmtfre85k"

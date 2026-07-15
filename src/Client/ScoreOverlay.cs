@@ -6,7 +6,7 @@ namespace Mortz.Client;
 /// <summary>
 /// Screen-space score readout: the kill feed (top right, lines fade out), the
 /// local kills/deaths counter (top left) and the winner banner shown during
-/// the post-match victory lap. Fed entirely by ScoreMsg/MatchEndMsg, names by
+/// the post-match victory lap. Fed by EliminationMsg/MatchEndMsg, names by
 /// the roster. Dies with the GameView, which is what clears it (and resets
 /// the counters) on the return to lobby.
 /// </summary>
@@ -27,7 +27,7 @@ public partial class ScoreOverlay : Control
     public override void _Ready()
     {
         RosterMsg.Received += OnRoster;
-        ScoreMsg.Received += OnScore;
+        EliminationMsg.Received += OnElimination;
         MatchEndMsg.Received += OnMatchEnd;
         UpdateScoreLabel();
     }
@@ -35,7 +35,7 @@ public partial class ScoreOverlay : Control
     public override void _ExitTree()
     {
         RosterMsg.Received -= OnRoster;
-        ScoreMsg.Received -= OnScore;
+        EliminationMsg.Received -= OnElimination;
         MatchEndMsg.Received -= OnMatchEnd;
     }
 
@@ -47,10 +47,10 @@ public partial class ScoreOverlay : Control
             _names[msg.PeerIds[i]] = msg.Names[i];
     }
 
-    private void OnScore(ScoreMsg msg)
+    private void OnElimination(EliminationMsg msg)
     {
         long localId = Multiplayer.GetUniqueId();
-        bool suicide = msg.KillerId == 0 || msg.KillerId == msg.VictimId;
+        bool suicide = (msg.Flags & EliminationFlags.SUICIDE) != 0;
         if (!suicide && msg.KillerId == localId)
             _kills = msg.KillerKills;
         if (msg.VictimId == localId)
@@ -61,12 +61,19 @@ public partial class ScoreOverlay : Control
         }
         UpdateScoreLabel();
 
-        AddFeedLine(msg.KillerId == 0
-            ? $"{Name(msg.VictimId)} fell out of the world"
-            : suicide
-                ? $"{Name(msg.VictimId)} blew themselves up"
-                : $"{Name(msg.KillerId)} killed {Name(msg.VictimId)}");
+        AddFeedLine(FormatFeedLine(msg, Name));
     }
+
+    public static string FormatFeedLine(EliminationMsg msg, Func<long, string> name) =>
+        (msg.Flags & EliminationFlags.OWNED) != 0
+            ? $"{name(msg.KillerId)} OWNED {name(msg.VictimId)}"
+            : (msg.Flags & EliminationFlags.FALL) != 0
+                ? $"{name(msg.VictimId)} fell out of the world"
+                : (msg.Flags & EliminationFlags.SUICIDE) != 0
+                    ? $"{name(msg.VictimId)} blew themselves up"
+                    : (msg.Flags & EliminationFlags.TEAM_KILL) != 0
+                        ? $"{name(msg.KillerId)} team-killed {name(msg.VictimId)}"
+                        : $"{name(msg.KillerId)} killed {name(msg.VictimId)}";
 
     private void OnMatchEnd(MatchEndMsg msg)
     {

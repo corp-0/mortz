@@ -52,6 +52,8 @@ public partial class ServerMain : Node
     ///  Empty = no admin access. Never logged.</summary>
     private string _adminPassword = "";
 
+    private readonly FirstBloodTracker _firstBlood = new();
+
     public override void _Ready()
     {
         string mapId = CmdArgs.GetValue("--map") ?? _defaultMap;
@@ -117,8 +119,8 @@ public partial class ServerMain : Node
         {
             GD.Print($"[server] player {peerId} gibbed at ({(int)pos.X},{(int)pos.Y})" +
                      (owned ? " (OWNED)" : ""));
-            new DeathMsg(peerId, PackCoordinate((int)pos.X), PackCoordinate((int)pos.Y), owned).Broadcast();
-            ScoreDeath(peerId, killerId);
+            new DeathMsg(peerId, PackCoordinate((int)pos.X), PackCoordinate((int)pos.Y)).Broadcast();
+            ScoreDeath(peerId, killerId, owned);
         }
         if (_sim.Tick % NetConfig.TICKS_PER_SNAPSHOT == 0 && _sim.Players.Count > 0)
         {
@@ -238,6 +240,7 @@ public partial class ServerMain : Node
             return;
         _phase = Phase.IN_GAME;
         _scores = new Scoreboard(_sim.Config);
+        _firstBlood.Reset();
         GD.Print($"[server] all {_lobbyReady.Count} player(s) ready, starting match");
         foreach (long peerId in _lobbyReady.Keys)
             AddToGame(peerId);
@@ -353,18 +356,35 @@ public partial class ServerMain : Node
         return (byte)(one <= two ? 1 : 2);
     }
 
-    private void ScoreDeath(int victimId, int killerId)
+    private void ScoreDeath(int victimId, int killerId, bool owned)
     {
         if (_phase != Phase.IN_GAME)
             return; // victory lap: the board is closed
+
+        EliminationFlags flags = EliminationFlags.NONE;
+        if (killerId == 0)
+            flags |= EliminationFlags.SUICIDE | EliminationFlags.FALL;
+        else if (killerId == victimId)
+            flags |= EliminationFlags.SUICIDE;
+        else if (_sim.Config.Teams &&
+                 _scores.Rows.TryGetValue(victimId, out Scoreboard.Row victimBefore) &&
+                 _scores.Rows.TryGetValue(killerId, out Scoreboard.Row killerBefore) &&
+                 victimBefore.TeamId != 0 && victimBefore.TeamId == killerBefore.TeamId)
+            flags |= EliminationFlags.TEAM_KILL;
+        if (owned)
+            flags |= EliminationFlags.OWNED;
+
         Scoreboard.MatchWinner? winner = _scores.RecordDeath(victimId, killerId);
         if (!_scores.Rows.TryGetValue(victimId, out Scoreboard.Row victim))
             return; // victim unknown to the board, nothing scored
 
-        bool suicide = killerId == 0 || killerId == victimId;
-        _scores.Rows.TryGetValue(killerId, out Scoreboard.Row killer);
+        bool suicide = (flags & EliminationFlags.SUICIDE) != 0;
+        bool teamKill = (flags & EliminationFlags.TEAM_KILL) != 0;
+        bool killerKnown = _scores.Rows.TryGetValue(killerId, out Scoreboard.Row killer);
+        if (_firstBlood.TryClaim(killerKnown, suicide, teamKill))
+            flags |= EliminationFlags.FIRST_BLOOD;
         int killerKills = suicide ? victim.Kills : killer.Kills;
-        new ScoreMsg(killerId, victimId, killerKills, victim.Deaths,
+        new EliminationMsg(killerId, victimId, flags, killerKills, victim.Deaths,
             _scores.TeamKills(1), _scores.TeamKills(2)).Broadcast();
 
         string teams = _sim.Config.Teams ? $", teams {_scores.TeamKills(1)}-{_scores.TeamKills(2)}" : "";

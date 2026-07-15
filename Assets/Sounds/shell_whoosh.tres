@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="SoundEffect" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/Client/Audio/SoundEffect.cs" id="1"]
+[ext_resource type="AudioStream" path="res://Assets/Sounds/shell_whoosh.wav" id="2"]
+
+[resource]
+script = ExtResource("1")
+Stream = ExtResource("2")
+VolumeDb = -12.0
+Bus = 0
+MaxDistance = 1400.0
+Priority = 0
+TimeScaled = true

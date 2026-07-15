@@ -20,7 +20,7 @@ public sealed class NetMessageGenerator : IIncrementalGenerator
 
     private static readonly DiagnosticDescriptor _unsupportedFieldType = new(
         "MZ0001", "Unsupported net message field type",
-        "Field '{0}' of type '{1}' is not serializable; supported types: bool, byte, short, int, long, float, string, byte[], int[], long[], string[], Vec2",
+        "Field '{0}' of type '{1}' is not serializable; supported types: byte-backed enums, bool, byte, short, int, long, float, string, byte[], int[], long[], string[], Vec2",
         "Mortz.Net", DiagnosticSeverity.Error, isEnabledByDefault: true);
 
     private static readonly DiagnosticDescriptor _notPartialRecordStruct = new(
@@ -33,7 +33,7 @@ public sealed class NetMessageGenerator : IIncrementalGenerator
         "Two net messages share the short name '{0}'; registry ids are keyed by it, rename one",
         "Mortz.Net", DiagnosticSeverity.Error, isEnabledByDefault: true);
 
-    private sealed record FieldModel(string Name, string Type);
+    private sealed record FieldModel(string Name, string Type, string WireType);
 
     private sealed record MessageModel(
         string Namespace,
@@ -89,12 +89,20 @@ public sealed class NetMessageGenerator : IIncrementalGenerator
                 if (ctx.SemanticModel.GetDeclaredSymbol(p) is not IParameterSymbol ps)
                     continue;
                 string type = ps.Type.ToDisplayString();
-                if (!_supportedTypes.Contains(type))
+                string? wireType = _supportedTypes.Contains(type) ? type :
+                    ps.Type is INamedTypeSymbol
+                    {
+                        TypeKind: TypeKind.Enum,
+                        EnumUnderlyingType.SpecialType: SpecialType.System_Byte
+                    }
+                        ? "byte"
+                        : null;
+                if (wireType == null)
                 {
                     diagnostics.Add(Diagnostic.Create(_unsupportedFieldType, p.GetLocation(), ps.Name, type));
                     continue;
                 }
-                fields.Add(new FieldModel(ps.Name, type));
+                fields.Add(new FieldModel(ps.Name, type, wireType));
             }
         }
 
@@ -186,28 +194,33 @@ public sealed class NetMessageGenerator : IIncrementalGenerator
         return sb.ToString();
     }
 
-    private static string WriteCall(FieldModel f) => f.Type switch
+    private static string WriteCall(FieldModel f) => f.WireType switch
     {
         "byte[]" or "int[]" or "long[]" or "string[]" => $"w.WriteArray(m.{f.Name});",
+        "byte" when f.Type != "byte" => $"w.Write((byte)m.{f.Name});",
         _ => $"w.Write(m.{f.Name});",
     };
 
-    private static string ReadCall(FieldModel f) => f.Type switch
+    private static string ReadCall(FieldModel f)
     {
-        "bool" => "r.ReadBoolean()",
-        "byte" => "r.ReadByte()",
-        "short" => "r.ReadInt16()",
-        "int" => "r.ReadInt32()",
-        "long" => "r.ReadInt64()",
-        "float" => "r.ReadSingle()",
-        "string" => "global::Mortz.Core.Net.NetIo.ReadString(r)",
-        "byte[]" => "r.ReadByteArray()",
-        "int[]" => "r.ReadInt32Array()",
-        "long[]" => "r.ReadInt64Array()",
-        "string[]" => "r.ReadStringArray()",
-        "Mortz.Core.Vec2" => "r.ReadVec2()",
-        _ => throw new InvalidOperationException($"unmapped type {f.Type}"),
-    };
+        string read = f.WireType switch
+        {
+            "bool" => "r.ReadBoolean()",
+            "byte" => "r.ReadByte()",
+            "short" => "r.ReadInt16()",
+            "int" => "r.ReadInt32()",
+            "long" => "r.ReadInt64()",
+            "float" => "r.ReadSingle()",
+            "string" => "global::Mortz.Core.Net.NetIo.ReadString(r)",
+            "byte[]" => "r.ReadByteArray()",
+            "int[]" => "r.ReadInt32Array()",
+            "long[]" => "r.ReadInt64Array()",
+            "string[]" => "r.ReadStringArray()",
+            "Mortz.Core.Vec2" => "r.ReadVec2()",
+            _ => throw new InvalidOperationException($"unmapped type {f.WireType}"),
+        };
+        return f.Type == f.WireType ? read : $"({f.Type}){read}";
+    }
 
     private static string EmitRegistry(MessageModel[] models)
     {
@@ -274,7 +287,7 @@ public sealed class NetMessageGenerator : IIncrementalGenerator
         foreach (MessageModel m in models)
         {
             string signature =
-                $"{m.Namespace}.{m.Name}({string.Join(",", m.Fields.Select(f => f.Type))})|{m.Channel}|{m.Direction}";
+                $"{m.Namespace}.{m.Name}({string.Join(",", m.Fields.Select(f => f.WireType))})|{m.Channel}|{m.Direction}";
             foreach (byte b in Encoding.UTF8.GetBytes(signature))
             {
                 hash ^= b;

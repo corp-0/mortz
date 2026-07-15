@@ -1,0 +1,17 @@
+namespace Mortz.Core;
+
+/// <summary>First blood, once per match. Reset by the server on match start.</summary>
+public sealed class FirstBloodTracker
+{
+    private bool _claimed;
+
+    public bool TryClaim(bool killerKnown, bool suicide, bool teamKill)
+    {
+        if (_claimed || !killerKnown || suicide || teamKill)
+            return false;
+        _claimed = true;
+        return true;
+    }
+
+    public void Reset() => _claimed = false;
+}

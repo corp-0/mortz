@@ -137,31 +137,35 @@ public class NetMessageTests : IDisposable
         DeathMsg.Received += handler;
         try
         {
-            new DeathMsg(1234567890, -5, 7, true).Broadcast();
+            new DeathMsg(1234567890, -5, 7).Broadcast();
         }
         finally
         {
             DeathMsg.Received -= handler;
         }
-        Assert.Equal(new DeathMsg(1234567890, -5, 7, true), received);
+        Assert.Equal(new DeathMsg(1234567890, -5, 7), received);
     }
 
     [Fact]
-    public void ScoreMsg_RoundTrips()
+    public void EliminationMsg_RoundTrips()
     {
         UseLoopback(receiverIsServer: false);
-        ScoreMsg received = default;
-        Action<ScoreMsg> handler = m => received = m;
-        ScoreMsg.Received += handler;
+        EliminationMsg received = default;
+        Action<EliminationMsg> handler = m => received = m;
+        EliminationMsg.Received += handler;
         try
         {
-            new ScoreMsg(123456789012, 42, -2, 7, 5, 3).Broadcast();
+            new EliminationMsg(123456789012, 42,
+                EliminationFlags.FIRST_BLOOD | EliminationFlags.OWNED,
+                -2, 7, 5, 3).Broadcast();
         }
         finally
         {
-            ScoreMsg.Received -= handler;
+            EliminationMsg.Received -= handler;
         }
-        Assert.Equal(new ScoreMsg(123456789012, 42, -2, 7, 5, 3), received);
+        Assert.Equal(new EliminationMsg(123456789012, 42,
+            EliminationFlags.FIRST_BLOOD | EliminationFlags.OWNED,
+            -2, 7, 5, 3), received);
     }
 
     [Fact]

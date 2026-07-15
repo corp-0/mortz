@@ -3,6 +3,17 @@ using Mortz.Core;
 
 namespace Mortz.Client;
 
+public readonly record struct PlayerViewState(
+    Vector2 Feet,
+    byte Aim,
+    byte Skin,
+    byte Ammo,
+    byte ReloadTicks,
+    byte Health,
+    byte RespawnTicks,
+    byte ParryTicks,
+    byte DashCooldown);
+
 /// <summary>
 /// Visual shell for one player, local or remote. GameView owns the lifecycle
 /// and pushes state in through Apply every frame; nothing here simulates or
@@ -32,10 +43,9 @@ public partial class PlayerView : Node2D
     private bool _boxVisible;
     private bool _shieldVisible;
     private bool _isLocal;
-    private int _lastHealth = -1;
-    private int _lastDashCooldown = -1;
     private float _hitFlash;
     private PlayerStats _stats = null!;
+    private PlayerViewState? _previous;
 
     /// <summary>Must be called before the first Apply (PlayerViewManager does).</summary>
     public void Configure(PlayerStats stats) => _stats = stats;
@@ -51,34 +61,24 @@ public partial class PlayerView : Node2D
 
     public void SetPlayerName(string name) => _nameplate.Text = name;
 
-    public void Apply(Vector2 feet, byte aim, byte skin, byte ammo, byte reloadTicks, byte health,
-        byte respawnTicks, byte parryTicks, byte dashCooldown)
+    public void Apply(in PlayerViewState next)
     {
-        if ((parryTicks > 0) != _shieldVisible)
+        if (_previous is { } previous)
+            PlayTransitions(previous, next);
+
+        if ((next.ParryTicks > 0) != _shieldVisible)
         {
-            _shieldVisible = parryTicks > 0;
+            _shieldVisible = next.ParryTicks > 0;
             QueueRedraw();
         }
         // Dead = gibbed: no body to show. Position keeps tracking so the local
         // player's camera lingers on the death spot until the respawn.
-        Visible = respawnTicks == 0;
-        UpdateReloadBar(ammo, reloadTicks);
-        UpdateHealth(health);
-        Position = new Vector2(feet.X, feet.Y - SimConfig.PLAYER_HALF_HEIGHT);
+        Visible = next.RespawnTicks == 0;
+        UpdateReloadBar(next);
+        Position = new Vector2(next.Feet.X, next.Feet.Y - SimConfig.PLAYER_HALF_HEIGHT);
+        _body.Frame = next.Skin % SimConfig.SKIN_COUNT;
 
-        // DashCooldown only ever jumps up the tick a dash fires, then decays.
-        // A rising edge is that launch; ignore the first frame so a player
-        // already mid-cooldown when they come into view doesn't puff. The local
-        // player is predicted, so reconciliation can re-raise the value by a few
-        // ticks with no dash; require the rise to clear the slack for them only.
-        int dashRise = dashCooldown - _lastDashCooldown;
-        int minRise = _isLocal ? DASH_CORRECTION_SLACK : 1;
-        if (_lastDashCooldown >= 0 && dashRise >= minRise)
-            _dashDust.Restart();
-        _lastDashCooldown = dashCooldown;
-        _body.Frame = skin % SimConfig.SKIN_COUNT;
-
-        Vec2 aimDir = PlayerInput.AimToDir(aim);
+        Vec2 aimDir = PlayerInput.AimToDir(next.Aim);
         _aimPivot.Rotation = MathF.Atan2(aimDir.Y, aimDir.X);
         // Rotation alone leaves the launcher upside down past 90 degrees;
         // flipping it across the barrel axis keeps the art upright while the
@@ -89,6 +89,26 @@ public partial class PlayerView : Node2D
 
         if (DrawSimBoxes != _boxVisible)
             QueueRedraw();
+        _previous = next;
+    }
+
+    /// <summary>Everything that fires once on an edge rather than tracking a
+    /// value, so none of it can run before there is a frame to compare to.</summary>
+    private void PlayTransitions(in PlayerViewState previous, in PlayerViewState next)
+    {
+        if (previous.ParryTicks == 0 && next.ParryTicks > 0)
+            Sfx.PlayAttached(Sfx.Sounds.ParryRaise, this);
+
+        // Ammo rising mid-reload is one shell landing and the next starting.
+        if (next.ReloadTicks > 0 && (previous.ReloadTicks == 0 || next.Ammo > previous.Ammo))
+            Sfx.PlayAttached(Sfx.Sounds.MortarReload, this);
+
+        int minRise = _isLocal ? DASH_CORRECTION_SLACK : 1;
+        if (next.DashCooldown - previous.DashCooldown >= minRise)
+            _dashDust.Restart();
+
+        if (next.Health < previous.Health)
+            _hitFlash = HIT_FLASH_TIME;
     }
 
     /// <summary>
@@ -98,31 +118,21 @@ public partial class PlayerView : Node2D
     /// per shell. Interruption and completion both zero ReloadTicks, which
     /// hides it again.
     /// </summary>
-    private void UpdateReloadBar(byte ammo, byte reloadTicks)
+    private void UpdateReloadBar(in PlayerViewState state)
     {
-        if (reloadTicks == 0)
+        if (state.ReloadTicks == 0)
         {
             _reloadBar.Visible = false;
             return;
         }
         if (!_reloadBar.Visible)
         {
-            _reloadBar.MinValue = ammo;
+            _reloadBar.MinValue = state.Ammo;
             _reloadBar.MaxValue = _stats.MaxAmmo;
             _reloadBar.Visible = true;
         }
         // Shells banked plus the fraction of the one being loaded.
-        _reloadBar.Value = ammo + 1.0 - (double)reloadTicks / _stats.ReloadTicks;
-    }
-
-    /// <summary>Red sprite flash whenever health drops. No bar: hurt state
-    /// will be worn by the sprite itself eventually (wounds). Respawns raise
-    /// health, so they never flash.</summary>
-    private void UpdateHealth(byte health)
-    {
-        if (_lastHealth >= 0 && health < _lastHealth)
-            _hitFlash = HIT_FLASH_TIME;
-        _lastHealth = health;
+        _reloadBar.Value = state.Ammo + 1.0 - (double)state.ReloadTicks / _stats.ReloadTicks;
     }
 
     public override void _Process(double delta)

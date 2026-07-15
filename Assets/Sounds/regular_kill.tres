@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="SoundEffect" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/Client/Audio/SoundEffect.cs" id="1"]
+[ext_resource type="AudioStream" path="res://Assets/Sounds/regular_kill.wav" id="2"]
+
+[resource]
+script = ExtResource("1")
+Stream = ExtResource("2")
+VolumeDb = -3.0
+Bus = 1
+MaxDistance = 2200.0
+Priority = 2
+TimeScaled = false
