@@ -11,6 +11,8 @@ internal sealed class PlayerDirectory
     public int Count => _names.Count;
     public IEnumerable<long> PeerIds => _names.Keys;
 
+    public bool Contains(long peerId) => _names.ContainsKey(peerId);
+
     public string Add(long peerId, string requestedName)
     {
         string name = PlayerNameSanitizer.Sanitize(requestedName);

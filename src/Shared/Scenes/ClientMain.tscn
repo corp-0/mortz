@@ -6,12 +6,15 @@
 [ext_resource type="PackedScene" uid="uid://lccou7q7borc" path="res://src/Shared/Scenes/Lobby.tscn" id="4_lobby"]
 [ext_resource type="Script" uid="uid://b46f55d4mmx7l" path="res://src/Client/Audio/Sfx.cs" id="5_sfx"]
 [ext_resource type="Resource" uid="uid://0gok5648oexn" path="res://Assets/Sounds/SoundRegistry.tres" id="6_sounds"]
+[ext_resource type="Script" uid="uid://b7xyv1173ixe1" path="res://src/Client/ClientChat.cs" id="7_chat"]
+[ext_resource type="Script" path="res://src/Client/ClientSessionController.cs" id="8_session"]
 
-[node name="ClientMain" type="Node" unique_id=50431991 node_paths=PackedStringArray("_menu", "_lobby")]
+[node name="ClientMain" type="Node" unique_id=282168119 node_paths=PackedStringArray("_clientChat")]
 script = ExtResource("1_cmain")
-_gameViewScene = ExtResource("2_gview")
-_menu = NodePath("MainMenu")
-_lobby = NodePath("Lobby")
+_clientChat = NodePath("ClientChat")
+
+[node name="ClientChat" type="Node" parent="." unique_id=622475139]
+script = ExtResource("7_chat")
 
 [node name="Sfx" type="Node" parent="." unique_id=552139458]
 script = ExtResource("5_sfx")
@@ -20,7 +23,14 @@ _sounds = ExtResource("6_sounds")
 [node name="MainMenu" parent="." unique_id=1401714884 instance=ExtResource("3_menu")]
 
 [node name="Lobby" parent="." unique_id=1904857573 instance=ExtResource("4_lobby")]
+layout_mode = 3
 
-[connection signal="HostRequested" from="MainMenu" to="." method="OnHostRequested"]
-[connection signal="JoinRequested" from="MainMenu" to="." method="OnJoinRequested"]
-[connection signal="ReadyToggled" from="Lobby" to="." method="OnReadyToggled"]
+[node name="Session" type="Node" parent="." node_paths=PackedStringArray("_menu", "_lobby")]
+script = ExtResource("8_session")
+_gameViewScene = ExtResource("2_gview")
+_menu = NodePath("../MainMenu")
+_lobby = NodePath("../Lobby")
+
+[connection signal="HostRequested" from="MainMenu" to="Session" method="OnHostRequested"]
+[connection signal="JoinRequested" from="MainMenu" to="Session" method="OnJoinRequested"]
+[connection signal="ReadyToggled" from="Lobby" to="Session" method="OnReadyToggled"]

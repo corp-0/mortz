@@ -1,3 +1,6 @@
+using System.Security.Cryptography;
+using System.Text;
+using Mortz.Client;
 using Mortz.Core;
 using Mortz.Core.Net;
 using Mortz.Core.Net.Messages;
@@ -187,6 +190,36 @@ public class NetMessageTests : IDisposable
     }
 
     [Fact]
+    public void ChatAndAdminServerMessages_RoundTrip()
+    {
+        UseLoopback(receiverIsServer: false);
+        ChatLineMsg line = default;
+        AdminChallengeMsg challenge = default;
+        AdminStateMsg state = default;
+        Action<ChatLineMsg> lineHandler = message => line = message;
+        Action<AdminChallengeMsg> challengeHandler = message => challenge = message;
+        Action<AdminStateMsg> stateHandler = message => state = message;
+        ChatLineMsg.Received += lineHandler;
+        AdminChallengeMsg.Received += challengeHandler;
+        AdminStateMsg.Received += stateHandler;
+        try
+        {
+            new ChatLineMsg(ChatLineKind.PLAYER, 42, "Alice", "hello 🐛").Broadcast();
+            new AdminChallengeMsg([1, 2, 3]).SendTo(42);
+            new AdminStateMsg(true, "granted").SendTo(42);
+        }
+        finally
+        {
+            ChatLineMsg.Received -= lineHandler;
+            AdminChallengeMsg.Received -= challengeHandler;
+            AdminStateMsg.Received -= stateHandler;
+        }
+        Assert.Equal(new ChatLineMsg(ChatLineKind.PLAYER, 42, "Alice", "hello 🐛"), line);
+        Assert.Equal([1, 2, 3], challenge.Challenge);
+        Assert.Equal(new AdminStateMsg(true, "granted"), state);
+    }
+
+    [Fact]
     public void FinalKillMsg_RoundTrips()
     {
         UseLoopback(receiverIsServer: false);
@@ -233,6 +266,124 @@ public class NetMessageTests : IDisposable
     }
 
     [Fact]
+    public void ChatAndAdminClientMessages_RoundTrip_WithTransportSender()
+    {
+        UseLoopback(receiverIsServer: true);
+        (long Sender, string Text) chat = default;
+        long requestSender = 0;
+        (long Sender, byte[] Proof) proof = default;
+        Action<long, ChatSendMsg> chatHandler = (sender, message) => chat = (sender, message.Text);
+        Action<long, AdminAuthRequestMsg> requestHandler = (sender, _) => requestSender = sender;
+        Action<long, AdminProofMsg> proofHandler = (sender, message) => proof = (sender, message.Proof);
+        ChatSendMsg.Received += chatHandler;
+        AdminAuthRequestMsg.Received += requestHandler;
+        AdminProofMsg.Received += proofHandler;
+        try
+        {
+            new ChatSendMsg("hello").SendToServer();
+            new AdminAuthRequestMsg().SendToServer();
+            new AdminProofMsg([7, 8, 9]).SendToServer();
+        }
+        finally
+        {
+            ChatSendMsg.Received -= chatHandler;
+            AdminAuthRequestMsg.Received -= requestHandler;
+            AdminProofMsg.Received -= proofHandler;
+        }
+        Assert.Equal((SENDER, "hello"), chat);
+        Assert.Equal(SENDER, requestSender);
+        Assert.Equal(SENDER, proof.Sender);
+        Assert.Equal([7, 8, 9], proof.Proof);
+    }
+
+    [Fact]
+    public void AdminCommand_NeverSerializesPasswordAsChatOrHistory()
+    {
+        ushort sentId = 0;
+        byte[] sentPayload = [];
+        NetTransport.Send = (id, payload, _, _) => (sentId, sentPayload) = (id, payload);
+        using var session = new ClientChatSession();
+        session.Subscribe();
+        session.Begin();
+        session.SetLocalPeerId(SENDER);
+
+        Assert.True(session.Submit("/admin definitely-not-a-chat-secret"));
+
+        Assert.Equal(NetRegistry.ID_AdminAuthRequestMsg, sentId);
+        Assert.DoesNotContain("definitely-not-a-chat-secret",
+            Encoding.UTF8.GetString(sentPayload));
+        Assert.DoesNotContain(session.State.Entries,
+            entry => entry.Text.Contains("definitely-not-a-chat-secret", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ClientAdminFlow_DerivesProofAndSignedSessionKey()
+    {
+        const string PASSWORD = "correct horse battery staple";
+        ushort sentId = 0;
+        byte[] sentPayload = [];
+        NetTransport.Send = (id, payload, _, _) => (sentId, sentPayload) = (id, payload);
+        using var session = new ClientChatSession();
+        session.Subscribe();
+        session.Begin();
+        session.SetLocalPeerId(SENDER);
+        Assert.True(session.Submit($"/admin \"{PASSWORD}\""));
+
+        byte[] sessionId = Enumerable.Repeat((byte)3, AdminCrypto.SESSION_ID_BYTES).ToArray();
+        byte[] nonce = Enumerable.Repeat((byte)7, AdminCrypto.NONCE_BYTES).ToArray();
+        byte[] challenge = AdminCrypto.BuildChallenge(sessionId, nonce);
+        byte[] challengePayload = Capture(NetRegistry.ID_AdminChallengeMsg,
+            () => new AdminChallengeMsg(challenge).SendTo(SENDER)).Payload;
+        NetTransport.Send = (id, payload, _, _) => (sentId, sentPayload) = (id, payload);
+
+        Assert.True(NetRegistry.Dispatch(NetRegistry.ID_AdminChallengeMsg, SENDER,
+            challengePayload, isServer: false));
+        Assert.Equal(NetRegistry.ID_AdminProofMsg, sentId);
+
+        AdminProofMsg receivedProof = default;
+        Action<long, AdminProofMsg> proofHandler = (_, message) => receivedProof = message;
+        AdminProofMsg.Received += proofHandler;
+        try
+        {
+            Assert.True(NetRegistry.Dispatch(NetRegistry.ID_AdminProofMsg, SENDER,
+                sentPayload, isServer: true));
+        }
+        finally
+        {
+            AdminProofMsg.Received -= proofHandler;
+        }
+        byte[] passwordKey = AdminCrypto.DerivePasswordKey(PASSWORD);
+        Assert.Equal(AdminCrypto.ComputeProof(passwordKey, SENDER, challenge), receivedProof.Proof);
+
+        byte[] statePayload = Capture(NetRegistry.ID_AdminStateMsg,
+            () => new AdminStateMsg(true, "Admin access granted.").SendTo(SENDER)).Payload;
+        Assert.True(NetRegistry.Dispatch(NetRegistry.ID_AdminStateMsg, SENDER,
+            statePayload, isServer: false));
+        Assert.True(session.IsAdmin);
+        Assert.True(session.TrySignAdminAction(4, [1, 2, 3], out ulong sequence,
+            out byte[] tag));
+        byte[] sessionKey = AdminCrypto.DeriveSessionKey(passwordKey, SENDER, challenge);
+        Assert.Equal(AdminCrypto.ComputeCommandTag(sessionKey, SENDER, sequence, 4, [1, 2, 3]), tag);
+        CryptographicOperations.ZeroMemory(passwordKey);
+        CryptographicOperations.ZeroMemory(sessionKey);
+    }
+
+    [Fact]
+    public void ClientChatState_DropsUnknownServerLineKinds()
+    {
+        byte[] payload = [];
+        NetTransport.Send = (_, bytes, _, _) => payload = bytes;
+        new ChatLineMsg(ChatLineKind.PLAYER, SENDER, "Alice", "hello").Broadcast();
+        payload[0] = byte.MaxValue;
+        using var session = new ClientChatSession();
+        session.Subscribe();
+
+        Assert.True(NetRegistry.Dispatch(NetRegistry.ID_ChatLineMsg, SENDER,
+            payload, isServer: false));
+        Assert.Empty(session.State.Entries);
+    }
+
+    [Fact]
     public void Dispatch_DropsWrongDirection()
     {
         // A client-only message arriving at the server (spoof) and vice versa.
@@ -270,13 +421,22 @@ public class NetMessageTests : IDisposable
         (ushort Id, byte[] Payload)[] messages = [
             Capture(NetRegistry.ID_SetReadyMsg, () => new SetReadyMsg(true).SendToServer()),
             Capture(NetRegistry.ID_DebugCarveMsg, () => new DebugCarveMsg(10, 20).SendToServer()),
+            Capture(NetRegistry.ID_ChatSendMsg, () => new ChatSendMsg("hello").SendToServer()),
+            Capture(NetRegistry.ID_AdminAuthRequestMsg, () => new AdminAuthRequestMsg().SendToServer()),
+            Capture(NetRegistry.ID_AdminProofMsg, () => new AdminProofMsg([1, 2, 3]).SendToServer()),
         ];
 
         int raised = 0;
         Action<long, SetReadyMsg> ready = (_, _) => raised++;
         Action<long, DebugCarveMsg> carve = (_, _) => raised++;
+        Action<long, ChatSendMsg> chat = (_, _) => raised++;
+        Action<long, AdminAuthRequestMsg> request = (_, _) => raised++;
+        Action<long, AdminProofMsg> proof = (_, _) => raised++;
         SetReadyMsg.Received += ready;
         DebugCarveMsg.Received += carve;
+        ChatSendMsg.Received += chat;
+        AdminAuthRequestMsg.Received += request;
+        AdminProofMsg.Received += proof;
         try
         {
             foreach ((ushort id, byte[] payload) in messages)
@@ -290,6 +450,9 @@ public class NetMessageTests : IDisposable
         {
             SetReadyMsg.Received -= ready;
             DebugCarveMsg.Received -= carve;
+            ChatSendMsg.Received -= chat;
+            AdminAuthRequestMsg.Received -= request;
+            AdminProofMsg.Received -= proof;
         }
         Assert.Equal(0, raised);
     }
@@ -334,7 +497,9 @@ public class NetMessageTests : IDisposable
     public void Dispatch_RandomPayloadsNeverThrow()
     {
         var random = new Random(781_223);
-        ushort[] ids = [NetRegistry.ID_SetReadyMsg, NetRegistry.ID_DebugCarveMsg];
+        ushort[] ids = [NetRegistry.ID_SetReadyMsg, NetRegistry.ID_DebugCarveMsg,
+            NetRegistry.ID_ChatSendMsg, NetRegistry.ID_AdminAuthRequestMsg,
+            NetRegistry.ID_AdminProofMsg];
         for (int i = 0; i < 10_000; i++)
         {
             byte[] payload = new byte[random.Next(0, 129)];

@@ -10,6 +10,9 @@ public static class NetConfig
     public const int DEFAULT_PORT = 7777;
     public const int MAX_PLAYERS = 8;
     public const int MAX_NAME_LENGTH = 24;
+    public const int MAX_CHAT_BYTES = 256;
+    public const int MAX_CHAT_HISTORY = 100;
+    public const int MAX_CHAT_COMMAND_ARGS = 16;
 
     /// <summary>Hard protocol limits applied before generated payloads allocate.</summary>
     // Large terrain state is chunked separately; ordinary envelopes stay small.
@@ -24,6 +27,7 @@ public static class NetConfig
 
     /// <summary>Peers must complete Hello shortly after ENet connects.</summary>
     public const int HELLO_TIMEOUT_MS = 5_000;
+    public const int ADMIN_CHALLENGE_TIMEOUT_MS = 10_000;
 
     /// <summary>
     /// A snapshot is broadcast every N simulation ticks. 30 Hz halves both

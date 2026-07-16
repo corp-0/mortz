@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
-    <LangVersion>13.0</LangVersion>
+    <!-- net10.0 required: 2dog 4.7.1 ships lib/net10.0 only -->
+    <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>true</ImplicitUsings>
     <IsPackable>false</IsPackable>
@@ -10,8 +10,8 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
   </PropertyGroup>
   <ItemGroup>
-    <!-- 2dog.xunit pulls in 2dog and compiles its collection definitions into this assembly -->
-    <PackageReference Include="2dog.xunit" Version="4.7.0.32" />
+    <!-- 2dog.xunit pulls in 2dog.engine and compiles its collection definitions into this assembly -->
+    <PackageReference Include="2dog.xunit" Version="4.7.1.45" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.0" />
     <PackageReference Include="Moq" Version="4.20.72" />
     <PackageReference Include="xunit.v3" Version="3.2.2" />
@@ -19,13 +19,6 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-  </ItemGroup>
-  <!-- Native Godot library moved out of the main 2dog package into per-platform packages -->
-  <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Windows'))">
-    <PackageReference Include="2dog.win-x64" Version="4.7.0.9" />
-  </ItemGroup>
-  <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
-    <PackageReference Include="2dog.linux-x64" Version="4.7.0.9" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Mortz.csproj" />

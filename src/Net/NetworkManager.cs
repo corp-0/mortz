@@ -26,6 +26,7 @@ public partial class NetworkManager : Node
     [Signal] public delegate void ConnectedEventHandler();
     [Signal] public delegate void ConnectionFailedEventHandler();
     [Signal] public delegate void DisconnectedEventHandler();
+    [Signal] public delegate void TransportResetEventHandler();
     /// <summary>ack = newest input sequence the server applied for THIS client.</summary>
     [Signal] public delegate void SnapshotReceivedEventHandler(byte[] data, int ack);
 
@@ -89,6 +90,7 @@ public partial class NetworkManager : Node
         _admission.Reset();
         _inputLimiter.Reset();
         _messageLimiter.Reset();
+        EmitSignal(SignalName.TransportReset);
     }
 
     private void OnPeerConnected(long id)

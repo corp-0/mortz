@@ -17,6 +17,7 @@
 [ext_resource type="Script" uid="uid://dii768us1krot" path="res://src/Client/ScoreOverlay.cs" id="15_score"]
 [ext_resource type="Script" uid="uid://ukkp1bwihfne" path="res://src/Client/Audio/KillAnnouncer.cs" id="16_announcer"]
 [ext_resource type="Script" uid="uid://6aqxhxbup147" path="res://src/Client/FinalKillReplay.cs" id="17_replay"]
+[ext_resource type="PackedScene" path="res://src/Shared/Scenes/ChatPanel.tscn" id="18_chat"]
 
 [node name="GameView" type="Node2D" unique_id=1808596722 node_paths=PackedStringArray("_gameMap", "_ropes", "_localPlayer", "_players", "_mortars", "_hud", "_finalKillReplay")]
 script = ExtResource("1_gview")
@@ -97,26 +98,15 @@ layout_mode = 2
 size_flags_vertical = 4
 script = ExtResource("14_shells")
 
-[node name="ScoreOverlay" type="Control" parent="Hud" unique_id=2120322481 node_paths=PackedStringArray("_feed", "_scoreLabel", "_winnerLabel")]
+[node name="ScoreOverlay" type="Control" parent="Hud" unique_id=2120322481 node_paths=PackedStringArray("_scoreLabel", "_winnerLabel")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 mouse_filter = 2
 script = ExtResource("15_score")
-_feed = NodePath("Feed")
 _scoreLabel = NodePath("Score")
 _winnerLabel = NodePath("Winner")
-
-[node name="Feed" type="VBoxContainer" parent="Hud/ScoreOverlay" unique_id=56782331]
-layout_mode = 0
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -430.0
-offset_top = 12.0
-offset_right = -12.0
-grow_horizontal = 0
-mouse_filter = 2
 
 [node name="Score" type="Label" parent="Hud/ScoreOverlay" unique_id=1010263953]
 layout_mode = 0
@@ -138,6 +128,19 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_font_sizes/font_size = 42
 horizontal_alignment = 1
+
+[node name="ChatPanel" parent="Hud" instance=ExtResource("18_chat")]
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -452.0
+offset_top = -230.0
+offset_right = -12.0
+offset_bottom = -12.0
+grow_horizontal = 0
+grow_vertical = 0
 
 [node name="Diagnostics" type="Node" parent="." unique_id=576473914]
 

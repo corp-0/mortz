@@ -23,6 +23,8 @@ public static class InputSampler
 
     public static InputButtons Sample()
     {
+        if (ChatInputGuard.IsTyping)
+            return InputButtons.None;
         InputButtons buttons = InputButtons.None;
         foreach ((StringName action, InputButtons button) in _bindings)
         {

@@ -1,34 +1,54 @@
 [gd_scene format=3 uid="uid://lccou7q7borc"]
 
 [ext_resource type="Script" uid="uid://dcji6fesaw34y" path="res://src/Client/Lobby.cs" id="1_lobby"]
+[ext_resource type="PackedScene" path="res://src/Shared/Scenes/ChatPanel.tscn" id="2_chat"]
 
-[node name="Lobby" type="CenterContainer" unique_id=163944296 node_paths=PackedStringArray("_playerList", "_readyButton")]
+[node name="Lobby" type="Control" unique_id=163944296 node_paths=PackedStringArray("_playerList", "_readyButton")]
 visible = false
+layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_lobby")
-_playerList = NodePath("Panel/Players")
-_readyButton = NodePath("Panel/ReadyButton")
+_playerList = NodePath("Content/Panel/Players")
+_readyButton = NodePath("Content/Panel/ReadyButton")
 
-[node name="Panel" type="VBoxContainer" parent="." unique_id=1101206318]
+[node name="Content" type="CenterContainer" parent="." unique_id=464409268]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="VBoxContainer" parent="Content" unique_id=1101206318]
 custom_minimum_size = Vector2(320, 0)
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="Title" type="Label" parent="Panel" unique_id=204873843]
+[node name="Title" type="Label" parent="Content/Panel" unique_id=204873843]
 layout_mode = 2
 theme_override_font_sizes/font_size = 32
 text = "LOBBY"
 horizontal_alignment = 1
 
-[node name="Players" type="VBoxContainer" parent="Panel" unique_id=1129215238]
+[node name="Players" type="VBoxContainer" parent="Content/Panel" unique_id=1129215238]
 layout_mode = 2
 
-[node name="ReadyButton" type="Button" parent="Panel" unique_id=1138506148]
+[node name="ReadyButton" type="Button" parent="Content/Panel" unique_id=1138506148]
 layout_mode = 2
 text = "Ready up"
 
-[connection signal="pressed" from="Panel/ReadyButton" to="." method="OnReadyPressed"]
+[node name="ChatPanel" parent="." unique_id=565259309 instance=ExtResource("2_chat")]
+layout_mode = 0
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = -270.0
+offset_right = 532.0
+offset_bottom = -12.0
+grow_vertical = 0
+
+[connection signal="pressed" from="Content/Panel/ReadyButton" to="." method="OnReadyPressed"]

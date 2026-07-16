@@ -1,0 +1,36 @@
+[gd_scene format=3 uid="uid://ciqycdoqosx85"]
+
+[ext_resource type="Script" uid="uid://dfrjixf7towk0" path="res://src/Client/ChatPanel.cs" id="1_chat"]
+
+[node name="ChatPanel" type="PanelContainer" unique_id=2023193911 node_paths=PackedStringArray("_scroll", "_lines", "_input")]
+offset_right = 520.0
+offset_bottom = 258.0
+script = ExtResource("1_chat")
+_scroll = NodePath("Margin/Column/Scroll")
+_lines = NodePath("Margin/Column/Scroll/Lines")
+_input = NodePath("Margin/Column/Input")
+
+[node name="Margin" type="MarginContainer" parent="." unique_id=1271554942]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="Column" type="VBoxContainer" parent="Margin" unique_id=693121786]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Scroll" type="ScrollContainer" parent="Margin/Column" unique_id=1597423629]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Lines" type="VBoxContainer" parent="Margin/Column/Scroll" unique_id=1603471409]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Input" type="LineEdit" parent="Margin/Column" unique_id=700069443]
+layout_mode = 2
+placeholder_text = "Chat or /help"
+max_length = 512

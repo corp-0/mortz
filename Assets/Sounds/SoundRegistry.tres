@@ -3,7 +3,7 @@
 [ext_resource type="Script" uid="uid://d104v7xlmkhkc" path="res://src/Client/Audio/SoundRegistry.cs" id="1"]
 [ext_resource type="AudioStream" uid="uid://djdyqhvlj48wg" path="res://Assets/Sounds/malescream_1.ogg" id="1_pk3n4"]
 [ext_resource type="Resource" uid="uid://cosmsb2e0cyha" path="res://Assets/Sounds/first_blood.tres" id="1_r7fwr"]
-[ext_resource type="Resource" path="res://Assets/Sounds/mortar_fire.tres" id="2"]
+[ext_resource type="Resource" uid="uid://d17a5lgo8pidb" path="res://Assets/Sounds/mortar_fire.tres" id="2"]
 [ext_resource type="AudioStream" uid="uid://b1wcunuxu5ls1" path="res://Assets/Sounds/malescream_2.ogg" id="2_ox5b5"]
 [ext_resource type="Resource" path="res://Assets/Sounds/shell_whoosh.tres" id="3"]
 [ext_resource type="AudioStream" uid="uid://cv2ulxnatgwrm" path="res://Assets/Sounds/malescream_3.ogg" id="3_2oxye"]
