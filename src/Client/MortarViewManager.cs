@@ -35,7 +35,7 @@ public partial class MortarViewManager : Node2D
                 continue;
             _seenRemote.Add(m.Id);
             Place(_remote, m.Id, new Vector2(m.Position.X, m.Position.Y), m.Velocity,
-                playFire: m.OwnerId == localId && !m.Deflected);
+                playFire: false);
         }
         Prune(_remote, _seenRemote);
     }
