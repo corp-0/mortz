@@ -26,7 +26,7 @@ public static class SimConfig
     public const int STEP_UP_PIXELS = 4;
 
     // ---- running / falling ----
-    public const float MAX_RUN_SPEED = 320;      // px/s
+    public const float MAX_RUN_SPEED = 280;      // px/s
     public const float GROUND_ACCEL = 2400;     // px/s^2  (~0.13 s from stand to max)
     public const float GROUND_FRICTION = 1800;  // px/s^2  when no input held
     public const float AIR_ACCEL = 1200;        // px/s^2  weaker air control
@@ -38,8 +38,8 @@ public static class SimConfig
     // first; air jumps spend the rest. Going airborne WITHOUT jumping (ledge
     // fall past coyote, rope release) leaves the full budget usable mid-air.
     public const int TOTAL_JUMPS = 2;
-    public const float JUMP_SPEED = 550;        // px/s   ground/coyote jump
-    public const float AIR_JUMP_SPEED = 500;     // px/s   slightly weaker
+    public const float JUMP_SPEED = 400;        // px/s   ground/coyote jump
+    public const float AIR_JUMP_SPEED = 400;     // px/s   slightly weaker
     public const float WALL_SLIDE_MAX_FALL = 160; // px/s   fall cap while pressing into a wall
     public const float WALL_JUMP_SPEED_Y = 520;   // px/s   upward
     public const float WALL_JUMP_KICK_X = 380;    // px/s   away from the wall
@@ -51,7 +51,7 @@ public static class SimConfig
     public const float COYOTE_MAX = 0.2f;               // s     cap
 
     // ---- dash ----
-    public const float DASH_SPEED = 650;        // px/s   8-way impulse along held keys
+    public const float DASH_SPEED = 600;        // px/s   8-way impulse along held keys
     public const float DASH_COOLDOWN = 0.67f;   // s
 
     // ---- rope ----
@@ -65,9 +65,9 @@ public static class SimConfig
     public const float ROPE_MISS_COOLDOWN = 1.0f;     // s  after the hook hits nothing
 
     // ---- mortar ----
-    public const float MORTAR_SPEED = 900;        // px/s   muzzle speed along the aim
+    public const float MORTAR_SPEED = 750;        // px/s   muzzle speed along the aim
     public const float MORTAR_INHERIT = 0.5f;     //        fraction of the shooter's velocity added to the shot
-    public const float MORTAR_GRAVITY = 900;      // px/s^2  floatier than players, for longer arcs
+    public const float MORTAR_GRAVITY = 800;      // px/s^2  floatier than players, for longer arcs
     public const float MORTAR_MAX_FALL = 900;     // px/s
     public const float MORTAR_MUZZLE_OFFSET = 20; // px     spawn distance from body center along the aim
     /// <summary>Explosion radius: the carved hole and the kill zone (LieroX-sized).</summary>
@@ -78,7 +78,7 @@ public static class SimConfig
     // allowed if a shell is loaded, but scraps the one in progress and stops
     // the reload; banked shells are kept.
     public const int MORTAR_MAX_AMMO = 5;
-    public const float MORTAR_RELOAD_PER_SHELL = 1.0f; // s
+    public const float MORTAR_RELOAD_PER_SHELL = 1.25f; // s
     // Backstop so a shell always retires, even at zero gravity or under custom rules.
     public const float MORTAR_MAX_LIFETIME = 15f; // s
     // Hard cap; past this the oldest shell is retired to make room.
@@ -88,9 +88,9 @@ public static class SimConfig
     // F raises a bubble that flips any incoming shell straight back along its
     // path. The cooldown is charged in full at the press; a successful deflect
     // refunds it, so good parries chain, only a whiff pays.
-    public const float PARRY_RADIUS = 40;     // px    around the body center
-    public const float PARRY_WINDOW = 0.5f;   // s     bubble uptime per press
-    public const float PARRY_COOLDOWN = 20f;  // s     the price of a whiff
+    public const float PARRY_RADIUS = 35;     // px    around the body center
+    public const float PARRY_WINDOW = 0.6f;   // s     bubble uptime per press
+    public const float PARRY_COOLDOWN = 10f;  // s     the price of a whiff
 
     // ---- health / blast ----
     // The blast circle is MORTAR_CARVE_RADIUS. Inside the core fraction a hit
@@ -98,7 +98,7 @@ public static class SimConfig
     // Distances are measured to the nearest point of the body box.
     public const int MAX_HEALTH = 100;
     public const int MORTAR_DAMAGE = 100;           //        in the lethal core
-    public const float BLAST_CORE_FRACTION = 0.75f; //        of the radius
+    public const float BLAST_CORE_FRACTION = 0.50f; //        of the radius
     public const int BLAST_EDGE_DAMAGE = 35;        //        at the rim
     /// <summary>How long a gibbed body stays dead (and hidden) before respawning.</summary>
     public const float RESPAWN_DELAY = 2.0f;        // s
