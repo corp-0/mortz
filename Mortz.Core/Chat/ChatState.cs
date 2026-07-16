@@ -1,35 +1,6 @@
 using Mortz.Core.Text;
 
-namespace Mortz.Core;
-
-public enum ChatEntryKind : byte
-{
-    Player,
-    System,
-    Private,
-}
-
-public enum ChatTextFormat : byte
-{
-    Plain,
-    Markdown,
-    RichText,
-}
-
-public readonly record struct ChatEntry(
-    ChatEntryKind Kind,
-    long SenderId,
-    string SenderName,
-    string Text,
-    ChatTextFormat TextFormat = ChatTextFormat.Plain)
-{
-    public RichText Render() => TextFormat switch
-    {
-        ChatTextFormat.Markdown => ChatMarkdown.Render(Text),
-        ChatTextFormat.RichText => RichText.FromTrustedBbCode(Text),
-        _ => new RichText(Text),
-    };
-}
+namespace Mortz.Core.Chat;
 
 /// <summary>Persistent connected-session chat state, independent from any visual layout.</summary>
 public sealed class ChatState
@@ -57,12 +28,12 @@ public sealed class ChatState
     }
 
     public void AddSystem(string text, bool isPrivate = false) =>
-        Add(new ChatEntry(isPrivate ? ChatEntryKind.Private : ChatEntryKind.System,
+        Add(new ChatEntry(isPrivate ? ChatEntryKind.PRIVATE : ChatEntryKind.SYSTEM,
             0, isPrivate ? "" : "Server", text));
 
     public void AddSystem(RichText text, bool isPrivate = false) =>
-        Add(new ChatEntry(isPrivate ? ChatEntryKind.Private : ChatEntryKind.System,
-            0, isPrivate ? "" : "Server", text, ChatTextFormat.RichText));
+        Add(new ChatEntry(isPrivate ? ChatEntryKind.PRIVATE : ChatEntryKind.SYSTEM,
+            0, isPrivate ? "" : "Server", text, ChatTextFormat.RICH_TEXT));
 
     public void Clear()
     {

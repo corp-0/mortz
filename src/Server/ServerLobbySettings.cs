@@ -5,6 +5,7 @@ using Godot;
 using Mortz.Content;
 using Mortz.Core;
 using Mortz.Core.Net.Messages;
+using Mortz.Server.Chat;
 using Mortz.Shared;
 
 namespace Mortz.Server;

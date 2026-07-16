@@ -1,7 +1,9 @@
 using System.Security.Cryptography;
 using System.Text;
 using Mortz.Client;
+using Mortz.Client.Chat;
 using Mortz.Core;
+using Mortz.Core.Chat;
 using Mortz.Core.Net;
 using Mortz.Core.Net.Messages;
 using Xunit;

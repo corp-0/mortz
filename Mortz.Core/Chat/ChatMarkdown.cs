@@ -1,6 +1,7 @@
 using System.Text;
+using Mortz.Core.Text;
 
-namespace Mortz.Core.Text;
+namespace Mortz.Core.Chat;
 
 /// <summary>
 /// Safe inline Markdown accepted from chat users and rendered as Godot BBCode.

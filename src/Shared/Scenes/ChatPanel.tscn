@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://ciqycdoqosx85"]
 
-[ext_resource type="Script" uid="uid://dfrjixf7towk0" path="res://src/Client/ChatPanel.cs" id="1_chat"]
+[ext_resource type="Script" uid="uid://dfrjixf7towk0" path="res://src/Client/Chat/ChatPanel.cs" id="1_chat"]
 
 [node name="ChatPanel" type="PanelContainer" unique_id=2023193911 node_paths=PackedStringArray("_scroll", "_lines", "_input")]
 offset_right = 520.0

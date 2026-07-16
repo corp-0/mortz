@@ -1,4 +1,5 @@
 using Godot;
+using Mortz.Client.Chat;
 using Mortz.Core;
 
 namespace Mortz.Client;

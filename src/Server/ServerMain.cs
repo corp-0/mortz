@@ -1,6 +1,7 @@
 using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
+using Mortz.Server.Chat;
 
 namespace Mortz.Server;
 

@@ -2,6 +2,7 @@ using System.Text;
 using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
+using Mortz.Client.Chat;
 using Mortz.Core;
 using Mortz.Core.Net.Messages;
 using Mortz.Shared;

@@ -1,4 +1,5 @@
 using Mortz.Client;
+using Mortz.Client.Chat;
 using Mortz.Core;
 using Xunit;
 

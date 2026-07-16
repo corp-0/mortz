@@ -2,18 +2,12 @@ using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
 using Mortz.Core;
+using Mortz.Core.Chat;
 using Mortz.Core.Net.Messages;
 using Mortz.Net;
 using CryptoRandom = System.Security.Cryptography.RandomNumberGenerator;
 
-namespace Mortz.Server;
-
-/// <summary>Verifier exposed to server features that own privileged actions.</summary>
-public interface IServerAdminAuthorizer
-{
-    bool TryAuthorize(long peerId, ulong sequence, byte action,
-        ReadOnlySpan<byte> payload, ReadOnlySpan<byte> tag);
-}
+namespace Mortz.Server.Chat;
 
 /// <summary>Server-side chat and admin auth. Owns its own wire subscriptions,
 /// policy, and cleanup, independent of match flow.</summary>

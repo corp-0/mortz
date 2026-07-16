@@ -1,4 +1,4 @@
-namespace Mortz.Client;
+namespace Mortz.Client.Chat;
 
 /// <summary>Prevents chat keystrokes from also controlling the local player.</summary>
 public static class ChatInputGuard

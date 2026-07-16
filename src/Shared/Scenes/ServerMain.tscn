@@ -1,7 +1,7 @@
 [gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://src/Server/ServerMain.cs" id="1_smain"]
-[ext_resource type="Script" path="res://src/Server/ServerChat.cs" id="2_chat"]
+[ext_resource type="Script" path="res://src/Server/Chat/ServerChat.cs" id="2_chat"]
 [ext_resource type="Script" path="res://src/Server/ServerHost.cs" id="3_host"]
 [ext_resource type="Script" path="res://src/Server/ServerSessionController.cs" id="4_session"]
 [ext_resource type="Script" path="res://src/Server/ServerLobbySettings.cs" id="5_settings"]

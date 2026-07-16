@@ -1,13 +1,15 @@
 using Godot;
 using Mortz.Client;
+using Mortz.Client.Chat;
 using Mortz.Core;
 using Mortz.Core.Net.Messages;
 using Mortz.Server;
+using Mortz.Server.Chat;
 using Mortz.Shared;
 using twodog.xunit;
 using Xunit;
 
-namespace Mortz.Tests.Client;
+namespace Mortz.Tests.Client.Chat;
 
 [Collection(nameof(GodotHeadlessCollection))]
 public class ChatCompositionTests

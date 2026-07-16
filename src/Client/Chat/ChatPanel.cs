@@ -2,9 +2,10 @@ using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
 using Mortz.Core;
+using Mortz.Core.Chat;
 using Mortz.Core.Text;
 
-namespace Mortz.Client;
+namespace Mortz.Client.Chat;
 
 /// <summary>View of <see cref="IClientChat"/>. The owning scene decides
 /// visibility, size, and placement.</summary>
@@ -111,9 +112,9 @@ public partial class ChatPanel : PanelContainer
         RichText content = entry.Render();
         RichText text = entry.Kind switch
         {
-            ChatEntryKind.Player => new RichText().Bold().ApplyTo(entry.SenderName)
+            ChatEntryKind.PLAYER => new RichText().Bold().ApplyTo(entry.SenderName)
                 .Add(": ").Add(content),
-            ChatEntryKind.Private => new RichText().Italic().ApplyTo("* ").Add(content),
+            ChatEntryKind.PRIVATE => new RichText().Italic().ApplyTo("* ").Add(content),
             _ => content,
         };
         _lines.AddChild(new RichTextLabel

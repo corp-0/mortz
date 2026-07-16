@@ -1,67 +1,17 @@
 using System.Security.Cryptography;
 using Mortz.Core;
+using Mortz.Core.Chat;
+using Mortz.Core.Chat.Commands;
 using Mortz.Core.Net.Messages;
 using Mortz.Core.Text;
 
-namespace Mortz.Client;
-
-public abstract record ClientChatCommand : IChatCommand
-{
-    internal abstract void Execute(ClientChatSession session);
-}
-
-public sealed record HelpChatCommand : ClientChatCommand
-{
-    internal override void Execute(ClientChatSession session) => session.Execute(this);
-}
-
-public sealed record AuthenticateAdminChatCommand(string Password) : ClientChatCommand,
-    ISensitiveChatCommand
-{
-    internal override void Execute(ClientChatSession session) => session.Execute(this);
-}
-
-internal sealed class HelpChatCommandDefinition :
-    ChatCommandDefinition<ClientChatCommand, HelpChatCommand>
-{
-    public HelpChatCommandDefinition() : base(new ChatCommandName("help"), "/help",
-        "List chat commands.")
-    {
-    }
-
-    public override bool TryBind(IReadOnlyList<string> arguments, out HelpChatCommand? command,
-        out string error)
-    {
-        command = arguments.Count == 0 ? new HelpChatCommand() : null;
-        error = command == null ? "Usage: /help" : "";
-        return command != null;
-    }
-}
-
-internal sealed class AuthenticateAdminChatCommandDefinition :
-    ChatCommandDefinition<ClientChatCommand, AuthenticateAdminChatCommand>
-{
-    public AuthenticateAdminChatCommandDefinition() : base(new ChatCommandName("admin"),
-        "/admin <password>", "Authenticate as a lobby admin.")
-    {
-    }
-
-    public override bool TryBind(IReadOnlyList<string> arguments,
-        out AuthenticateAdminChatCommand? command, out string error)
-    {
-        command = arguments.Count == 1 && arguments[0].Length > 0
-            ? new AuthenticateAdminChatCommand(arguments[0])
-            : null;
-        error = command == null ? "Usage: /admin <password>" : "";
-        return command != null;
-    }
-}
+namespace Mortz.Client.Chat;
 
 /// <summary>Connected-session chat and command state. Outlives any view, so
 /// rearranging the UI keeps history, command state, and admin authority.</summary>
 public sealed class ClientChatSession : IDisposable
 {
-    private readonly ChatCommandRegistry<ClientChatCommand> _commands = new();
+    private readonly ChatCommandRegistry<ClientChatSession> _commands = new();
     private readonly Dictionary<long, string> _names = new();
     private byte[]? _pendingPasswordKey;
     private byte[]? _pendingAdminKey;
@@ -70,16 +20,11 @@ public sealed class ClientChatSession : IDisposable
     private ulong _nextAdminSequence = 1;
     private bool _subscribed;
 
-    public ClientChatSession()
-    {
-        _commands.Register(new HelpChatCommandDefinition());
-        _commands.Register(new AuthenticateAdminChatCommandDefinition());
-    }
+    public ClientChatSession() => _commands.RegisterAssemblyCommands();
 
     public ChatState State { get; } = new();
     public bool IsAdmin => _adminKey != null;
-    public IEnumerable<ChatCommandMetadata> CommandCatalog =>
-        _commands.Definitions.Select(definition => definition.Metadata);
+    public IEnumerable<ChatCommandMetadata> CommandCatalog => _commands.Commands;
     public event Action<bool>? AdminChanged;
 
     public void Subscribe()
@@ -112,8 +57,8 @@ public sealed class ClientChatSession : IDisposable
             return false;
         if (input.TrimStart().StartsWith('/'))
         {
-            if (!_commands.TryParse(input.TrimStart(), out ClientChatCommand? command,
-                    out string parseError))
+            if (!_commands.TryParse(input.TrimStart(),
+                    out ChatCommand<ClientChatSession>? command, out string parseError))
             {
                 State.AddSystem(parseError, isPrivate: true);
                 return false;
@@ -175,7 +120,7 @@ public sealed class ClientChatSession : IDisposable
         End();
     }
 
-    internal void Execute(HelpChatCommand _)
+    internal void ShowCommandHelp()
     {
         foreach (ChatCommandMetadata metadata in CommandCatalog)
         {
@@ -186,7 +131,7 @@ public sealed class ClientChatSession : IDisposable
         }
     }
 
-    internal void Execute(AuthenticateAdminChatCommand command)
+    internal void BeginAdminAuthentication(string password)
     {
         if (_localPeerId == 0)
         {
@@ -198,7 +143,7 @@ public sealed class ClientChatSession : IDisposable
         if (wasAdmin)
             AdminChanged?.Invoke(false);
         ClearPendingSecrets();
-        _pendingPasswordKey = AdminCrypto.DerivePasswordKey(command.Password);
+        _pendingPasswordKey = AdminCrypto.DerivePasswordKey(password);
         new AdminAuthRequestMsg().SendToServer();
         State.AddSystem("Requesting admin challenge...", isPrivate: true);
     }
@@ -208,8 +153,8 @@ public sealed class ClientChatSession : IDisposable
         if (!Enum.IsDefined(message.Kind) || string.IsNullOrWhiteSpace(message.Text))
             return;
         if (message.Kind == ChatLineKind.PLAYER)
-            State.Add(new ChatEntry(ChatEntryKind.Player, message.SenderId,
-                message.SenderName, message.Text, ChatTextFormat.Markdown));
+            State.Add(new ChatEntry(ChatEntryKind.PLAYER, message.SenderId,
+                message.SenderName, message.Text, ChatTextFormat.MARKDOWN));
         else
             State.AddSystem(message.Text);
     }

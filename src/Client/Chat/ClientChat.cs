@@ -1,20 +1,9 @@
 using Godot;
-using Mortz.Core;
+using Mortz.Core.Chat;
+using Mortz.Core.Chat.Commands;
 using Mortz.Net;
 
-namespace Mortz.Client;
-
-/// <summary>Scene-scoped API exposed by the persistent chat node.</summary>
-public interface IClientChat
-{
-    ChatState State { get; }
-    bool IsAdmin { get; }
-    IEnumerable<ChatCommandMetadata> CommandCatalog { get; }
-    event Action<bool>? AdminChanged;
-    bool Submit(string? input);
-    bool TrySignAdminAction(byte action, ReadOnlySpan<byte> payload,
-        out ulong sequence, out byte[] tag);
-}
+namespace Mortz.Client.Chat;
 
 /// <summary>Persistent owner of client chat state, command execution, and its
 /// connection lifecycle. Provides <see cref="IClientChat"/> to descendant scenes.</summary>
