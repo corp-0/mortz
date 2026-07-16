@@ -29,69 +29,151 @@ public enum WinCondition : byte
 /// </summary>
 public sealed class MatchConfig
 {
-    // ---- running / falling ----
+    [UiCategory("Running / Falling")]
+    [UiProperty("Max Run Speed")]
     public float MaxRunSpeed { get; set; } = SimConfig.MAX_RUN_SPEED;
+
+    [UiProperty("Ground Acceleration")]
     public float GroundAccel { get; set; } = SimConfig.GROUND_ACCEL;
+
+    [UiProperty("Ground Friction")]
     public float GroundFriction { get; set; } = SimConfig.GROUND_FRICTION;
+
+    [UiProperty("Air Acceleration")]
     public float AirAccel { get; set; } = SimConfig.AIR_ACCEL;
+
+    [UiProperty("Gravity")]
     public float Gravity { get; set; } = SimConfig.GRAVITY;
+
+    [UiProperty("Max Fall Speed")]
     public float MaxFallSpeed { get; set; } = SimConfig.MAX_FALL_SPEED;
 
-    // ---- jumps ----
+    [UiCategory("Jumps")]
+    [UiProperty("Total Jumps")]
     public int TotalJumps { get; set; } = SimConfig.TOTAL_JUMPS;
+
+    [UiProperty("Jump Speed")]
     public float JumpSpeed { get; set; } = SimConfig.JUMP_SPEED;
+
+    [UiProperty("Air Jump Speed")]
     public float AirJumpSpeed { get; set; } = SimConfig.AIR_JUMP_SPEED;
+
+    [UiProperty("Wall Slide Max Fall")]
     public float WallSlideMaxFall { get; set; } = SimConfig.WALL_SLIDE_MAX_FALL;
+
+    [UiProperty("Wall Jump Speed")]
     public float WallJumpSpeedY { get; set; } = SimConfig.WALL_JUMP_SPEED_Y;
+
+    [UiProperty("Wall Jump Kick")]
     public float WallJumpKickX { get; set; } = SimConfig.WALL_JUMP_KICK_X;
+
+    [UiProperty("Coyote Time")]
     public float CoyoteBase { get; set; } = SimConfig.COYOTE_BASE;
+
+    [UiProperty("Coyote Bonus Per 100 Speed")]
     public float CoyoteBonusPer100Speed { get; set; } = SimConfig.COYOTE_BONUS_PER_100_SPEED;
+
+    [UiProperty("Max Coyote Time")]
     public float CoyoteMax { get; set; } = SimConfig.COYOTE_MAX;
 
-    // ---- dash ----
+    [UiCategory("Dash")]
+    [UiProperty("Dash Speed")]
     public float DashSpeed { get; set; } = SimConfig.DASH_SPEED;
+
+    [UiProperty("Dash Cooldown")]
     public float DashCooldown { get; set; } = SimConfig.DASH_COOLDOWN;
 
-    // ---- rope ----
+
+    [UiCategory("Rope")]
+    [UiProperty("Rope Speed")]
     public float RopeSpeed { get; set; } = SimConfig.ROPE_SPEED;
+
+    [UiProperty("Rope Max Range")]
     public float RopeMaxRange { get; set; } = SimConfig.ROPE_MAX_RANGE;
+
+    [UiProperty("Rope Pull Acceleration")]
     public float RopePullAccel { get; set; } = SimConfig.ROPE_PULL_ACCEL;
+
+    [UiProperty("Rope Shorten Speed")]
     public float RopeShortenSpeed { get; set; } = SimConfig.ROPE_SHORTEN_SPEED;
+
+    [UiProperty("Rope Release Cooldown")]
     public float RopeReleaseCooldown { get; set; } = SimConfig.ROPE_RELEASE_COOLDOWN;
+
+    [UiProperty("Rope Miss Cooldown")]
     public float RopeMissCooldown { get; set; } = SimConfig.ROPE_MISS_COOLDOWN;
 
-    // ---- mortar ----
+
+    [UiCategory("Mortar")]
+    [UiProperty("Mortar Speed")]
     public float MortarSpeed { get; set; } = SimConfig.MORTAR_SPEED;
+
+    [UiProperty("Inherited Velocity")]
     public float MortarInherit { get; set; } = SimConfig.MORTAR_INHERIT;
+
+    [UiProperty("Mortar Gravity")]
     public float MortarGravity { get; set; } = SimConfig.MORTAR_GRAVITY;
+
+    [UiProperty("Mortar Max Fall Speed")]
     public float MortarMaxFall { get; set; } = SimConfig.MORTAR_MAX_FALL;
+
+    [UiProperty("Carve Radius")]
     public int MortarCarveRadius { get; set; } = SimConfig.MORTAR_CARVE_RADIUS;
+
+    [UiProperty("Max Ammo")]
     public int MortarMaxAmmo { get; set; } = SimConfig.MORTAR_MAX_AMMO;
+
+    [UiProperty("Reload Per Shell")]
     public float MortarReloadPerShell { get; set; } = SimConfig.MORTAR_RELOAD_PER_SHELL;
 
-    // ---- parry ----
+    [UiCategory("Parry")]
+    [UiProperty("Parry Radius")]
     public float ParryRadius { get; set; } = SimConfig.PARRY_RADIUS;
+
+    [UiProperty("Parry Window")]
     public float ParryWindow { get; set; } = SimConfig.PARRY_WINDOW;
+
+    [UiProperty("Parry Cooldown")]
     public float ParryCooldown { get; set; } = SimConfig.PARRY_COOLDOWN;
 
-    // ---- health / blast ----
+    [UiCategory("Health / Blast")]
+    [UiProperty("Max Health")]
     public int MaxHealth { get; set; } = SimConfig.MAX_HEALTH;
+
+    [UiProperty("Mortar Damage")]
     public int MortarDamage { get; set; } = SimConfig.MORTAR_DAMAGE;
+
+    [UiProperty("Blast Core Fraction")]
     public float BlastCoreFraction { get; set; } = SimConfig.BLAST_CORE_FRACTION;
+
+    [UiProperty("Blast Edge Damage")]
     public int BlastEdgeDamage { get; set; } = SimConfig.BLAST_EDGE_DAMAGE;
+
+    [UiProperty("Respawn Delay")]
     public float RespawnDelay { get; set; } = SimConfig.RESPAWN_DELAY;
+
+    [UiProperty("Spawn Immunity")]
     public float SpawnImmunity { get; set; } = SimConfig.SPAWN_IMMUNITY;
 
-    // ---- mode ----
     // Teams and WinCondition are stored independently so toggling teams in the
     // lobby never destroys the admin's win condition choice; TEAM_KILLS with
     // teams off plays as PLAYER_KILLS (resolved in Scoreboard, not here).
+    [UiCategory("Mode")]
+    [UiProperty("Teams")]
     public bool Teams { get; set; }
+
+    [UiProperty("Win Condition")]
     public WinCondition WinCondition { get; set; } = WinCondition.PLAYER_KILLS;
+
+    [UiProperty("Kill Target")]
     public int KillTarget { get; set; } = SimConfig.KILL_TARGET;
+
     /// <summary>Off spares teammates from blast damage; self-damage always applies.</summary>
+    [UiProperty("Friendly Fire")]
     public bool FriendlyFire { get; set; } = true;
+
     /// <summary>On, a suicide costs a kill (scores can go negative).</summary>
+    [UiProperty("Suicide Penalty")]
     public bool SuicidePenalty { get; set; }
 
     public int RespawnDelayTicks => (int)(RespawnDelay * SimConfig.TICK_RATE);

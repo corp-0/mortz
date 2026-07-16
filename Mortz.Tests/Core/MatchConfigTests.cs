@@ -6,6 +6,55 @@ namespace Mortz.Tests.Core;
 
 public class MatchConfigTests
 {
+    [Fact]
+    public void GeneratedMetadata_CoversEveryWritableRule_InPresentationOrder()
+    {
+        Assert.Equal(
+            ["Running / Falling", "Jumps", "Dash", "Rope", "Mortar", "Parry", "Health / Blast", "Mode"],
+            MatchConfigUiMetadata.Categories.Select(category => category.DisplayName));
+        Assert.Equal(
+            [6, 9, 2, 6, 7, 3, 6, 5],
+            MatchConfigUiMetadata.Categories.Select(category => category.Properties.Count));
+
+        IUiPropertyDescriptor<MatchConfig>[] descriptors = MatchConfigUiMetadata.Categories
+            .SelectMany(category => category.Properties)
+            .ToArray();
+        PropertyInfo[] writableRules = WritableRules().ToArray();
+
+        Assert.Equal(
+            writableRules.Select(property => property.Name),
+            descriptors.Select(descriptor => descriptor.Name));
+        foreach (IUiPropertyDescriptor<MatchConfig> descriptor in descriptors)
+        {
+            PropertyInfo property = Assert.Single(
+                writableRules, candidate => candidate.Name == descriptor.Name);
+            Assert.Equal(property.PropertyType, descriptor.ValueType);
+        }
+    }
+
+    [Fact]
+    public void GeneratedMetadata_BindsTypedAndUntypedValues()
+    {
+        MatchConfig config = new();
+        IUiPropertyDescriptor<MatchConfig> gravity = MatchConfigUiMetadata.Categories
+            .SelectMany(category => category.Properties)
+            .Single(property => property.Name == nameof(MatchConfig.Gravity));
+        UiPropertyDescriptor<MatchConfig, float> typedGravity =
+            Assert.IsType<UiPropertyDescriptor<MatchConfig, float>>(gravity);
+
+        typedGravity.Set(config, 321f);
+        Assert.Equal(321f, typedGravity.Get(config));
+        gravity.SetValue(config, 654f);
+        Assert.Equal(654f, gravity.GetValue(config));
+        Assert.Throws<ArgumentException>(() => gravity.SetValue(config, 654));
+
+        IUiPropertyDescriptor<MatchConfig> winCondition = MatchConfigUiMetadata.Categories
+            .SelectMany(category => category.Properties)
+            .Single(property => property.Name == nameof(MatchConfig.WinCondition));
+        winCondition.SetValue(config, WinCondition.TEAM_KILLS);
+        Assert.Equal(WinCondition.TEAM_KILLS, config.WinCondition);
+    }
+
     /// <summary>Reflection so a new rule that nobody added to the codec fails
     /// here instead of silently arriving at its default on every client.</summary>
     [Fact]

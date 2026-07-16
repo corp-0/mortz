@@ -119,6 +119,8 @@ public sealed class NetMessageGenerator : IIncrementalGenerator
             .Where(m => m.Diagnostics.IsEmpty)
             .OrderBy(m => $"{m.Namespace}.{m.Name}", StringComparer.Ordinal)
             .ToArray();
+        if (valid.Length == 0)
+            return;
 
         var seen = new HashSet<string>();
         foreach (MessageModel m in valid)

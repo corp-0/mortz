@@ -18,6 +18,8 @@
   <ItemGroup>
     <ProjectReference Include="Mortz.Core\Mortz.Core.csproj" />
     <ProjectReference Include="Mortz.Content\Mortz.Content.csproj" />
+    <ProjectReference Include="Mortz.Net.Gen\Mortz.Net.Gen.csproj"
+                      OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Chickensoft.AutoInject" Version="2.13.25" PrivateAssets="all" />
