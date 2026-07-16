@@ -14,6 +14,7 @@ public partial class ServerHost : Node
     public MapPackage Map { get; private set; } = null!;
     public MatchConfig Rules { get; private set; } = null!;
     public string AdminPassword { get; private set; } = "";
+    public string ContentRootPath { get; private set; } = "";
 
     public override void _Ready() => IsConfigured = TryLoadConfiguration();
 
@@ -36,7 +37,8 @@ public partial class ServerHost : Node
     private bool TryLoadConfiguration()
     {
         string mapId = CmdArgs.GetValue("--map") ?? _defaultMap;
-        MapPackage? map = MapPackage.Load(mapId);
+        ContentRootPath = ContentRoot.Resolve();
+        MapPackage? map = MapPackage.Load(mapId, ContentRootPath);
         if (map == null)
         {
             GD.PrintErr($"[server] failed to load map '{mapId}'");

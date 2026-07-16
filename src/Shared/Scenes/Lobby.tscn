@@ -1,10 +1,10 @@
 [gd_scene format=3 uid="uid://lccou7q7borc"]
 
 [ext_resource type="Script" uid="uid://dcji6fesaw34y" path="res://src/Client/Lobby.cs" id="1_lobby"]
-[ext_resource type="PackedScene" path="res://src/Shared/Scenes/ChatPanel.tscn" id="2_chat"]
+[ext_resource type="PackedScene" uid="uid://ciqycdoqosx85" path="res://src/Shared/Scenes/ChatPanel.tscn" id="2_chat"]
+[ext_resource type="PackedScene" uid="uid://d4e5uxg8yueq" path="res://src/Shared/Scenes/LobbySettingsPanel.tscn" id="3_settings"]
 
 [node name="Lobby" type="Control" unique_id=163944296 node_paths=PackedStringArray("_playerList", "_readyButton")]
-visible = false
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -12,43 +12,82 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_lobby")
-_playerList = NodePath("Content/Panel/Players")
-_readyButton = NodePath("Content/Panel/ReadyButton")
+_playerList = NodePath("Content/Main/Sidebar/LobbyCard/Margin/Column/Players")
+_readyButton = NodePath("Content/Main/Sidebar/LobbyCard/Margin/Column/ReadyButton")
 
-[node name="Content" type="CenterContainer" parent="." unique_id=464409268]
+[node name="Background" type="ColorRect" parent="." unique_id=1588472463]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 2
+color = Color(0.026, 0.032, 0.044, 1)
 
-[node name="Panel" type="VBoxContainer" parent="Content" unique_id=1101206318]
-custom_minimum_size = Vector2(320, 0)
-layout_mode = 2
-theme_override_constants/separation = 12
-
-[node name="Title" type="Label" parent="Content/Panel" unique_id=204873843]
-layout_mode = 2
-theme_override_font_sizes/font_size = 32
-text = "LOBBY"
-horizontal_alignment = 1
-
-[node name="Players" type="VBoxContainer" parent="Content/Panel" unique_id=1129215238]
-layout_mode = 2
-
-[node name="ReadyButton" type="Button" parent="Content/Panel" unique_id=1138506148]
-layout_mode = 2
-text = "Ready up"
-
-[node name="ChatPanel" parent="." unique_id=565259309 instance=ExtResource("2_chat")]
-layout_mode = 0
-anchor_top = 1.0
+[node name="Content" type="MarginContainer" parent="." unique_id=464409268]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 12.0
-offset_top = -270.0
-offset_right = 532.0
-offset_bottom = -12.0
-grow_vertical = 0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
 
-[connection signal="pressed" from="Content/Panel/ReadyButton" to="." method="OnReadyPressed"]
+[node name="Main" type="HBoxContainer" parent="Content" unique_id=407050363]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="Settings" parent="Content/Main" unique_id=63379707 instance=ExtResource("3_settings")]
+layout_mode = 2
+
+[node name="Sidebar" type="VBoxContainer" parent="Content/Main" unique_id=1573526163]
+custom_minimum_size = Vector2(420, 0)
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="LobbyCard" type="PanelContainer" parent="Content/Main/Sidebar" unique_id=1101206318]
+custom_minimum_size = Vector2(0, 245)
+layout_mode = 2
+
+[node name="Margin" type="MarginContainer" parent="Content/Main/Sidebar/LobbyCard" unique_id=1073692411]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 14
+
+[node name="Column" type="VBoxContainer" parent="Content/Main/Sidebar/LobbyCard/Margin" unique_id=1506466104]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="Content/Main/Sidebar/LobbyCard/Margin/Column" unique_id=204873843]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.886, 0.925, 0.973, 1)
+theme_override_font_sizes/font_size = 27
+text = "PLAYERS"
+
+[node name="Subtitle" type="Label" parent="Content/Main/Sidebar/LobbyCard/Margin/Column" unique_id=575514524]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.45, 0.51, 0.6, 1)
+text = "The match starts when everyone is ready"
+
+[node name="Players" type="VBoxContainer" parent="Content/Main/Sidebar/LobbyCard/Margin/Column" unique_id=1129215238]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 5
+
+[node name="ReadyButton" type="Button" parent="Content/Main/Sidebar/LobbyCard/Margin/Column" unique_id=1138506148]
+custom_minimum_size = Vector2(0, 46)
+layout_mode = 2
+text = "READY UP"
+
+[node name="ChatPanel" parent="Content/Main/Sidebar" unique_id=565259309 instance=ExtResource("2_chat")]
+custom_minimum_size = Vector2(0, 360)
+layout_mode = 2
+size_flags_vertical = 3
+
+[connection signal="pressed" from="Content/Main/Sidebar/LobbyCard/Margin/Column/ReadyButton" to="." method="OnReadyPressed"]

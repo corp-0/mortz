@@ -13,6 +13,7 @@ public static class NetConfig
     public const int MAX_CHAT_BYTES = 256;
     public const int MAX_CHAT_HISTORY = 100;
     public const int MAX_CHAT_COMMAND_ARGS = 16;
+    public const int MAX_LOBBY_MAPS = 256;
 
     /// <summary>Hard protocol limits applied before generated payloads allocate.</summary>
     // Large terrain state is chunked separately; ordinary envelopes stay small.

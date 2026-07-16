@@ -20,7 +20,7 @@ public sealed class NetMessageGenerator : IIncrementalGenerator
 
     private static readonly DiagnosticDescriptor _unsupportedFieldType = new(
         "MZ0001", "Unsupported net message field type",
-        "Field '{0}' of type '{1}' is not serializable; supported types: byte-backed enums, bool, byte, short, int, long, float, string, byte[], int[], long[], string[], Vec2",
+        "Field '{0}' of type '{1}' is not serializable; supported types: byte-backed enums, bool, byte, short, int, long, ulong, float, string, byte[], int[], long[], string[], Vec2",
         "Mortz.Net", DiagnosticSeverity.Error, isEnabledByDefault: true);
 
     private static readonly DiagnosticDescriptor _notPartialRecordStruct = new(
@@ -44,7 +44,7 @@ public sealed class NetMessageGenerator : IIncrementalGenerator
         ImmutableArray<Diagnostic> Diagnostics);
 
     private static readonly ImmutableHashSet<string> _supportedTypes = ImmutableHashSet.Create(
-        "bool", "byte", "short", "int", "long", "float", "string",
+        "bool", "byte", "short", "int", "long", "ulong", "float", "string",
         "byte[]", "int[]", "long[]", "string[]", "Mortz.Core.Vec2");
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
@@ -212,6 +212,7 @@ public sealed class NetMessageGenerator : IIncrementalGenerator
             "short" => "r.ReadInt16()",
             "int" => "r.ReadInt32()",
             "long" => "r.ReadInt64()",
+            "ulong" => "r.ReadUInt64()",
             "float" => "r.ReadSingle()",
             "string" => "global::Mortz.Core.Net.NetIo.ReadString(r)",
             "byte[]" => "r.ReadByteArray()",

@@ -8,10 +8,17 @@ using CryptoRandom = System.Security.Cryptography.RandomNumberGenerator;
 
 namespace Mortz.Server;
 
+/// <summary>Verifier exposed to server features that own privileged actions.</summary>
+public interface IServerAdminAuthorizer
+{
+    bool TryAuthorize(long peerId, ulong sequence, byte action,
+        ReadOnlySpan<byte> payload, ReadOnlySpan<byte> tag);
+}
+
 /// <summary>Server-side chat and admin auth. Owns its own wire subscriptions,
 /// policy, and cleanup, independent of match flow.</summary>
 [Meta(typeof(IAutoNode))]
-public partial class ServerChat : Node
+public partial class ServerChat : Node, IServerAdminAuthorizer
 {
     private readonly ChatPolicy _chatPolicy = new();
     private NetworkManager _network = null!;
@@ -29,6 +36,10 @@ public partial class ServerChat : Node
     public void OnResolved() => Start();
 
     public void OnExitTree() => Stop();
+
+    public bool TryAuthorize(long peerId, ulong sequence, byte action,
+        ReadOnlySpan<byte> payload, ReadOnlySpan<byte> tag) =>
+        _subscribed && _admin.VerifyCommand(peerId, sequence, action, payload, tag);
 
     private void Start()
     {

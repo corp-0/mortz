@@ -70,6 +70,31 @@ public class NetMessageTests : IDisposable
     }
 
     [Fact]
+    public void LobbySettingsMsg_RoundTrips()
+    {
+        UseLoopback(receiverIsServer: false);
+        LobbySettingsMsg received = default;
+        Action<LobbySettingsMsg> handler = message => received = message;
+        LobbySettingsMsg.Received += handler;
+        byte[] config = new MatchConfig { Gravity = 321 }.ToBytes();
+        try
+        {
+            new LobbySettingsMsg("castlewars", "hash", ["arena", "castlewars"],
+                ["Arena", "Castle Wars"], config).Broadcast();
+        }
+        finally
+        {
+            LobbySettingsMsg.Received -= handler;
+        }
+
+        Assert.Equal("castlewars", received.MapId);
+        Assert.Equal("hash", received.MapHash);
+        Assert.Equal(["arena", "castlewars"], received.MapIds);
+        Assert.Equal(["Arena", "Castle Wars"], received.MapNames);
+        Assert.Equal(config, received.Config);
+    }
+
+    [Fact]
     public void WelcomeMsg_RoundTrips()
     {
         UseLoopback(receiverIsServer: false);
@@ -297,6 +322,57 @@ public class NetMessageTests : IDisposable
     }
 
     [Fact]
+    public void SignedLobbyUpdates_RoundTrip_WithUnsignedSequenceBitsIntact()
+    {
+        UseLoopback(receiverIsServer: true);
+        (long Sender, LobbyRulesUpdateMsg Message) rules = default;
+        (long Sender, LobbyMapUpdateMsg Message) map = default;
+        Action<long, LobbyRulesUpdateMsg> rulesHandler =
+            (sender, message) => rules = (sender, message);
+        Action<long, LobbyMapUpdateMsg> mapHandler =
+            (sender, message) => map = (sender, message);
+        LobbyRulesUpdateMsg.Received += rulesHandler;
+        LobbyMapUpdateMsg.Received += mapHandler;
+        try
+        {
+            new LobbyRulesUpdateMsg([1, 2], ulong.MaxValue, [3, 4]).SendToServer();
+            new LobbyMapUpdateMsg("arena", ulong.MaxValue - 1, [5, 6]).SendToServer();
+        }
+        finally
+        {
+            LobbyRulesUpdateMsg.Received -= rulesHandler;
+            LobbyMapUpdateMsg.Received -= mapHandler;
+        }
+
+        Assert.Equal(SENDER, rules.Sender);
+        Assert.Equal([1, 2], rules.Message.Config);
+        Assert.Equal(ulong.MaxValue, rules.Message.Sequence);
+        Assert.Equal([3, 4], rules.Message.Tag);
+        Assert.Equal(SENDER, map.Sender);
+        Assert.Equal("arena", map.Message.MapId);
+        Assert.Equal(ulong.MaxValue - 1, map.Message.Sequence);
+        Assert.Equal([5, 6], map.Message.Tag);
+    }
+
+    [Fact]
+    public void LobbySettingsRequest_RoundTrips_WithTransportSender()
+    {
+        UseLoopback(receiverIsServer: true);
+        long sender = 0;
+        Action<long, LobbySettingsRequestMsg> handler = (peerId, _) => sender = peerId;
+        LobbySettingsRequestMsg.Received += handler;
+        try
+        {
+            new LobbySettingsRequestMsg().SendToServer();
+        }
+        finally
+        {
+            LobbySettingsRequestMsg.Received -= handler;
+        }
+        Assert.Equal(SENDER, sender);
+    }
+
+    [Fact]
     public void AdminCommand_NeverSerializesPasswordAsChatOrHistory()
     {
         ushort sentId = 0;
@@ -424,6 +500,12 @@ public class NetMessageTests : IDisposable
             Capture(NetRegistry.ID_ChatSendMsg, () => new ChatSendMsg("hello").SendToServer()),
             Capture(NetRegistry.ID_AdminAuthRequestMsg, () => new AdminAuthRequestMsg().SendToServer()),
             Capture(NetRegistry.ID_AdminProofMsg, () => new AdminProofMsg([1, 2, 3]).SendToServer()),
+            Capture(NetRegistry.ID_LobbyRulesUpdateMsg,
+                () => new LobbyRulesUpdateMsg([1, 2], 3, [4, 5]).SendToServer()),
+            Capture(NetRegistry.ID_LobbyMapUpdateMsg,
+                () => new LobbyMapUpdateMsg("arena", 3, [4, 5]).SendToServer()),
+            Capture(NetRegistry.ID_LobbySettingsRequestMsg,
+                () => new LobbySettingsRequestMsg().SendToServer()),
         ];
 
         int raised = 0;
@@ -432,11 +514,17 @@ public class NetMessageTests : IDisposable
         Action<long, ChatSendMsg> chat = (_, _) => raised++;
         Action<long, AdminAuthRequestMsg> request = (_, _) => raised++;
         Action<long, AdminProofMsg> proof = (_, _) => raised++;
+        Action<long, LobbyRulesUpdateMsg> rules = (_, _) => raised++;
+        Action<long, LobbyMapUpdateMsg> map = (_, _) => raised++;
+        Action<long, LobbySettingsRequestMsg> settingsRequest = (_, _) => raised++;
         SetReadyMsg.Received += ready;
         DebugCarveMsg.Received += carve;
         ChatSendMsg.Received += chat;
         AdminAuthRequestMsg.Received += request;
         AdminProofMsg.Received += proof;
+        LobbyRulesUpdateMsg.Received += rules;
+        LobbyMapUpdateMsg.Received += map;
+        LobbySettingsRequestMsg.Received += settingsRequest;
         try
         {
             foreach ((ushort id, byte[] payload) in messages)
@@ -453,6 +541,9 @@ public class NetMessageTests : IDisposable
             ChatSendMsg.Received -= chat;
             AdminAuthRequestMsg.Received -= request;
             AdminProofMsg.Received -= proof;
+            LobbyRulesUpdateMsg.Received -= rules;
+            LobbyMapUpdateMsg.Received -= map;
+            LobbySettingsRequestMsg.Received -= settingsRequest;
         }
         Assert.Equal(0, raised);
     }
@@ -499,7 +590,8 @@ public class NetMessageTests : IDisposable
         var random = new Random(781_223);
         ushort[] ids = [NetRegistry.ID_SetReadyMsg, NetRegistry.ID_DebugCarveMsg,
             NetRegistry.ID_ChatSendMsg, NetRegistry.ID_AdminAuthRequestMsg,
-            NetRegistry.ID_AdminProofMsg];
+            NetRegistry.ID_AdminProofMsg, NetRegistry.ID_LobbyRulesUpdateMsg,
+            NetRegistry.ID_LobbyMapUpdateMsg, NetRegistry.ID_LobbySettingsRequestMsg];
         for (int i = 0; i < 10_000; i++)
         {
             byte[] payload = new byte[random.Next(0, 129)];

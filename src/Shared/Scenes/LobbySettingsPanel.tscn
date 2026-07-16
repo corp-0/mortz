@@ -1,0 +1,102 @@
+[gd_scene format=3 uid="uid://d4e5uxg8yueq"]
+
+[ext_resource type="Script" uid="uid://ccv87mfb0uwoq" path="res://src/Client/LobbySettingsPanel.cs" id="1"]
+[ext_resource type="PackedScene" uid="uid://cvkiettp7gns3" path="res://src/Shared/Scenes/BoolRuleControl.tscn" id="2"]
+[ext_resource type="PackedScene" path="res://src/Shared/Scenes/IntRuleControl.tscn" id="3"]
+[ext_resource type="PackedScene" path="res://src/Shared/Scenes/FloatRuleControl.tscn" id="4"]
+[ext_resource type="PackedScene" path="res://src/Shared/Scenes/EnumRuleControl.tscn" id="5"]
+
+[node name="LobbySettingsPanel" type="PanelContainer" unique_id=289524066 node_paths=PackedStringArray("_adminStatus", "_mapPicker", "_mapPreview", "_mapStatus", "_rules")]
+custom_minimum_size = Vector2(720, 0)
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("1")
+_adminStatus = NodePath("Margin/Column/Header/MapInfo/AdminStatus")
+_mapPicker = NodePath("Margin/Column/Header/MapInfo/MapPicker")
+_mapPreview = NodePath("Margin/Column/Header/PreviewFrame/MapPreview")
+_mapStatus = NodePath("Margin/Column/Header/MapInfo/MapStatus")
+_rules = NodePath("Margin/Column/RulesScroll/Rules")
+_boolControl = ExtResource("2")
+_intControl = ExtResource("3")
+_floatControl = ExtResource("4")
+_enumControl = ExtResource("5")
+
+[node name="Margin" type="MarginContainer" parent="." unique_id=531731578]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 16
+
+[node name="Column" type="VBoxContainer" parent="Margin" unique_id=1595146004]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Header" type="HBoxContainer" parent="Margin/Column" unique_id=1108635475]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="MapInfo" type="VBoxContainer" parent="Margin/Column/Header" unique_id=1208982596]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 7
+
+[node name="SetupTitle" type="Label" parent="Margin/Column/Header/MapInfo" unique_id=406979141]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.886, 0.925, 0.973, 1)
+theme_override_font_sizes/font_size = 27
+text = "MATCH SETUP"
+
+[node name="AdminStatus" type="Label" parent="Margin/Column/Header/MapInfo" unique_id=250540152]
+layout_mode = 2
+text = "Loading server setup..."
+
+[node name="MapLabel" type="Label" parent="Margin/Column/Header/MapInfo" unique_id=2111748412]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.58, 0.639, 0.722, 1)
+text = "SELECTED MAP"
+
+[node name="MapPicker" type="OptionButton" parent="Margin/Column/Header/MapInfo" unique_id=120596287]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+disabled = true
+
+[node name="MapStatus" type="Label" parent="Margin/Column/Header/MapInfo" unique_id=1318272381]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.58, 0.639, 0.722, 1)
+vertical_alignment = 2
+autowrap_mode = 2
+
+[node name="PreviewFrame" type="PanelContainer" parent="Margin/Column/Header" unique_id=1381558402]
+custom_minimum_size = Vector2(300, 170)
+layout_mode = 2
+
+[node name="MapPreview" type="TextureRect" parent="Margin/Column/Header/PreviewFrame" unique_id=434190129]
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Divider" type="HSeparator" parent="Margin/Column" unique_id=1098664077]
+layout_mode = 2
+
+[node name="RulesHeader" type="HBoxContainer" parent="Margin/Column" unique_id=994957328]
+layout_mode = 2
+
+[node name="RulesTitle" type="Label" parent="Margin/Column/RulesHeader" unique_id=1452904282]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.886, 0.925, 0.973, 1)
+theme_override_font_sizes/font_size = 22
+text = "MATCH RULES"
+
+[node name="RulesScroll" type="ScrollContainer" parent="Margin/Column" unique_id=354916062]
+custom_minimum_size = Vector2(0, 320)
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Rules" type="VBoxContainer" parent="Margin/Column/RulesScroll" unique_id=995309611]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 5

@@ -30,7 +30,7 @@ public partial class ServerSessionController : Node, IServerSession
     private bool _subscribed;
 
     [Dependency]
-    public ServerHost Host => this.DependOn<ServerHost>();
+    public IServerLobbySettings LobbySettings => this.DependOn<IServerLobbySettings>();
 
     public bool IsLobby => _lobby != null;
     public bool ContainsPlayer(long peerId) => _players.Contains(peerId);
@@ -41,7 +41,7 @@ public partial class ServerSessionController : Node, IServerSession
     public void OnResolved()
     {
         NetworkManager network = NetworkManager.Instance;
-        _protocol = new ServerProtocol(network, Host.Map, _players,
+        _protocol = new ServerProtocol(network, LobbySettings, _players,
             CmdArgs.HasFlag("--net-stats"));
         Subscribe(network);
     }
@@ -100,6 +100,7 @@ public partial class ServerSessionController : Node, IServerSession
         lobby.Add(peerId);
         GD.Print($"[server] player {peerId} '{name}' entered lobby ({lobby.Count} waiting)");
         _protocol.BroadcastLobby(lobby);
+        LobbySettings.SendTo(peerId);
     }
 
     private void OnPeerLeft(long peerId)
@@ -136,8 +137,9 @@ public partial class ServerSessionController : Node, IServerSession
             return;
 
         int victoryLapTicks = (int)(MATCH_END_SECONDS * SimConfig.TICK_RATE);
-        MatchSession match = new(Host.Map.BuildMask(), Host.Rules, Random.Shared.Next(),
-            victoryLapTicks, Host.Map.SpawnPoints);
+        MapPackage selectedMap = LobbySettings.Map;
+        MatchSession match = new(selectedMap.BuildMask(), LobbySettings.Rules, Random.Shared.Next(),
+            victoryLapTicks, selectedMap.SpawnPoints);
         _match = match;
         _lobby = null;
         GD.Print($"[server] all {lobby.Count} player(s) ready, starting match");
@@ -148,7 +150,7 @@ public partial class ServerSessionController : Node, IServerSession
 
     private void AddToMatch(long peerId, MatchSession match)
     {
-        MapPackage map = Host.Map;
+        MapPackage map = LobbySettings.Map;
         if (map.SpawnPoints.Length > 0 && match.World.Players.Count >= map.SpawnPoints.Length)
             GD.PushWarning($"[server] map '{map.MapId}' only has {map.SpawnPoints.Length} spawn " +
                            $"point(s) for {match.World.Players.Count + 1} players, so some will share one");
@@ -164,6 +166,7 @@ public partial class ServerSessionController : Node, IServerSession
         _match = null;
         GD.Print($"[server] back to lobby ({completedMatch.World.Players.Count} player(s))");
         _protocol.BroadcastLobby(_lobby);
+        LobbySettings.Broadcast();
     }
 
     private void OnInputsReceived(long peerId, byte[] packet)
@@ -178,7 +181,7 @@ public partial class ServerSessionController : Node, IServerSession
 
     private void OnDebugCarve(long sender, DebugCarveMsg message)
     {
-        MapPackage map = Host.Map;
+        MapPackage map = LobbySettings.Map;
         if (_match is not { } match || message.X < 0 || message.X >= map.Width ||
             message.Y < 0 || message.Y >= map.Height)
             return;

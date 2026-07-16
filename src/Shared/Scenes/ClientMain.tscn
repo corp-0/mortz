@@ -7,7 +7,7 @@
 [ext_resource type="Script" uid="uid://b46f55d4mmx7l" path="res://src/Client/Audio/Sfx.cs" id="5_sfx"]
 [ext_resource type="Resource" uid="uid://0gok5648oexn" path="res://Assets/Sounds/SoundRegistry.tres" id="6_sounds"]
 [ext_resource type="Script" uid="uid://b7xyv1173ixe1" path="res://src/Client/ClientChat.cs" id="7_chat"]
-[ext_resource type="Script" path="res://src/Client/ClientSessionController.cs" id="8_session"]
+[ext_resource type="Script" uid="uid://drn2cynsax60k" path="res://src/Client/ClientSessionController.cs" id="8_session"]
 
 [node name="ClientMain" type="Node" unique_id=282168119 node_paths=PackedStringArray("_clientChat")]
 script = ExtResource("1_cmain")
@@ -23,9 +23,9 @@ _sounds = ExtResource("6_sounds")
 [node name="MainMenu" parent="." unique_id=1401714884 instance=ExtResource("3_menu")]
 
 [node name="Lobby" parent="." unique_id=1904857573 instance=ExtResource("4_lobby")]
-layout_mode = 3
+visible = false
 
-[node name="Session" type="Node" parent="." node_paths=PackedStringArray("_menu", "_lobby")]
+[node name="Session" type="Node" parent="." unique_id=1978618533 node_paths=PackedStringArray("_menu", "_lobby")]
 script = ExtResource("8_session")
 _gameViewScene = ExtResource("2_gview")
 _menu = NodePath("../MainMenu")

@@ -12,7 +12,7 @@ namespace Mortz.Server;
 internal sealed class ServerProtocol
 {
     private readonly NetworkManager _network;
-    private readonly MapPackage _map;
+    private readonly IServerLobbySettings _settings;
     private readonly PlayerDirectory _players;
     private readonly bool _printNetStats;
     private long _snapshotPayloadBytes;
@@ -20,11 +20,12 @@ internal sealed class ServerProtocol
     private long _inputPayloadBytes;
     private int _nextTerrainTransferId;
 
-    public ServerProtocol(NetworkManager network, MapPackage map, PlayerDirectory players,
+    public ServerProtocol(NetworkManager network, IServerLobbySettings settings,
+        PlayerDirectory players,
         bool printNetStats)
     {
         _network = network;
-        _map = map;
+        _settings = settings;
         _players = players;
         _printNetStats = printNetStats;
     }
@@ -173,13 +174,14 @@ internal sealed class ServerProtocol
 
     private void SendWelcome(long peerId, MatchSession match)
     {
+        MapPackage map = _settings.Map;
         TerrainSyncPayload terrain = match.TerrainHistory.Build(match.World.Terrain);
         if (terrain.Data.Length > NetConfig.MAX_TERRAIN_SYNC_BYTES)
             throw new InvalidDataException($"Terrain sync is too large: {terrain.Data.Length} bytes.");
         int chunkCount = Math.Max(1,
             (terrain.Data.Length + NetConfig.TERRAIN_CHUNK_BYTES - 1) / NetConfig.TERRAIN_CHUNK_BYTES);
         int transferId = ++_nextTerrainTransferId;
-        new WelcomeMsg(_map.MapId, _map.Hash, match.Config.ToBytes(), (byte)terrain.Encoding,
+        new WelcomeMsg(map.MapId, map.Hash, match.Config.ToBytes(), (byte)terrain.Encoding,
             transferId, terrain.Data.Length, checked((short)chunkCount)).SendTo(peerId);
         for (int i = 0; i < chunkCount; i++)
         {
