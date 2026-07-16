@@ -1,5 +1,8 @@
 using System.Reflection;
 using Mortz.Core;
+using Mortz.Core.Match;
+using Mortz.Core.Sim;
+using Mortz.Core.Ui;
 using Xunit;
 
 namespace Mortz.Tests.Core;

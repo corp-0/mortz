@@ -14,8 +14,8 @@ namespace Mortz.Net.Gen;
 [Generator]
 public sealed class UiMetadataGenerator : IIncrementalGenerator
 {
-    private const string CATEGORY_ATTRIBUTE = "Mortz.Core.UiCategoryAttribute";
-    private const string PROPERTY_ATTRIBUTE = "Mortz.Core.UiPropertyAttribute";
+    private const string CATEGORY_ATTRIBUTE = "Mortz.Core.Ui.UiCategoryAttribute";
+    private const string PROPERTY_ATTRIBUTE = "Mortz.Core.Ui.UiPropertyAttribute";
 
     private static readonly DiagnosticDescriptor _duplicateCategory = new(
         "MZ1001", "Duplicate UI category",
@@ -170,19 +170,19 @@ public sealed class UiMetadataGenerator : IIncrementalGenerator
         }
         sb.AppendLine($"public static class {model.TypeName}UiMetadata");
         sb.AppendLine("{");
-        sb.AppendLine($"    public static global::System.Collections.Generic.IReadOnlyList<global::Mortz.Core.UiCategoryDescriptor<{model.FullyQualifiedType}>> Categories {{ get; }} =");
-        sb.AppendLine($"        global::System.Array.AsReadOnly(new global::Mortz.Core.UiCategoryDescriptor<{model.FullyQualifiedType}>[]");
+        sb.AppendLine($"    public static global::System.Collections.Generic.IReadOnlyList<global::Mortz.Core.Ui.UiCategoryDescriptor<{model.FullyQualifiedType}>> Categories {{ get; }} =");
+        sb.AppendLine($"        global::System.Array.AsReadOnly(new global::Mortz.Core.Ui.UiCategoryDescriptor<{model.FullyQualifiedType}>[]");
         sb.AppendLine("        {");
         foreach (CategoryModel category in model.Categories)
         {
-            sb.AppendLine($"            new global::Mortz.Core.UiCategoryDescriptor<{model.FullyQualifiedType}>(");
+            sb.AppendLine($"            new global::Mortz.Core.Ui.UiCategoryDescriptor<{model.FullyQualifiedType}>(");
             sb.AppendLine($"                {Literal(category.DisplayName)},");
-            sb.AppendLine($"                global::System.Array.AsReadOnly<global::Mortz.Core.IUiPropertyDescriptor<{model.FullyQualifiedType}>>(new global::Mortz.Core.IUiPropertyDescriptor<{model.FullyQualifiedType}>[]");
+            sb.AppendLine($"                global::System.Array.AsReadOnly<global::Mortz.Core.Ui.IUiPropertyDescriptor<{model.FullyQualifiedType}>>(new global::Mortz.Core.Ui.IUiPropertyDescriptor<{model.FullyQualifiedType}>[]");
             sb.AppendLine("                {");
             foreach (PropertyModel property in model.Properties.Where(
                          property => property.CategoryOrder == category.Order))
             {
-                sb.AppendLine($"                    new global::Mortz.Core.UiPropertyDescriptor<{model.FullyQualifiedType}, {property.Type}>(");
+                sb.AppendLine($"                    new global::Mortz.Core.Ui.UiPropertyDescriptor<{model.FullyQualifiedType}, {property.Type}>(");
                 sb.AppendLine($"                        {Literal(property.Name)},");
                 sb.AppendLine($"                        {Literal(property.DisplayName)},");
                 sb.AppendLine($"                        static model => model.{property.Name},");

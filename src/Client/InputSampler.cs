@@ -1,6 +1,7 @@
 using Godot;
 using Mortz.Client.Chat;
 using Mortz.Core;
+using Mortz.Core.Sim;
 
 namespace Mortz.Client;
 

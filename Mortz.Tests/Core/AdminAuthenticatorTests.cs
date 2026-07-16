@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using Mortz.Core;
+using Mortz.Core.Admin;
 using Xunit;
 
 namespace Mortz.Tests.Core;

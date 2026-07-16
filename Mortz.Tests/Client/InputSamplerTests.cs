@@ -1,6 +1,7 @@
 using Mortz.Client;
 using Mortz.Client.Chat;
 using Mortz.Core;
+using Mortz.Core.Sim;
 using Xunit;
 
 namespace Mortz.Tests.Client;

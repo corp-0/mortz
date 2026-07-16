@@ -2,6 +2,8 @@ using System.Collections.Immutable;
 using Godot;
 using Mortz.Content;
 using Mortz.Core;
+using Mortz.Core.Sim;
+using Mortz.Core.Terrain;
 
 namespace Mortz.Shared;
 

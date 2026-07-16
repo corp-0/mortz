@@ -1,5 +1,9 @@
 using Godot;
 using Mortz.Core;
+using Mortz.Core.Input;
+using Mortz.Core.Net;
+using Mortz.Core.Replication;
+using Mortz.Core.Sim;
 using Mortz.Net;
 
 namespace Mortz.Client;

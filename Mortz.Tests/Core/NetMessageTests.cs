@@ -3,9 +3,12 @@ using System.Text;
 using Mortz.Client;
 using Mortz.Client.Chat;
 using Mortz.Core;
+using Mortz.Core.Admin;
 using Mortz.Core.Chat;
+using Mortz.Core.Match;
 using Mortz.Core.Net;
 using Mortz.Core.Net.Messages;
+using Mortz.Core.Terrain;
 using Xunit;
 
 namespace Mortz.Tests.Core;

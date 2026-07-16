@@ -1,17 +1,5 @@
 namespace Mortz.Core.Net;
 
-public enum NetChannel
-{
-    RELIABLE,
-    UNRELIABLE,
-}
-
-public enum NetDirection
-{
-    SERVER_TO_CLIENT,
-    CLIENT_TO_SERVER,
-}
-
 /// <summary>
 /// Marks a partial record struct as a wire message. Mortz.Net.Gen generates
 /// the serializer, the direction-appropriate send methods, the static

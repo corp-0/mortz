@@ -1,6 +1,8 @@
 using Godot;
 using Mortz.Core;
 using Mortz.Core.Net.Messages;
+using Mortz.Core.Replication;
+using Mortz.Core.Sim;
 
 namespace Mortz.Client;
 

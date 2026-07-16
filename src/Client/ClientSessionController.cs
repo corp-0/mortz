@@ -1,5 +1,6 @@
 using Godot;
 using Mortz.Core;
+using Mortz.Core.Net;
 using Mortz.Core.Net.Messages;
 using Mortz.Net;
 using Mortz.Shared;

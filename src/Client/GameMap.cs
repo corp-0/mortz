@@ -1,6 +1,8 @@
 using Godot;
 using Mortz.Core;
+using Mortz.Core.Match;
 using Mortz.Core.Net.Messages;
+using Mortz.Core.Terrain;
 using Mortz.Shared;
 
 namespace Mortz.Client;

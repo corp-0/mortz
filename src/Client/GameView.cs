@@ -1,6 +1,11 @@
 using Godot;
 using Mortz.Core;
+using Mortz.Core.Match;
+using Mortz.Core.Net;
 using Mortz.Core.Net.Messages;
+using Mortz.Core.Replication;
+using Mortz.Core.Sim;
+using Mortz.Core.Terrain;
 using Mortz.Net;
 using Mortz.Shared;
 

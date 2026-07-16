@@ -1,4 +1,5 @@
 using Mortz.Core;
+using Mortz.Core.Terrain;
 using Xunit;
 
 namespace Mortz.Tests.Core;

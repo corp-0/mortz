@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using Mortz.Core.Net;
 
 namespace Mortz.Core.Chat;
 

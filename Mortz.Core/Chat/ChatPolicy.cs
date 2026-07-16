@@ -1,3 +1,5 @@
+using Mortz.Core.Net;
+
 namespace Mortz.Core.Chat;
 
 public sealed class ChatPolicy

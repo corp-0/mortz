@@ -1,3 +1,5 @@
+using Mortz.Core.Match;
+
 namespace Mortz.Core.Net.Messages;
 
 /// <summary>Match entry ticket: which map to load (verified by hash), the

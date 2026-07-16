@@ -1,4 +1,7 @@
 using Mortz.Core;
+using Mortz.Core.Match;
+using Mortz.Core.Replication;
+using Mortz.Core.Sim;
 using Xunit;
 
 namespace Mortz.Tests.Core;

@@ -1,6 +1,8 @@
 using Mortz.Client;
 using Mortz.Core;
+using Mortz.Core.Match;
 using Mortz.Core.Net.Messages;
+using Mortz.Core.Terrain;
 using Xunit;
 
 namespace Mortz.Tests.Client;

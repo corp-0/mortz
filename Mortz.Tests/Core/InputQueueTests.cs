@@ -1,4 +1,6 @@
 using Mortz.Core;
+using Mortz.Core.Input;
+using Mortz.Core.Sim;
 using Xunit;
 
 namespace Mortz.Tests.Core;

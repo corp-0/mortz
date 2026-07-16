@@ -1,5 +1,8 @@
 using Mortz.Client;
 using Mortz.Core;
+using Mortz.Core.Replication;
+using Mortz.Core.Sim;
+using Mortz.Core.Terrain;
 using Mortz.Tests.Core;
 using Xunit;
 

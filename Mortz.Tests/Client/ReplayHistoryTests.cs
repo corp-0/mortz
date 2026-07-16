@@ -1,6 +1,7 @@
 using Godot;
 using Mortz.Client;
 using Mortz.Core;
+using Mortz.Core.Sim;
 using Xunit;
 
 namespace Mortz.Tests.Client;
