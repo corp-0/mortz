@@ -30,7 +30,26 @@ public partial class Lobby : Control
         {
             string self = peerIds[i] == localId ? " (you)" : "";
             bool ready = readyFlags[i] != 0;
+            PanelContainer slot = new() { CustomMinimumSize = new Vector2(0, 44) };
+            StyleBoxFlat background = new()
+            {
+                BgColor = new Color("111827"),
+                CornerRadiusTopLeft = 5,
+                CornerRadiusTopRight = 5,
+                CornerRadiusBottomRight = 5,
+                CornerRadiusBottomLeft = 5,
+            };
+            slot.AddThemeStyleboxOverride("panel", background);
+
+            MarginContainer margin = new();
+            margin.AddThemeConstantOverride("margin_left", 12);
+            margin.AddThemeConstantOverride("margin_right", 12);
+            margin.AddThemeConstantOverride("margin_top", 8);
+            margin.AddThemeConstantOverride("margin_bottom", 8);
             HBoxContainer row = new();
+            margin.AddChild(row);
+            slot.AddChild(margin);
+
             row.AddChild(new Label
             {
                 Text = $"{playerNames[i]}{self}",
@@ -41,7 +60,7 @@ public partial class Lobby : Control
                 Text = ready ? "READY" : "WAITING",
                 Modulate = ready ? new Color("86efac") : new Color("94a3b8"),
             });
-            _playerList.AddChild(row);
+            _playerList.AddChild(slot);
         }
     }
 

@@ -13,7 +13,7 @@ namespace Mortz.Tests.Client;
 public class ChatCompositionTests
 {
     [Fact]
-    public void PopulatedLobbyGivesGeneratedRulesAndChatUsableSpace()
+    public void PopulatedLobbyPrioritizesPlayerSlotsAndChatOverSettings()
     {
         SceneTree tree = Assert.IsType<SceneTree>(Engine.GetMainLoop());
         PackedScene clientScene = ResourceLoader.Load<PackedScene>(
@@ -22,8 +22,9 @@ public class ChatCompositionTests
         tree.Root.AddChild(client);
         try
         {
-            Control lobby = client.GetNode<Control>("Lobby");
+            Lobby lobby = client.GetNode<Lobby>("Lobby");
             lobby.Visible = true;
+            lobby.UpdatePlayers([1, 2], ["Host", "Guest"], [1, 0], 1);
 
             LobbySettingsPanel panel =
                 client.GetNode<LobbySettingsPanel>("Lobby/Content/Main/Settings");
@@ -32,13 +33,29 @@ public class ChatCompositionTests
                 "castlewars", "hash", ["castlewars"], ["Castle Wars"], config.ToBytes()));
 
             Assert.Equal(44, panel.RuleControlCount);
-            Assert.True(panel.CustomMinimumSize.X >= 700,
+            Assert.Equal(MatchConfigUiMetadata.Categories.Count, panel.CategoryBlockCount);
+            Assert.True(LobbySettingsPanel.CATEGORY_GAP >= 20,
+                $"category gap was {LobbySettingsPanel.CATEGORY_GAP}");
+            Assert.True(panel.CustomMinimumSize.X <= 460,
                 $"settings minimum width was {panel.CustomMinimumSize.X}");
-            Assert.True(panel.RulesMinimumHeight >= 300,
+            Assert.True(panel.RulesMinimumHeight >= 250,
                 $"rules minimum height was {panel.RulesMinimumHeight}");
+
+            Control sidebar = client.GetNode<Control>("Lobby/Content/Main/Sidebar");
+            Assert.True(sidebar.CustomMinimumSize.X >= 600,
+                $"player/chat minimum width was {sidebar.CustomMinimumSize.X}");
+            Control playerCard = client.GetNode<Control>(
+                "Lobby/Content/Main/Sidebar/LobbyCard");
+            Assert.True(playerCard.CustomMinimumSize.Y >= 350,
+                $"player card minimum height was {playerCard.CustomMinimumSize.Y}");
+            VBoxContainer players = client.GetNode<VBoxContainer>(
+                "Lobby/Content/Main/Sidebar/LobbyCard/Margin/Column/PlayerScroll/Players");
+            Assert.Equal(2, players.GetChildCount());
+            Assert.All(players.GetChildren(), child =>
+                Assert.True(((Control)child).CustomMinimumSize.Y >= 40));
             ChatPanel chat = client.GetNode<ChatPanel>(
                 "Lobby/Content/Main/Sidebar/ChatPanel");
-            Assert.True(chat.CustomMinimumSize.Y >= 350,
+            Assert.True(chat.CustomMinimumSize.Y >= 290,
                 $"chat minimum height was {chat.CustomMinimumSize.Y}");
         }
         finally

@@ -29,6 +29,27 @@ public enum WinCondition : byte
 /// </summary>
 public sealed class MatchConfig
 {
+    // Teams and WinCondition are stored independently so toggling teams in the
+    // lobby never destroys the admin's win condition choice; TEAM_KILLS with
+    // teams off plays as PLAYER_KILLS (resolved in Scoreboard, not here).
+    [UiCategory("Mode")]
+    [UiProperty("Teams")]
+    public bool Teams { get; set; }
+
+    [UiProperty("Win Condition")]
+    public WinCondition WinCondition { get; set; } = WinCondition.PLAYER_KILLS;
+
+    [UiProperty("Kill Target")]
+    public int KillTarget { get; set; } = SimConfig.KILL_TARGET;
+
+    /// <summary>Off spares teammates from blast damage; self-damage always applies.</summary>
+    [UiProperty("Friendly Fire")]
+    public bool FriendlyFire { get; set; } = true;
+
+    /// <summary>On, a suicide costs a kill (scores can go negative).</summary>
+    [UiProperty("Suicide Penalty")]
+    public bool SuicidePenalty { get; set; }
+
     [UiCategory("Running / Falling")]
     [UiProperty("Max Run Speed")]
     public float MaxRunSpeed { get; set; } = SimConfig.MAX_RUN_SPEED;
@@ -154,27 +175,6 @@ public sealed class MatchConfig
 
     [UiProperty("Spawn Immunity")]
     public float SpawnImmunity { get; set; } = SimConfig.SPAWN_IMMUNITY;
-
-    // Teams and WinCondition are stored independently so toggling teams in the
-    // lobby never destroys the admin's win condition choice; TEAM_KILLS with
-    // teams off plays as PLAYER_KILLS (resolved in Scoreboard, not here).
-    [UiCategory("Mode")]
-    [UiProperty("Teams")]
-    public bool Teams { get; set; }
-
-    [UiProperty("Win Condition")]
-    public WinCondition WinCondition { get; set; } = WinCondition.PLAYER_KILLS;
-
-    [UiProperty("Kill Target")]
-    public int KillTarget { get; set; } = SimConfig.KILL_TARGET;
-
-    /// <summary>Off spares teammates from blast damage; self-damage always applies.</summary>
-    [UiProperty("Friendly Fire")]
-    public bool FriendlyFire { get; set; } = true;
-
-    /// <summary>On, a suicide costs a kill (scores can go negative).</summary>
-    [UiProperty("Suicide Penalty")]
-    public bool SuicidePenalty { get; set; }
 
     public int RespawnDelayTicks => (int)(RespawnDelay * SimConfig.TICK_RATE);
     public int SpawnImmunityTicks => (int)(SpawnImmunity * SimConfig.TICK_RATE);

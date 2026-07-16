@@ -12,7 +12,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_lobby")
-_playerList = NodePath("Content/Main/Sidebar/LobbyCard/Margin/Column/Players")
+_playerList = NodePath("Content/Main/Sidebar/LobbyCard/Margin/Column/PlayerScroll/Players")
 _readyButton = NodePath("Content/Main/Sidebar/LobbyCard/Margin/Column/ReadyButton")
 
 [node name="Background" type="ColorRect" parent="." unique_id=1588472463]
@@ -43,15 +43,19 @@ theme_override_constants/separation = 16
 
 [node name="Settings" parent="Content/Main" unique_id=63379707 instance=ExtResource("3_settings")]
 layout_mode = 2
+size_flags_horizontal = 0
 
 [node name="Sidebar" type="VBoxContainer" parent="Content/Main" unique_id=1573526163]
-custom_minimum_size = Vector2(420, 0)
+custom_minimum_size = Vector2(620, 0)
 layout_mode = 2
+size_flags_horizontal = 3
 theme_override_constants/separation = 14
 
 [node name="LobbyCard" type="PanelContainer" parent="Content/Main/Sidebar" unique_id=1101206318]
-custom_minimum_size = Vector2(0, 245)
+custom_minimum_size = Vector2(0, 360)
 layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.1
 
 [node name="Margin" type="MarginContainer" parent="Content/Main/Sidebar/LobbyCard" unique_id=1073692411]
 layout_mode = 2
@@ -75,9 +79,15 @@ layout_mode = 2
 theme_override_colors/font_color = Color(0.45, 0.51, 0.6, 1)
 text = "The match starts when everyone is ready"
 
-[node name="Players" type="VBoxContainer" parent="Content/Main/Sidebar/LobbyCard/Margin/Column" unique_id=1129215238]
+[node name="PlayerScroll" type="ScrollContainer" parent="Content/Main/Sidebar/LobbyCard/Margin/Column"]
+custom_minimum_size = Vector2(0, 220)
 layout_mode = 2
 size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Players" type="VBoxContainer" parent="Content/Main/Sidebar/LobbyCard/Margin/Column/PlayerScroll" unique_id=1129215238]
+layout_mode = 2
+size_flags_horizontal = 3
 theme_override_constants/separation = 5
 
 [node name="ReadyButton" type="Button" parent="Content/Main/Sidebar/LobbyCard/Margin/Column" unique_id=1138506148]
@@ -86,8 +96,9 @@ layout_mode = 2
 text = "READY UP"
 
 [node name="ChatPanel" parent="Content/Main/Sidebar" unique_id=565259309 instance=ExtResource("2_chat")]
-custom_minimum_size = Vector2(0, 360)
+custom_minimum_size = Vector2(0, 300)
 layout_mode = 2
 size_flags_vertical = 3
+size_flags_stretch_ratio = 1.0
 
 [connection signal="pressed" from="Content/Main/Sidebar/LobbyCard/Margin/Column/ReadyButton" to="." method="OnReadyPressed"]

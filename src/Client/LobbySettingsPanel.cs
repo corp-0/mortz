@@ -16,6 +16,8 @@ namespace Mortz.Client;
 [Meta(typeof(IAutoNode))]
 public partial class LobbySettingsPanel : PanelContainer
 {
+    internal const int CATEGORY_GAP = 22;
+
     [Export] private Label _adminStatus = null!;
     [Export] private OptionButton _mapPicker = null!;
     [Export] private TextureRect _mapPreview = null!;
@@ -39,6 +41,7 @@ public partial class LobbySettingsPanel : PanelContainer
     public IClientChat Chat => this.DependOn<IClientChat>();
 
     internal int RuleControlCount => _controls.Count;
+    internal int CategoryBlockCount { get; private set; }
     internal float RulesMinimumHeight => ((ScrollContainer)_rules.GetParent()).CustomMinimumSize.Y;
 
     public override void _Notification(int what) => this.Notify(what);
@@ -123,18 +126,28 @@ public partial class LobbySettingsPanel : PanelContainer
 
     private void BuildRules()
     {
+        int categoryIndex = 0;
         foreach (UiCategoryDescriptor<MatchConfig> category in MatchConfigUiMetadata.Categories)
         {
+            MarginContainer categoryMargin = new();
+            categoryMargin.AddThemeConstantOverride(
+                "margin_top", categoryIndex == 0 ? 0 : CATEGORY_GAP);
+            categoryMargin.AddThemeConstantOverride("margin_bottom", 6);
+            VBoxContainer categoryBlock = new();
+            categoryBlock.AddThemeConstantOverride("separation", 7);
+            categoryMargin.AddChild(categoryBlock);
+
             Label heading = new() { Text = category.DisplayName };
-            heading.AddThemeFontSizeOverride("font_size", 20);
-            _rules.AddChild(heading);
-            _rules.AddChild(new HSeparator());
+            heading.AddThemeFontSizeOverride("font_size", 18);
+            heading.AddThemeColorOverride("font_color", new Color("cbd5e1"));
+            categoryBlock.AddChild(heading);
+            categoryBlock.AddChild(new HSeparator());
             foreach (IUiPropertyDescriptor<MatchConfig> descriptor in category.Properties)
             {
                 PackedScene? scene = ControlScene(descriptor.ValueType);
                 if (scene == null)
                 {
-                    _rules.AddChild(new Label
+                    categoryBlock.AddChild(new Label
                     {
                         Text = $"{descriptor.DisplayName}: unsupported {descriptor.ValueType.Name}",
                     });
@@ -148,9 +161,13 @@ public partial class LobbySettingsPanel : PanelContainer
                 }
                 control.Bind(descriptor, _config, OnRuleChanged);
                 _controls.Add(control);
-                _rules.AddChild(node);
+                categoryBlock.AddChild(node);
             }
+
+            _rules.AddChild(categoryMargin);
+            categoryIndex++;
         }
+        CategoryBlockCount = categoryIndex;
     }
 
     private PackedScene? ControlScene(Type valueType)
