@@ -73,15 +73,18 @@ public class PlayerViewTransitionsTests
     }
 
     [Fact]
-    public void AuthoritativeOwnShell_ShowsOnlyWhenThePredictedCopyIsGone()
+    public void AuthoritativeOwnShell_ShowsOnlyWhenNoPredictionFlewOrFinished()
     {
         RenderMortar local = new(1, 7, false, 42, default, default);
         RenderMortar remote = local with { OwnerId = 8 };
         RenderMortar deflected = local with { Deflected = true };
+        HashSet<int> none = new();
+        HashSet<int> seq42 = new() { 42 };
 
-        Assert.False(MortarViewManager.ShouldRenderAuthoritative(local, 7, new HashSet<int> { 42 }));
-        Assert.True(MortarViewManager.ShouldRenderAuthoritative(local, 7, new HashSet<int>()));
-        Assert.True(MortarViewManager.ShouldRenderAuthoritative(remote, 7, new HashSet<int> { 42 }));
-        Assert.True(MortarViewManager.ShouldRenderAuthoritative(deflected, 7, new HashSet<int> { 42 }));
+        Assert.False(MortarViewManager.ShouldRenderAuthoritative(local, 7, seq42, none));
+        Assert.False(MortarViewManager.ShouldRenderAuthoritative(local, 7, none, seq42));
+        Assert.True(MortarViewManager.ShouldRenderAuthoritative(local, 7, none, none));
+        Assert.True(MortarViewManager.ShouldRenderAuthoritative(remote, 7, seq42, seq42));
+        Assert.True(MortarViewManager.ShouldRenderAuthoritative(deflected, 7, seq42, seq42));
     }
 }

@@ -21,17 +21,19 @@ public partial class MortarViewManager : Node2D
     private readonly HashSet<int> _seenPredicted = new();
     private readonly HashSet<long> _seenReplay = new();
 
-    public void SyncRemote(IReadOnlyList<RenderMortar> mortars)
+    public void SyncRemote(IReadOnlyList<RenderMortar> mortars, IReadOnlySet<int> completedSeqs)
     {
         int localId = Multiplayer.GetUniqueId();
         _seenRemote.Clear();
         foreach (RenderMortar m in mortars)
         {
-            // Own shells are already on screen as predicted copies, except a
-            // deflected one: nobody predicted that trajectory, so the
-            // authoritative copy is the only one there is. Same once the
-            // prediction is retired and the server still has the shell.
-            if (!ShouldRenderAuthoritative(m, localId, _seenPredicted))
+            // Own shells are already on screen as predicted copies, and the
+            // authoritative copy trails by a full round trip: once the owner
+            // has watched the shot end, the late copy stays hidden too or it
+            // ghosts down the tail of the arc. A deflected shell is the
+            // exception: nobody predicted that trajectory, so the
+            // authoritative copy is the only one there is.
+            if (!ShouldRenderAuthoritative(m, localId, _seenPredicted, completedSeqs))
                 continue;
             _seenRemote.Add(m.Id);
             Place(_remote, m.Id, new Vector2(m.Position.X, m.Position.Y), m.Velocity,
@@ -41,8 +43,9 @@ public partial class MortarViewManager : Node2D
     }
 
     internal static bool ShouldRenderAuthoritative(in RenderMortar mortar, int localId,
-        IReadOnlySet<int> predictedSeqs) =>
-        mortar.OwnerId != localId || mortar.Deflected || !predictedSeqs.Contains(mortar.SpawnSeq);
+        IReadOnlySet<int> predictedSeqs, IReadOnlySet<int> completedSeqs) =>
+        mortar.OwnerId != localId || mortar.Deflected ||
+        (!predictedSeqs.Contains(mortar.SpawnSeq) && !completedSeqs.Contains(mortar.SpawnSeq));
 
     /// <summary>Own shells, rendered from prediction (keyed by the input seq that fired).</summary>
     public void SyncPredicted(IReadOnlyList<(int SpawnSeq, MortarState Shell)> shells)

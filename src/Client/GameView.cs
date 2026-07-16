@@ -154,9 +154,11 @@ public partial class GameView : Node2D
 
     private void RetireEndedMortar(ushort id)
     {
-        if (_remoteMortars.TryEnd(id, out MortarState state) &&
-            state.FiredBy == Multiplayer.GetUniqueId())
-            _localPlayer.RetireShell(state.SpawnSeq);
+        if (!_remoteMortars.TryEnd(id, out MortarState state) ||
+            state.FiredBy != Multiplayer.GetUniqueId())
+            return;
+        _localPlayer.RetireShell(state.SpawnSeq);
+        _localPlayer.ForgetCompleted(state.SpawnSeq);
     }
 
     private void OnMortarCorrection(MortarCorrectionMsg msg)
@@ -224,7 +226,7 @@ public partial class GameView : Node2D
         IReadOnlyList<RenderMortar> remoteMortars = _remoteMortars.Render();
         IReadOnlyList<(int SpawnSeq, MortarState Shell)> predictedMortars = _localPlayer.Shells;
         _mortars.SyncPredicted(predictedMortars);
-        _mortars.SyncRemote(remoteMortars);
+        _mortars.SyncRemote(remoteMortars, _localPlayer.CompletedShells);
 
         _finalKillReplay.Record(
             RenderTick,

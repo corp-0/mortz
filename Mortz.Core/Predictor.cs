@@ -27,6 +27,7 @@ public sealed class Predictor
     private readonly List<(int SpawnSeq, MortarState Shell)> _shells = new();
     private readonly List<(int SpawnSeq, Vec2 Position)> _impacts = new();
     private readonly HashSet<int> _retired = new();
+    private readonly HashSet<int> _completed = new();
     private int _lastReconciledTick = -1;
     private PlayerState _state;
 
@@ -49,6 +50,15 @@ public sealed class Predictor
     /// identity across reconciles (same input, same shell).</summary>
     public IReadOnlyList<(int SpawnSeq, MortarState Shell)> Shells => _shells;
 
+    /// <summary>Shots whose ending the owner has already seen (predicted impact,
+    /// fizzle, or authoritative retire). The authoritative replica trails the
+    /// prediction by a full round trip, so the view keeps hiding these copies
+    /// until the server's End event clears them via ForgetCompleted.</summary>
+    public IReadOnlySet<int> CompletedShells => _completed;
+
+    /// <summary>The authoritative shell ended; its seq no longer needs hiding.</summary>
+    public void ForgetCompleted(int spawnSeq) => _completed.Remove(spawnSeq);
+
     /// <summary>
     /// Predicted terrain impacts since the last drain, for predicted carving.
     /// Replays can re-report a shell's impact, so consumers must dedupe by
@@ -69,6 +79,7 @@ public sealed class Predictor
         bool dropped = _shells.RemoveAll(s => s.SpawnSeq == spawnSeq) > 0;
         bool droppedImpact = _impacts.RemoveAll(i => i.SpawnSeq == spawnSeq) > 0;
         _retired.Add(spawnSeq);
+        _completed.Add(spawnSeq);
         return dropped || droppedImpact;
     }
 
@@ -113,6 +124,7 @@ public sealed class Predictor
             }
             if (outcome == MortarOutcome.Exploded)
                 _impacts.Add((seq, shell.Position));
+            _completed.Add(seq);
             shells.RemoveAt(i);
         }
     }

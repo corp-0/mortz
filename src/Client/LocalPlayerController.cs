@@ -105,6 +105,12 @@ public partial class LocalPlayerController : Node2D
     /// <summary>Retire one of our shells the server ended early; true if it was still flying.</summary>
     public bool RetireShell(int spawnSeq) => _predictor.RetireShell(spawnSeq);
 
+    /// <summary>Shots the owner already watched end; their late authoritative copies stay hidden.</summary>
+    public IReadOnlySet<int> CompletedShells => _predictor.CompletedShells;
+
+    /// <summary>The authoritative shell ended; its seq no longer needs hiding.</summary>
+    public void ForgetCompleted(int spawnSeq) => _predictor.ForgetCompleted(spawnSeq);
+
     /// <summary>True if a predicted shell for this seq is still live.</summary>
     public bool HasPredictedShell(int spawnSeq) => _predictor.HasShell(spawnSeq);
 
