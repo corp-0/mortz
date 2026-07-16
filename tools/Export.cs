@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 
 namespace Mortz.Tools;
 
@@ -28,12 +29,7 @@ internal static class Export
         }
 
         string root = Program.RepoRoot();
-        // Must match the editor version (Godots-managed install), or exports run
-        // on different templates than the project was built against.
-        string godot = Environment.GetEnvironmentVariable("GODOT_PATH")
-            ?? @"E:\filax\Godot\4.7.0\Godot_v4.7-stable_mono_win64_console.exe";
-        if (!File.Exists(godot))
-            throw new Exception($"Godot not found at {godot} (set GODOT_PATH to override)");
+        string godot = ResolveGodot(root);
 
         List<(string Name, string Dir, string Exe)> presets = new List<(string, string, string)>();
         if (preset is "client" or "all")
@@ -72,6 +68,57 @@ internal static class Export
         Console.WriteLine("done");
         if (presets.Any(p => p.Exe.EndsWith(".x86_64")))
             Console.WriteLine("note: exporting from Windows loses the executable bit; chmod +x the .x86_64 on the box");
+    }
+
+    /// <summary>
+    /// The editor has to match the SDK the project builds against, or the export
+    /// runs on different templates than the code was compiled for. A mismatched
+    /// editor also migrates Mortz.csproj down to its own version (backing the
+    /// original up as Mortz.csproj.old) and exits 0, so the downgrade is silent.
+    /// The csproj is the source of truth, which keeps a Godots upgrade to a
+    /// one-line edit there. GODOT_PATH overrides where to look, never which
+    /// version is acceptable.
+    /// </summary>
+    private static string ResolveGodot(string root)
+    {
+        string csproj = Path.Combine(root, "Mortz.csproj");
+        Match match = Regex.Match(File.ReadAllText(csproj), @"Sdk=""Godot\.NET\.Sdk/([\d.]+)""");
+        if (!match.Success)
+            throw new Exception($"no Godot.NET.Sdk version found in {csproj}");
+        string want = match.Groups[1].Value;
+
+        string godot = Environment.GetEnvironmentVariable("GODOT_PATH") ?? FindGodot(want);
+        if (!File.Exists(godot))
+            throw new Exception($"Godot not found at {godot} (set GODOT_PATH to override)");
+
+        string reported = RunCapture(godot, ["--version"]).Trim();
+        if (NormalizeVersion(reported) != NormalizeVersion(want))
+            throw new Exception($"{godot} reports {reported}, but Mortz.csproj builds against {want}");
+        return godot;
+    }
+
+    /// <summary>Godots installs each version in a directory named for it, with
+    /// the binary carrying a version string we don't want to reconstruct.</summary>
+    private static string FindGodot(string version)
+    {
+        string installs = Environment.GetEnvironmentVariable("GODOT_ROOT") ?? @"E:\filax\Godot";
+        string dir = Path.Combine(installs, version);
+        if (!Directory.Exists(dir))
+            throw new Exception($"no Godot {version} install under {installs} (set GODOT_PATH to override)");
+        string[] hits = Directory.GetFiles(dir, "*_console.exe");
+        if (hits.Length != 1)
+            throw new Exception($"expected one *_console.exe in {dir}, found {hits.Length}");
+        return hits[0];
+    }
+
+    /// <summary>Godot drops a zero patch from its version string ("4.7.stable.mono"),
+    /// the csproj SDK version never does. Compare as padded triples.</summary>
+    private static string NormalizeVersion(string version)
+    {
+        List<string> parts = Regex.Match(version, @"^\d+(\.\d+)*").Value.Split('.').ToList();
+        while (parts.Count < 3)
+            parts.Add("0");
+        return string.Join('.', parts);
     }
 
     /// <summary>
@@ -127,6 +174,19 @@ internal static class Export
             if (!Directory.EnumerateFileSystemEntries(subDir).Any())
                 Directory.Delete(subDir);
         }
+    }
+
+    private static string RunCapture(string exe, string[] args)
+    {
+        ProcessStartInfo psi = new ProcessStartInfo(exe) { UseShellExecute = false, RedirectStandardOutput = true };
+        foreach (string arg in args)
+            psi.ArgumentList.Add(arg);
+        using Process proc = Process.Start(psi)!;
+        string output = proc.StandardOutput.ReadToEnd();
+        proc.WaitForExit();
+        if (proc.ExitCode != 0)
+            throw new Exception($"{Path.GetFileName(exe)} {string.Join(' ', args)} failed (exit {proc.ExitCode})");
+        return output;
     }
 
     private static void RunProcess(string exe, string[] args)
