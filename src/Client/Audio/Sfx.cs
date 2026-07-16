@@ -25,10 +25,10 @@ public readonly struct SfxHandle
 /// drops the sound if there is none.</summary>
 public partial class Sfx : Node
 {
-    private const int FLAT_PREWARM = 8;
-    private const int FLAT_CAP = 16;
-    private const int SPATIAL_PREWARM = 32;
-    private const int SPATIAL_CAP = 160;
+    internal const int FLAT_PREWARM = 8;
+    internal const int FLAT_CAP = 16;
+    internal const int SPATIAL_PREWARM = 32;
+    internal const int SPATIAL_CAP = 160;
 
     private sealed class Voice
     {

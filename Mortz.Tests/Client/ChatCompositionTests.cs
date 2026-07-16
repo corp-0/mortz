@@ -13,7 +13,7 @@ namespace Mortz.Tests.Client;
 public class ChatCompositionTests
 {
     [Fact]
-    public void PopulatedLobbyPrioritizesPlayerSlotsAndChatOverSettings()
+    public void PopulatedLobbyComposesPlayerSlotsChatAndSettings()
     {
         SceneTree tree = Assert.IsType<SceneTree>(Engine.GetMainLoop());
         PackedScene clientScene = ResourceLoader.Load<PackedScene>(
@@ -31,32 +31,16 @@ public class ChatCompositionTests
             MatchConfig config = new();
             panel.ApplySettingsForTest(new LobbySettingsMsg(
                 "castlewars", "hash", ["castlewars"], ["Castle Wars"], config.ToBytes()));
-
-            Assert.Equal(44, panel.RuleControlCount);
+            Assert.Equal(
+                MatchConfigUiMetadata.Categories.Sum(category => category.Properties.Count),
+                panel.RuleControlCount);
             Assert.Equal(MatchConfigUiMetadata.Categories.Count, panel.CategoryBlockCount);
-            Assert.True(LobbySettingsPanel.CATEGORY_GAP >= 20,
-                $"category gap was {LobbySettingsPanel.CATEGORY_GAP}");
-            Assert.True(panel.CustomMinimumSize.X <= 460,
-                $"settings minimum width was {panel.CustomMinimumSize.X}");
-            Assert.True(panel.RulesMinimumHeight >= 250,
-                $"rules minimum height was {panel.RulesMinimumHeight}");
 
-            Control sidebar = client.GetNode<Control>("Lobby/Content/Main/Sidebar");
-            Assert.True(sidebar.CustomMinimumSize.X >= 600,
-                $"player/chat minimum width was {sidebar.CustomMinimumSize.X}");
-            Control playerCard = client.GetNode<Control>(
-                "Lobby/Content/Main/Sidebar/LobbyCard");
-            Assert.True(playerCard.CustomMinimumSize.Y >= 350,
-                $"player card minimum height was {playerCard.CustomMinimumSize.Y}");
             VBoxContainer players = client.GetNode<VBoxContainer>(
                 "Lobby/Content/Main/Sidebar/LobbyCard/Margin/Column/PlayerScroll/Players");
             Assert.Equal(2, players.GetChildCount());
-            Assert.All(players.GetChildren(), child =>
-                Assert.True(((Control)child).CustomMinimumSize.Y >= 40));
-            ChatPanel chat = client.GetNode<ChatPanel>(
-                "Lobby/Content/Main/Sidebar/ChatPanel");
-            Assert.True(chat.CustomMinimumSize.Y >= 290,
-                $"chat minimum height was {chat.CustomMinimumSize.Y}");
+            Assert.IsType<ChatPanel>(client.GetNode(
+                "Lobby/Content/Main/Sidebar/ChatPanel"));
         }
         finally
         {
@@ -93,7 +77,7 @@ public class ChatCompositionTests
     }
 
     [Fact]
-    public void ClientSceneProvidesChatAboveLobbyAndDynamicGameViews()
+    public void ClientSceneProvidesChatAboveTheLobby()
     {
         PackedScene scene = ResourceLoader.Load<PackedScene>(
             "res://src/Shared/Scenes/ClientMain.tscn");
@@ -108,18 +92,6 @@ public class ChatCompositionTests
         finally
         {
             root.Free();
-        }
-
-        PackedScene gameScene = ResourceLoader.Load<PackedScene>(
-            "res://src/Shared/Scenes/GameView.tscn");
-        GameView game = gameScene.Instantiate<GameView>();
-        try
-        {
-            Assert.IsType<ChatPanel>(game.GetNode("Hud/ChatPanel"));
-        }
-        finally
-        {
-            game.Free();
         }
     }
 

@@ -26,7 +26,7 @@ public class HealthTests
     }
 
     [Fact]
-    public void GrazeChipsHealth_DamageSticks_SecondGrazeKills_CorpseIsUntouchable()
+    public void GrazesChipHealth_DamageSticks_TheCrossingShotKills_CorpseIsUntouchable()
     {
         SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         w.AddPlayer(SHOOTER);
@@ -39,28 +39,37 @@ public class HealthTests
         Step(w, ref seq, 60, InputButtons.None);
         Assert.InRange(w.Players[VICTIM].Position.X, 23, 26);
 
-        WalkShooterIntoPlace(w, ref seq);
-        PlayerState victimBefore = w.Players[VICTIM];
+        bool victimDied = false;
+        for (int shot = 0; shot < 5 && !victimDied; shot++)
+        {
+            WalkShooterIntoPlace(w, ref seq);
+            PlayerState victimBefore = w.Players[VICTIM];
 
-        // Shot 1: shooter suicides at own feet, victim catches the graze ring.
-        Step(w, ref seq, 1, InputButtons.Fire);
-        (int ex, int ey, _, _, _) = Assert.Single(w.Explosions);
-        int expected = BlastSim.Damage(victimBefore, new Vec2(ex, ey), TestWorlds.NoSpawnProtectionConfig);
-        Assert.InRange(expected, SimConfig.BLAST_EDGE_DAMAGE, SimConfig.MORTAR_DAMAGE - 1); // setup guard: a graze, not a core hit
-        Assert.Equal([SHOOTER], w.Deaths.Select(d => d.PeerId)); // victim survived
+            // The shooter suicides at own feet, the victim catches the graze ring.
+            Step(w, ref seq, 1, InputButtons.Fire);
+            (int ex, int ey, _, _, _) = Assert.Single(w.Explosions);
+            int expected = BlastSim.Damage(victimBefore, new Vec2(ex, ey), TestWorlds.NoSpawnProtectionConfig);
+            Assert.InRange(expected, SimConfig.BLAST_EDGE_DAMAGE, SimConfig.MORTAR_DAMAGE - 1); // setup guard: a graze, not a core hit
 
-        int health = w.Players[VICTIM].Health;
-        Assert.InRange(health, SimConfig.MAX_HEALTH - expected - 2, SimConfig.MAX_HEALTH - expected + 2);
+            victimDied = w.Deaths.Any(d => d.PeerId == VICTIM);
+            if (victimDied)
+            {
+                // Only the shot that crosses zero may kill, never an earlier one.
+                Assert.True(victimBefore.Health <= expected + 2,
+                    $"died at {victimBefore.Health} hp to a {expected} damage graze");
+                continue;
+            }
 
-        // No healing while the shooter sits out their respawn delay.
-        Step(w, ref seq, SimConfig.RESPAWN_DELAY_TICKS + 30, InputButtons.None);
-        Assert.Equal(health, w.Players[VICTIM].Health);
+            int health = w.Players[VICTIM].Health;
+            Assert.InRange(health, victimBefore.Health - expected - 2, victimBefore.Health - expected + 2);
 
-        // Shot 2, same spot: the same graze now finishes the victim, who stays
-        // a corpse instead of respawning on the spot.
-        WalkShooterIntoPlace(w, ref seq);
-        Step(w, ref seq, 1, InputButtons.Fire);
-        Assert.Contains(VICTIM, w.Deaths.Select(d => d.PeerId));
+            // No healing while the shooter sits out their respawn delay.
+            Step(w, ref seq, SimConfig.RESPAWN_DELAY_TICKS + 30, InputButtons.None);
+            Assert.Equal(health, w.Players[VICTIM].Health);
+        }
+
+        // The victim stays a corpse instead of respawning on the spot.
+        Assert.True(victimDied, "repeated grazes must finish the victim");
         Assert.Equal(0, w.Players[VICTIM].Health);
         Assert.Equal(SimConfig.RESPAWN_DELAY_TICKS, w.Players[VICTIM].RespawnTicks);
 

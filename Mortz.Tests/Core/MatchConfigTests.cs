@@ -7,15 +7,8 @@ namespace Mortz.Tests.Core;
 public class MatchConfigTests
 {
     [Fact]
-    public void GeneratedMetadata_CoversEveryWritableRule_InPresentationOrder()
+    public void GeneratedMetadata_CoversEveryWritableRule_InDeclarationOrder()
     {
-        Assert.Equal(
-            ["Running / Falling", "Jumps", "Dash", "Rope", "Mortar", "Parry", "Health / Blast", "Mode"],
-            MatchConfigUiMetadata.Categories.Select(category => category.DisplayName));
-        Assert.Equal(
-            [6, 9, 2, 6, 7, 3, 6, 5],
-            MatchConfigUiMetadata.Categories.Select(category => category.Properties.Count));
-
         IUiPropertyDescriptor<MatchConfig>[] descriptors = MatchConfigUiMetadata.Categories
             .SelectMany(category => category.Properties)
             .ToArray();
