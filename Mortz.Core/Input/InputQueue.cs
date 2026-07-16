@@ -24,8 +24,8 @@ public sealed class InputQueue
     /// <summary>Overtaken buttons that merge into the applied input; weapon edges
     /// are excluded and ride the per-input <see cref="Consumed"/> list instead.</summary>
     private const InputButtons CARRIED_BUTTONS =
-        InputButtons.Left | InputButtons.Right | InputButtons.Jump | InputButtons.Dash |
-        InputButtons.Rope | InputButtons.Up | InputButtons.Down | InputButtons.Parry;
+        InputButtons.LEFT | InputButtons.RIGHT | InputButtons.JUMP | InputButtons.DASH |
+        InputButtons.ROPE | InputButtons.UP | InputButtons.DOWN | InputButtons.PARRY;
 
     private readonly SortedDictionary<int, PlayerInput> _pending = new();
     private PlayerInput _lastInput;
@@ -75,7 +75,7 @@ public sealed class InputQueue
     public PlayerInput Next()
     {
         _consumed.Clear();
-        _pressedButtons = InputButtons.None;
+        _pressedButtons = InputButtons.NONE;
         _carriedRopeAim = null;
 
         while (_pending.Count > MAX_PENDING)
@@ -94,7 +94,7 @@ public sealed class InputQueue
     {
         int seq = FirstPendingSeq();
         PlayerInput input = _pending[seq];
-        bool ropePressed = input.Rope && (_prevConsumedButtons & InputButtons.Rope) == 0;
+        bool ropePressed = input.Rope && (_prevConsumedButtons & InputButtons.ROPE) == 0;
         Consume(seq, input);
         _carriedButtons |= input.Buttons & CARRIED_BUTTONS;
         if (ropePressed && _carriedRopeAim == null)
@@ -118,7 +118,7 @@ public sealed class InputQueue
         Consume(seq, input);
         _rawLastInput = input;
         _lastInput = new PlayerInput(input.Buttons | _carriedButtons, _carriedRopeAim ?? input.Aim);
-        _carriedButtons = InputButtons.None;
+        _carriedButtons = InputButtons.NONE;
         LastAppliedSeq = seq;
     }
 
@@ -126,7 +126,7 @@ public sealed class InputQueue
     {
         _consumed.Add((seq, input));
         _pressedButtons |= input.Buttons & ~_prevConsumedButtons;
-        if (input.Fire && (_prevConsumedButtons & InputButtons.Fire) == 0)
+        if (input.Fire && (_prevConsumedButtons & InputButtons.FIRE) == 0)
             FireSeq = seq;
         _prevConsumedButtons = input.Buttons;
     }

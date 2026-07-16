@@ -1,4 +1,5 @@
 using Mortz.Client;
+using Mortz.Client.Session;
 using Xunit;
 
 namespace Mortz.Tests.Client;
@@ -27,8 +28,8 @@ public class ClientConnectionAttemptTests
         ConnectionFailure first = attempt.Failed();
         ConnectionFailure duplicate = attempt.Failed();
 
-        Assert.Equal(ConnectionFailureAction.Retry, first.Action);
-        Assert.Equal(ConnectionFailureAction.Ignore, duplicate.Action);
+        Assert.Equal(ConnectionFailureAction.RETRY, first.Action);
+        Assert.Equal(ConnectionFailureAction.IGNORE, duplicate.Action);
     }
 
     [Fact]
@@ -41,6 +42,6 @@ public class ClientConnectionAttemptTests
 
         ConnectionFailure exhausted = attempt.Failed();
 
-        Assert.Equal(ConnectionFailureAction.Failed, exhausted.Action);
+        Assert.Equal(ConnectionFailureAction.FAILED, exhausted.Action);
     }
 }

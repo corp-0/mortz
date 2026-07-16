@@ -1,6 +1,6 @@
 using Godot;
 
-namespace Mortz.Client;
+namespace Mortz.Client.Audio;
 
 public enum SoundPriority
 {

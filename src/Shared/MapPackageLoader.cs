@@ -1,7 +1,6 @@
 using System.Collections.Immutable;
 using Godot;
 using Mortz.Content;
-using Mortz.Core;
 using Mortz.Core.Sim;
 using Mortz.Core.Terrain;
 
@@ -11,7 +10,7 @@ public sealed record MapPackageLoadResult(
     MapPackage? Package,
     IReadOnlyList<ContentDiagnostic> Diagnostics)
 {
-    public bool HasErrors => Diagnostics.Any(d => d.Severity == ContentDiagnosticSeverity.Error);
+    public bool HasErrors => Diagnostics.Any(d => d.Severity == ContentDiagnosticSeverity.ERROR);
 }
 
 /// <summary>Decodes a map's bytes into Godot images and a terrain mask. PNGs
@@ -105,5 +104,5 @@ public static class MapPackageLoader
             destructible: (x, y) => destructible.GetPixel(x, y).A > 0.5f);
 
     private static void Error(List<ContentDiagnostic> diagnostics, string source, string message) =>
-        diagnostics.Add(new ContentDiagnostic(ContentDiagnosticSeverity.Error, source, message));
+        diagnostics.Add(new ContentDiagnostic(ContentDiagnosticSeverity.ERROR, source, message));
 }

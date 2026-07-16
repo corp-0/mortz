@@ -1,6 +1,6 @@
 [gd_scene format=3]
 
-[ext_resource type="Script" path="res://src/Client/MainMenu.cs" id="1_menu"]
+[ext_resource type="Script" path="res://src/Client/Menus/MainMenu.cs" id="1_menu"]
 
 [node name="MainMenu" type="CenterContainer" node_paths=PackedStringArray("_homePanel", "_joinPanel", "_hostPanel", "_joinNameEdit", "_addressEdit", "_hostNameEdit", "_portEdit", "_adminPasswordEdit", "_status")]
 anchors_preset = 15

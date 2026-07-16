@@ -100,11 +100,11 @@ internal static class SnapshotWire
             writer.Write(player.ParryCooldown);
             writer.Write((ushort)player.PrevButtons);
         }
-        if (player.Rope != RopeMode.None)
+        if (player.Rope != RopeMode.NONE)
             WriteVec(writer, player.RopePoint);
-        if (player.Rope == RopeMode.Flying)
+        if (player.Rope == RopeMode.FLYING)
             WriteVec(writer, player.RopeVelocity);
-        if (player.Rope == RopeMode.Attached)
+        if (player.Rope == RopeMode.ATTACHED)
             writer.Write(Quantize(player.RopeLength));
     }
 
@@ -160,11 +160,11 @@ internal static class SnapshotWire
             player.ParryCooldown = reader.ReadUInt16();
             player.PrevButtons = (InputButtons)reader.ReadUInt16();
         }
-        if (player.Rope != RopeMode.None)
+        if (player.Rope != RopeMode.NONE)
             player.RopePoint = ReadVec(reader);
-        if (player.Rope == RopeMode.Flying)
+        if (player.Rope == RopeMode.FLYING)
             player.RopeVelocity = ReadVec(reader);
-        if (player.Rope == RopeMode.Attached)
+        if (player.Rope == RopeMode.ATTACHED)
             player.RopeLength = reader.ReadInt16() / 4f;
         return player;
     }

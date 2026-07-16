@@ -2,6 +2,6 @@ namespace Mortz.Core.Terrain;
 
 public enum TerrainSyncEncoding : byte
 {
-    RemovedBitmap = 0,
-    CarveLog = 1,
+    REMOVED_BITMAP = 0,
+    CARVE_LOG = 1,
 }

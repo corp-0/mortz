@@ -7,16 +7,16 @@ namespace Mortz.Core.Sim;
 /// </summary>
 public readonly record struct PlayerInput(InputButtons Buttons, byte Aim = 0)
 {
-    public bool Left => (Buttons & InputButtons.Left) != 0;
-    public bool Right => (Buttons & InputButtons.Right) != 0;
-    public bool Jump => (Buttons & InputButtons.Jump) != 0;
-    public bool Dash => (Buttons & InputButtons.Dash) != 0;
-    public bool Rope => (Buttons & InputButtons.Rope) != 0;
-    public bool Up => (Buttons & InputButtons.Up) != 0;
-    public bool Down => (Buttons & InputButtons.Down) != 0;
-    public bool Fire => (Buttons & InputButtons.Fire) != 0;
-    public bool Reload => (Buttons & InputButtons.Reload) != 0;
-    public bool Parry => (Buttons & InputButtons.Parry) != 0;
+    public bool Left => (Buttons & InputButtons.LEFT) != 0;
+    public bool Right => (Buttons & InputButtons.RIGHT) != 0;
+    public bool Jump => (Buttons & InputButtons.JUMP) != 0;
+    public bool Dash => (Buttons & InputButtons.DASH) != 0;
+    public bool Rope => (Buttons & InputButtons.ROPE) != 0;
+    public bool Up => (Buttons & InputButtons.UP) != 0;
+    public bool Down => (Buttons & InputButtons.DOWN) != 0;
+    public bool Fire => (Buttons & InputButtons.FIRE) != 0;
+    public bool Reload => (Buttons & InputButtons.RELOAD) != 0;
+    public bool Parry => (Buttons & InputButtons.PARRY) != 0;
 
     /// <summary>-1, 0 or +1 horizontal drive.</summary>
     public float MoveDir => (Right ? 1f : 0f) - (Left ? 1f : 0f);

@@ -1,6 +1,6 @@
 using Godot;
 using Mortz.Client;
-using Mortz.Core;
+using Mortz.Client.Views;
 using Mortz.Core.Replication;
 using Xunit;
 
@@ -20,8 +20,8 @@ public class PlayerViewTransitionsTests
         PlayerViewTransition nextShell = PlayerViewTransitions.Between(
             State(ammo: 1, reload: 1), State(ammo: 2, reload: 30), isLocal: true);
 
-        Assert.True(started.HasFlag(PlayerViewTransition.ShellReloadStarted));
-        Assert.True(nextShell.HasFlag(PlayerViewTransition.ShellReloadStarted));
+        Assert.True(started.HasFlag(PlayerViewTransition.SHELL_RELOAD_STARTED));
+        Assert.True(nextShell.HasFlag(PlayerViewTransition.SHELL_RELOAD_STARTED));
     }
 
     [Fact]
@@ -30,7 +30,7 @@ public class PlayerViewTransitionsTests
         PlayerViewTransition transition = PlayerViewTransitions.Between(
             State(ammo: 1, reload: 30), State(ammo: 1, reload: 29), isLocal: true);
 
-        Assert.False(transition.HasFlag(PlayerViewTransition.ShellReloadStarted));
+        Assert.False(transition.HasFlag(PlayerViewTransition.SHELL_RELOAD_STARTED));
     }
 
     [Theory]
@@ -46,7 +46,7 @@ public class PlayerViewTransitionsTests
         PlayerViewTransition transition = PlayerViewTransitions.Between(
             previous, next, isLocal: true);
 
-        Assert.True(transition.HasFlag(PlayerViewTransition.ReloadStopped));
+        Assert.True(transition.HasFlag(PlayerViewTransition.RELOAD_STOPPED));
     }
 
     [Fact]
@@ -57,8 +57,8 @@ public class PlayerViewTransitionsTests
         PlayerViewTransition remote = PlayerViewTransitions.Between(
             State(dash: 10), State(dash: 12), isLocal: false);
 
-        Assert.False(local.HasFlag(PlayerViewTransition.Dashed));
-        Assert.True(remote.HasFlag(PlayerViewTransition.Dashed));
+        Assert.False(local.HasFlag(PlayerViewTransition.DASHED));
+        Assert.True(remote.HasFlag(PlayerViewTransition.DASHED));
     }
 
     [Theory]

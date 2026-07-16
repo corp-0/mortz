@@ -1,5 +1,6 @@
 using Godot;
-using Mortz.Core;
+using Mortz.Client.Match;
+using Mortz.Client.Views;
 using Mortz.Core.Sim;
 using Mortz.Shared;
 
@@ -36,10 +37,10 @@ public partial class LagProbes : Node
         const int CYCLE = 5 * SimConfig.TICK_RATE;
         int phase = seq % CYCLE;
         if (phase >= SimConfig.TICK_RATE / 2)
-            return InputButtons.None;
+            return InputButtons.NONE;
         if (phase == 0)
             GD.Print($"[probe] press unix={Time.GetUnixTimeFromSystem():F3}");
-        return (seq / CYCLE) % 2 == 0 ? InputButtons.Right : InputButtons.Left;
+        return (seq / CYCLE) % 2 == 0 ? InputButtons.RIGHT : InputButtons.LEFT;
     }
 
     /// <summary>Logs when a remote player's rendered position first moves

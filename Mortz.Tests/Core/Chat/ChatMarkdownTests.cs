@@ -35,7 +35,7 @@ public class ChatMarkdownTests
         Assert.True(ChatTextSanitizer.TrySanitize("[b] hello [/b]", out string text,
             out ChatRejectReason reason));
         Assert.Equal("hello", text);
-        Assert.Equal(ChatRejectReason.None, reason);
+        Assert.Equal(ChatRejectReason.NONE, reason);
         Assert.False(ChatTextSanitizer.TrySanitize("[b][/b]", out _, out _));
     }
 

@@ -122,12 +122,12 @@ public sealed class Predictor
         {
             (int seq, MortarState shell) = shells[i];
             MortarOutcome outcome = MortarSim.Tick(ref shell, _terrain, _cfg, SimConfig.DT);
-            if (outcome == MortarOutcome.Flying)
+            if (outcome == MortarOutcome.FLYING)
             {
                 shells[i] = (seq, shell);
                 continue;
             }
-            if (outcome == MortarOutcome.Exploded)
+            if (outcome == MortarOutcome.EXPLODED)
                 _impacts.Add((seq, shell.Position));
             _completed.Add(seq);
             shells.RemoveAt(i);

@@ -1,7 +1,6 @@
 using System.Collections.Immutable;
 using Godot;
 using Mortz.Content;
-using Mortz.Core;
 using Mortz.Core.Sim;
 using Mortz.Core.Terrain;
 
@@ -33,7 +32,7 @@ public sealed class MapPackage
         MapPackageLoadResult result = MapPackageLoader.Load(mapId, contentRoot);
         foreach (ContentDiagnostic diagnostic in result.Diagnostics)
         {
-            if (diagnostic.Severity == ContentDiagnosticSeverity.Error)
+            if (diagnostic.Severity == ContentDiagnosticSeverity.ERROR)
                 GD.PrintErr($"[content] {diagnostic}");
             else
                 GD.PushWarning($"[content] {diagnostic}");

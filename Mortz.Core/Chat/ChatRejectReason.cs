@@ -2,9 +2,9 @@ namespace Mortz.Core.Chat;
 
 public enum ChatRejectReason
 {
-    None,
-    Empty,
-    TooLong,
-    Command,
-    RateLimited,
+    NONE,
+    EMPTY,
+    TOO_LONG,
+    COMMAND,
+    RATE_LIMITED,
 }

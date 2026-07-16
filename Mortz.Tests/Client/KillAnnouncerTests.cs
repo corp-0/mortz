@@ -1,4 +1,5 @@
 using Mortz.Client;
+using Mortz.Client.Audio;
 using Mortz.Core.Net.Messages;
 using Xunit;
 

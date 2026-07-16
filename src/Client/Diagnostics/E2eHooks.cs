@@ -1,5 +1,5 @@
 using Godot;
-using Mortz.Core;
+using Mortz.Client.Match;
 using Mortz.Core.Net.Messages;
 using Mortz.Core.Replication;
 using Mortz.Core.Sim;
@@ -35,7 +35,7 @@ public partial class E2eHooks : Node
         MatchEndMsg.Received += LogMatchEnd;
         if (CmdArgs.HasFlag("--test-fire"))
         {
-            _localPlayer.ButtonFilter = (_, buttons) => buttons | InputButtons.Fire;
+            _localPlayer.ButtonFilter = (_, buttons) => buttons | InputButtons.FIRE;
             _localPlayer.AimOverride = 64; // straight down: point-blank floor shots
         }
         if (CmdArgs.HasFlag("--test-carve"))
@@ -49,9 +49,9 @@ public partial class E2eHooks : Node
                 if (hunt)
                 {
                     buttons |= HuntMove();
-                    if (seq % 15 < 3) buttons |= InputButtons.Fire;     // ~4 shots/sec
+                    if (seq % 15 < 3) buttons |= InputButtons.FIRE;     // ~4 shots/sec
                 }
-                if (parry && seq % 40 < 3) buttons |= InputButtons.Parry; // raise the bubble often
+                if (parry && seq % 40 < 3) buttons |= InputButtons.PARRY; // raise the bubble often
                 return buttons;
             };
         if (hunt)
@@ -99,15 +99,15 @@ public partial class E2eHooks : Node
     private InputButtons HuntMove()
     {
         if (!_hasTarget)
-            return InputButtons.None;
+            return InputButtons.NONE;
         const float STANDOFF = 240f, BAND = 50f;
         float dx = _targetFeet.X - _localPlayer.State.Position.X;
         float adist = MathF.Abs(dx);
         if (adist > STANDOFF + BAND)
-            return dx > 0 ? InputButtons.Right : InputButtons.Left;  // approach
+            return dx > 0 ? InputButtons.RIGHT : InputButtons.LEFT;  // approach
         if (adist < STANDOFF - BAND)
-            return dx > 0 ? InputButtons.Left : InputButtons.Right;  // back off
-        return InputButtons.None;
+            return dx > 0 ? InputButtons.LEFT : InputButtons.RIGHT;  // back off
+        return InputButtons.NONE;
     }
 
     private static Vec2 BodyCenter(Vec2 feet) => feet with { Y = feet.Y - SimConfig.PLAYER_HALF_HEIGHT };
@@ -150,7 +150,7 @@ public partial class E2eHooks : Node
         for (int y = 0; y < _gameMap.Mask.Height; y++)
             for (int x = 0; x < _gameMap.Mask.Width; x++)
             {
-                if (_gameMap.Mask.Get(x, y) == TerrainMaterial.Destructible)
+                if (_gameMap.Mask.Get(x, y) == TerrainMaterial.DESTRUCTIBLE)
                 {
                     GD.Print($"[client] requesting test carve at ({x},{y})");
                     new DebugCarveMsg(x, y).SendToServer();

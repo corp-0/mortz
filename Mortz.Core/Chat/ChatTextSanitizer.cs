@@ -9,7 +9,7 @@ public static class ChatTextSanitizer
     public static bool TrySanitize(string? value, out string sanitized, out ChatRejectReason reason)
     {
         sanitized = "";
-        reason = ChatRejectReason.Empty;
+        reason = ChatRejectReason.EMPTY;
         string withoutBbCode = ChatMarkdown.StripBbCode(value);
         if (string.IsNullOrWhiteSpace(withoutBbCode))
             return false;
@@ -25,7 +25,7 @@ public static class ChatTextSanitizer
             utf8Bytes += rune.Utf8SequenceLength;
             if (utf8Bytes > NetConfig.MAX_CHAT_BYTES)
             {
-                reason = ChatRejectReason.TooLong;
+                reason = ChatRejectReason.TOO_LONG;
                 return false;
             }
             result.Append(rune);
@@ -37,10 +37,10 @@ public static class ChatTextSanitizer
         if (sanitized[0] == '/')
         {
             sanitized = "";
-            reason = ChatRejectReason.Command;
+            reason = ChatRejectReason.COMMAND;
             return false;
         }
-        reason = ChatRejectReason.None;
+        reason = ChatRejectReason.NONE;
         return true;
     }
 }

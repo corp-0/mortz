@@ -13,11 +13,11 @@ public sealed class Scoreboard
 
     public enum DeathKind
     {
-        Kill,
-        Fall,
-        Suicide,
-        TeamKill,
-        Uncredited,
+        KILL,
+        FALL,
+        SUICIDE,
+        TEAM_KILL,
+        UNCREDITED,
     }
 
     /// <summary>Id is a team id when ByTeam, a peer id otherwise.</summary>
@@ -36,7 +36,7 @@ public sealed class Scoreboard
         int Team2Kills,
         MatchWinner? Winner)
     {
-        public bool CreditedKill => Kind == DeathKind.Kill;
+        public bool CreditedKill => Kind == DeathKind.KILL;
     }
 
     private readonly MatchConfig _config;
@@ -70,27 +70,27 @@ public sealed class Scoreboard
         DeathKind kind;
         if (killerId == 0)
         {
-            kind = DeathKind.Fall;
+            kind = DeathKind.FALL;
             if (_config.SuicidePenalty)
                 AddKills(victimId, -1);
         }
         else if (killerId == victimId)
         {
-            kind = DeathKind.Suicide;
+            kind = DeathKind.SUICIDE;
             if (_config.SuicidePenalty)
                 AddKills(victimId, -1);
         }
         else if (!_rows.TryGetValue(killerId, out Row killer))
         {
-            kind = DeathKind.Uncredited;
+            kind = DeathKind.UNCREDITED;
         }
         else if (_config.Teams && killer.TeamId != 0 && killer.TeamId == victim.TeamId)
         {
-            kind = DeathKind.TeamKill;
+            kind = DeathKind.TEAM_KILL;
         }
         else
         {
-            kind = DeathKind.Kill;
+            kind = DeathKind.KILL;
             AddKills(killerId, +1);
         }
 
@@ -104,11 +104,6 @@ public sealed class Scoreboard
             TeamKills(2),
             CheckWinner());
     }
-
-    /// <summary>Compatibility convenience for callers interested only in the
-    /// win condition. New match orchestration should consume <see cref="ScoreDeath"/>.</summary>
-    public MatchWinner? RecordDeath(int victimId, int killerId) =>
-        ScoreDeath(victimId, killerId)?.Winner;
 
     /// <summary>Suicide penalties subtract from the team total too: the team
     /// score is the sum of what its members did, good and bad.</summary>

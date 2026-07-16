@@ -16,27 +16,27 @@ public static class RopeSim
         if (p.RopeCooldown > 0)
             p.RopeCooldown--;
 
-        bool ropePressed = input.Rope && (p.PrevButtons & InputButtons.Rope) == 0;
+        bool ropePressed = input.Rope && (p.PrevButtons & InputButtons.ROPE) == 0;
         if (ropePressed)
         {
-            if (p.Rope == RopeMode.None && p.RopeCooldown == 0)
+            if (p.Rope == RopeMode.NONE && p.RopeCooldown == 0)
                 Fire(ref p, input, stats);
-            else if (p.Rope == RopeMode.Flying)
+            else if (p.Rope == RopeMode.FLYING)
                 Miss(ref p, stats); // aborting the throw costs the same as whiffing it
-            else if (p.Rope == RopeMode.Attached)
+            else if (p.Rope == RopeMode.ATTACHED)
                 ReleaseAttached(ref p, stats);
         }
 
-        if (p.Rope == RopeMode.Flying)
+        if (p.Rope == RopeMode.FLYING)
             FlyHook(ref p, terrain, stats, dt);
 
-        if (p.Rope == RopeMode.Attached)
+        if (p.Rope == RopeMode.ATTACHED)
             ApplyPull(ref p, stats, dt);
     }
 
     private static void Fire(ref PlayerState p, PlayerInput input, PlayerStats stats)
     {
-        p.Rope = RopeMode.Flying;
+        p.Rope = RopeMode.FLYING;
         p.RopePoint = BodyCenter(p);
         p.RopeVelocity = input.AimDir * stats.RopeSpeed;
     }
@@ -56,7 +56,7 @@ public static class RopeSim
 
     private static void Clear(ref PlayerState p)
     {
-        p.Rope = RopeMode.None;
+        p.Rope = RopeMode.NONE;
         p.RopeVelocity = Vec2.Zero;
         p.RopeLength = 0;
     }
@@ -86,7 +86,7 @@ public static class RopeSim
 
     private static void Attach(ref PlayerState p)
     {
-        p.Rope = RopeMode.Attached;
+        p.Rope = RopeMode.ATTACHED;
         p.RopeVelocity = Vec2.Zero;
         p.RopeLength = MathF.Max(SimConfig.ROPE_MIN_LENGTH, (p.RopePoint - BodyCenter(p)).Length());
     }

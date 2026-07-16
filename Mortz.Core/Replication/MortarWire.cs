@@ -70,7 +70,7 @@ public static class MortarWire
             MortarState m = e.State;
             w.Write((byte)e.Kind);
             w.Write(m.Id);
-            if (e.Kind == SimWorld.MortarEventKind.End)
+            if (e.Kind == SimWorld.MortarEventKind.END)
                 continue;
             w.Write(m.OwnerId);
             w.Write(m.FiredBy);
@@ -101,10 +101,10 @@ public static class MortarWire
             for (int i = 0; i < count; i++)
             {
                 SimWorld.MortarEventKind kind = (SimWorld.MortarEventKind)r.ReadByte();
-                if (kind is < SimWorld.MortarEventKind.Spawn or > SimWorld.MortarEventKind.End)
+                if (kind is < SimWorld.MortarEventKind.SPAWN or > SimWorld.MortarEventKind.END)
                     return false;
                 MortarState state = new() { Id = r.ReadUInt16() };
-                if (kind != SimWorld.MortarEventKind.End)
+                if (kind != SimWorld.MortarEventKind.END)
                 {
                     state.OwnerId = r.ReadInt32();
                     state.FiredBy = r.ReadInt32();

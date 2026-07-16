@@ -1,7 +1,6 @@
 using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
-using Mortz.Core;
 using Mortz.Core.Admin;
 using Mortz.Core.Chat;
 using Mortz.Core.Net;
@@ -90,12 +89,12 @@ public partial class ServerChat : Node, IServerAdminAuthorizer
         }
 
         // No reply to rate-limited senders, otherwise spam amplifies traffic.
-        if (reason == ChatRejectReason.RateLimited)
+        if (reason == ChatRejectReason.RATE_LIMITED)
             return;
         string status = reason switch
         {
-            ChatRejectReason.Command => "Unknown or invalid command.",
-            ChatRejectReason.TooLong =>
+            ChatRejectReason.COMMAND => "Unknown or invalid command.",
+            ChatRejectReason.TOO_LONG =>
                 $"Messages are limited to {NetConfig.MAX_CHAT_BYTES} UTF-8 bytes.",
             _ => "Message is empty.",
         };

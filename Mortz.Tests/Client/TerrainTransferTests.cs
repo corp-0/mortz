@@ -1,5 +1,5 @@
 using Mortz.Client;
-using Mortz.Core;
+using Mortz.Client.Session;
 using Mortz.Core.Match;
 using Mortz.Core.Net.Messages;
 using Mortz.Core.Terrain;
@@ -11,7 +11,7 @@ public class TerrainTransferTests
 {
     private static WelcomeMsg Welcome(int bytes = 5, short chunks = 2, byte[]? config = null) =>
         new("map", "hash", config ?? new MatchConfig().ToBytes(),
-            (byte)TerrainSyncEncoding.CarveLog, 17, bytes, chunks);
+            (byte)TerrainSyncEncoding.CARVE_LOG, 17, bytes, chunks);
 
     [Fact]
     public void OutOfOrderChunksProduceTheDeclaredPayload()
@@ -21,8 +21,8 @@ public class TerrainTransferTests
         TerrainChunkResult second = transfer!.Accept(new TerrainChunkMsg(17, 1, 2, [4, 5]));
         TerrainChunkResult first = transfer.Accept(new TerrainChunkMsg(17, 0, 2, [1, 2, 3]));
 
-        Assert.Equal(TerrainChunkState.Waiting, second.State);
-        Assert.Equal(TerrainChunkState.Complete, first.State);
+        Assert.Equal(TerrainChunkState.WAITING, second.State);
+        Assert.Equal(TerrainChunkState.COMPLETE, first.State);
         Assert.Equal(new byte[] { 1, 2, 3, 4, 5 }, first.Data);
     }
 
@@ -32,9 +32,9 @@ public class TerrainTransferTests
         TerrainTransfer.TryCreate(Welcome(), out TerrainTransfer? transfer, out _);
         TerrainChunkMsg first = new(17, 0, 2, [1, 2, 3]);
 
-        Assert.Equal(TerrainChunkState.Waiting, transfer!.Accept(first).State);
-        Assert.Equal(TerrainChunkState.Ignored, transfer.Accept(first).State);
-        Assert.Equal(TerrainChunkState.Ignored,
+        Assert.Equal(TerrainChunkState.WAITING, transfer!.Accept(first).State);
+        Assert.Equal(TerrainChunkState.IGNORED, transfer.Accept(first).State);
+        Assert.Equal(TerrainChunkState.IGNORED,
             transfer.Accept(new TerrainChunkMsg(99, 1, 2, [4, 5])).State);
     }
 
@@ -46,7 +46,7 @@ public class TerrainTransferTests
 
         TerrainChunkResult result = transfer!.Accept(new TerrainChunkMsg(17, 0, 1, [1, 2, 3]));
 
-        Assert.Equal(TerrainChunkState.Rejected, result.State);
+        Assert.Equal(TerrainChunkState.REJECTED, result.State);
         Assert.Equal("Terrain sync length mismatch.", result.Error);
     }
 

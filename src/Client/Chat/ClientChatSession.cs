@@ -1,5 +1,4 @@
 using System.Security.Cryptography;
-using Mortz.Core;
 using Mortz.Core.Admin;
 using Mortz.Core.Chat;
 using Mortz.Core.Chat.Commands;
@@ -71,7 +70,7 @@ public sealed class ClientChatSession : IDisposable
 
         if (!ChatTextSanitizer.TrySanitize(input, out string text, out ChatRejectReason reason))
         {
-            string error = reason == ChatRejectReason.TooLong
+            string error = reason == ChatRejectReason.TOO_LONG
                 ? $"Messages are limited to {NetConfig.MAX_CHAT_BYTES} UTF-8 bytes."
                 : "Message is empty.";
             State.AddSystem(error, isPrivate: true);

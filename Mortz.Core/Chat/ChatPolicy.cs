@@ -12,7 +12,7 @@ public sealed class ChatPolicy
         if (!_limiter.Allow(peerId, nowMs))
         {
             sanitized = "";
-            reason = ChatRejectReason.RateLimited;
+            reason = ChatRejectReason.RATE_LIMITED;
             return false;
         }
         return ChatTextSanitizer.TrySanitize(value, out sanitized, out reason);

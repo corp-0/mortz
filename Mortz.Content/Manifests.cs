@@ -138,7 +138,7 @@ public static partial class ContentManifestReader
         {
             return new ContentReadResult<T>(null,
             [
-                new ContentDiagnostic(ContentDiagnosticSeverity.Error, path, exception.Message),
+                new ContentDiagnostic(ContentDiagnosticSeverity.ERROR, path, exception.Message),
             ]);
         }
     }
@@ -150,8 +150,8 @@ public static partial class ContentManifestReader
         {
             diagnostics.Add(new ContentDiagnostic(
                 diagnostic.Kind == DiagnosticMessageKind.Error
-                    ? ContentDiagnosticSeverity.Error
-                    : ContentDiagnosticSeverity.Warning,
+                    ? ContentDiagnosticSeverity.ERROR
+                    : ContentDiagnosticSeverity.WARNING,
                 source,
                 diagnostic.Message));
         }
@@ -163,7 +163,7 @@ public static partial class ContentManifestReader
     {
         foreach (string key in table.Keys.Where(key => !known.Contains(key)).Order(StringComparer.Ordinal))
         {
-            diagnostics.Add(new ContentDiagnostic(ContentDiagnosticSeverity.Warning, source,
+            diagnostics.Add(new ContentDiagnostic(ContentDiagnosticSeverity.WARNING, source,
                 $"unknown key '{key}'"));
         }
     }
@@ -223,7 +223,7 @@ public static partial class ContentManifestReader
             foreach (string key in entry.Keys.Where(key => key is not "x" and not "y")
                          .Order(StringComparer.Ordinal))
             {
-                diagnostics.Add(new ContentDiagnostic(ContentDiagnosticSeverity.Warning, source,
+                diagnostics.Add(new ContentDiagnostic(ContentDiagnosticSeverity.WARNING, source,
                     $"unknown key 'spawn_points[{i}].{key}'"));
             }
 
@@ -308,10 +308,10 @@ public static partial class ContentManifestReader
     }
 
     private static bool IsError(ContentDiagnostic diagnostic) =>
-        diagnostic.Severity == ContentDiagnosticSeverity.Error;
+        diagnostic.Severity == ContentDiagnosticSeverity.ERROR;
 
     private static void Error(List<ContentDiagnostic> diagnostics, string source, string message) =>
-        diagnostics.Add(new ContentDiagnostic(ContentDiagnosticSeverity.Error, source, message));
+        diagnostics.Add(new ContentDiagnostic(ContentDiagnosticSeverity.ERROR, source, message));
 
     [GeneratedRegex("^[a-z0-9][a-z0-9_-]*$", RegexOptions.CultureInvariant)]
     private static partial Regex LogicalIdPattern();

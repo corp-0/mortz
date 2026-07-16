@@ -1,4 +1,3 @@
-using Mortz.Core;
 using Mortz.Core.Terrain;
 
 namespace Mortz.Server;
@@ -27,5 +26,5 @@ internal sealed class TerrainHistory
 
     public TerrainSyncPayload Build(TerrainMask terrain) => _logComplete
         ? TerrainSync.Build(terrain, _carves)
-        : new TerrainSyncPayload(TerrainSyncEncoding.RemovedBitmap, terrain.SerializeRemoved());
+        : new TerrainSyncPayload(TerrainSyncEncoding.REMOVED_BITMAP, terrain.SerializeRemoved());
 }

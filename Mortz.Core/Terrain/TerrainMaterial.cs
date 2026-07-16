@@ -2,7 +2,7 @@ namespace Mortz.Core.Terrain;
 
 public enum TerrainMaterial : byte
 {
-    Empty = 0,
-    Solid = 1,        // collides, indestructible
-    Destructible = 2, // collides, carvable
+    EMPTY = 0,
+    SOLID = 1,        // collides, indestructible
+    DESTRUCTIBLE = 2, // collides, carvable
 }

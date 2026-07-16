@@ -2,8 +2,8 @@ namespace Mortz.Content;
 
 public enum ContentDiagnosticSeverity
 {
-    Warning,
-    Error,
+    WARNING,
+    ERROR,
 }
 
 public sealed record ContentDiagnostic(
@@ -24,5 +24,5 @@ public sealed class ContentReadResult<T> where T : class
 
     public T? Value { get; }
     public IReadOnlyList<ContentDiagnostic> Diagnostics { get; }
-    public bool HasErrors => Diagnostics.Any(d => d.Severity == ContentDiagnosticSeverity.Error);
+    public bool HasErrors => Diagnostics.Any(d => d.Severity == ContentDiagnosticSeverity.ERROR);
 }

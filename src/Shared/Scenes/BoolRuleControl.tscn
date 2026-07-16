@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://cvkiettp7gns3"]
 
-[ext_resource type="Script" uid="uid://bvtbiclgwb4na" path="res://src/Client/BoolRuleControl.cs" id="1"]
+[ext_resource type="Script" uid="uid://bvtbiclgwb4na" path="res://src/Client/Menus/BoolRuleControl.cs" id="1"]
 
 [node name="BoolRuleControl" type="HBoxContainer" unique_id=213650560 node_paths=PackedStringArray("_label", "_value")]
 custom_minimum_size = Vector2(0, 34)

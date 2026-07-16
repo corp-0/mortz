@@ -14,7 +14,13 @@ namespace Mortz.Core.Sim;
 /// </summary>
 public sealed class SimWorld
 {
-    public enum MortarEventKind : byte { Spawn, Deflect, End }
+    public enum MortarEventKind : byte
+    {
+        SPAWN,
+        DEFLECT,
+        END,
+    }
+
     public readonly record struct MortarEvent(MortarEventKind Kind, MortarState State);
 
     public int Tick { get; private set; }
@@ -220,10 +226,10 @@ public sealed class SimWorld
             MortarState retired = _mortars[0];
             _mortars.RemoveAt(0);
             _forcedMortarExplosions.Add(retired);
-            _mortarEvents.Add(new MortarEvent(MortarEventKind.End, retired));
+            _mortarEvents.Add(new MortarEvent(MortarEventKind.END, retired));
         }
         _mortars.Add(mortar);
-        _mortarEvents.Add(new MortarEvent(MortarEventKind.Spawn, mortar));
+        _mortarEvents.Add(new MortarEvent(MortarEventKind.SPAWN, mortar));
     }
 
     private void StepMortars()
@@ -232,19 +238,19 @@ public sealed class SimWorld
         {
             MortarState m = _mortars[i];
             MortarOutcome outcome = MortarSim.Tick(ref m, Terrain, Config, SimConfig.DT);
-            if (outcome == MortarOutcome.Flying)
+            if (outcome == MortarOutcome.FLYING)
                 TryDeflect(ref m);
-            if (outcome == MortarOutcome.Flying && DirectHit(m))
-                outcome = MortarOutcome.Exploded;
-            if (outcome == MortarOutcome.Flying)
+            if (outcome == MortarOutcome.FLYING && DirectHit(m))
+                outcome = MortarOutcome.EXPLODED;
+            if (outcome == MortarOutcome.FLYING)
             {
                 _mortars[i] = m;
                 continue;
             }
-            if (outcome == MortarOutcome.Exploded)
+            if (outcome == MortarOutcome.EXPLODED)
                 Explode(m);
             _mortars.RemoveAt(i);
-            _mortarEvents.Add(new MortarEvent(MortarEventKind.End, m));
+            _mortarEvents.Add(new MortarEvent(MortarEventKind.END, m));
         }
     }
 
@@ -273,7 +279,7 @@ public sealed class SimWorld
                 _shellRetirements.Add((m.FiredBy, m.SpawnSeq));
             m.OwnerId = id;
             m.Deflected = true;
-            _mortarEvents.Add(new MortarEvent(MortarEventKind.Deflect, m));
+            _mortarEvents.Add(new MortarEvent(MortarEventKind.DEFLECT, m));
             _players[id] = p with { ParryCooldown = 0 };
             return;
         }
@@ -352,7 +358,7 @@ public sealed class SimWorld
     {
         Velocity = Vec2.Zero,
         Health = 0,
-        Rope = RopeMode.None,
+        Rope = RopeMode.NONE,
         RespawnTicks = (byte)Config.RespawnDelayTicks,
         SpawnImmunityTicks = 0,
     };

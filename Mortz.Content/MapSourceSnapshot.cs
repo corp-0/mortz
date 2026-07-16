@@ -60,7 +60,7 @@ public sealed class MapSourceSnapshot
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException
                                            or DecoderFallbackException)
         {
-            diagnostics.Add(new ContentDiagnostic(ContentDiagnosticSeverity.Error,
+            diagnostics.Add(new ContentDiagnostic(ContentDiagnosticSeverity.ERROR,
                 definition.DirectoryPath, $"cannot read map package: {exception.Message}"));
             return new ContentReadResult<MapSourceSnapshot>(null, diagnostics);
         }

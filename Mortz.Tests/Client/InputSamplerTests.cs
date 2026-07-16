@@ -1,6 +1,6 @@
 using Mortz.Client;
 using Mortz.Client.Chat;
-using Mortz.Core;
+using Mortz.Client.Match;
 using Mortz.Core.Sim;
 using Xunit;
 
@@ -15,7 +15,7 @@ public class InputSamplerTests
         ChatInputGuard.SetTyping(owner, true);
         try
         {
-            Assert.Equal(InputButtons.None, InputSampler.Sample());
+            Assert.Equal(InputButtons.NONE, InputSampler.Sample());
         }
         finally
         {

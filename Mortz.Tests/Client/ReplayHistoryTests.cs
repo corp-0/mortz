@@ -1,6 +1,7 @@
 using Godot;
 using Mortz.Client;
-using Mortz.Core;
+using Mortz.Client.Replay;
+using Mortz.Client.Views;
 using Mortz.Core.Sim;
 using Xunit;
 

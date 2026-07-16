@@ -11,9 +11,9 @@ namespace Mortz.Core.Input;
 public static class InputPacket
 {
     private const int BYTES_PER_INPUT = sizeof(ushort) + sizeof(byte);
-    private const InputButtons DEFINED_BUTTONS = InputButtons.Left | InputButtons.Right |
-        InputButtons.Jump | InputButtons.Dash | InputButtons.Rope | InputButtons.Up |
-        InputButtons.Down | InputButtons.Fire | InputButtons.Reload | InputButtons.Parry;
+    private const InputButtons DEFINED_BUTTONS = InputButtons.LEFT | InputButtons.RIGHT |
+        InputButtons.JUMP | InputButtons.DASH | InputButtons.ROPE | InputButtons.UP |
+        InputButtons.DOWN | InputButtons.FIRE | InputButtons.RELOAD | InputButtons.PARRY;
 
     public static byte[] Encode(IReadOnlyList<(int Seq, PlayerInput Input)> inputs)
     {

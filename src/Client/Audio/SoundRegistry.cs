@@ -1,6 +1,6 @@
 using Godot;
 
-namespace Mortz.Client;
+namespace Mortz.Client.Audio;
 
 [GlobalClass]
 public partial class SoundRegistry : Resource

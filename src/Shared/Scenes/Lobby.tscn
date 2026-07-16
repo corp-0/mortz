@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://lccou7q7borc"]
 
-[ext_resource type="Script" uid="uid://dcji6fesaw34y" path="res://src/Client/Lobby.cs" id="1_lobby"]
+[ext_resource type="Script" uid="uid://dcji6fesaw34y" path="res://src/Client/Menus/Lobby.cs" id="1_lobby"]
 [ext_resource type="PackedScene" uid="uid://ciqycdoqosx85" path="res://src/Shared/Scenes/ChatPanel.tscn" id="2_chat"]
 [ext_resource type="PackedScene" uid="uid://d4e5uxg8yueq" path="res://src/Shared/Scenes/LobbySettingsPanel.tscn" id="3_settings"]
 

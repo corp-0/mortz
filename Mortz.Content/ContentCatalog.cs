@@ -33,7 +33,7 @@ public sealed class ContentCatalogResult
 
     public ContentCatalog? Catalog { get; }
     public IReadOnlyList<ContentDiagnostic> Diagnostics { get; }
-    public bool HasErrors => Diagnostics.Any(d => d.Severity == ContentDiagnosticSeverity.Error);
+    public bool HasErrors => Diagnostics.Any(d => d.Severity == ContentDiagnosticSeverity.ERROR);
 }
 
 public sealed class ContentCatalog
@@ -165,5 +165,5 @@ public sealed class ContentCatalog
     }
 
     private static void Error(List<ContentDiagnostic> diagnostics, string source, string message) =>
-        diagnostics.Add(new ContentDiagnostic(ContentDiagnosticSeverity.Error, source, message));
+        diagnostics.Add(new ContentDiagnostic(ContentDiagnosticSeverity.ERROR, source, message));
 }

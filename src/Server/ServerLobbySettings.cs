@@ -3,7 +3,6 @@ using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
 using Mortz.Content;
-using Mortz.Core;
 using Mortz.Core.Admin;
 using Mortz.Core.Match;
 using Mortz.Core.Net;
@@ -84,7 +83,7 @@ public partial class ServerLobbySettings : Node, IServerLobbySettings
         ContentCatalogResult result = ContentCatalog.Load(Host.ContentRootPath);
         foreach (ContentDiagnostic diagnostic in result.Diagnostics)
         {
-            if (diagnostic.Severity == ContentDiagnosticSeverity.Error)
+            if (diagnostic.Severity == ContentDiagnosticSeverity.ERROR)
                 GD.PrintErr($"[content] {diagnostic}");
             else
                 GD.PushWarning($"[content] {diagnostic}");

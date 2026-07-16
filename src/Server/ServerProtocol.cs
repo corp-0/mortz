@@ -1,5 +1,4 @@
 using Godot;
-using Mortz.Core;
 using Mortz.Core.Match;
 using Mortz.Core.Net;
 using Mortz.Core.Net.Messages;
@@ -73,7 +72,7 @@ internal sealed class ServerProtocol
     {
         // The world tick is intentionally frozen during VictoryLap. Do not let
         // the repeated value trigger periodic snapshot/correction broadcasts.
-        if (match.Stage == MatchStage.VictoryLap && frame.MatchEnded == null)
+        if (match.Stage == MatchStage.VICTORY_LAP && frame.MatchEnded == null)
             return;
 
         // Reliable ordering matters: clients arm effect suppression before the
@@ -154,9 +153,9 @@ internal sealed class ServerProtocol
         Scoreboard.DeathResult score = elimination.Score;
         EliminationFlags flags = score.Kind switch
         {
-            Scoreboard.DeathKind.Fall => EliminationFlags.SUICIDE | EliminationFlags.FALL,
-            Scoreboard.DeathKind.Suicide => EliminationFlags.SUICIDE,
-            Scoreboard.DeathKind.TeamKill => EliminationFlags.TEAM_KILL,
+            Scoreboard.DeathKind.FALL => EliminationFlags.SUICIDE | EliminationFlags.FALL,
+            Scoreboard.DeathKind.SUICIDE => EliminationFlags.SUICIDE,
+            Scoreboard.DeathKind.TEAM_KILL => EliminationFlags.TEAM_KILL,
             _ => EliminationFlags.NONE,
         };
         if (elimination.Owned)
@@ -164,7 +163,7 @@ internal sealed class ServerProtocol
         if (elimination.FirstBlood)
             flags |= EliminationFlags.FIRST_BLOOD;
 
-        bool suicide = score.Kind is Scoreboard.DeathKind.Fall or Scoreboard.DeathKind.Suicide;
+        bool suicide = score.Kind is Scoreboard.DeathKind.FALL or Scoreboard.DeathKind.SUICIDE;
         int killerKills = suicide ? score.Victim.Kills : score.Killer?.Kills ?? 0;
         new EliminationMsg(score.KillerId, score.VictimId, flags, killerKills,
             score.Victim.Deaths, score.Team1Kills, score.Team2Kills).Broadcast();
@@ -205,7 +204,7 @@ internal sealed class ServerProtocol
         if (match.World.Mortars.Count == 0)
             return;
         SimWorld.MortarEvent[] spawns = match.World.Mortars
-            .Select(mortar => new SimWorld.MortarEvent(SimWorld.MortarEventKind.Spawn, mortar))
+            .Select(mortar => new SimWorld.MortarEvent(SimWorld.MortarEventKind.SPAWN, mortar))
             .ToArray();
         foreach (byte[] events in MortarWire.SerializeLifecycleBatches(match.World.Tick, spawns))
         {
@@ -244,9 +243,9 @@ internal sealed class ServerProtocol
         Scoreboard.DeathKind kind = finalKill.Elimination.Score.Kind;
         FinalKillFlags flags = kind switch
         {
-            Scoreboard.DeathKind.Fall => FinalKillFlags.FALL,
-            Scoreboard.DeathKind.Suicide => FinalKillFlags.SUICIDE,
-            Scoreboard.DeathKind.TeamKill => FinalKillFlags.TEAM_KILL,
+            Scoreboard.DeathKind.FALL => FinalKillFlags.FALL,
+            Scoreboard.DeathKind.SUICIDE => FinalKillFlags.SUICIDE,
+            Scoreboard.DeathKind.TEAM_KILL => FinalKillFlags.TEAM_KILL,
             _ => FinalKillFlags.NONE,
         };
         if (finalKill.Elimination.Owned)

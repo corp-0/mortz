@@ -1,7 +1,8 @@
 using Godot;
 using Mortz.Client;
 using Mortz.Client.Chat;
-using Mortz.Core;
+using Mortz.Client.Menus;
+using Mortz.Client.Session;
 using Mortz.Core.Match;
 using Mortz.Core.Net.Messages;
 using Mortz.Server;

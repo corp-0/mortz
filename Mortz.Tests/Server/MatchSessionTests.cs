@@ -1,4 +1,3 @@
-using Mortz.Core;
 using Mortz.Core.Match;
 using Mortz.Core.Sim;
 using Mortz.Core.Terrain;
@@ -72,7 +71,7 @@ public class MatchSessionTests
         ScoredElimination teamKill = match.ScoreDeath(new ServerDeath(3, default, 1, false))!.Value;
         ScoredElimination credited = match.ScoreDeath(new ServerDeath(2, default, 1, false))!.Value;
 
-        Assert.Equal(Scoreboard.DeathKind.TeamKill, teamKill.Score.Kind);
+        Assert.Equal(Scoreboard.DeathKind.TEAM_KILL, teamKill.Score.Kind);
         Assert.False(teamKill.FirstBlood);
         Assert.True(credited.FirstBlood);
     }
@@ -87,9 +86,9 @@ public class MatchSessionTests
         ScoredElimination winner = match.ScoreDeath(
             new ServerDeath(2, new Vec2(40, 50), 1, false))!.Value;
         Assert.NotNull(winner.Score.Winner);
-        Assert.Equal(MatchStage.VictoryLap, match.Stage);
+        Assert.Equal(MatchStage.VICTORY_LAP, match.Stage);
 
-        match.EnqueueInput(1, 0, new PlayerInput(InputButtons.Right, 0));
+        match.EnqueueInput(1, 0, new PlayerInput(InputButtons.RIGHT, 0));
         Assert.Equal(0, match.World.PendingInputs(1));
         Assert.Null(match.DebugCarve(20, 20));
 

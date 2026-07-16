@@ -1,6 +1,5 @@
 using Godot;
 using Mortz.Content;
-using Mortz.Core;
 using Mortz.Core.Match;
 using Mortz.Core.Sim;
 using Mortz.Shared;
@@ -19,7 +18,7 @@ public class BundledMapTests
         ContentCatalogResult result = ContentCatalog.Load(contentRoot);
         ContentCatalog catalog = Assert.IsType<ContentCatalog>(result.Catalog);
         Assert.DoesNotContain(result.Diagnostics,
-            diagnostic => diagnostic.Severity == ContentDiagnosticSeverity.Error);
+            diagnostic => diagnostic.Severity == ContentDiagnosticSeverity.ERROR);
         Assert.NotEmpty(catalog.Maps);
 
         foreach (string mapId in catalog.Maps.Keys.Order(StringComparer.Ordinal))

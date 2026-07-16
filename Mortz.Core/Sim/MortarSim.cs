@@ -13,7 +13,7 @@ public static class MortarSim
     public static MortarOutcome Tick(ref MortarState m, TerrainMask terrain, MatchConfig cfg, float dt)
     {
         if (++m.AgeTicks >= SimConfig.MORTAR_MAX_LIFETIME_TICKS)
-            return MortarOutcome.Exploded;
+            return MortarOutcome.EXPLODED;
 
         m.Velocity = m.Velocity with
         {
@@ -23,18 +23,18 @@ public static class MortarSim
         const float SUB_STEP = 4f;
         float distance = m.Velocity.Length() * dt;
         if (distance < 1e-3f)
-            return MortarOutcome.Flying;
+            return MortarOutcome.FLYING;
         Vec2 dir = m.Velocity * (dt / distance);
 
         for (float moved = 0; moved < distance; moved += SUB_STEP)
         {
             m.Position += dir * MathF.Min(SUB_STEP, distance - moved);
             if (terrain.IsSolid((int)m.Position.X, (int)m.Position.Y))
-                return MortarOutcome.Exploded;
+                return MortarOutcome.EXPLODED;
             if (OutOfPlay(m.Position, terrain))
-                return MortarOutcome.Exploded;
+                return MortarOutcome.EXPLODED;
         }
-        return MortarOutcome.Flying;
+        return MortarOutcome.FLYING;
     }
 
     /// <summary>Above the map the shell keeps flying (OOB is empty and gravity

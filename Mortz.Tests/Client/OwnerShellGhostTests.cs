@@ -1,5 +1,5 @@
 using Mortz.Client;
-using Mortz.Core;
+using Mortz.Client.Views;
 using Mortz.Core.Replication;
 using Mortz.Core.Sim;
 using Mortz.Core.Terrain;
@@ -51,7 +51,7 @@ public class OwnerShellGhostTests
         for (int t = 0; t < 400; t++)
         {
             // Client present time: predict input, fire once on the first tick.
-            PlayerInput input = new PlayerInput(t == 0 ? InputButtons.Fire : InputButtons.None, AIM_UP_LEFT);
+            PlayerInput input = new PlayerInput(t == 0 ? InputButtons.FIRE : InputButtons.NONE, AIM_UP_LEFT);
             int seq = predictor.NextSeq;
             predictor.LocalTick(input);
             toServer.Enqueue((t + ONE_WAY_TICKS, seq, input));
@@ -76,13 +76,13 @@ public class OwnerShellGhostTests
                 {
                     switch (e.Kind)
                     {
-                        case SimWorld.MortarEventKind.Spawn:
+                        case SimWorld.MortarEventKind.SPAWN:
                             replicas.Spawn(e.State, serverTick, serverTick);
                             break;
-                        case SimWorld.MortarEventKind.Deflect:
+                        case SimWorld.MortarEventKind.DEFLECT:
                             replicas.Deflect(e.State, serverTick, serverTick);
                             break;
-                        case SimWorld.MortarEventKind.End:
+                        case SimWorld.MortarEventKind.END:
                             // Mirrors GameView.RetireEndedMortar.
                             if (replicas.TryEnd(e.State.Id, out MortarState ended) &&
                                 ended.FiredBy == LOCAL_ID)

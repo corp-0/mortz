@@ -7,14 +7,14 @@ public interface IRichTextStyle
 
 public enum RichTextColor
 {
-    Black,
-    Blue,
-    Green,
-    Orange,
-    Purple,
-    Red,
-    White,
-    Yellow,
+    BLACK,
+    BLUE,
+    GREEN,
+    ORANGE,
+    PURPLE,
+    RED,
+    WHITE,
+    YELLOW,
 }
 
 public sealed class BoldStyle : IRichTextStyle

@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://bs35s8cifnvm2"]
 
-[ext_resource type="Script" uid="uid://bwuapxxik2ij0" path="res://src/Client/MortarView.cs" id="1_mortar"]
+[ext_resource type="Script" uid="uid://bwuapxxik2ij0" path="res://src/Client/Views/MortarView.cs" id="1_mortar"]
 [ext_resource type="Texture2D" uid="uid://dlrrd3ofcobcq" path="res://Assets/mortarthingy.png" id="2_2a848"]
 
 [sub_resource type="Curve" id="Curve_trail"]

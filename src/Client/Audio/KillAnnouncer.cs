@@ -1,7 +1,7 @@
 using Godot;
 using Mortz.Core.Net.Messages;
 
-namespace Mortz.Client;
+namespace Mortz.Client.Audio;
 
 public partial class KillAnnouncer : Node
 {

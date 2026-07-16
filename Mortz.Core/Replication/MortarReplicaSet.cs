@@ -84,7 +84,7 @@ public sealed class MortarReplicaSet
                 // End is authoritative. If local quantization reaches terrain a
                 // tick early, freeze at contact until End or the next correction
                 // instead of making the shell disappear permanently.
-                if (outcome != MortarOutcome.Flying)
+                if (outcome != MortarOutcome.FLYING)
                     _stopped.Add(id);
             }
             _states[id] = state;
@@ -102,7 +102,7 @@ public sealed class MortarReplicaSet
     private bool FastForward(ref MortarState state, int ticks)
     {
         for (int i = 0; i < ticks; i++)
-            if (MortarSim.Tick(ref state, _terrain, _config, SimConfig.DT) != MortarOutcome.Flying)
+            if (MortarSim.Tick(ref state, _terrain, _config, SimConfig.DT) != MortarOutcome.FLYING)
                 return false;
         return true;
     }

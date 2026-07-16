@@ -1,6 +1,7 @@
 using Godot;
+using Mortz.Client.Replay;
 
-namespace Mortz.Client;
+namespace Mortz.Client.Audio;
 
 public readonly struct SfxHandle
 {

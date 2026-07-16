@@ -24,7 +24,7 @@ public class ManifestTests
 
         Assert.Null(result.Value);
         ContentDiagnostic error = Assert.Single(result.Diagnostics);
-        Assert.Equal(ContentDiagnosticSeverity.Error, error.Severity);
+        Assert.Equal(ContentDiagnosticSeverity.ERROR, error.Severity);
         Assert.Equal("custom/map.toml", error.Source);
         Assert.Contains("unsupported format_version 2", error.Message, StringComparison.Ordinal);
     }
@@ -38,7 +38,7 @@ public class ManifestTests
         MapManifest manifest = Assert.IsType<MapManifest>(result.Value);
         Assert.Equal(4, manifest.SuggestedPlayers);
         ContentDiagnostic warning = Assert.Single(result.Diagnostics);
-        Assert.Equal(ContentDiagnosticSeverity.Warning, warning.Severity);
+        Assert.Equal(ContentDiagnosticSeverity.WARNING, warning.Severity);
         Assert.Contains("sugested_players", warning.Message, StringComparison.Ordinal);
     }
 

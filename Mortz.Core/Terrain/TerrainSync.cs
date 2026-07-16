@@ -15,11 +15,11 @@ public static class TerrainSync
     {
         byte[] bitmap = mask.SerializeRemoved();
         if (carves.Count > MAX_CARVES)
-            return new TerrainSyncPayload(TerrainSyncEncoding.RemovedBitmap, bitmap);
+            return new TerrainSyncPayload(TerrainSyncEncoding.REMOVED_BITMAP, bitmap);
         byte[] log = SerializeCarves(carves);
         return log.Length < bitmap.Length
-            ? new TerrainSyncPayload(TerrainSyncEncoding.CarveLog, log)
-            : new TerrainSyncPayload(TerrainSyncEncoding.RemovedBitmap, bitmap);
+            ? new TerrainSyncPayload(TerrainSyncEncoding.CARVE_LOG, log)
+            : new TerrainSyncPayload(TerrainSyncEncoding.REMOVED_BITMAP, bitmap);
     }
 
     public static byte[] SerializeCarves(IReadOnlyList<TerrainCarve> carves)
@@ -44,12 +44,12 @@ public static class TerrainSync
     public static void Apply(TerrainMask mask, TerrainSyncEncoding encoding, byte[] data,
         Action<int, int>? onRemoved = null)
     {
-        if (encoding == TerrainSyncEncoding.RemovedBitmap)
+        if (encoding == TerrainSyncEncoding.REMOVED_BITMAP)
         {
             mask.ApplyRemoved(data, onRemoved);
             return;
         }
-        if (encoding != TerrainSyncEncoding.CarveLog)
+        if (encoding != TerrainSyncEncoding.CARVE_LOG)
             throw new InvalidDataException($"Unknown terrain encoding {(byte)encoding}.");
 
         using DeflateStream deflate = new(new MemoryStream(data, writable: false), CompressionMode.Decompress);

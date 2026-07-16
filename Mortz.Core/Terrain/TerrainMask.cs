@@ -29,8 +29,8 @@ public sealed class TerrainMask
             for (int x = 0; x < width; x++)
             {
                 // Solid wins where layers overlap.
-                if (solid(x, y)) _cells[y * width + x] = TerrainMaterial.Solid;
-                else if (destructible(x, y)) _cells[y * width + x] = TerrainMaterial.Destructible;
+                if (solid(x, y)) _cells[y * width + x] = TerrainMaterial.SOLID;
+                else if (destructible(x, y)) _cells[y * width + x] = TerrainMaterial.DESTRUCTIBLE;
             }
         _original = (TerrainMaterial[])_cells.Clone();
     }
@@ -48,9 +48,9 @@ public sealed class TerrainMask
         (TerrainMaterial[])_cells.Clone(), (TerrainMaterial[])_original.Clone());
 
     public TerrainMaterial Get(int x, int y) =>
-        InBounds(x, y) ? _cells[y * Width + x] : TerrainMaterial.Empty;
+        InBounds(x, y) ? _cells[y * Width + x] : TerrainMaterial.EMPTY;
 
-    public bool IsSolid(int x, int y) => Get(x, y) != TerrainMaterial.Empty;
+    public bool IsSolid(int x, int y) => Get(x, y) != TerrainMaterial.EMPTY;
 
     /// <summary>Any solid cell in the pixel rect [minX,maxX) x [minY,maxY)?</summary>
     public bool RectSolid(float minX, float minY, float maxX, float maxY)
@@ -80,8 +80,8 @@ public sealed class TerrainMask
                 if (!InBounds(x, y)) continue;
                 int dx = x - cx, dy = y - cy;
                 if (dx * dx + dy * dy > r2) continue;
-                if (_cells[y * Width + x] != TerrainMaterial.Destructible) continue;
-                _cells[y * Width + x] = TerrainMaterial.Empty;
+                if (_cells[y * Width + x] != TerrainMaterial.DESTRUCTIBLE) continue;
+                _cells[y * Width + x] = TerrainMaterial.EMPTY;
                 removed.Add((x, y));
             }
         return removed;
@@ -95,8 +95,8 @@ public sealed class TerrainMask
         if (!InBounds(x, y))
             return;
         int i = y * Width + x;
-        if (_original[i] == TerrainMaterial.Destructible && _cells[i] == TerrainMaterial.Empty)
-            _cells[i] = TerrainMaterial.Destructible;
+        if (_original[i] == TerrainMaterial.DESTRUCTIBLE && _cells[i] == TerrainMaterial.EMPTY)
+            _cells[i] = TerrainMaterial.DESTRUCTIBLE;
     }
 
     /// <summary>
@@ -107,7 +107,7 @@ public sealed class TerrainMask
     {
         byte[] bits = new byte[(_cells.Length + 7) / 8];
         for (int i = 0; i < _cells.Length; i++)
-            if (_original[i] == TerrainMaterial.Destructible && _cells[i] == TerrainMaterial.Empty)
+            if (_original[i] == TerrainMaterial.DESTRUCTIBLE && _cells[i] == TerrainMaterial.EMPTY)
                 bits[i / 8] |= (byte)(1 << (i % 8));
 
         using MemoryStream ms = new MemoryStream();
@@ -126,8 +126,8 @@ public sealed class TerrainMask
         for (int i = 0; i < _cells.Length; i++)
         {
             if ((bits[i / 8] & (1 << (i % 8))) == 0) continue;
-            if (_cells[i] != TerrainMaterial.Destructible) continue;
-            _cells[i] = TerrainMaterial.Empty;
+            if (_cells[i] != TerrainMaterial.DESTRUCTIBLE) continue;
+            _cells[i] = TerrainMaterial.EMPTY;
             onRemoved?.Invoke(i % Width, i / Width);
         }
     }

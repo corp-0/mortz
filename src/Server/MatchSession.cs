@@ -1,4 +1,3 @@
-using Mortz.Core;
 using Mortz.Core.Match;
 using Mortz.Core.Sim;
 using Mortz.Core.Terrain;
@@ -7,8 +6,8 @@ namespace Mortz.Server;
 
 internal enum MatchStage
 {
-    Playing,
-    VictoryLap,
+    PLAYING,
+    VICTORY_LAP,
 }
 
 internal readonly record struct ServerExplosion(
@@ -49,7 +48,7 @@ internal sealed class MatchSession
     public SimWorld World { get; }
     public Scoreboard Scores { get; }
     public TerrainHistory TerrainHistory { get; } = new();
-    public MatchStage Stage { get; private set; } = MatchStage.Playing;
+    public MatchStage Stage { get; private set; } = MatchStage.PLAYING;
     public Scoreboard.MatchWinner? Winner { get; private set; }
     public FinalKillEvent? FinalKill { get; private set; }
     public MatchConfig Config => World.Config;
@@ -78,13 +77,13 @@ internal sealed class MatchSession
 
     public void EnqueueInput(int peerId, int seq, PlayerInput input)
     {
-        if (Stage == MatchStage.Playing)
+        if (Stage == MatchStage.PLAYING)
             World.EnqueueInput(peerId, seq, input);
     }
 
     public MatchFrame Step()
     {
-        if (Stage == MatchStage.VictoryLap)
+        if (Stage == MatchStage.VICTORY_LAP)
         {
             bool returnToLobby = --_ticksUntilLobby <= 0;
             return new MatchFrame(
@@ -134,7 +133,7 @@ internal sealed class MatchSession
 
     internal ScoredElimination? ScoreDeath(ServerDeath death)
     {
-        if (Stage != MatchStage.Playing)
+        if (Stage != MatchStage.PLAYING)
             return null;
         Scoreboard.DeathResult? score = Scores.ScoreDeath(death.PeerId, death.KillerId);
         if (score is not { } result)
@@ -145,7 +144,7 @@ internal sealed class MatchSession
             _firstBlood.TryClaim(result.CreditedKill));
         if (result.Winner is { } winner)
         {
-            Stage = MatchStage.VictoryLap;
+            Stage = MatchStage.VICTORY_LAP;
             Winner = winner;
             _ticksUntilLobby = _victoryLapTicks;
         }
@@ -154,7 +153,7 @@ internal sealed class MatchSession
 
     public ServerExplosion? DebugCarve(int x, int y)
     {
-        if (Stage != MatchStage.Playing)
+        if (Stage != MatchStage.PLAYING)
             return null;
         List<(int X, int Y)> removed = World.Terrain.CarveCircle(x, y, SimConfig.DEBUG_CARVE_RADIUS);
         if (removed.Count == 0)

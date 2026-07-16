@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://pb6yifh4403o"]
 
-[ext_resource type="Script" path="res://src/Client/GameMap.cs" id="1_gmap"]
-[ext_resource type="Script" path="res://src/Client/BloodOverlay.cs" id="2_blood"]
+[ext_resource type="Script" path="res://src/Client/Match/GameMap.cs" id="1_gmap"]
+[ext_resource type="Script" path="res://src/Client/Match/BloodOverlay.cs" id="2_blood"]
 
 [node name="GameMap" type="Node2D" node_paths=PackedStringArray("_background", "_solid", "_destructible", "_replayTerrain", "_blood") unique_id=597678534]
 script = ExtResource("1_gmap")

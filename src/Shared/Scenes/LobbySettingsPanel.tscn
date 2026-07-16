@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://d4e5uxg8yueq"]
 
-[ext_resource type="Script" uid="uid://ccv87mfb0uwoq" path="res://src/Client/LobbySettingsPanel.cs" id="1"]
+[ext_resource type="Script" uid="uid://ccv87mfb0uwoq" path="res://src/Client/Menus/LobbySettingsPanel.cs" id="1"]
 [ext_resource type="PackedScene" uid="uid://cvkiettp7gns3" path="res://src/Shared/Scenes/BoolRuleControl.tscn" id="2"]
 [ext_resource type="PackedScene" path="res://src/Shared/Scenes/IntRuleControl.tscn" id="3"]
 [ext_resource type="PackedScene" path="res://src/Shared/Scenes/FloatRuleControl.tscn" id="4"]
