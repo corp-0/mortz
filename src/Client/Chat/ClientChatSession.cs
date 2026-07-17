@@ -13,7 +13,6 @@ namespace Mortz.Client.Chat;
 public sealed class ClientChatSession : IDisposable
 {
     private readonly ChatCommandRegistry<ClientChatSession> _commands = new();
-    private readonly Dictionary<long, string> _names = new();
     private byte[]? _pendingPasswordKey;
     private byte[]? _pendingAdminKey;
     private byte[]? _adminKey;
@@ -35,10 +34,6 @@ public sealed class ClientChatSession : IDisposable
         ChatLineMsg.Received += OnChatLine;
         AdminChallengeMsg.Received += OnAdminChallenge;
         AdminStateMsg.Received += OnAdminState;
-        LobbyStateMsg.Received += OnLobbyState;
-        RosterMsg.Received += OnRoster;
-        EliminationMsg.Received += OnElimination;
-        MatchEndMsg.Received += OnMatchEnd;
         _subscribed = true;
     }
 
@@ -46,7 +41,6 @@ public sealed class ClientChatSession : IDisposable
     {
         ClearSecrets();
         _localPeerId = 0;
-        _names.Clear();
         State.Clear();
     }
 
@@ -99,7 +93,6 @@ public sealed class ClientChatSession : IDisposable
         bool changed = IsAdmin;
         ClearSecrets();
         _localPeerId = 0;
-        _names.Clear();
         State.Clear();
         if (changed)
             AdminChanged?.Invoke(false);
@@ -112,10 +105,6 @@ public sealed class ClientChatSession : IDisposable
             ChatLineMsg.Received -= OnChatLine;
             AdminChallengeMsg.Received -= OnAdminChallenge;
             AdminStateMsg.Received -= OnAdminState;
-            LobbyStateMsg.Received -= OnLobbyState;
-            RosterMsg.Received -= OnRoster;
-            EliminationMsg.Received -= OnElimination;
-            MatchEndMsg.Received -= OnMatchEnd;
             _subscribed = false;
         }
         End();
@@ -198,31 +187,6 @@ public sealed class ClientChatSession : IDisposable
         if (wasAdmin != IsAdmin)
             AdminChanged?.Invoke(IsAdmin);
     }
-
-    private void OnLobbyState(LobbyStateMsg message) =>
-        UpdateNames(message.PeerIds, message.Names);
-
-    private void OnRoster(RosterMsg message) => UpdateNames(message.PeerIds, message.Names);
-
-    private void OnElimination(EliminationMsg message) =>
-        State.AddSystem(EliminationText.Format(message, Name));
-
-    private void OnMatchEnd(MatchEndMsg message)
-    {
-        string winner = message.ByTeam ? $"Team {message.WinnerId}" : Name(message.WinnerId);
-        State.AddSystem($"{winner} wins!");
-    }
-
-    private void UpdateNames(long[] peerIds, string[] names)
-    {
-        _names.Clear();
-        int count = Math.Min(peerIds.Length, names.Length);
-        for (int i = 0; i < count; i++)
-            _names[peerIds[i]] = names[i];
-    }
-
-    private string Name(long peerId) =>
-        _names.TryGetValue(peerId, out string? name) ? name : $"Player {peerId}";
 
     private void ClearSecrets()
     {

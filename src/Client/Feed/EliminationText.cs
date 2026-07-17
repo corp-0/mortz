@@ -1,6 +1,6 @@
 using Mortz.Core.Net.Messages;
 
-namespace Mortz.Client.Chat;
+namespace Mortz.Client.Feed;
 
 public static class EliminationText
 {

@@ -5,6 +5,7 @@ using Mortz.Client.Menus;
 using Mortz.Client.Session;
 using Mortz.Client.Setup;
 using Mortz.Core.Match;
+using Mortz.Core.Net;
 using Mortz.Core.Net.Messages;
 using Mortz.Server;
 using Mortz.Server.Chat;
@@ -99,6 +100,33 @@ public class ChatCompositionTests
         Assert.Equal(Image.Format.Rgba8, map.Solid.GetFormat()); // untouched shared image
         Assert.Equal(map.Width, preview.GetWidth());
         Assert.Equal(map.Height, preview.GetHeight());
+    }
+
+    [Fact]
+    public void KillFeedLinesLandInChatWithResolvedNames()
+    {
+        SceneTree tree = Assert.IsType<SceneTree>(Engine.GetMainLoop());
+        PackedScene clientScene = ResourceLoader.Load<PackedScene>(
+            "res://src/Shared/Scenes/ClientMain.tscn");
+        ClientMain client = clientScene.Instantiate<ClientMain>();
+        tree.Root.AddChild(client);
+        NetTransport.SendDelegate original = NetTransport.Send;
+        NetTransport.Send = (id, payload, _, _) =>
+            Assert.True(NetRegistry.Dispatch(id, 1, payload, isServer: false));
+        try
+        {
+            new RosterMsg([1, 2], ["Alice", "Bob"], [0, 0], [0, 0], [0, 1]).Broadcast();
+            new EliminationMsg(1, 2, EliminationFlags.NONE, 1, 1, 0, 0).Broadcast();
+
+            ClientChat chat = client.GetNode<ClientChat>("ClientChat");
+            Assert.Contains(chat.State.Entries, entry => entry.Text == "Alice killed Bob");
+        }
+        finally
+        {
+            NetTransport.Send = original;
+            tree.Root.RemoveChild(client);
+            client.Free();
+        }
     }
 
     [Fact]

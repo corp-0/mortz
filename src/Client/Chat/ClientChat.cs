@@ -1,4 +1,5 @@
 using Godot;
+using Mortz.Client.Feed;
 using Mortz.Core.Chat;
 using Mortz.Core.Chat.Commands;
 using Mortz.Net;
@@ -9,6 +10,9 @@ namespace Mortz.Client.Chat;
 /// connection lifecycle. Provides <see cref="IClientChat"/> to descendant scenes.</summary>
 public partial class ClientChat : Node, IClientChat
 {
+    // Chat displays the kill feed alongside its own lines; the feed itself
+    // stays a separate service with its own subscribers.
+    [Export] private KillFeed _killFeed = null!;
     private readonly ClientChatSession _session = new();
 
     public ChatState State => _session.State;
@@ -24,6 +28,7 @@ public partial class ClientChat : Node, IClientChat
     public override void _Ready()
     {
         _session.Subscribe();
+        _killFeed.LineAdded += OnKillFeedLine;
         NetworkManager network = NetworkManager.Instance;
         network.Connected += OnConnected;
         network.ConnectionFailed += OnSessionEnded;
@@ -33,6 +38,7 @@ public partial class ClientChat : Node, IClientChat
 
     public override void _ExitTree()
     {
+        _killFeed.LineAdded -= OnKillFeedLine;
         NetworkManager network = NetworkManager.Instance;
         network.Connected -= OnConnected;
         network.ConnectionFailed -= OnSessionEnded;
@@ -54,4 +60,6 @@ public partial class ClientChat : Node, IClientChat
     }
 
     private void OnSessionEnded() => _session.End();
+
+    private void OnKillFeedLine(string line) => _session.State.AddSystem(line);
 }
