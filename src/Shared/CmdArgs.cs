@@ -16,8 +16,10 @@ public static class CmdArgs
     public static bool HasFlag(IEnumerable<string> args, string flag)
     {
         foreach (string a in args)
+        {
             if (a == flag)
                 return true;
+        }
         return false;
     }
 
@@ -28,8 +30,10 @@ public static class CmdArgs
     public static string? GetValue(IReadOnlyList<string> args, string flag)
     {
         for (int i = 0; i < args.Count - 1; i++)
+        {
             if (args[i] == flag)
                 return args[i + 1];
+        }
         return null;
     }
 

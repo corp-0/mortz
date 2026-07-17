@@ -23,7 +23,9 @@ public class MovementTests
     private static PlayerState TickN(PlayerState p, PlayerInput input, TerrainMask world, int n)
     {
         for (int i = 0; i < n; i++)
+        {
             p = PlayerSim.Tick(p, input, world, _stats);
+        }
         return p;
     }
 
@@ -65,7 +67,9 @@ public class MovementTests
         PlayerState p = Grounded() with { Position = new Vec2(200, 200) };
         PlayerInput right = new PlayerInput(InputButtons.RIGHT);
         for (int i = 0; i < 2 * SimConfig.TICK_RATE && p.Grounded; i++)
+        {
             p = PlayerSim.Tick(p, right, world, _stats);
+        }
         atExit = p;
         return p;
     }
@@ -96,7 +100,9 @@ public class MovementTests
         PlayerState p = RunOffLedge(world, out _);
 
         for (int i = 0; i < SimConfig.COYOTE_MAX_TICKS + 1; i++)
+        {
             p = PlayerSim.Tick(p, _idle, world, _stats);
+        }
         Assert.Equal(0, p.CoyoteTicks);
         Assert.Equal(SimConfig.TOTAL_JUMPS, p.JumpsLeft);
 

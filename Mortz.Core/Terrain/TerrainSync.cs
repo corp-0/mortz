@@ -63,7 +63,9 @@ public static class TerrainSync
             int y = r.ReadInt16();
             int radius = r.ReadByte();
             foreach ((int px, int py) in mask.CarveCircle(x, y, radius))
+            {
                 onRemoved?.Invoke(px, py);
+            }
         }
         if (deflate.ReadByte() != -1)
             throw new InvalidDataException("Trailing terrain carve data.");

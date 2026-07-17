@@ -102,8 +102,10 @@ public sealed class MortarReplicaSet
     private bool FastForward(ref MortarState state, int ticks)
     {
         for (int i = 0; i < ticks; i++)
+        {
             if (MortarSim.Tick(ref state, _terrain, _config, SimConfig.DT) != MortarOutcome.FLYING)
                 return false;
+        }
         return true;
     }
 

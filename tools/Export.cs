@@ -117,7 +117,9 @@ internal static class Export
     {
         List<string> parts = Regex.Match(version, @"^\d+(\.\d+)*").Value.Split('.').ToList();
         while (parts.Count < 3)
+        {
             parts.Add("0");
+        }
         return string.Join('.', parts);
     }
 
@@ -180,7 +182,9 @@ internal static class Export
     {
         ProcessStartInfo psi = new ProcessStartInfo(exe) { UseShellExecute = false, RedirectStandardOutput = true };
         foreach (string arg in args)
+        {
             psi.ArgumentList.Add(arg);
+        }
         using Process proc = Process.Start(psi)!;
         string output = proc.StandardOutput.ReadToEnd();
         proc.WaitForExit();
@@ -193,7 +197,9 @@ internal static class Export
     {
         ProcessStartInfo psi = new ProcessStartInfo(exe) { UseShellExecute = false };
         foreach (string arg in args)
+        {
             psi.ArgumentList.Add(arg);
+        }
         using Process proc = Process.Start(psi)!;
         proc.WaitForExit();
         if (proc.ExitCode != 0)

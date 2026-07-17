@@ -84,7 +84,9 @@ public partial class ChatPanel : PanelContainer
     {
         ClearLines();
         foreach (ChatEntry entry in Chat.State.Entries)
+        {
             AddLine(entry, animate: false);
+        }
         CallDeferred(MethodName.ScrollToBottom);
     }
 
@@ -114,7 +116,9 @@ public partial class ChatPanel : PanelContainer
                 ? RollLineLabel.Create(entry.SenderName, rolled, animate)
                 : BuildTextLine(entry));
         while (_lines.GetChildCount() > NetConfig.MAX_CHAT_HISTORY)
+        {
             _lines.GetChild(0).Free();
+        }
     }
 
     private static RichTextLabel BuildTextLine(ChatEntry entry)

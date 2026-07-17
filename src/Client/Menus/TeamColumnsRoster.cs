@@ -69,7 +69,9 @@ public partial class TeamColumnsRoster : ScrollContainer
         foreach (VBoxContainer column in columns)
         {
             foreach (Node child in column.GetChildren())
+            {
                 child.Free();
+            }
         }
         long localId = Multiplayer.GetUniqueId();
         byte localTeam = 0;

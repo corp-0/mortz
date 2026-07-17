@@ -187,7 +187,9 @@ public partial class GameMap : Node2D
 
         _activeReplayPixels = _recentCarves[index].Pixels;
         foreach ((Vector2 position, Color color) in _activeReplayPixels)
+        {
             _replayTerrainImage.SetPixel((int)position.X, (int)position.Y, color);
+        }
         _replayTerrainTexture.Update(_replayTerrainImage);
         _replayTerrain.Visible = true;
     }
@@ -202,7 +204,9 @@ public partial class GameMap : Node2D
         if (_activeReplayPixels.Count == 0)
             return;
         foreach ((Vector2 position, Color _) in _activeReplayPixels)
+        {
             _replayTerrainImage.SetPixel((int)position.X, (int)position.Y, _hole);
+        }
         _replayTerrainTexture.Update(_replayTerrainImage);
         _activeReplayPixels = [];
     }
@@ -226,12 +230,14 @@ public partial class GameMap : Node2D
     {
         int r2 = radius * radius;
         for (int py = y - radius; py <= y + radius; py++)
+        {
             for (int px = x - radius; px <= x + radius; px++)
             {
                 int dx = px - x, dy = py - y;
                 if (dx * dx + dy * dy <= r2 && !Mask.IsSolid(px, py))
                     _blood.Erase(px, py);
             }
+        }
     }
 
     /// <summary>

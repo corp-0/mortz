@@ -36,7 +36,9 @@ public class MortarTests
 
         // Held for 30 ticks: the press edge fires exactly once.
         for (int t = 0; t < 30; t++)
+        {
             StepWith(w, ref seq, InputButtons.FIRE, AIM_UP);
+        }
 
         Assert.Single(w.Mortars);
         Assert.Equal(1, w.Mortars[0].OwnerId);
@@ -85,11 +87,15 @@ public class MortarTests
 
         // Shells bank one per second until the magazine is full.
         for (int t = 0; t < SimConfig.MORTAR_RELOAD_TICKS; t++)
+        {
             StepWith(w, ref seq, InputButtons.NONE, AIM_UP_LEFT);
+        }
         Assert.Equal(1, w.Players[1].Ammo);
 
         for (int t = 0; t < 4 * SimConfig.MORTAR_RELOAD_TICKS; t++)
+        {
             StepWith(w, ref seq, InputButtons.NONE, AIM_UP_LEFT);
+        }
         Assert.Equal(SimConfig.MORTAR_MAX_AMMO, w.Players[1].Ammo);
         Assert.Equal(0, w.Players[1].ReloadTicks);
     }
@@ -106,7 +112,9 @@ public class MortarTests
         Assert.True(w.Players[1].ReloadTicks > 0);
 
         for (int t = 0; t < SimConfig.MORTAR_RELOAD_TICKS; t++)
+        {
             StepWith(w, ref seq, InputButtons.NONE, AIM_UP);
+        }
         Assert.Equal(SimConfig.MORTAR_MAX_AMMO, w.Players[1].Ammo);
         Assert.Equal(0, w.Players[1].ReloadTicks); // full: reload stopped
     }
@@ -142,7 +150,9 @@ public class MortarTests
 
         StepWith(w, ref seq, InputButtons.RELOAD, AIM_UP_LEFT);
         for (int t = 0; t < 2 * SimConfig.MORTAR_RELOAD_TICKS; t++)
+        {
             StepWith(w, ref seq, InputButtons.NONE, AIM_UP_LEFT);
+        }
         Assert.Equal(3, w.Players[1].Ammo); // 1 held + 2 banked
 
         StepWith(w, ref seq, InputButtons.FIRE, AIM_UP_LEFT);
@@ -151,13 +161,17 @@ public class MortarTests
 
         // No resume: nothing arrives on its own.
         for (int t = 0; t < 3 * SimConfig.MORTAR_RELOAD_TICKS; t++)
+        {
             StepWith(w, ref seq, InputButtons.NONE, AIM_UP_LEFT);
+        }
         Assert.Equal(2, w.Players[1].Ammo);
 
         // A new reload starts the shell in progress from zero and tops up.
         StepWith(w, ref seq, InputButtons.RELOAD, AIM_UP_LEFT);
         while (w.Players[1].ReloadTicks > 0)
+        {
             StepWith(w, ref seq, InputButtons.NONE, AIM_UP_LEFT);
+        }
         Assert.Equal(SimConfig.MORTAR_MAX_AMMO, w.Players[1].Ammo);
     }
 
@@ -172,7 +186,9 @@ public class MortarTests
         MortarState launched = w.Mortars[0];
 
         for (int t = 0; t < 3; t++)
+        {
             StepWith(w, ref seq, InputButtons.NONE, AIM_RIGHT);
+        }
 
         MortarState later = w.Mortars[0];
         Assert.True(later.Position.X > launched.Position.X, "keeps flying right");
@@ -212,7 +228,9 @@ public class MortarTests
 
         StepWith(w, ref seq, InputButtons.FIRE, AIM_DOWN);
         for (int t = 0; t < 5 && w.Mortars.Count > 0; t++)
+        {
             StepWith(w, ref seq, InputButtons.NONE, AIM_DOWN);
+        }
 
         Assert.Empty(w.Mortars);
         (int x, int y, _, _, _) = Assert.Single(w.Explosions);
@@ -287,7 +305,9 @@ public class MortarTests
         Assert.True(w.Players[1].RespawnTicks > 0, "gibbed bodies lie dead for a while");
 
         for (int t = 0; t < SimConfig.RESPAWN_DELAY_TICKS; t++)
+        {
             StepWith(w, ref seq, InputButtons.NONE, AIM_DOWN);
+        }
         Assert.Equal(SimConfig.MORTAR_MAX_AMMO, w.Players[1].Ammo); // fresh spawn, full mag
         // The crater ate the spawn column's floor, so FindSpawn falls back to
         // dropping the fresh body mid-air, well above the death spot.

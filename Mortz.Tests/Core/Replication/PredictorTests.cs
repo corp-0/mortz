@@ -85,9 +85,13 @@ public class PredictorTests
         void Observe()
         {
             foreach ((int seq, _) in predictor.Shells)
+            {
                 predictedShellSeqs.Add(seq);
+            }
             foreach ((int seq, _) in predictor.DrainImpacts())
+            {
                 predictedShellSeqs.Add(seq);
+            }
         }
 
         PlayerInput held = new PlayerInput(InputButtons.FIRE, 192); // fire held, aiming up
@@ -227,7 +231,9 @@ public class PredictorTests
 
             Assert.Equal(server.Mortars.Count, predictor.Shells.Count);
             for (int i = 0; i < server.Mortars.Count; i++)
+            {
                 Assert.Equal(server.Mortars[i].Position, predictor.Shells[i].Shell.Position);
+            }
         }
     }
 
@@ -313,7 +319,9 @@ public class PredictorTests
         predictor.Reconcile(spawn, -1);
 
         for (int t = 0; t < 30; t++)
+        {
             predictor.LocalTick(new PlayerInput(InputButtons.RIGHT));
+        }
 
         // Server acked every input but ended up back at spawn (e.g. the client
         // predicted through an obstacle it didn't know about).

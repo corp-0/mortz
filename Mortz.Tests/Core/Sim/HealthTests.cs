@@ -170,7 +170,9 @@ public class HealthTests
     private static void WalkBackupIntoPlace(SimWorld w, ref int seq)
     {
         for (int t = 0; t < 120 && w.Players[BACKUP].Position.X > 85; t++)
+        {
             Step(w, ref seq, 1, InputButtons.NONE, InputButtons.LEFT);
+        }
         Step(w, ref seq, 20, InputButtons.NONE);
         Assert.InRange(w.Players[BACKUP].Position.X, 45, 88);
     }

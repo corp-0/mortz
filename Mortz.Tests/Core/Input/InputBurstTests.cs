@@ -83,7 +83,9 @@ public class InputBurstTests
                 t == 10 ? InputButtons.FIRE : InputButtons.NONE, AIM_DOWN);
             predictor.LocalTick(input);
             foreach ((int seq, Vec2 _) in predictor.DrainImpacts())
+            {
                 predictedImpactSeqs.Add(seq);
+            }
 
             // Ticks 10-12 sit in a delayed packet and land together with 13.
             if (t < 10 || t > 13)
@@ -93,12 +95,16 @@ public class InputBurstTests
             else if (t == 13)
             {
                 for (int seq = 10; seq <= 13; seq++)
+                {
                     server.EnqueueInput(1, seq, new PlayerInput(
                         seq == 10 ? InputButtons.FIRE : InputButtons.NONE, AIM_DOWN));
+                }
             }
             server.Step();
             foreach ((_, _, _, _, int spawnSeq) in server.Explosions)
+            {
                 serverExplosionSeqs.Add(spawnSeq);
+            }
             predictor.Reconcile(server.Players[1], server.Players[1].LastInputSeq);
         }
 

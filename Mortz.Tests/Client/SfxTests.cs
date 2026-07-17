@@ -68,7 +68,9 @@ public class SfxTests
     {
         using Fixture f = new();
         for (int i = 0; i < Sfx.FLAT_CAP; i++)
+        {
             Sfx.Play(f.Sounds.RegularKill);
+        }
 
         SfxHandle dropped = Sfx.Play(f.Sounds.ShellWhoosh);
         dropped.Stop();
@@ -81,7 +83,9 @@ public class SfxTests
     {
         using Fixture f = new();
         for (int i = 0; i < Sfx.SPATIAL_CAP + 1; i++)
+        {
             Sfx.PlayAt(f.Sounds.ShellWhoosh, new Vector2(i, 0));
+        }
         Assert.Equal(Sfx.SPATIAL_CAP, f.Manager.SpatialVoiceCount);
         Assert.Equal(Sfx.SPATIAL_CAP, f.Manager.ActiveSpatialVoices);
     }

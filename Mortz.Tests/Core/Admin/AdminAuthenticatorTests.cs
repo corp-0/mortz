@@ -100,8 +100,10 @@ public class AdminAuthenticatorTests
         Assert.Equal(AdminChallengeResult.UNKNOWN_PEER,
             auth.Begin(999, 0, Nonce(1), out _));
         for (int i = 0; i < 3; i++)
+        {
             Assert.Equal(AdminChallengeResult.STARTED,
                 auth.Begin(PEER, 0, Nonce((byte)(10 + i)), out _));
+        }
         Assert.Equal(AdminChallengeResult.RATE_LIMITED,
             auth.Begin(PEER, 0, Nonce(20), out _));
         auth.Remove(PEER);

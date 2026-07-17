@@ -14,7 +14,9 @@ public class ReplayHistoryTests
     {
         ReplayHistory history = new();
         for (int tick = 0; tick <= 80; tick++)
+        {
             history.Add(Frame(tick, tick));
+        }
 
         ReplayClip clip = Assert.IsType<ReplayClip>(history.Capture(70));
 

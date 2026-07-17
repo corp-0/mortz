@@ -96,7 +96,9 @@ public partial class LobbySettingsPanel : PanelContainer
         _config = Setup.CopyRules();
         ApplyMapOptions(Setup.MapId, Setup.MapOptions);
         foreach (IMatchRuleControl control in _controls)
+        {
             control.UpdateConfig(_config);
+        }
         UpdateEditing(Admin.IsAdmin);
         UpdatePreview(Setup.MapId, Setup.MapHash);
     }
@@ -242,7 +244,9 @@ public partial class LobbySettingsPanel : PanelContainer
             : new Color("94a3b8");
         _mapPicker.Disabled = !canEdit;
         foreach (IMatchRuleControl control in _controls)
+        {
             control.SetEditable(canEdit);
+        }
     }
 
     // Layer PNGs decode to whatever format they were saved in (an RGB

@@ -61,7 +61,9 @@ public class InputQueueTests
     {
         InputQueue q = new InputQueue();
         for (int seq = 0; seq < 20; seq++)
+        {
             q.Enqueue(seq, In((InputButtons)(seq % 8)));
+        }
 
         q.Next();
         // The oldest surviving pending input is at most MAX_PENDING behind the newest.
@@ -73,7 +75,9 @@ public class InputQueueTests
     {
         InputQueue q = new InputQueue();
         for (int seq = 0; seq < 3; seq++)
+        {
             q.Enqueue(seq, In(InputButtons.NONE));
+        }
 
         // Steady state: one new input arrives per tick, like a live client.
         for (int seq = 3; seq < 8; seq++)

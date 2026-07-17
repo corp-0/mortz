@@ -92,7 +92,9 @@ public partial class PlayerViewManager : Node2D
     {
         _replayActive = active;
         foreach (PlayerView view in _views.Values)
+        {
             view.SetReplayActive(active);
+        }
     }
 
     /// <summary>Despawn every view not placed since BeginFrame.</summary>

@@ -35,7 +35,9 @@ public class ChatPolicyTests
     {
         ChatPolicy policy = new();
         for (int i = 0; i < 5; i++)
+        {
             Assert.True(policy.TryAccept(1, 1_000, $"line {i}", out _, out _));
+        }
         Assert.False(policy.TryAccept(1, 1_000, "blocked", out _, out ChatRejectReason limited));
         Assert.Equal(ChatRejectReason.RATE_LIMITED, limited);
         Assert.True(policy.TryAccept(1, 2_000, "refilled", out _, out _));
@@ -48,7 +50,9 @@ public class ChatPolicyTests
     {
         ChatPolicy policy = new();
         for (int i = 0; i < 5; i++)
+        {
             Assert.True(policy.TryAcceptRoll(1, 1_000));
+        }
         Assert.False(policy.TryAcceptRoll(1, 1_000));
         Assert.False(policy.TryAccept(1, 1_000, "also blocked", out _,
             out ChatRejectReason reason));
@@ -61,7 +65,9 @@ public class ChatPolicyTests
     {
         ChatPolicy policy = new();
         for (int i = 0; i < 5; i++)
+        {
             Assert.False(policy.TryAccept(1, 1_000, "/not-chat", out _, out _));
+        }
         Assert.False(policy.TryAccept(1, 1_000, "/not-chat", out _,
             out ChatRejectReason reason));
         Assert.Equal(ChatRejectReason.RATE_LIMITED, reason);

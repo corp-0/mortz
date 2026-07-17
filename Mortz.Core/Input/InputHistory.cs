@@ -39,8 +39,10 @@ public sealed class InputHistory
     public IEnumerable<(int Seq, PlayerInput Input)> Since(int seq)
     {
         foreach ((int Seq, PlayerInput Input) item in _items)
+        {
             if (item.Seq > seq)
                 yield return item;
+        }
     }
 
     /// <summary>The newest <paramref name="n"/> inputs (fewer if not enough stored), in order.</summary>

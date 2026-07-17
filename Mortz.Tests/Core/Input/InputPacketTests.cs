@@ -41,7 +41,9 @@ public class InputPacketTests
             (9, new PlayerInput(InputButtons.FIRE | InputButtons.PARRY, 255)),
         ]);
         for (int length = 0; length < valid.Length; length++)
+        {
             Assert.False(InputPacket.TryDecode(valid.AsSpan(0, length), out _));
+        }
         Assert.False(InputPacket.TryDecode([.. valid, 0xA5], out _));
     }
 

@@ -112,7 +112,9 @@ public sealed class ContentCatalog
 
         Dictionary<string, ResolvedMapDefinition> maps = new(StringComparer.Ordinal);
         foreach (ContentPackDefinition pack in packs)
+        {
             DiscoverMaps(pack, maps, diagnostics);
+        }
 
         return new ContentCatalogResult(new ContentCatalog(root, packs, maps), diagnostics);
     }

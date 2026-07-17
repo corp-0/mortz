@@ -137,7 +137,9 @@ public sealed class AdminAuthenticator : IDisposable
     public void Reset()
     {
         foreach (long peerId in _sessions.Keys.ToArray())
+        {
             Remove(peerId);
+        }
         _attemptLimiter.Reset();
     }
 

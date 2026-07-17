@@ -74,7 +74,9 @@ public class MatchConfigTests
         MatchConfig actual = MatchConfig.FromBytes(expected.ToBytes());
 
         foreach (PropertyInfo property in WritableRules())
+        {
             Assert.Equal(property.GetValue(expected), property.GetValue(actual));
+        }
     }
 
     private static IEnumerable<PropertyInfo> WritableRules() =>

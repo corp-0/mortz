@@ -31,7 +31,9 @@ internal static class SnapshotWire
         bool slotIds = localPeerId != null;
         writer.Write((byte)(snapshot.Players.Length | (slotIds ? SLOT_IDS_BIT : 0)));
         foreach (PlayerState player in snapshot.Players)
+        {
             WritePlayer(writer, player, localPeerId, slotIds);
+        }
         WriteMortars(writer, snapshot.Mortars);
         return stream.ToArray();
     }
@@ -48,7 +50,9 @@ internal static class SnapshotWire
             throw new InvalidDataException($"Invalid snapshot player count {count}.");
         PlayerState[] players = new PlayerState[count];
         for (int i = 0; i < count; i++)
+        {
             players[i] = ReadPlayer(reader, slotIds, peersBySlot);
+        }
         MortarState[] mortars = ReadMortars(reader);
         if (stream.Position != stream.Length)
             throw new InvalidDataException("Trailing bytes in snapshot.");

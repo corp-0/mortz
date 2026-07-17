@@ -204,7 +204,9 @@ public sealed class ContentCatalogTests : IDisposable
         File.WriteAllText(Path.Combine(directory, "map.toml"),
             ContentManifestReader.WriteMap(new MapManifest(1, name, 4)));
         foreach (string layer in new[] { "background.png", "solid.png", "destructible.png" })
+        {
             File.WriteAllBytes(Path.Combine(directory, layer), Encoding.UTF8.GetBytes(layer));
+        }
         return directory;
     }
 }

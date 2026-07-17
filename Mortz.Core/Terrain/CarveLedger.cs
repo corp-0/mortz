@@ -29,8 +29,10 @@ public sealed class CarveLedger
     public bool IsSettled(int spawnSeq)
     {
         foreach ((int seq, ulong _) in _settled)
+        {
             if (seq == spawnSeq)
                 return true;
+        }
         return false;
     }
 
@@ -59,12 +61,16 @@ public sealed class CarveLedger
         _settled.RemoveAll(s => s.Expiry < now);
         List<(int SpawnSeq, PendingCarve Pending)>? expired = null;
         foreach ((int seq, PendingCarve pending) in _pending)
+        {
             if (pending.Expiry < now)
                 (expired ??= new List<(int, PendingCarve)>()).Add((seq, pending));
+        }
         if (expired == null)
             return Array.Empty<(int, PendingCarve)>();
         foreach ((int seq, PendingCarve _) in expired)
+        {
             _pending.Remove(seq);
+        }
         return expired;
     }
 
@@ -77,11 +83,15 @@ public sealed class CarveLedger
         if (InsideCircle(px, py, confirmedX, confirmedY, confirmedRadius))
             return false;
         foreach ((int _, PendingCarve other) in _pending)
+        {
             if (InsideCircle(px, py, other.X, other.Y, other.Radius))
                 return false;
+        }
         foreach ((int cx, int cy, int r, ulong _) in _recentConfirmed)
+        {
             if (InsideCircle(px, py, cx, cy, r))
                 return false;
+        }
         return true;
     }
 

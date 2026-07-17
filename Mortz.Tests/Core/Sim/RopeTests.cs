@@ -26,7 +26,9 @@ public class RopeTests
     private static PlayerState TickUntil(PlayerState p, TerrainMask world, Func<PlayerState, bool> done, int maxTicks = 300)
     {
         for (int i = 0; i < maxTicks && !done(p); i++)
+        {
             p = PlayerSim.Tick(p, _idle, world, _stats);
+        }
         return p;
     }
 
@@ -70,7 +72,9 @@ public class RopeTests
 
         float startY = p.Position.Y;
         for (int i = 0; i < 2 * SimConfig.TICK_RATE; i++)
+        {
             p = PlayerSim.Tick(p, _idle, world, _stats);
+        }
 
         Assert.True(p.Position.Y < startY - 50); // hauled well off the floor
         Assert.False(p.Grounded);
@@ -83,7 +87,9 @@ public class RopeTests
         PlayerState p = PlayerSim.Tick(Grounded(), _fireUp, world, _stats);
         p = TickUntil(p, world, s => s.Rope == RopeMode.ATTACHED, 60);
         for (int i = 0; i < 60; i++)
+        {
             p = PlayerSim.Tick(p, _idle, world, _stats); // reeling upward, gaining speed
+        }
 
         Vec2 velocityBefore = p.Velocity;
         p = PlayerSim.Tick(p, new PlayerInput(InputButtons.ROPE, _aimUp), world, _stats); // press again = release
@@ -102,7 +108,9 @@ public class RopeTests
         p = TickUntil(p, world, s => s.Rope == RopeMode.ATTACHED, 60);
         // Hang long enough for coyote grace to expire but nowhere near the ceiling.
         for (int i = 0; i < 15; i++)
+        {
             p = PlayerSim.Tick(p, _idle, world, _stats);
+        }
 
         Assert.Equal(RopeMode.ATTACHED, p.Rope);
         Assert.False(p.Grounded);
@@ -128,7 +136,9 @@ public class RopeTests
         PlayerState p = PlayerSim.Tick(Grounded(), _fireUp, world, _stats);
         p = TickUntil(p, world, s => s.Rope == RopeMode.ATTACHED, 60);
         for (int i = 0; i < 20; i++)
+        {
             p = PlayerSim.Tick(p, _idle, world, _stats); // reel up, coyote long expired
+        }
 
         p = PlayerSim.Tick(p, new PlayerInput(InputButtons.ROPE, _aimUp), world, _stats); // release
         Assert.Equal(RopeMode.NONE, p.Rope);
@@ -145,7 +155,9 @@ public class RopeTests
         Assert.Equal(1, p.JumpsLeft);
 
         for (int i = 0; i < 3; i++)
+        {
             p = PlayerSim.Tick(p, _idle, world, _stats);
+        }
 
         p = PlayerSim.Tick(p, new PlayerInput(InputButtons.JUMP), world, _stats);
         Assert.Equal(-SimConfig.AIR_JUMP_SPEED, p.Velocity.Y);
@@ -185,7 +197,9 @@ public class RopeTests
         Assert.Equal(RopeMode.NONE, p.Rope);
 
         for (int i = 0; i < SimConfig.ROPE_RELEASE_COOLDOWN_TICKS; i++)
+        {
             p = PlayerSim.Tick(p, _idle, world, _stats);
+        }
         Assert.Equal(0, p.RopeCooldown);
 
         p = PlayerSim.Tick(p, new PlayerInput(InputButtons.ROPE, _aimUp), world, _stats); // now it fires

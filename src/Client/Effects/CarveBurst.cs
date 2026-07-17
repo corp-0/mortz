@@ -89,6 +89,8 @@ public partial class CarveBurst : Node2D
     {
         float alpha = 1f - _age / LIFETIME;
         foreach (Particle p in _particles)
+        {
             DrawRect(new Rect2(p.Position, new Vector2(2, 2)), p.Color with { A = alpha });
+        }
     }
 }

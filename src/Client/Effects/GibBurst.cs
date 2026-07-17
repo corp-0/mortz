@@ -81,12 +81,14 @@ public partial class GibBurst : Node2D
                 // carve can always erase it; painted on air it would float.
                 int splat = (int)p.Size / 2;
                 for (int dy = -splat; dy <= splat; dy++)
+                {
                     for (int dx = -splat; dx <= splat; dx++)
                     {
                         int sx = (int)p.Position.X + dx, sy = (int)p.Position.Y + dy;
                         if (_mask.IsSolid(sx, sy))
                             _paint(sx, sy, p.Color);
                     }
+                }
                 _particles.RemoveAt(i);
                 continue;
             }
@@ -98,6 +100,8 @@ public partial class GibBurst : Node2D
     public override void _Draw()
     {
         foreach (Particle p in _particles)
+        {
             DrawRect(new Rect2(p.Position, new Vector2(p.Size, p.Size)), p.Color);
+        }
     }
 }

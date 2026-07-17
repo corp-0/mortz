@@ -30,7 +30,9 @@ public sealed class PeerAdmissionState
     {
         long[] expired = _pending.Where(pair => pair.Value <= nowMs).Select(pair => pair.Key).ToArray();
         foreach (long peerId in expired)
+        {
             _pending.Remove(peerId);
+        }
         return expired;
     }
 

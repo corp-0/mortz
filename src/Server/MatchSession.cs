@@ -109,7 +109,9 @@ internal sealed class MatchSession
             .Select(e => new ServerExplosion(e.X, e.Y, e.Radius, e.OwnerId, e.SpawnSeq))
             .ToArray();
         foreach (ServerExplosion explosion in explosions)
+        {
             TerrainHistory.Record(explosion.X, explosion.Y, explosion.Radius);
+        }
 
         ServerDeath[] deaths = World.Deaths
             .Select(d => new ServerDeath(d.PeerId, d.Position, d.KillerId, d.Owned))

@@ -14,7 +14,9 @@ public class BandwidthTests
     {
         SimWorld world = new(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         for (int peer = 1; peer <= NetConfig.MAX_PLAYERS; peer++)
+        {
             world.AddPlayer(peer);
+        }
 
         Snapshot snapshot = world.TakeSnapshot(includeMortars: false);
         byte[] data = snapshot.SerializeFor(localPeerId: 1);
@@ -206,7 +208,9 @@ public class BandwidthTests
         MortarState shell = new() { Position = new Vec2(50, -10) };
 
         for (int tick = 1; tick < SimConfig.MORTAR_MAX_LIFETIME_TICKS; tick++)
+        {
             Assert.Equal(MortarOutcome.FLYING, MortarSim.Tick(ref shell, empty, config, SimConfig.DT));
+        }
         Assert.Equal(MortarOutcome.EXPLODED, MortarSim.Tick(ref shell, empty, config, SimConfig.DT));
     }
 
@@ -222,7 +226,9 @@ public class BandwidthTests
         config.Clamp();
         SimWorld world = new(TestWorlds.Flat(), config);
         for (int peer = 1; peer <= NetConfig.MAX_PLAYERS; peer++)
+        {
             world.AddPlayer(peer);
+        }
 
         int seq = 0;
         int evicted = 0;
@@ -230,13 +236,17 @@ public class BandwidthTests
         for (int shot = 0; shot < 17; shot++)
         {
             foreach (int peer in world.Players.Keys)
+            {
                 world.EnqueueInput(peer, seq, new PlayerInput(InputButtons.FIRE, 192));
+            }
             world.Step();
             evicted += world.MortarEvents.Count(e => e.Kind == SimWorld.MortarEventKind.END);
             forcedExplosions += world.Explosions.Count;
             seq++;
             foreach (int peer in world.Players.Keys)
+            {
                 world.EnqueueInput(peer, seq, new PlayerInput(InputButtons.NONE, 192));
+            }
             world.Step();
             seq++;
         }
@@ -253,7 +263,9 @@ public class BandwidthTests
             destructible: (x, y) => x is >= 100 and < 300 && y is >= 80 and < 240);
         TerrainCarve[] carves = [new(150, 120, 25), new(240, 170, 35)];
         foreach (TerrainCarve carve in carves)
+        {
             authoritative.CarveCircle(carve.X, carve.Y, carve.Radius);
+        }
 
         TerrainSyncPayload payload = TerrainSync.Build(authoritative, carves);
         TerrainMask replica = TestWorlds.Flat(

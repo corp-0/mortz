@@ -123,13 +123,17 @@ public sealed class Scoreboard
         if (_config.Teams && _config.WinCondition == WinCondition.TEAM_KILLS)
         {
             for (byte team = 1; team < _teamKills.Length; team++)
+            {
                 if (_teamKills[team] >= _config.KillTarget)
                     return new MatchWinner(true, team);
+            }
             return null;
         }
         foreach ((int peerId, Row row) in _rows)
+        {
             if (row.Kills >= _config.KillTarget)
                 return new MatchWinner(false, peerId);
+        }
         return null;
     }
 }

@@ -118,8 +118,10 @@ public sealed class TerrainMask
     {
         byte[] bits = new byte[(_cells.Length + 7) / 8];
         for (int i = 0; i < _cells.Length; i++)
+        {
             if (_original[i] == TerrainMaterial.DESTRUCTIBLE && _cells[i] == TerrainMaterial.EMPTY)
                 bits[i / 8] |= (byte)(1 << (i % 8));
+        }
 
         using MemoryStream ms = new MemoryStream();
         using (DeflateStream deflate = new DeflateStream(ms, CompressionLevel.Fastest))

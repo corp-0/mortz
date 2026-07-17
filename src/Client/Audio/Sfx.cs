@@ -66,9 +66,13 @@ public partial class Sfx : Node
         _instance = this;
         ProcessPriority = 100;
         for (int i = 0; i < FLAT_PREWARM; i++)
+        {
             AddVoice(spatial: false);
+        }
         for (int i = 0; i < SPATIAL_PREWARM; i++)
+        {
             AddVoice(spatial: true);
+        }
         ValidateRegistry();
     }
 
@@ -202,7 +206,9 @@ public partial class Sfx : Node
     private static void ReleaseAll(List<Voice> pool)
     {
         for (int i = 0; i < pool.Count; i++)
+        {
             ReleaseVoice(pool, i, pool[i].Generation, stop: true);
+        }
     }
 
     private static void FollowTargets(List<Voice> pool)
@@ -224,8 +230,10 @@ public partial class Sfx : Node
     private static void ApplyTimeScale(List<Voice> pool, float scale)
     {
         foreach (Voice voice in pool)
+        {
             if (voice.Active && voice.TimeScaled)
                 SetPitch(voice.Player, voice.BasePitch * scale);
+        }
     }
 
     private void ValidateRegistry()

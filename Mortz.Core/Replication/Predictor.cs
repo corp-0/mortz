@@ -93,8 +93,10 @@ public sealed class Predictor
     public bool HasShell(int spawnSeq)
     {
         foreach ((int seq, MortarState _) in _shells)
+        {
             if (seq == spawnSeq)
                 return true;
+        }
         return false;
     }
 
@@ -142,11 +144,9 @@ public sealed class Predictor
     /// Returns how far the predicted position moved (old - new); feed it to
     /// a decaying visual offset so corrections ease in over a few frames.
     /// </summary>
-    /// <param name="lastAppliedSeq"></param>
     /// <param name="serverTick">Snapshot tick; a tick no newer than the last one
     /// reconciled is an out-of-order straggler and is dropped (replaying from
     /// already-pruned history would mispredict). -1 skips the check.</param>
-    /// <param name="serverState"></param>
     public Vec2 Reconcile(PlayerState serverState, int lastAppliedSeq, int serverTick = -1)
     {
         if (serverTick >= 0)

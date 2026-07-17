@@ -57,10 +57,14 @@ public partial class NetStatsProbe : Node
         }
         List<int> stale = new List<int>();
         foreach (int seq in _inputSendTimes.Keys)
+        {
             if (seq <= ack)
                 stale.Add(seq);
+        }
         foreach (int seq in stale)
+        {
             _inputSendTimes.Remove(seq);
+        }
     }
 
     public override void _PhysicsProcess(double delta)

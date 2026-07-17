@@ -100,7 +100,9 @@ public class OwnerShellGhostTests
             // What the view would draw this frame.
             HashSet<int> predictedSeqs = new();
             foreach ((int s, MortarState _) in predictor.Shells)
+            {
                 predictedSeqs.Add(s);
+            }
             foreach (RenderMortar m in replicas.Render())
             {
                 if (m.OwnerId != LOCAL_ID ||

@@ -138,7 +138,9 @@ public static class MortarWire
                 return false;
             states = new List<(ushort, Vec2, Vec2)>(count);
             for (int i = 0; i < count; i++)
+            {
                 states.Add((r.ReadUInt16(), ReadVec(r), ReadVec(r)));
+            }
             return true;
         }
         catch (EndOfStreamException)

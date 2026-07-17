@@ -104,8 +104,10 @@ internal sealed class LobbySession
     private void PruneOffers()
     {
         foreach ((long from, long to) in _offers.ToArray())
+        {
             if (!CrossTeam(from, to))
                 _offers.Remove(from);
+        }
     }
 
     /// <summary>Follows the Teams rule; returns whether anything changed and
@@ -137,7 +139,9 @@ internal sealed class LobbySession
     {
         LobbySession lobby = new() { _teamsEnabled = teamsEnabled };
         foreach (long peerId in peerIds)
+        {
             lobby.Add(peerId);
+        }
         return lobby;
     }
 }

@@ -22,8 +22,12 @@ public class TerrainMaskTests
 
         Assert.Equal(a.SerializeRemoved(), b.SerializeRemoved());
         for (int y = 0; y < TestWorlds.HEIGHT; y += 3)
+        {
             for (int x = 0; x < TestWorlds.WIDTH; x += 3)
+            {
                 Assert.Equal(a.Get(x, y), b.Get(x, y));
+            }
+        }
     }
 
     [Fact]
@@ -53,8 +57,12 @@ public class TerrainMaskTests
         Assert.True(reported > 0);
         Assert.Equal(a.SerializeRemoved(), b.SerializeRemoved());
         for (int y = 100; y < 200; y++)
+        {
             for (int x = 100; x < 200; x++)
+            {
                 Assert.Equal(a.Get(x, y), b.Get(x, y));
+            }
+        }
     }
 
     [Fact]

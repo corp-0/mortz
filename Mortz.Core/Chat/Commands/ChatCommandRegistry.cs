@@ -19,7 +19,9 @@ public sealed class ChatCommandRegistry<TContext>
         var entry = new Entry(metadata, createCommand);
         AddName(metadata.Name, entry);
         foreach (ChatCommandName alias in metadata.Aliases)
+        {
             AddName(alias, entry);
+        }
         _entries.Add(entry);
     }
 

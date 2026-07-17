@@ -93,8 +93,10 @@ public partial class GameView : Node2D
         _peersBySlot.Clear();
         int count = Math.Min(msg.PeerIds.Length, msg.Slots.Length);
         for (int i = 0; i < count; i++)
+        {
             if (msg.Slots[i] is > 0 and <= NetConfig.MAX_PLAYERS)
                 _peersBySlot[msg.Slots[i]] = (int)msg.PeerIds[i];
+        }
     }
 
     /// <summary>Our shell exploded server-side; retire the predicted copy so it
@@ -187,7 +189,9 @@ public partial class GameView : Node2D
 
         // Predicted destruction: our shells carve the instant they land.
         foreach ((int seq, Vec2 pos) in _localPlayer.DrainImpacts())
+        {
             _gameMap.PredictCarve(seq, new Vector2(pos.X, pos.Y));
+        }
 
         InterpolatedState? state = _interpolator.Advance((float)delta);
         if (state == null)

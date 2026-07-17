@@ -108,7 +108,9 @@ internal sealed class ServerProtocol
             BroadcastCarve(explosion);
         }
         foreach ((int firedBy, int spawnSeq) in frame.ShellRetirements)
+        {
             new ShellRetireMsg(spawnSeq).SendTo(firedBy);
+        }
         foreach (ServerDeath death in frame.Deaths)
         {
             GD.Print($"[server] player {death.PeerId} gibbed at " +
@@ -118,7 +120,9 @@ internal sealed class ServerProtocol
                 PackCoordinate((int)death.Position.Y)).Broadcast();
         }
         foreach (ScoredElimination elimination in frame.Eliminations)
+        {
             BroadcastElimination(elimination, match.Config);
+        }
 
         if (frame.Tick % NetConfig.TICKS_PER_SNAPSHOT == 0 && match.World.Players.Count > 0)
             BroadcastSnapshot(match);

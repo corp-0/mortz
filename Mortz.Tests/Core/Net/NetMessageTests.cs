@@ -504,7 +504,9 @@ public class NetMessageTests : IDisposable
             foreach ((ushort id, byte[] payload) in messages)
             {
                 for (int length = 0; length < payload.Length; length++)
+                {
                     Assert.False(NetRegistry.Dispatch(id, SENDER, payload[..length], isServer: true));
+                }
                 Assert.False(NetRegistry.Dispatch(id, SENDER, [.. payload, 0xA5], isServer: true));
             }
         }

@@ -200,7 +200,9 @@ public partial class ServerSessionController : Node, IServerSession
         _lobby = null;
         GD.Print($"[server] all {lobby.Count} player(s) ready, starting match");
         foreach (LobbyPlayer player in lobby.Players)
+        {
             AddToMatch(player.PeerId, match, player.Team);
+        }
         _protocol.BroadcastRoster(match);
     }
 
@@ -243,7 +245,9 @@ public partial class ServerSessionController : Node, IServerSession
             return;
         _protocol.RecordInputPayload(packet.Length);
         foreach ((int sequence, PlayerInput input) in inputs)
+        {
             match.EnqueueInput((int)peerId, sequence, input);
+        }
     }
 
     private void OnDebugCarve(long sender, DebugCarveMsg message)

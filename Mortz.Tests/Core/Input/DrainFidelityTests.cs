@@ -141,8 +141,10 @@ public class DrainFidelityTests
             PlayerInput input = t == FIRE_T ? Fire(aim) : Idle(aim);
             predictor.LocalTick(input);
             foreach ((int seq, MortarState shell) in predictor.Shells)
+            {
                 if (seq == FIRE_T)
                     predictedVel = shell.Velocity;
+            }
 
             if (t < 30 || t > 33)
                 server.EnqueueInput(1, t, input);
@@ -155,8 +157,10 @@ public class DrainFidelityTests
             }
             server.Step();
             foreach (MortarState m in server.Mortars)
+            {
                 if (m.SpawnSeq == FIRE_T && seenMortars.Add(m.Id))
                     serverVel = m.Velocity;
+            }
 
             predictor.Reconcile(server.Players[1], server.Players[1].LastInputSeq);
         }
@@ -195,19 +199,27 @@ public class DrainFidelityTests
         {
             predictor.LocalTick(At(t));
             foreach ((int seq, MortarState _) in predictor.Shells)
+            {
                 predictedSeqs.Add(seq);
+            }
             foreach ((int seq, Vec2 _) in predictor.DrainImpacts())
+            {
                 predictedSeqs.Add(seq);
+            }
 
             if (t < 30 || t > 33)
                 server.EnqueueInput(1, t, At(t));
             else if (t == 33)
                 for (int seq = 30; seq <= 33; seq++)
+                {
                     server.EnqueueInput(1, seq, At(seq));
+                }
             server.Step();
             foreach (MortarState m in server.Mortars)
+            {
                 if (seenMortars.Add(m.Id))
                     serverFiredSeqs.Add(m.SpawnSeq);
+            }
 
             predictor.Reconcile(server.Players[1], server.Players[1].LastInputSeq);
         }

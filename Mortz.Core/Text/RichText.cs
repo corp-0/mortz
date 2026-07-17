@@ -46,7 +46,9 @@ public sealed class RichText
     {
         string styled = Escape(text);
         foreach (IRichTextStyle style in _styles)
+        {
             styled = style.Apply(styled);
+        }
         _builder.Append(styled);
         _styles.Clear();
         return this;

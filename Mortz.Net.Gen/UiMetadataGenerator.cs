@@ -149,7 +149,9 @@ public sealed class UiMetadataGenerator : IIncrementalGenerator
         {
             ConfigModel model = group.First();
             foreach (Diagnostic diagnostic in model.Diagnostics)
+            {
                 spc.ReportDiagnostic(diagnostic);
+            }
             if (!model.Diagnostics.IsEmpty)
                 continue;
 
@@ -220,7 +222,9 @@ public sealed class UiMetadataGenerator : IIncrementalGenerator
     {
         var sb = new StringBuilder(typeName.Length);
         foreach (char character in typeName)
+        {
             sb.Append(char.IsLetterOrDigit(character) ? character : '_');
+        }
         return sb.ToString();
     }
 }

@@ -125,7 +125,9 @@ public partial class MatchSetup : SessionScopedNode
         MapHash = message.MapHash;
         _mapOptions.Clear();
         for (int i = 0; i < message.MapIds.Length; i++)
+        {
             _mapOptions.Add(new MapOption(message.MapIds[i], message.MapNames[i]));
+        }
         ApplyRules(rules, settingsChanged);
     }
 
@@ -145,7 +147,9 @@ public partial class MatchSetup : SessionScopedNode
         int offerCount = Math.Min(message.SwapFrom.Length, message.SwapTo.Length);
         SwapOffer[] offers = new SwapOffer[offerCount];
         for (int i = 0; i < offerCount; i++)
+        {
             offers[i] = new SwapOffer(message.SwapFrom[i], message.SwapTo[i]);
+        }
         ApplyOffers(offers);
     }
 
@@ -224,8 +228,10 @@ public partial class MatchSetup : SessionScopedNode
         if (_mapOptions.Count != mapIds.Length)
             return true;
         for (int i = 0; i < mapIds.Length; i++)
+        {
             if (_mapOptions[i].Id != mapIds[i] || _mapOptions[i].Name != mapNames[i])
                 return true;
+        }
         return false;
     }
 

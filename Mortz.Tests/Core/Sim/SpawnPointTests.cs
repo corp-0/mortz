@@ -64,7 +64,9 @@ public class SpawnPointTests
         Assert.False(PlayerSim.OnGround(terrain, spawn));
 
         while (world.Players[1].RespawnTicks > 0)
+        {
             Step(world, ref sequence, InputButtons.NONE, 64);
+        }
 
         Assert.Equal(spawn, world.Players[1].Position);
         Assert.False(world.Players[1].Grounded);

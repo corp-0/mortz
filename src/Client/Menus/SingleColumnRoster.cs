@@ -46,9 +46,13 @@ public partial class SingleColumnRoster : ScrollContainer
         if (!IsInsideTree())
             return;
         foreach (Node child in _players.GetChildren())
+        {
             child.Free();
+        }
         long localId = Multiplayer.GetUniqueId();
         foreach (LobbyMember member in Setup.Members)
+        {
             _players.AddChild(RosterSlots.BuildSlot(member, Stats, localId));
+        }
     }
 }

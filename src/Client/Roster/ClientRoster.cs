@@ -37,6 +37,8 @@ public partial class ClientRoster : SessionScopedNode
         _names.Clear();
         int count = Math.Min(peerIds.Length, names.Length);
         for (int i = 0; i < count; i++)
+        {
             _names[peerIds[i]] = names[i];
+        }
     }
 }

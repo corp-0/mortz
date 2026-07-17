@@ -63,7 +63,9 @@ internal static class GenSounds
             double phase = 2 * Math.PI * i / count;
             double value = 0;
             for (int band = 0; band < phases.Length; band++)
+            {
                 value += amplitudes[band] * Math.Sin((band + 3) * phase + phases[band]);
+            }
             result[i] = value * 0.045;
         }
         return result;
@@ -99,8 +101,10 @@ internal static class GenSounds
         writer.Write("data"u8.ToArray());
         writer.Write(dataBytes);
         foreach (double sample in samples)
+        {
             writer.Write((short)Math.Clamp((int)Math.Round(sample * short.MaxValue),
                 short.MinValue, short.MaxValue));
+        }
         if (loop)
             WriteLoopChunk(writer, samples.Length);
     }

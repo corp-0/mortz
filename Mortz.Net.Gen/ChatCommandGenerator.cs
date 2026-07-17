@@ -73,13 +73,14 @@ public sealed class ChatCommandGenerator : IIncrementalGenerator
             }
         }
 
-        string? reason =
-            symbol.IsAbstract ? "it is abstract" :
-            contextFqn == null ? "it does not derive from ChatCommand<TContext>" :
-            !symbol.InstanceConstructors.Any(c =>
-                c.Parameters.IsEmpty && c.DeclaredAccessibility != Accessibility.Private)
-                ? "it has no accessible parameterless constructor"
-                : null;
+        string? reason = null;
+        if (symbol.IsAbstract)
+            reason = "it is abstract";
+        else if (contextFqn == null)
+            reason = "it does not derive from ChatCommand<TContext>";
+        else if (!symbol.InstanceConstructors.Any(c =>
+                     c.Parameters.IsEmpty && c.DeclaredAccessibility != Accessibility.Private))
+            reason = "it has no accessible parameterless constructor";
         if (reason != null)
         {
             diagnostics.Add(Diagnostic.Create(_invalidCommandClass,
@@ -127,8 +128,12 @@ public sealed class ChatCommandGenerator : IIncrementalGenerator
     private static void Emit(SourceProductionContext spc, ImmutableArray<CommandModel> models)
     {
         foreach (CommandModel model in models)
+        {
             foreach (Diagnostic d in model.Diagnostics)
+            {
                 spc.ReportDiagnostic(d);
+            }
+        }
 
         CommandModel[] valid = models
             .Where(m => m.Diagnostics.IsEmpty)
@@ -142,13 +147,17 @@ public sealed class ChatCommandGenerator : IIncrementalGenerator
         {
             var seen = new HashSet<string>();
             foreach (CommandModel m in group)
+            {
                 foreach (string candidate in m.Aliases.Insert(0, m.Name))
+                {
                     if (!seen.Add(candidate))
                     {
                         spc.ReportDiagnostic(Diagnostic.Create(_duplicateName, Location.None,
                             candidate, group.Key));
                         return;
                     }
+                }
+            }
         }
 
         var sb = new StringBuilder();

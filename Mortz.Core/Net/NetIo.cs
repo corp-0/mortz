@@ -19,21 +19,27 @@ public static class NetIo
     {
         w.Write(v.Length);
         foreach (int x in v)
+        {
             w.Write(x);
+        }
     }
 
     public static void WriteArray(this BinaryWriter w, long[] v)
     {
         w.Write(v.Length);
         foreach (long x in v)
+        {
             w.Write(x);
+        }
     }
 
     public static void WriteArray(this BinaryWriter w, string[] v)
     {
         w.Write(v.Length);
         foreach (string x in v)
+        {
             w.Write(x);
+        }
     }
 
     public static void Write(this BinaryWriter w, Vec2 v)
@@ -55,7 +61,9 @@ public static class NetIo
     {
         int[] v = new int[ReadArrayLength(r, sizeof(int), NetConfig.MAX_ARRAY_ELEMENTS)];
         for (int i = 0; i < v.Length; i++)
+        {
             v[i] = r.ReadInt32();
+        }
         return v;
     }
 
@@ -63,7 +71,9 @@ public static class NetIo
     {
         long[] v = new long[ReadArrayLength(r, sizeof(long), NetConfig.MAX_ARRAY_ELEMENTS)];
         for (int i = 0; i < v.Length; i++)
+        {
             v[i] = r.ReadInt64();
+        }
         return v;
     }
 
@@ -72,7 +82,9 @@ public static class NetIo
         int count = ReadArrayLength(r, 1, NetConfig.MAX_ARRAY_ELEMENTS);
         string[] v = new string[count];
         for (int i = 0; i < v.Length; i++)
+        {
             v[i] = ReadString(r);
+        }
         return v;
     }
 

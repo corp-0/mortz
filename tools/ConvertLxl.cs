@@ -96,6 +96,7 @@ internal static class ConvertLxl
         Rgba32[] dirt = new Rgba32[ow * oh];
 
         for (int y = 0; y < h; y++)
+        {
             for (int x = 0; x < w; x++)
             {
                 int i = y * w + x;
@@ -103,6 +104,7 @@ internal static class ConvertLxl
                 Rgba32 frontColor = Rgb(data, pixels * 3 + i * 3);
                 byte mat = data[pixels * 6 + i];
                 for (int sy = 0; sy < scale; sy++)
+                {
                     for (int sx = 0; sx < scale; sx++)
                     {
                         int o = (y * scale + sy) * ow + x * scale + sx;
@@ -110,13 +112,16 @@ internal static class ConvertLxl
                         if ((mat & 4) != 0) solid[o] = frontColor;
                         else if ((mat & 2) != 0) dirt[o] = frontColor;
                     }
+                }
             }
+        }
 
         // Enclose everything but the bottom: out of bounds reads as empty, so
         // an open side or sky would let players drift out and eat every rope
         // hook. The bottom stays as authored (open bottom = death pit).
         int border = 4 * scale;
         for (int y = 0; y < oh; y++)
+        {
             for (int x = 0; x < ow; x++)
             {
                 if (y >= border && x >= border && x < ow - border)
@@ -125,6 +130,7 @@ internal static class ConvertLxl
                 solid[o] = _borderColor;
                 dirt[o] = default; // transparent
             }
+        }
 
         return new LayerBytes(
             EncodePng(back, ow, oh),

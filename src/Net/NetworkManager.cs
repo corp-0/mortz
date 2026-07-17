@@ -159,7 +159,9 @@ public partial class NetworkManager : Node
         if (target == NetTransport.BROADCAST)
         {
             foreach (long peer in _admission.ValidatedPeers)
+            {
                 RpcId(peer, endpoint, msgId, payload);
+            }
         }
         else
         {
@@ -286,7 +288,9 @@ public partial class NetworkManager : Node
         if (_fakeLagMs <= 0)
             return;
         while (_delayedInputs.Count > 0 && _delayedInputs.Peek().Due <= now)
+        {
             RpcId(1, MethodName.SubmitInputs, _delayedInputs.Dequeue().Packet);
+        }
         while (_delayedSnapshots.Count > 0 && _delayedSnapshots.Peek().Due <= now)
         {
             (ulong _, byte[] data, int ack) = _delayedSnapshots.Dequeue();

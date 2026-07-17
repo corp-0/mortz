@@ -79,7 +79,9 @@ public sealed class InputQueue
         _carriedRopeAim = null;
 
         while (_pending.Count > MAX_PENDING)
+        {
             SkipNext();
+        }
 
         // Every input still waiting after this tick is a tick of standing
         // latency, so a backlog consumes one extra input per tick until a
@@ -134,7 +136,9 @@ public sealed class InputQueue
     private int FirstPendingSeq()
     {
         foreach (int seq in _pending.Keys)
+        {
             return seq;
+        }
         throw new InvalidOperationException("empty queue");
     }
 }

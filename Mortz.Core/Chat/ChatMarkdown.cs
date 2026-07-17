@@ -183,7 +183,9 @@ public static class ChatMarkdown
                 return -1;
             int slashes = 0;
             for (int before = found - 1; before >= 0 && source[before] == '\\'; before--)
+            {
                 slashes++;
+            }
             if (slashes % 2 == 0)
                 return found;
             index = found + value.Length;

@@ -148,6 +148,7 @@ public partial class E2eHooks : Node
             return;
         _testCarveSent = true;
         for (int y = 0; y < _gameMap.Mask.Height; y++)
+        {
             for (int x = 0; x < _gameMap.Mask.Width; x++)
             {
                 if (_gameMap.Mask.Get(x, y) == TerrainMaterial.DESTRUCTIBLE)
@@ -157,5 +158,6 @@ public partial class E2eHooks : Node
                     return;
                 }
             }
+        }
     }
 }

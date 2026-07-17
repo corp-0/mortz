@@ -213,7 +213,9 @@ public sealed class SimWorld
             _players[id] = state;
         }
         foreach (MortarState forced in _forcedMortarExplosions)
+        {
             Explode(forced);
+        }
         _forcedMortarExplosions.Clear();
         StepMortars();
         Tick++;

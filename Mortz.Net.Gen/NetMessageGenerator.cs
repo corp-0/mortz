@@ -89,15 +89,16 @@ public sealed class NetMessageGenerator : IIncrementalGenerator
                 if (ctx.SemanticModel.GetDeclaredSymbol(p) is not { } ps)
                     continue;
                 string type = ps.Type.ToDisplayString();
-                string? wireType = _supportedTypes.Contains(type)
-                    ? type
-                    : ps.Type is INamedTypeSymbol
-                    {
-                        TypeKind: TypeKind.Enum,
-                        EnumUnderlyingType.SpecialType: SpecialType.System_Byte
-                    }
-                        ? "byte"
-                        : null;
+                bool byteEnum = ps.Type is INamedTypeSymbol
+                {
+                    TypeKind: TypeKind.Enum,
+                    EnumUnderlyingType.SpecialType: SpecialType.System_Byte
+                };
+                string? wireType = null;
+                if (_supportedTypes.Contains(type))
+                    wireType = type;
+                else if (byteEnum)
+                    wireType = "byte";
                 if (wireType == null)
                 {
                     diagnostics.Add(Diagnostic.Create(_unsupportedFieldType, p.GetLocation(), ps.Name, type));
@@ -179,7 +180,9 @@ public sealed class NetMessageGenerator : IIncrementalGenerator
         sb.AppendLine("        using global::System.IO.MemoryStream ms = new global::System.IO.MemoryStream();");
         sb.AppendLine("        using global::System.IO.BinaryWriter w = new global::System.IO.BinaryWriter(ms);");
         foreach (FieldModel f in m.Fields)
+        {
             sb.AppendLine($"        {WriteCall(f)}");
+        }
         sb.AppendLine("        return ms.ToArray();");
         sb.AppendLine("    }");
         sb.AppendLine();
@@ -190,7 +193,9 @@ public sealed class NetMessageGenerator : IIncrementalGenerator
         {
             sb.AppendLine($"    internal static {m.Name} Deserialize(global::System.IO.BinaryReader r) => new(");
             for (int i = 0; i < m.Fields.Length; i++)
+            {
                 sb.AppendLine($"        {ReadCall(m.Fields[i])}{(i < m.Fields.Length - 1 ? "," : ");")}");
+            }
         }
 
         sb.AppendLine();
@@ -244,7 +249,9 @@ public sealed class NetMessageGenerator : IIncrementalGenerator
         sb.AppendLine($"    public const ulong SCHEMA_HASH = 0x{SchemaHash(models):X16}UL;");
         sb.AppendLine();
         for (int id = 0; id < models.Length; id++)
+        {
             sb.AppendLine($"    public const ushort ID_{models[id].Name} = {id};");
+        }
         sb.AppendLine();
         sb.AppendLine("    /// <summary>False = malformed, unknown id, or wrong direction for this side.</summary>");
         sb.AppendLine("    public static bool Dispatch(ushort msgId, long sender, byte[] payload, bool isServer)");

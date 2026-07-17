@@ -48,7 +48,9 @@ public partial class ClientStats : SessionScopedNode
         table.Clear();
         int count = Math.Min(peerIds.Length, values.Length);
         for (int i = 0; i < count; i++)
+        {
             table[peerIds[i]] = values[i];
+        }
         Changed?.Invoke();
     }
 }

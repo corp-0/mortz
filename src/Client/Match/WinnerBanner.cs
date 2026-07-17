@@ -27,7 +27,9 @@ public partial class WinnerBanner : Control
         _names.Clear();
         int count = Math.Min(msg.PeerIds.Length, msg.Names.Length);
         for (int i = 0; i < count; i++)
+        {
             _names[msg.PeerIds[i]] = msg.Names[i];
+        }
     }
 
     private void OnMatchEnd(MatchEndMsg msg)
