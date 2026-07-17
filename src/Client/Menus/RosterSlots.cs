@@ -8,7 +8,8 @@ namespace Mortz.Client.Menus;
 /// ready state) so every roster layout renders identical slots.</summary>
 internal static class RosterSlots
 {
-    public static Control BuildSlot(LobbyMember member, IClientStats stats, long localId)
+    public static Control BuildSlot(LobbyMember member, IClientStats stats, long localId,
+        Control? action = null)
     {
         string self = member.PeerId == localId ? " (you)" : "";
         PanelContainer slot = new() { CustomMinimumSize = new Vector2(0, 44) };
@@ -44,6 +45,22 @@ internal static class RosterSlots
             new Color("64748b"), 64));
         row.AddChild(StatLabel(member.Ready ? "READY" : "WAITING",
             member.Ready ? new Color("86efac") : new Color("94a3b8"), 80));
+        if (action != null)
+            row.AddChild(action);
+        return slot;
+    }
+
+    /// <summary>A free team slot; clicking it asks the server for the move.</summary>
+    public static Control BuildEmptySlot(bool enabled, Action pressed)
+    {
+        Button slot = new()
+        {
+            Text = "JOIN",
+            Disabled = !enabled,
+            CustomMinimumSize = new Vector2(0, 44),
+            Modulate = new Color(1, 1, 1, 0.55f),
+        };
+        slot.Pressed += pressed;
         return slot;
     }
 

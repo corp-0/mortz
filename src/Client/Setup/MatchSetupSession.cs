@@ -14,6 +14,7 @@ public sealed class MatchSetupSession : IMatchSetup, IDisposable
 {
     private readonly List<MapOption> _mapOptions = [];
     private readonly List<LobbyMember> _members = [];
+    private readonly List<SwapOffer> _swapOffers = [];
     private byte[] _rulesBytes;
     private bool _subscribed;
 
@@ -21,6 +22,7 @@ public sealed class MatchSetupSession : IMatchSetup, IDisposable
     public event Action? TeamsChanged;
     public event Action? SettingsChanged;
     public event Action? RosterChanged;
+    public event Action? SwapOffersChanged;
 
     public bool HasServerState { get; private set; }
     public MatchConfig Rules { get; private set; } = new();
@@ -29,6 +31,7 @@ public sealed class MatchSetupSession : IMatchSetup, IDisposable
     public IReadOnlyList<MapOption> MapOptions => _mapOptions;
     public string SettingsError { get; private set; } = "";
     public IReadOnlyList<LobbyMember> Members => _members;
+    public IReadOnlyList<SwapOffer> SwapOffers => _swapOffers;
 
     public MatchSetupSession() => _rulesBytes = Rules.ToBytes();
 
@@ -55,6 +58,7 @@ public sealed class MatchSetupSession : IMatchSetup, IDisposable
         _mapOptions.Clear();
         ApplyRules(new MatchConfig(), raiseSettings: hadState);
         ApplyMembers([]);
+        ApplyOffers([]);
     }
 
     public void Dispose()
@@ -114,6 +118,21 @@ public sealed class MatchSetupSession : IMatchSetup, IDisposable
                 message.ReadyFlags[i] != 0, team);
         }
         ApplyMembers(members);
+
+        int offerCount = Math.Min(message.SwapFrom.Length, message.SwapTo.Length);
+        SwapOffer[] offers = new SwapOffer[offerCount];
+        for (int i = 0; i < offerCount; i++)
+            offers[i] = new SwapOffer(message.SwapFrom[i], message.SwapTo[i]);
+        ApplyOffers(offers);
+    }
+
+    private void ApplyOffers(IReadOnlyList<SwapOffer> offers)
+    {
+        if (offers.SequenceEqual(_swapOffers))
+            return;
+        _swapOffers.Clear();
+        _swapOffers.AddRange(offers);
+        SwapOffersChanged?.Invoke();
     }
 
     /// <summary>Mid-match canonical rules and map for players who never saw

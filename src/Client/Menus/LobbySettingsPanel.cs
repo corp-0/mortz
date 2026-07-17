@@ -246,12 +246,27 @@ public partial class LobbySettingsPanel : PanelContainer
             control.SetEditable(canEdit);
     }
 
+    // Layer PNGs decode to whatever format they were saved in (an RGB
+    // background without alpha is legal, and user maps will bring anything),
+    // while BlendRect refuses mismatched formats. Normalize to RGBA first.
     internal static Image ComposePreview(MapPackage map)
     {
         Image combined = (Image)map.Background.Duplicate();
+        combined.Convert(Image.Format.Rgba8);
         Rect2I area = new(0, 0, map.Width, map.Height);
-        combined.BlendRect(map.Solid, area, Vector2I.Zero);
-        combined.BlendRect(map.Destructible, area, Vector2I.Zero);
+        combined.BlendRect(Rgba(map.Solid), area, Vector2I.Zero);
+        combined.BlendRect(Rgba(map.Destructible), area, Vector2I.Zero);
         return combined;
+    }
+
+    /// <summary>Copies only when a conversion is actually needed; the
+    /// package's images are shared and must not be mutated.</summary>
+    private static Image Rgba(Image layer)
+    {
+        if (layer.GetFormat() == Image.Format.Rgba8)
+            return layer;
+        Image converted = (Image)layer.Duplicate();
+        converted.Convert(Image.Format.Rgba8);
+        return converted;
     }
 }

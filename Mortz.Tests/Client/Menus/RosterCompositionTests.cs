@@ -34,14 +34,31 @@ public class RosterCompositionTests
 
             setup.ApplySettingsForTest(Settings(teams: true));
             setup.ApplyLobbyStateForTest(new LobbyStateMsg(
-                [1, 2, 3], ["A", "B", "C"], [0, 0, 0], [1, 2, 1]));
+                [1, 2, 3], ["A", "B", "C"], [0, 0, 0], [1, 2, 1], [], []));
 
             TeamColumnsRoster columns =
                 Assert.IsType<TeamColumnsRoster>(roster.GetNode("TeamColumnsRoster"));
             Assert.Null(roster.GetNodeOrNull("SingleColumnRoster"));
-            Assert.Equal(2, columns.GetNode("Column/Teams/Team1/Slots").GetChildCount());
-            Assert.Equal(1, columns.GetNode("Column/Teams/Team2/Slots").GetChildCount());
+
+            // Capacity is 2 per team for 3 players: team 1 is full, team 2
+            // shows its member plus one clickable free slot.
+            Node team1 = columns.GetNode("Column/Teams/Team1/Slots");
+            Node team2 = columns.GetNode("Column/Teams/Team2/Slots");
+            Assert.Equal(2, team1.GetChildCount());
+            Assert.Equal(2, team2.GetChildCount());
+            Assert.Empty(team1.GetChildren().OfType<Button>());
+            Button join = Assert.Single(team2.GetChildren().OfType<Button>());
+            Assert.False(join.Disabled); // local peer 1 sits on team 1
             Assert.Equal(0, columns.GetNode("Column/Unassigned").GetChildCount());
+
+            // Opponent slots carry a swap button; an incoming offer flips it
+            // to ACCEPT.
+            Assert.Equal("SWAP", SlotButtons(team2)[0].Text);
+            Assert.Empty(SlotButtons(team1));
+            setup.ApplyLobbyStateForTest(new LobbyStateMsg(
+                [1, 2, 3], ["A", "B", "C"], [0, 0, 0], [1, 2, 1], [2], [1]));
+            Assert.Equal("ACCEPT",
+                SlotButtons(columns.GetNode("Column/Teams/Team2/Slots"))[0].Text);
 
             setup.ApplySettingsForTest(Settings(teams: false));
             Assert.IsType<SingleColumnRoster>(roster.GetNode("SingleColumnRoster"));
@@ -87,6 +104,14 @@ public class RosterCompositionTests
         AssertSceneType<SingleColumnRoster>("SingleColumnRoster");
         AssertSceneType<TeamColumnsRoster>("TeamColumnsRoster");
     }
+
+    /// <summary>Buttons nested inside member slots (not the top-level JOIN
+    /// slots, which are direct children of the column).</summary>
+    private static List<Button> SlotButtons(Node column) =>
+        column.GetChildren().Where(child => child is not Button)
+            .SelectMany(slot => slot.FindChildren("*", "Button", recursive: true, owned: false)
+                .OfType<Button>())
+            .ToList();
 
     private static LobbySettingsMsg Settings(bool teams, int killTarget = 20)
     {

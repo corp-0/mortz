@@ -5,6 +5,9 @@ namespace Mortz.Client.Setup;
 /// <summary>One lobby member as replicated by the server.</summary>
 public readonly record struct LobbyMember(long PeerId, string Name, bool Ready, byte Team);
 
+/// <summary>A pending team swap offer as replicated by the server.</summary>
+public readonly record struct SwapOffer(long From, long To);
+
 /// <summary>One selectable map from the replicated server catalog.</summary>
 public readonly record struct MapOption(string Id, string Name);
 
@@ -29,6 +32,9 @@ public interface IMatchSetup
     /// <summary>Lobby membership, a name, or a ready state changed.</summary>
     event Action? RosterChanged;
 
+    /// <summary>A pending swap offer appeared, resolved, or expired.</summary>
+    event Action? SwapOffersChanged;
+
     /// <summary>False until the first valid server settings arrive.</summary>
     bool HasServerState { get; }
 
@@ -45,4 +51,6 @@ public interface IMatchSetup
     string SettingsError { get; }
 
     IReadOnlyList<LobbyMember> Members { get; }
+
+    IReadOnlyList<SwapOffer> SwapOffers { get; }
 }

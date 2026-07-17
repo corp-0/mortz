@@ -37,11 +37,14 @@ internal sealed class ServerProtocol
     public void BroadcastLobby(LobbySession lobby)
     {
         IReadOnlyList<LobbyPlayer> players = lobby.Players;
+        IReadOnlyList<(long From, long To)> offers = lobby.SwapOffers;
         new LobbyStateMsg(
             players.Select(player => player.PeerId).ToArray(),
             players.Select(player => _players.Name(player.PeerId)).ToArray(),
             players.Select(player => player.Ready ? (byte)1 : (byte)0).ToArray(),
-            players.Select(player => player.Team).ToArray())
+            players.Select(player => player.Team).ToArray(),
+            offers.Select(offer => offer.From).ToArray(),
+            offers.Select(offer => offer.To).ToArray())
             .Broadcast();
     }
 

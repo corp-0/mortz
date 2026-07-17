@@ -31,7 +31,7 @@ public class ChatCompositionTests
             lobby.Visible = true;
             MatchSetup setup = client.GetNode<MatchSetup>("MatchSetup");
             setup.ApplyLobbyStateForTest(new LobbyStateMsg(
-                [1, 2], ["Host", "Guest"], [1, 0], [0, 0]));
+                [1, 2], ["Host", "Guest"], [1, 0], [0, 0], [], []));
 
             LobbySettingsPanel panel =
                 client.GetNode<LobbySettingsPanel>("Lobby/Content/Main/Settings");
@@ -80,6 +80,23 @@ public class ChatCompositionTests
         string contentRoot = ProjectSettings.GlobalizePath("res://content");
         MapPackage map = Assert.IsType<MapPackage>(MapPackage.Load("castlewars", contentRoot));
         Image preview = LobbySettingsPanel.ComposePreview(map);
+        Assert.Equal(map.Width, preview.GetWidth());
+        Assert.Equal(map.Height, preview.GetHeight());
+    }
+
+    [Fact]
+    public void MapPreviewComposesWhateverFormatsTheLayersDecodeTo()
+    {
+        // fightbox ships an RGB background (no alpha); BlendRect would
+        // silently skip mismatched layers, leaving a background-only preview.
+        string contentRoot = ProjectSettings.GlobalizePath("res://content");
+        MapPackage map = Assert.IsType<MapPackage>(MapPackage.Load("fightbox", contentRoot));
+        Assert.NotEqual(Image.Format.Rgba8, map.Background.GetFormat());
+
+        Image preview = LobbySettingsPanel.ComposePreview(map);
+
+        Assert.Equal(Image.Format.Rgba8, preview.GetFormat());
+        Assert.Equal(Image.Format.Rgba8, map.Solid.GetFormat()); // untouched shared image
         Assert.Equal(map.Width, preview.GetWidth());
         Assert.Equal(map.Height, preview.GetHeight());
     }

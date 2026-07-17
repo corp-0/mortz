@@ -89,6 +89,95 @@ public class LobbySessionTests
     }
 
     [Fact]
+    public void PlayersJumpOnlyToTeamsWithAFreeSlot()
+    {
+        LobbySession lobby = LobbySession.For([1, 2, 3], teamsEnabled: true);
+        // Teams start 1/2/1; capacity is 2 per side.
+
+        Assert.True(lobby.TrySetTeam(1, 2));  // team 2 had a free slot
+        Assert.False(lobby.TrySetTeam(3, 2)); // now it is full
+        Assert.False(lobby.TrySetTeam(3, 1)); // already there
+        Assert.False(lobby.TrySetTeam(99, 2));
+        Assert.False(lobby.TrySetTeam(1, 3)); // no such team
+
+        Assert.Equal([(byte)2, (byte)2, (byte)1], lobby.Players.Select(player => player.Team));
+    }
+
+    [Fact]
+    public void TeamJumpsNeedTeamsEnabled()
+    {
+        LobbySession lobby = LobbySession.For([1, 2]);
+
+        Assert.False(lobby.TrySetTeam(1, 2));
+    }
+
+    [Fact]
+    public void MutualSwapOffersTradeTeamsAndKeepReadyState()
+    {
+        LobbySession lobby = LobbySession.For([1, 2], teamsEnabled: true); // 1/2
+        lobby.SetReady(1, true);
+
+        Assert.Equal(SwapResult.OFFERED, lobby.RequestSwap(1, 2));
+        Assert.Equal([(1L, 2L)], lobby.SwapOffers);
+        Assert.Equal(SwapResult.SWAPPED, lobby.RequestSwap(2, 1));
+
+        Assert.Equal([(byte)2, (byte)1], lobby.Players.Select(player => player.Team));
+        Assert.Equal([true, false], lobby.Players.Select(player => player.Ready));
+        Assert.Empty(lobby.SwapOffers);
+    }
+
+    [Fact]
+    public void RepeatingAnOfferCancelsIt()
+    {
+        LobbySession lobby = LobbySession.For([1, 2], teamsEnabled: true);
+
+        Assert.Equal(SwapResult.OFFERED, lobby.RequestSwap(1, 2));
+        Assert.Equal(SwapResult.CANCELLED, lobby.RequestSwap(1, 2));
+
+        Assert.Empty(lobby.SwapOffers);
+        Assert.Equal([(byte)1, (byte)2], lobby.Players.Select(player => player.Team));
+    }
+
+    [Fact]
+    public void SwapOffersNeedACrossTeamPair()
+    {
+        LobbySession lobby = LobbySession.For([1, 2, 3], teamsEnabled: true); // 1/2/1
+
+        Assert.Equal(SwapResult.NONE, lobby.RequestSwap(1, 3)); // same team
+        Assert.Equal(SwapResult.NONE, lobby.RequestSwap(1, 1));
+        Assert.Equal(SwapResult.NONE, lobby.RequestSwap(1, 99));
+
+        LobbySession teamless = LobbySession.For([1, 2]);
+        Assert.Equal(SwapResult.NONE, teamless.RequestSwap(1, 2));
+    }
+
+    [Fact]
+    public void OffersDieWhenTheirPairStopsSpanningTeams()
+    {
+        LobbySession lobby = LobbySession.For([1, 2, 3], teamsEnabled: true); // 1/2/1
+        lobby.RequestSwap(1, 2);
+        lobby.RequestSwap(3, 2);
+
+        Assert.True(lobby.TrySetTeam(1, 2)); // 1 joins 2's team, that offer is moot
+        Assert.Equal([(3L, 2L)], lobby.SwapOffers);
+
+        lobby.Remove(2);
+        Assert.Empty(lobby.SwapOffers);
+    }
+
+    [Fact]
+    public void TeamToggleWipesAllOffers()
+    {
+        LobbySession lobby = LobbySession.For([1, 2], teamsEnabled: true);
+        lobby.RequestSwap(1, 2);
+
+        lobby.SetTeamsEnabled(false);
+        lobby.SetTeamsEnabled(true);
+
+        Assert.Empty(lobby.SwapOffers);
+    }
+
+    [Fact]
     public void EmptyLobbyTeamToggleNeedsNoBroadcast()
     {
         LobbySession lobby = new();

@@ -99,21 +99,41 @@ public class MatchSetupSessionTests : IDisposable
         session.RosterChanged += () => roster++;
         session.TeamsChanged += () => teams++;
 
-        new LobbyStateMsg([1, 2], ["A", "B"], [1, 0], [0, 0]).Broadcast();
+        new LobbyStateMsg([1, 2], ["A", "B"], [1, 0], [0, 0], [], []).Broadcast();
         Assert.Equal((1, 0), (roster, teams));
         Assert.Equal([
             new LobbyMember(1, "A", true, 0),
             new LobbyMember(2, "B", false, 0),
         ], session.Members);
 
-        new LobbyStateMsg([1, 2], ["A", "B"], [1, 0], [0, 0]).Broadcast();
+        new LobbyStateMsg([1, 2], ["A", "B"], [1, 0], [0, 0], [], []).Broadcast();
         Assert.Equal((1, 0), (roster, teams));
 
-        new LobbyStateMsg([1, 2], ["A", "B"], [1, 0], [1, 2]).Broadcast();
+        new LobbyStateMsg([1, 2], ["A", "B"], [1, 0], [1, 2], [], []).Broadcast();
         Assert.Equal((1, 1), (roster, teams));
 
-        new LobbyStateMsg([1, 2], ["A", "B"], [1, 1], [1, 2]).Broadcast();
+        new LobbyStateMsg([1, 2], ["A", "B"], [1, 1], [1, 2], [], []).Broadcast();
         Assert.Equal((2, 1), (roster, teams));
+    }
+
+    [Fact]
+    public void SwapOffersRideTheLobbyStateAndFireOnTransitionsOnly()
+    {
+        using MatchSetupSession session = new();
+        session.Subscribe();
+        int offers = 0;
+        session.SwapOffersChanged += () => offers++;
+
+        new LobbyStateMsg([1, 2], ["A", "B"], [0, 0], [1, 2], [1], [2]).Broadcast();
+        Assert.Equal([new SwapOffer(1, 2)], session.SwapOffers);
+        Assert.Equal(1, offers);
+
+        new LobbyStateMsg([1, 2], ["A", "B"], [0, 0], [1, 2], [1], [2]).Broadcast();
+        Assert.Equal(1, offers);
+
+        new LobbyStateMsg([1, 2], ["A", "B"], [0, 0], [2, 1], [], []).Broadcast();
+        Assert.Empty(session.SwapOffers);
+        Assert.Equal(2, offers);
     }
 
     [Fact]
@@ -139,7 +159,7 @@ public class MatchSetupSessionTests : IDisposable
         using MatchSetupSession session = new();
         session.Subscribe();
         Settings(new MatchConfig { Teams = true }).Broadcast();
-        new LobbyStateMsg([1], ["A"], [0], [1]).Broadcast();
+        new LobbyStateMsg([1], ["A"], [0], [1], [], []).Broadcast();
         int teams = 0, roster = 0, settings = 0;
         session.TeamsChanged += () => teams++;
         session.RosterChanged += () => roster++;

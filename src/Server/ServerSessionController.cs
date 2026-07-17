@@ -60,6 +60,8 @@ public partial class ServerSessionController : Node, IServerSession
         network.PeerLeft -= OnPeerLeft;
         network.InputsReceived -= OnInputsReceived;
         SetReadyMsg.Received -= OnSetReady;
+        TeamJoinRequestMsg.Received -= OnTeamJoinRequest;
+        TeamSwapRequestMsg.Received -= OnTeamSwapRequest;
         LobbySettings.RulesChanged -= OnRulesChanged;
         if (_debugCarveEnabled)
             DebugCarveMsg.Received -= OnDebugCarve;
@@ -92,6 +94,8 @@ public partial class ServerSessionController : Node, IServerSession
         network.PeerLeft += OnPeerLeft;
         network.InputsReceived += OnInputsReceived;
         SetReadyMsg.Received += OnSetReady;
+        TeamJoinRequestMsg.Received += OnTeamJoinRequest;
+        TeamSwapRequestMsg.Received += OnTeamSwapRequest;
         LobbySettings.RulesChanged += OnRulesChanged;
         _debugCarveEnabled = CmdArgs.HasFlag("--enable-debug-carve");
         if (_debugCarveEnabled)
@@ -139,6 +143,31 @@ public partial class ServerSessionController : Node, IServerSession
         GD.Print($"[server] player {peerId} left lobby ({lobby.Count} waiting)");
         _protocol.BroadcastLobby(lobby);
         TryStartMatch();
+    }
+
+    private void OnTeamJoinRequest(long sender, TeamJoinRequestMsg message)
+    {
+        if (_lobby is not { } lobby || !lobby.TrySetTeam(sender, message.Team))
+            return;
+        GD.Print($"[server] player {sender} moved to team {message.Team}");
+        _protocol.BroadcastLobby(lobby);
+    }
+
+    private void OnTeamSwapRequest(long sender, TeamSwapRequestMsg message)
+    {
+        if (_lobby is not { } lobby)
+            return;
+        SwapResult result = lobby.RequestSwap(sender, message.TargetPeerId);
+        if (result == SwapResult.NONE)
+            return;
+        GD.Print(result switch
+        {
+            SwapResult.OFFERED =>
+                $"[server] player {sender} offers a team swap to {message.TargetPeerId}",
+            SwapResult.CANCELLED => $"[server] player {sender} cancelled their swap offer",
+            _ => $"[server] players {sender} and {message.TargetPeerId} swapped teams",
+        });
+        _protocol.BroadcastLobby(lobby);
     }
 
     private void OnRulesChanged()

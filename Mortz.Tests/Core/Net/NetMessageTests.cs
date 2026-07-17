@@ -65,7 +65,7 @@ public class NetMessageTests : IDisposable
         LobbyStateMsg.Received += handler;
         try
         {
-            new LobbyStateMsg([5, 6], ["a", ""], [1, 0], [1, 2]).Broadcast();
+            new LobbyStateMsg([5, 6], ["a", ""], [1, 0], [1, 2], [5], [6]).Broadcast();
         }
         finally
         {
@@ -75,6 +75,8 @@ public class NetMessageTests : IDisposable
         Assert.Equal(["a", ""], received.Names);
         Assert.Equal([1, 0], received.ReadyFlags);
         Assert.Equal([1, 2], received.Teams);
+        Assert.Equal([5], received.SwapFrom);
+        Assert.Equal([6], received.SwapTo);
     }
 
     [Fact]
@@ -302,22 +304,28 @@ public class NetMessageTests : IDisposable
         UseLoopback(receiverIsServer: true);
         (long Sender, bool Ready) ready = default;
         (long Sender, int X, int Y) carve = default;
+        (long Sender, byte Team) join = default;
         Action<long, SetReadyMsg> readyHandler = (s, m) => ready = (s, m.Ready);
         Action<long, DebugCarveMsg> carveHandler = (s, m) => carve = (s, m.X, m.Y);
+        Action<long, TeamJoinRequestMsg> joinHandler = (s, m) => join = (s, m.Team);
         SetReadyMsg.Received += readyHandler;
         DebugCarveMsg.Received += carveHandler;
+        TeamJoinRequestMsg.Received += joinHandler;
         try
         {
             new SetReadyMsg(true).SendToServer();
             new DebugCarveMsg(10, 20).SendToServer();
+            new TeamJoinRequestMsg(2).SendToServer();
         }
         finally
         {
             SetReadyMsg.Received -= readyHandler;
             DebugCarveMsg.Received -= carveHandler;
+            TeamJoinRequestMsg.Received -= joinHandler;
         }
         Assert.Equal((SENDER, true), ready);
         Assert.Equal((SENDER, 10, 20), carve);
+        Assert.Equal((SENDER, (byte)2), join);
     }
 
     [Fact]
@@ -536,6 +544,10 @@ public class NetMessageTests : IDisposable
                 () => new LobbyMapUpdateMsg("arena", 3, [4, 5]).SendToServer()),
             Capture(NetRegistry.ID_LobbySettingsRequestMsg,
                 () => new LobbySettingsRequestMsg().SendToServer()),
+            Capture(NetRegistry.ID_TeamJoinRequestMsg,
+                () => new TeamJoinRequestMsg(1).SendToServer()),
+            Capture(NetRegistry.ID_TeamSwapRequestMsg,
+                () => new TeamSwapRequestMsg(42).SendToServer()),
         ];
 
         int raised = 0;
@@ -547,6 +559,8 @@ public class NetMessageTests : IDisposable
         Action<long, LobbyRulesUpdateMsg> rules = (_, _) => raised++;
         Action<long, LobbyMapUpdateMsg> map = (_, _) => raised++;
         Action<long, LobbySettingsRequestMsg> settingsRequest = (_, _) => raised++;
+        Action<long, TeamJoinRequestMsg> teamJoin = (_, _) => raised++;
+        Action<long, TeamSwapRequestMsg> teamSwap = (_, _) => raised++;
         SetReadyMsg.Received += ready;
         DebugCarveMsg.Received += carve;
         ChatSendMsg.Received += chat;
@@ -555,6 +569,8 @@ public class NetMessageTests : IDisposable
         LobbyRulesUpdateMsg.Received += rules;
         LobbyMapUpdateMsg.Received += map;
         LobbySettingsRequestMsg.Received += settingsRequest;
+        TeamJoinRequestMsg.Received += teamJoin;
+        TeamSwapRequestMsg.Received += teamSwap;
         try
         {
             foreach ((ushort id, byte[] payload) in messages)
@@ -574,6 +590,8 @@ public class NetMessageTests : IDisposable
             LobbyRulesUpdateMsg.Received -= rules;
             LobbyMapUpdateMsg.Received -= map;
             LobbySettingsRequestMsg.Received -= settingsRequest;
+            TeamJoinRequestMsg.Received -= teamJoin;
+            TeamSwapRequestMsg.Received -= teamSwap;
         }
         Assert.Equal(0, raised);
     }
@@ -621,7 +639,8 @@ public class NetMessageTests : IDisposable
         ushort[] ids = [NetRegistry.ID_SetReadyMsg, NetRegistry.ID_DebugCarveMsg,
             NetRegistry.ID_ChatSendMsg, NetRegistry.ID_AdminAuthRequestMsg,
             NetRegistry.ID_AdminProofMsg, NetRegistry.ID_LobbyRulesUpdateMsg,
-            NetRegistry.ID_LobbyMapUpdateMsg, NetRegistry.ID_LobbySettingsRequestMsg];
+            NetRegistry.ID_LobbyMapUpdateMsg, NetRegistry.ID_LobbySettingsRequestMsg,
+            NetRegistry.ID_TeamJoinRequestMsg, NetRegistry.ID_TeamSwapRequestMsg];
         for (int i = 0; i < 10_000; i++)
         {
             byte[] payload = new byte[random.Next(0, 129)];
