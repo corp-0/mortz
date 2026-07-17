@@ -1,8 +1,8 @@
 using System.Security.Cryptography;
 using System.Text;
 using Mortz.Client;
-using Mortz.Client.Session;
 using Mortz.Client.Chat;
+using Mortz.Client.Session;
 using Mortz.Core.Admin;
 using Mortz.Core.Chat;
 using Mortz.Core.Match;
@@ -16,9 +16,11 @@ namespace Mortz.Tests.Core.Net;
 /// <summary>
 /// Full protocol round-trips over a loopback NetTransport: send methods ->
 /// generated serializer -> NetRegistry.Dispatch -> Received event, no socket.
-/// All tests share the NetTransport.Send static, so they live in one class
-/// (xunit runs tests within a class sequentially) and restore it after.
+/// All tests share the NetTransport.Send static, so every class that swaps it
+/// joins the NetTransport collection (xunit runs a collection sequentially)
+/// and restores it after.
 /// </summary>
+[Collection("NetTransport")]
 public class NetMessageTests : IDisposable
 {
     private const long SENDER = 42;

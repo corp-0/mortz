@@ -2,6 +2,7 @@ using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
 using Mortz.Core.Input;
+using Mortz.Core.Match;
 using Mortz.Core.Net.Messages;
 using Mortz.Core.Sim;
 using Mortz.Net;
@@ -22,8 +23,11 @@ public interface IServerSession
 public partial class ServerSessionController : Node, IServerSession
 {
     private const float MATCH_END_SECONDS = 7;
+    private const double PING_INTERVAL_SECONDS = 1;
 
     private readonly PlayerDirectory _players = new();
+    private readonly WinTracker _wins = new();
+    private double _pingCountdown;
     private LobbySession? _lobby = new();
     private MatchSession? _match;
     private ServerProtocol _protocol = null!;
@@ -63,11 +67,20 @@ public partial class ServerSessionController : Node, IServerSession
 
     public override void _PhysicsProcess(double delta)
     {
+        _pingCountdown -= delta;
+        if (_pingCountdown <= 0)
+        {
+            _pingCountdown = PING_INTERVAL_SECONDS;
+            _protocol.BroadcastPings();
+        }
+
         if (_match is not { } match)
             return;
 
         MatchFrame frame = match.Step();
         _protocol.Publish(frame, match);
+        if (frame.MatchEnded is { } winner)
+            RecordWins(winner, match);
         if (frame.ReturnToLobby)
             ReturnToLobby(match);
     }
@@ -90,6 +103,7 @@ public partial class ServerSessionController : Node, IServerSession
     private void OnPeerJoined(long peerId, string requestedName)
     {
         string name = _players.Add(peerId, requestedName);
+        _protocol.SendWins(peerId, _wins);
         if (_match is { } match)
         {
             AddToMatch(peerId, match);
@@ -107,6 +121,7 @@ public partial class ServerSessionController : Node, IServerSession
     private void OnPeerLeft(long peerId)
     {
         _players.Remove(peerId);
+        _wins.Remove(peerId);
         if (_match is { } match)
         {
             match.RemovePlayer((int)peerId);
@@ -159,6 +174,17 @@ public partial class ServerSessionController : Node, IServerSession
         _protocol.SyncPlayer(peerId, match);
         GD.Print($"[server] player {peerId} joined ({match.World.Players.Count} in game)" +
                  (team != 0 ? $" on team {team}" : ""));
+    }
+
+    private void RecordWins(Scoreboard.MatchWinner winner, MatchSession match)
+    {
+        foreach (int peerId in match.WinnerPeers(winner))
+        {
+            _wins.RecordWin(peerId);
+            GD.Print($"[server] {_players.Name(peerId)} now has " +
+                     $"{_wins.Wins(peerId)} session win(s)");
+        }
+        _protocol.BroadcastWins(_wins);
     }
 
     private void ReturnToLobby(MatchSession completedMatch)

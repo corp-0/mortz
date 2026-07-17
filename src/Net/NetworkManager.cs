@@ -245,6 +245,18 @@ public partial class NetworkManager : Node
             EmitSignal(SignalName.SnapshotReceived, data, ack);
     }
 
+    /// <summary>Server side: ENet's smoothed round-trip time per validated peer.
+    /// Transport-level, so `--fake-lag` does not show up in it.</summary>
+    public (long PeerId, int PingMs)[] PeerPingsMs()
+    {
+        if (Multiplayer.MultiplayerPeer is not ENetMultiplayerPeer enet)
+            return [];
+        return _admission.ValidatedPeers
+            .Select(peerId => (peerId, (int)enet.GetPeer((int)peerId)
+                .GetStatistic(ENetPacketPeer.PeerStatistic.RoundTripTime)))
+            .ToArray();
+    }
+
     /// <summary>
     /// Wire bytes/packets since the last call, from ENet's own counters, so
     /// the numbers include ENet framing and compression (not IP/UDP headers).

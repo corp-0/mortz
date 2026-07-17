@@ -44,6 +44,21 @@ internal sealed class ServerProtocol
             .Broadcast();
     }
 
+    public void BroadcastPings()
+    {
+        (long PeerId, int PingMs)[] pings = _network.PeerPingsMs();
+        if (pings.Length == 0)
+            return;
+        new PingUpdateMsg(
+            pings.Select(ping => ping.PeerId).ToArray(),
+            pings.Select(ping => ping.PingMs).ToArray())
+            .Broadcast();
+    }
+
+    public void BroadcastWins(WinTracker wins) => WinsMessage(wins).Broadcast();
+
+    public void SendWins(long peerId, WinTracker wins) => WinsMessage(wins).SendTo(peerId);
+
     public void BroadcastRoster(MatchSession match)
     {
         long[] peerIds = _players.PeerIds
@@ -211,6 +226,12 @@ internal sealed class ServerProtocol
             new MortarLifecycleMsg(events).SendTo(peerId);
             _mortarPayloadBytes += sizeof(int) + events.Length;
         }
+    }
+
+    private SessionWinsMsg WinsMessage(WinTracker wins)
+    {
+        long[] peerIds = _players.PeerIds.ToArray();
+        return new SessionWinsMsg(peerIds, peerIds.Select(wins.Wins).ToArray());
     }
 
     private static void BroadcastCarve(ServerExplosion explosion) =>

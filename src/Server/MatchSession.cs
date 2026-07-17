@@ -151,6 +151,14 @@ internal sealed class MatchSession
         return elimination;
     }
 
+    /// <summary>Peers credited with the win: the winner itself, or everyone
+    /// still in the match on the winning team.</summary>
+    public int[] WinnerPeers(Scoreboard.MatchWinner winner) =>
+        winner.ByTeam
+            ? World.Players.Where(pair => pair.Value.TeamId == winner.Id)
+                .Select(pair => pair.Key).ToArray()
+            : [winner.Id];
+
     public ServerExplosion? DebugCarve(int x, int y)
     {
         if (Stage != MatchStage.PLAYING)

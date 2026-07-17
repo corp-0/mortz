@@ -77,6 +77,32 @@ public class MatchSessionTests
     }
 
     [Fact]
+    public void SoloWinnerIsTheOnlyCreditedPeer()
+    {
+        MatchSession match = Session();
+        match.AddPlayer(1);
+        match.AddPlayer(2);
+
+        Assert.Equal([1], match.WinnerPeers(new Scoreboard.MatchWinner(false, 1)));
+    }
+
+    [Fact]
+    public void TeamWinCreditsEveryTeammateStillInTheMatch()
+    {
+        MatchSession match = Session(teams: true);
+        match.AddPlayer(1); // team 1
+        match.AddPlayer(2); // team 2
+        match.AddPlayer(3); // team 1
+        match.AddPlayer(4); // team 2
+        match.RemovePlayer(3);
+
+        int[] winners = match.WinnerPeers(new Scoreboard.MatchWinner(true, 1));
+
+        Assert.Equal([1], winners);
+        Assert.Equal([2, 4], match.WinnerPeers(new Scoreboard.MatchWinner(true, 2)).Order());
+    }
+
+    [Fact]
     public void VictoryLapFreezesWorldRejectsInputsAndUsesSeparateCountdown()
     {
         MatchSession match = Session(killTarget: 1, victoryLapTicks: 3);
