@@ -15,6 +15,9 @@ namespace Mortz.Server;
 /// <summary>Server-owned lobby setup consumed by the match lifecycle.</summary>
 public interface IServerLobbySettings
 {
+    /// <summary>An admin's rules edit was accepted and Rules replaced.</summary>
+    event Action? RulesChanged;
+
     MapPackage Map { get; }
     MatchConfig Rules { get; }
     void SendTo(long peerId);
@@ -41,6 +44,8 @@ public partial class ServerLobbySettings : Node, IServerLobbySettings
 
     [Dependency]
     public IServerAdminAuthorizer Admin => this.DependOn<IServerAdminAuthorizer>();
+
+    public event Action? RulesChanged;
 
     public MapPackage Map { get; private set; } = null!;
     public MatchConfig Rules { get; private set; } = null!;
@@ -121,6 +126,7 @@ public partial class ServerLobbySettings : Node, IServerLobbySettings
             return;
         }
         GD.Print($"[server] lobby rules updated by admin {sender}");
+        RulesChanged?.Invoke();
         Broadcast();
     }
 

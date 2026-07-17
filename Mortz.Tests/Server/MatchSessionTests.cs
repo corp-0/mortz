@@ -77,6 +77,30 @@ public class MatchSessionTests
     }
 
     [Fact]
+    public void LobbyTeamsCarryIntoTheMatchAndLateJoinersBalance()
+    {
+        MatchSession match = Session(teams: true);
+        match.AddPlayer(1, lobbyTeam: 2);
+        match.AddPlayer(2, lobbyTeam: 2);
+        match.AddPlayer(3, lobbyTeam: 1);
+
+        byte lateJoiner = match.AddPlayer(4); // no lobby team: smallest wins
+
+        Assert.Equal(2, match.World.Players[1].TeamId);
+        Assert.Equal(2, match.World.Players[2].TeamId);
+        Assert.Equal(1, match.World.Players[3].TeamId);
+        Assert.Equal(1, lateJoiner);
+    }
+
+    [Fact]
+    public void LobbyTeamsAreIgnoredWhenTeamsAreOff()
+    {
+        MatchSession match = Session(teams: false);
+
+        Assert.Equal(0, match.AddPlayer(1, lobbyTeam: 2));
+    }
+
+    [Fact]
     public void SoloWinnerIsTheOnlyCreditedPeer()
     {
         MatchSession match = Session();

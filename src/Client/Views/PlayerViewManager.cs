@@ -22,6 +22,7 @@ public partial class PlayerViewManager : Node2D
     private readonly HashSet<int> _placed = new();
     private readonly Dictionary<int, string> _names = new();
     private readonly Dictionary<int, byte> _skins = new();
+    private readonly Dictionary<int, byte> _teams = new();
     private bool _replayActive;
 
     // Everyone renders with the base stats until perks make them per-player.
@@ -41,14 +42,20 @@ public partial class PlayerViewManager : Node2D
     {
         _names.Clear();
         _skins.Clear();
+        _teams.Clear();
         int count = Math.Min(msg.PeerIds.Length, Math.Min(msg.Names.Length, msg.Skins.Length));
         for (int i = 0; i < count; i++)
         {
             _names[(int)msg.PeerIds[i]] = msg.Names[i];
             _skins[(int)msg.PeerIds[i]] = msg.Skins[i];
+            if (i < msg.Teams.Length)
+                _teams[(int)msg.PeerIds[i]] = msg.Teams[i];
         }
         foreach ((int peerId, PlayerView view) in _views)
+        {
             view.SetPlayerName(_names.GetValueOrDefault(peerId, ""));
+            view.SetTeam(_teams.GetValueOrDefault(peerId));
+        }
     }
 
     public override void _UnhandledInput(InputEvent @event)
@@ -74,6 +81,7 @@ public partial class PlayerViewManager : Node2D
             view.SetIsLocal(isLocal);
             view.SetReplayActive(_replayActive);
             view.SetPlayerName(_names.GetValueOrDefault(peerId, ""));
+            view.SetTeam(_teams.GetValueOrDefault(peerId));
             AddChild(view);
             _views[peerId] = view;
         }

@@ -9,17 +9,27 @@
 [ext_resource type="Script" uid="uid://b7xyv1173ixe1" path="res://src/Client/Chat/ClientChat.cs" id="7_chat"]
 [ext_resource type="Script" uid="uid://drn2cynsax60k" path="res://src/Client/Session/ClientSessionController.cs" id="8_session"]
 [ext_resource type="Script" path="res://src/Client/Stats/ClientStats.cs" id="9_stats"]
+[ext_resource type="Script" path="res://src/Client/Setup/MatchSetup.cs" id="10_setup"]
+[ext_resource type="Script" path="res://src/Client/Score/MatchScore.cs" id="11_score"]
 
-[node name="ClientMain" type="Node" unique_id=282168119 node_paths=PackedStringArray("_clientChat", "_clientStats")]
+[node name="ClientMain" type="Node" unique_id=282168119 node_paths=PackedStringArray("_clientChat", "_clientStats", "_matchSetup", "_matchScore")]
 script = ExtResource("1_cmain")
 _clientChat = NodePath("ClientChat")
 _clientStats = NodePath("ClientStats")
+_matchSetup = NodePath("MatchSetup")
+_matchScore = NodePath("MatchScore")
 
 [node name="ClientChat" type="Node" parent="." unique_id=622475139]
 script = ExtResource("7_chat")
 
 [node name="ClientStats" type="Node" parent="."]
 script = ExtResource("9_stats")
+
+[node name="MatchSetup" type="Node" parent="."]
+script = ExtResource("10_setup")
+
+[node name="MatchScore" type="Node" parent="."]
+script = ExtResource("11_score")
 
 [node name="Sfx" type="Node" parent="." unique_id=552139458]
 script = ExtResource("5_sfx")

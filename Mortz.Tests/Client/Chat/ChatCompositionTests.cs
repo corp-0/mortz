@@ -3,6 +3,7 @@ using Mortz.Client;
 using Mortz.Client.Chat;
 using Mortz.Client.Menus;
 using Mortz.Client.Session;
+using Mortz.Client.Setup;
 using Mortz.Core.Match;
 using Mortz.Core.Net.Messages;
 using Mortz.Server;
@@ -28,12 +29,14 @@ public class ChatCompositionTests
         {
             Lobby lobby = client.GetNode<Lobby>("Lobby");
             lobby.Visible = true;
-            lobby.UpdatePlayers([1, 2], ["Host", "Guest"], [1, 0], 1);
+            MatchSetup setup = client.GetNode<MatchSetup>("MatchSetup");
+            setup.ApplyLobbyStateForTest(new LobbyStateMsg(
+                [1, 2], ["Host", "Guest"], [1, 0], [0, 0]));
 
             LobbySettingsPanel panel =
                 client.GetNode<LobbySettingsPanel>("Lobby/Content/Main/Settings");
             MatchConfig config = new();
-            panel.ApplySettingsForTest(new LobbySettingsMsg(
+            setup.ApplySettingsForTest(new LobbySettingsMsg(
                 "castlewars", "hash", ["castlewars"], ["Castle Wars"], config.ToBytes()));
             Assert.Equal(
                 MatchConfigUiMetadata.Categories.Sum(category => category.Properties.Count),
@@ -41,7 +44,8 @@ public class ChatCompositionTests
             Assert.Equal(MatchConfigUiMetadata.Categories.Count, panel.CategoryBlockCount);
 
             VBoxContainer players = client.GetNode<VBoxContainer>(
-                "Lobby/Content/Main/Sidebar/LobbyCard/Margin/Column/PlayerScroll/Players");
+                "Lobby/Content/Main/Sidebar/LobbyCard/Margin/Column/Roster/" +
+                "SingleColumnRoster/Players");
             Assert.Equal(2, players.GetChildCount());
             Assert.IsType<ChatPanel>(client.GetNode(
                 "Lobby/Content/Main/Sidebar/ChatPanel"));

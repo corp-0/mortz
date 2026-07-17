@@ -60,6 +60,7 @@ public partial class ServerSessionController : Node, IServerSession
         network.PeerLeft -= OnPeerLeft;
         network.InputsReceived -= OnInputsReceived;
         SetReadyMsg.Received -= OnSetReady;
+        LobbySettings.RulesChanged -= OnRulesChanged;
         if (_debugCarveEnabled)
             DebugCarveMsg.Received -= OnDebugCarve;
         _subscribed = false;
@@ -91,6 +92,7 @@ public partial class ServerSessionController : Node, IServerSession
         network.PeerLeft += OnPeerLeft;
         network.InputsReceived += OnInputsReceived;
         SetReadyMsg.Received += OnSetReady;
+        LobbySettings.RulesChanged += OnRulesChanged;
         _debugCarveEnabled = CmdArgs.HasFlag("--enable-debug-carve");
         if (_debugCarveEnabled)
         {
@@ -112,6 +114,7 @@ public partial class ServerSessionController : Node, IServerSession
         }
 
         LobbySession lobby = _lobby!;
+        lobby.SetTeamsEnabled(LobbySettings.Rules.Teams);
         lobby.Add(peerId);
         GD.Print($"[server] player {peerId} '{name}' entered lobby ({lobby.Count} waiting)");
         _protocol.BroadcastLobby(lobby);
@@ -138,6 +141,14 @@ public partial class ServerSessionController : Node, IServerSession
         TryStartMatch();
     }
 
+    private void OnRulesChanged()
+    {
+        if (_lobby is not { } lobby || !lobby.SetTeamsEnabled(LobbySettings.Rules.Teams))
+            return;
+        GD.Print($"[server] lobby teams {(LobbySettings.Rules.Teams ? "assigned" : "cleared")}");
+        _protocol.BroadcastLobby(lobby);
+    }
+
     private void OnSetReady(long sender, SetReadyMsg message)
     {
         if (_lobby is not { } lobby || !lobby.SetReady(sender, message.Ready))
@@ -160,17 +171,17 @@ public partial class ServerSessionController : Node, IServerSession
         _lobby = null;
         GD.Print($"[server] all {lobby.Count} player(s) ready, starting match");
         foreach (LobbyPlayer player in lobby.Players)
-            AddToMatch(player.PeerId, match);
+            AddToMatch(player.PeerId, match, player.Team);
         _protocol.BroadcastRoster(match);
     }
 
-    private void AddToMatch(long peerId, MatchSession match)
+    private void AddToMatch(long peerId, MatchSession match, byte lobbyTeam = 0)
     {
         MapPackage map = LobbySettings.Map;
         if (map.SpawnPoints.Length > 0 && match.World.Players.Count >= map.SpawnPoints.Length)
             GD.PushWarning($"[server] map '{map.MapId}' only has {map.SpawnPoints.Length} spawn " +
                            $"point(s) for {match.World.Players.Count + 1} players, so some will share one");
-        byte team = match.AddPlayer((int)peerId);
+        byte team = match.AddPlayer((int)peerId, lobbyTeam);
         _protocol.SyncPlayer(peerId, match);
         GD.Print($"[server] player {peerId} joined ({match.World.Players.Count} in game)" +
                  (team != 0 ? $" on team {team}" : ""));
@@ -189,7 +200,7 @@ public partial class ServerSessionController : Node, IServerSession
 
     private void ReturnToLobby(MatchSession completedMatch)
     {
-        _lobby = LobbySession.For(_players.PeerIds);
+        _lobby = LobbySession.For(_players.PeerIds, LobbySettings.Rules.Teams);
         _match = null;
         GD.Print($"[server] back to lobby ({completedMatch.World.Players.Count} player(s))");
         _protocol.BroadcastLobby(_lobby);

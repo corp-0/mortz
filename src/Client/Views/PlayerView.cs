@@ -1,5 +1,6 @@
 using Godot;
 using Mortz.Client.Audio;
+using Mortz.Client.Ui;
 using Mortz.Core.Sim;
 
 namespace Mortz.Client.Views;
@@ -61,6 +62,11 @@ public partial class PlayerView : Node2D
     }
 
     public void SetPlayerName(string name) => _nameplate.Text = name;
+
+    /// <summary>Nameplates wear the team color; body tint stays free for the
+    /// hit flash. 0 restores the neutral color when teams turn off.</summary>
+    public void SetTeam(byte teamId) =>
+        _nameplate.Modulate = TeamColors.For(teamId);
 
     public override void _ExitTree() => _reloadSound.Stop();
 

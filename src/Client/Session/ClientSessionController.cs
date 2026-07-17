@@ -154,8 +154,6 @@ public partial class ClientSessionController : Node
         }
         _menu.Visible = false;
         _lobby.Visible = true;
-        _lobby.UpdatePlayers(message.PeerIds, message.Names, message.ReadyFlags,
-            Multiplayer.GetUniqueId());
     }
 
     private void OnWelcome(WelcomeMsg message)

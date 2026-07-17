@@ -1,0 +1,58 @@
+[gd_scene format=3 uid="uid://bcyg5w5ortt37"]
+
+[ext_resource type="Script" uid="uid://dsfwyq2pxofq8" path="res://src/Client/Menus/TeamColumnsRoster.cs" id="1_roster"]
+
+[node name="TeamColumnsRoster" type="ScrollContainer" unique_id=2102943893 node_paths=PackedStringArray("_team1Header", "_team2Header", "_team1Slots", "_team2Slots", "_unassigned")]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_scroll_mode = 0
+script = ExtResource("1_roster")
+_team1Header = NodePath("Column/Teams/Team1/Header")
+_team2Header = NodePath("Column/Teams/Team2/Header")
+_team1Slots = NodePath("Column/Teams/Team1/Slots")
+_team2Slots = NodePath("Column/Teams/Team2/Slots")
+_unassigned = NodePath("Column/Unassigned")
+
+[node name="Column" type="VBoxContainer" parent="." unique_id=694171219]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="Teams" type="HBoxContainer" parent="Column" unique_id=1748732154]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Team1" type="VBoxContainer" parent="Column/Teams" unique_id=1857558651]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 5
+
+[node name="Header" type="Label" parent="Column/Teams/Team1" unique_id=1926973214]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "TEAM 1"
+
+[node name="Slots" type="VBoxContainer" parent="Column/Teams/Team1" unique_id=1827519058]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="Team2" type="VBoxContainer" parent="Column/Teams" unique_id=1966087286]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 5
+
+[node name="Header" type="Label" parent="Column/Teams/Team2" unique_id=2056922118]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "TEAM 2"
+
+[node name="Slots" type="VBoxContainer" parent="Column/Teams/Team2" unique_id=995752385]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="Unassigned" type="VBoxContainer" parent="Column" unique_id=2127694424]
+layout_mode = 2
+theme_override_constants/separation = 5

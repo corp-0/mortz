@@ -14,7 +14,10 @@
 [ext_resource type="Script" uid="uid://c4xs1n8kwl65d" path="res://src/Client/Diagnostics/E2eHooks.cs" id="12_e2e"]
 [ext_resource type="Script" uid="uid://bgioe7kfejn27" path="res://src/Client/Match/Hud.cs" id="13_hud"]
 [ext_resource type="Script" uid="uid://bmyqbmcpf8of4" path="res://src/Client/Match/ShellRow.cs" id="14_shells"]
-[ext_resource type="Script" uid="uid://dii768us1krot" path="res://src/Client/Match/ScoreOverlay.cs" id="15_score"]
+[ext_resource type="Script" path="res://src/Client/Match/WinnerBanner.cs" id="15_score"]
+[ext_resource type="Script" path="res://src/Client/Match/ScoreHudHost.cs" id="18_scorehost"]
+[ext_resource type="PackedScene" path="res://src/Shared/Scenes/PlayerKillsHud.tscn" id="19_pkills"]
+[ext_resource type="PackedScene" path="res://src/Shared/Scenes/TeamKillsHud.tscn" id="20_tkills"]
 [ext_resource type="Script" uid="uid://ukkp1bwihfne" path="res://src/Client/Audio/KillAnnouncer.cs" id="16_announcer"]
 [ext_resource type="Script" uid="uid://6aqxhxbup147" path="res://src/Client/Replay/FinalKillReplay.cs" id="17_replay"]
 
@@ -97,7 +100,19 @@ layout_mode = 2
 size_flags_vertical = 4
 script = ExtResource("14_shells")
 
-[node name="ScoreOverlay" type="Control" parent="Hud" unique_id=2120322481 node_paths=PackedStringArray("_scoreLabel", "_winnerLabel")]
+[node name="ScoreHud" type="Control" parent="Hud"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("18_scorehost")
+_playerKills = ExtResource("19_pkills")
+_teamKills = ExtResource("20_tkills")
+
+[node name="WinnerBanner" type="Control" parent="Hud" unique_id=2120322481 node_paths=PackedStringArray("_winnerLabel")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -106,19 +121,9 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("15_score")
-_scoreLabel = NodePath("Score")
 _winnerLabel = NodePath("Winner")
 
-[node name="Score" type="Label" parent="Hud/ScoreOverlay" unique_id=1010263953]
-layout_mode = 0
-offset_left = 12.0
-offset_top = 12.0
-offset_right = 160.0
-offset_bottom = 40.0
-theme_override_font_sizes/font_size = 20
-text = "K 0 / D 0"
-
-[node name="Winner" type="Label" parent="Hud/ScoreOverlay" unique_id=286652282]
+[node name="Winner" type="Label" parent="Hud/WinnerBanner" unique_id=286652282]
 visible = false
 layout_mode = 0
 anchor_left = 0.5

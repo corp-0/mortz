@@ -61,9 +61,11 @@ internal sealed class MatchSession
         _victoryLapTicks = Math.Max(1, victoryLapTicks);
     }
 
-    public byte AddPlayer(int peerId)
+    /// <summary>Lobby-assigned teams carry into the match (frozen like every
+    /// other rule); anyone without one (late joiners) lands on the smallest.</summary>
+    public byte AddPlayer(int peerId, byte lobbyTeam = 0)
     {
-        byte team = NextTeam();
+        byte team = !Config.Teams ? (byte)0 : lobbyTeam != 0 ? lobbyTeam : NextTeam();
         World.AddPlayer(peerId, team);
         Scores.AddPlayer(peerId, team);
         return team;
@@ -193,8 +195,6 @@ internal sealed class MatchSession
 
     private byte NextTeam()
     {
-        if (!Config.Teams)
-            return 0;
         int one = World.Players.Values.Count(player => player.TeamId == 1);
         int two = World.Players.Values.Count(player => player.TeamId == 2);
         return (byte)(one <= two ? 1 : 2);

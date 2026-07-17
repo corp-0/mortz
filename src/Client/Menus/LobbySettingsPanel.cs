@@ -3,9 +3,9 @@ using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
 using Mortz.Client.Chat;
+using Mortz.Client.Setup;
 using Mortz.Core.Admin;
 using Mortz.Core.Match;
-using Mortz.Core.Net;
 using Mortz.Core.Net.Messages;
 using Mortz.Core.Ui;
 using Mortz.Shared;
@@ -15,7 +15,8 @@ namespace Mortz.Client.Menus;
 /// <summary>
 /// Lobby-owned presentation of the canonical server setup. Categories and
 /// rule bindings come from generated metadata; concrete value types select a
-/// reusable control prefab.
+/// reusable control prefab. State lives in IMatchSetup; this panel renders it
+/// and pushes signed admin edits from its own editing copy.
 /// </summary>
 [Meta(typeof(IAutoNode))]
 public partial class LobbySettingsPanel : PanelContainer
@@ -36,6 +37,8 @@ public partial class LobbySettingsPanel : PanelContainer
     private readonly List<string> _mapIds = [];
     private MatchConfig _config = new();
     private bool _applyingState;
+    // Snapshot of Setup.HasServerState; UpdateEditing also runs before the
+    // dependency resolves.
     private bool _hasServerState;
     private bool _subscribed;
     private string _previewMapId = "";
@@ -43,6 +46,9 @@ public partial class LobbySettingsPanel : PanelContainer
 
     [Dependency]
     public IClientChat Chat => this.DependOn<IClientChat>();
+
+    [Dependency]
+    public IMatchSetup Setup => this.DependOn<IMatchSetup>();
 
     internal int RuleControlCount => _controls.Count;
     internal int CategoryBlockCount { get; private set; }
@@ -59,11 +65,10 @@ public partial class LobbySettingsPanel : PanelContainer
 
     public void OnResolved()
     {
-        LobbySettingsMsg.Received += OnSettings;
-        LobbyStateMsg.Received += OnLobbyState;
+        Setup.SettingsChanged += OnSetupChanged;
         Chat.AdminChanged += OnAdminChanged;
         _subscribed = true;
-        UpdateEditing(Chat.IsAdmin);
+        OnSetupChanged();
     }
 
     public void OnExitTree()
@@ -71,57 +76,47 @@ public partial class LobbySettingsPanel : PanelContainer
         _mapPicker.ItemSelected -= OnMapSelected;
         if (!_subscribed)
             return;
-        LobbySettingsMsg.Received -= OnSettings;
-        LobbyStateMsg.Received -= OnLobbyState;
+        Setup.SettingsChanged -= OnSetupChanged;
         Chat.AdminChanged -= OnAdminChanged;
         _subscribed = false;
     }
 
-    private void OnSettings(LobbySettingsMsg message)
+    private void OnSetupChanged()
     {
-        if (message.MapIds.Length != message.MapNames.Length ||
-            message.MapIds.Length > NetConfig.MAX_LOBBY_MAPS)
+        _hasServerState = Setup.HasServerState;
+        if (Setup.SettingsError != "")
         {
-            _mapStatus.Text = "Server sent an invalid map catalog.";
+            _mapStatus.Text = Setup.SettingsError;
+            return;
+        }
+        if (!_hasServerState)
+        {
+            UpdateEditing(Chat.IsAdmin);
             return;
         }
 
-        MatchConfig config;
-        try
-        {
-            config = MatchConfig.FromBytes(message.Config);
-        }
-        catch (IOException)
-        {
-            _mapStatus.Text = "Server sent invalid match settings.";
-            return;
-        }
-
-        _config = config;
-        _hasServerState = true;
-        ApplyMapOptions(message.MapId, message.MapIds, message.MapNames);
+        _config = Setup.CopyRules();
+        ApplyMapOptions(Setup.MapId, Setup.MapOptions);
         foreach (IMatchRuleControl control in _controls)
             control.UpdateConfig(_config);
         UpdateEditing(Chat.IsAdmin);
-        UpdatePreview(message.MapId, message.MapHash);
+        UpdatePreview(Setup.MapId, Setup.MapHash);
     }
 
-    internal void ApplySettingsForTest(LobbySettingsMsg message) => OnSettings(message);
-
-    private void ApplyMapOptions(string selectedMap, string[] mapIds, string[] mapNames)
+    private void ApplyMapOptions(string selectedMap, IReadOnlyList<MapOption> options)
     {
         _applyingState = true;
         _mapPicker.Clear();
         _mapIds.Clear();
         int selected = -1;
-        for (int i = 0; i < mapIds.Length; i++)
+        foreach (MapOption option in options)
         {
-            if (string.IsNullOrWhiteSpace(mapIds[i]))
+            if (string.IsNullOrWhiteSpace(option.Id))
                 continue;
-            if (mapIds[i] == selectedMap)
+            if (option.Id == selectedMap)
                 selected = _mapIds.Count;
-            _mapIds.Add(mapIds[i]);
-            _mapPicker.AddItem(string.IsNullOrWhiteSpace(mapNames[i]) ? mapIds[i] : mapNames[i]);
+            _mapIds.Add(option.Id);
+            _mapPicker.AddItem(string.IsNullOrWhiteSpace(option.Name) ? option.Id : option.Name);
         }
         if (selected >= 0)
             _mapPicker.Select(selected);
@@ -234,9 +229,6 @@ public partial class LobbySettingsPanel : PanelContainer
     }
 
     private void OnAdminChanged(bool isAdmin) => UpdateEditing(isAdmin);
-
-    private static void OnLobbyState(LobbyStateMsg message) =>
-        new LobbySettingsRequestMsg().SendToServer();
 
     private void UpdateEditing(bool isAdmin)
     {

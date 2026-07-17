@@ -65,7 +65,7 @@ public class NetMessageTests : IDisposable
         LobbyStateMsg.Received += handler;
         try
         {
-            new LobbyStateMsg([5, 6], ["a", ""], [1, 0]).Broadcast();
+            new LobbyStateMsg([5, 6], ["a", ""], [1, 0], [1, 2]).Broadcast();
         }
         finally
         {
@@ -74,6 +74,29 @@ public class NetMessageTests : IDisposable
         Assert.Equal([5, 6], received.PeerIds);
         Assert.Equal(["a", ""], received.Names);
         Assert.Equal([1, 0], received.ReadyFlags);
+        Assert.Equal([1, 2], received.Teams);
+    }
+
+    [Fact]
+    public void ScoreSyncMsg_RoundTrips()
+    {
+        UseLoopback(receiverIsServer: false);
+        ScoreSyncMsg received = default;
+        Action<ScoreSyncMsg> handler = m => received = m;
+        ScoreSyncMsg.Received += handler;
+        try
+        {
+            new ScoreSyncMsg([7, 8], [4, -1], [2, 6], 4, -1).SendTo(9);
+        }
+        finally
+        {
+            ScoreSyncMsg.Received -= handler;
+        }
+        Assert.Equal([7, 8], received.PeerIds);
+        Assert.Equal([4, -1], received.Kills);
+        Assert.Equal([2, 6], received.Deaths);
+        Assert.Equal(4, received.Team1Kills);
+        Assert.Equal(-1, received.Team2Kills);
     }
 
     [Fact]

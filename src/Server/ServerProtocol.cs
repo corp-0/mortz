@@ -40,7 +40,8 @@ internal sealed class ServerProtocol
         new LobbyStateMsg(
             players.Select(player => player.PeerId).ToArray(),
             players.Select(player => _players.Name(player.PeerId)).ToArray(),
-            players.Select(player => player.Ready ? (byte)1 : (byte)0).ToArray())
+            players.Select(player => player.Ready ? (byte)1 : (byte)0).ToArray(),
+            players.Select(player => player.Team).ToArray())
             .Broadcast();
     }
 
@@ -76,6 +77,7 @@ internal sealed class ServerProtocol
     public void SyncPlayer(long peerId, MatchSession match)
     {
         SendWelcome(peerId, match);
+        SendScores(peerId, match);
         SendLiveMortars(peerId, match);
         if (match.Winner is { } winner)
             new MatchEndMsg(winner.ByTeam, winner.Id).SendTo(peerId);
@@ -212,6 +214,17 @@ internal sealed class ServerProtocol
         GD.Print($"[server] terrain sync to {peerId}: {terrain.Encoding}, " +
                  $"{terrain.Data.Length} B in {chunkCount} chunk(s), " +
                  $"{match.TerrainHistory.CarveCount} carve(s)");
+    }
+
+    private static void SendScores(long peerId, MatchSession match)
+    {
+        Scoreboard scores = match.Scores;
+        new ScoreSyncMsg(
+            scores.Rows.Keys.Select(id => (long)id).ToArray(),
+            scores.Rows.Values.Select(row => row.Kills).ToArray(),
+            scores.Rows.Values.Select(row => row.Deaths).ToArray(),
+            scores.TeamKills(1),
+            scores.TeamKills(2)).SendTo(peerId);
     }
 
     private void SendLiveMortars(long peerId, MatchSession match)
