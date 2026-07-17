@@ -15,10 +15,10 @@ public partial class SingleColumnRoster : ScrollContainer
     private bool _subscribed;
 
     [Dependency]
-    public IMatchSetup Setup => this.DependOn<IMatchSetup>();
+    public MatchSetup Setup => this.DependOn<MatchSetup>();
 
     [Dependency]
-    public IClientStats Stats => this.DependOn<IClientStats>();
+    public ClientStats Stats => this.DependOn<ClientStats>();
 
     public override void _Notification(int what) => this.Notify(what);
 

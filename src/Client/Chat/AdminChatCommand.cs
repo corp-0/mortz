@@ -20,6 +20,6 @@ internal sealed class AdminChatCommand : ClientChatCommand
         return true;
     }
 
-    public override void Execute(ClientChatSession session) =>
-        session.BeginAdminAuthentication(_password);
+    public override void Execute(ClientCommandContext context) =>
+        context.Admin.BeginAuthentication(_password);
 }

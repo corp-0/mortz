@@ -4,6 +4,7 @@ public enum ChatLineKind : byte
 {
     PLAYER,
     SYSTEM,
+    ROLL,
 }
 
 /// <summary>

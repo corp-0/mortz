@@ -2,7 +2,7 @@ using System.Text;
 using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
-using Mortz.Client.Chat;
+using Mortz.Client.Admin;
 using Mortz.Client.Setup;
 using Mortz.Core.Admin;
 using Mortz.Core.Match;
@@ -15,13 +15,13 @@ namespace Mortz.Client.Menus;
 /// <summary>
 /// Lobby-owned presentation of the canonical server setup. Categories and
 /// rule bindings come from generated metadata; concrete value types select a
-/// reusable control prefab. State lives in IMatchSetup; this panel renders it
+/// reusable control prefab. State lives in MatchSetup; this panel renders it
 /// and pushes signed admin edits from its own editing copy.
 /// </summary>
 [Meta(typeof(IAutoNode))]
 public partial class LobbySettingsPanel : PanelContainer
 {
-    internal const int CATEGORY_GAP = 22;
+    private const int CATEGORY_GAP = 22;
 
     [Export] private Label _adminStatus = null!;
     [Export] private OptionButton _mapPicker = null!;
@@ -44,11 +44,9 @@ public partial class LobbySettingsPanel : PanelContainer
     private string _previewMapId = "";
     private string _previewMapHash = "";
 
-    [Dependency]
-    public IClientChat Chat => this.DependOn<IClientChat>();
+    [Dependency] private ClientAdmin Admin => this.DependOn<ClientAdmin>();
 
-    [Dependency]
-    public IMatchSetup Setup => this.DependOn<IMatchSetup>();
+    [Dependency] private MatchSetup Setup => this.DependOn<MatchSetup>();
 
     internal int RuleControlCount => _controls.Count;
     internal int CategoryBlockCount { get; private set; }
@@ -66,7 +64,7 @@ public partial class LobbySettingsPanel : PanelContainer
     public void OnResolved()
     {
         Setup.SettingsChanged += OnSetupChanged;
-        Chat.AdminChanged += OnAdminChanged;
+        Admin.AdminChanged += OnAdminChanged;
         _subscribed = true;
         OnSetupChanged();
     }
@@ -77,7 +75,7 @@ public partial class LobbySettingsPanel : PanelContainer
         if (!_subscribed)
             return;
         Setup.SettingsChanged -= OnSetupChanged;
-        Chat.AdminChanged -= OnAdminChanged;
+        Admin.AdminChanged -= OnAdminChanged;
         _subscribed = false;
     }
 
@@ -91,7 +89,7 @@ public partial class LobbySettingsPanel : PanelContainer
         }
         if (!_hasServerState)
         {
-            UpdateEditing(Chat.IsAdmin);
+            UpdateEditing(Admin.IsAdmin);
             return;
         }
 
@@ -99,7 +97,7 @@ public partial class LobbySettingsPanel : PanelContainer
         ApplyMapOptions(Setup.MapId, Setup.MapOptions);
         foreach (IMatchRuleControl control in _controls)
             control.UpdateConfig(_config);
-        UpdateEditing(Chat.IsAdmin);
+        UpdateEditing(Admin.IsAdmin);
         UpdatePreview(Setup.MapId, Setup.MapHash);
     }
 
@@ -182,10 +180,10 @@ public partial class LobbySettingsPanel : PanelContainer
 
     private void OnRuleChanged()
     {
-        if (!Chat.IsAdmin)
+        if (!Admin.IsAdmin)
             return;
         byte[] payload = _config.ToBytes();
-        if (Chat.TrySignAdminAction(AdminAction.SET_LOBBY_RULES, payload,
+        if (Admin.TrySignAdminAction(AdminAction.SET_LOBBY_RULES, payload,
                 out ulong sequence, out byte[] tag))
         {
             new LobbyRulesUpdateMsg(payload, sequence, tag).SendToServer();
@@ -194,11 +192,11 @@ public partial class LobbySettingsPanel : PanelContainer
 
     private void OnMapSelected(long index)
     {
-        if (_applyingState || !Chat.IsAdmin || index < 0 || index >= _mapIds.Count)
+        if (_applyingState || !Admin.IsAdmin || index < 0 || index >= _mapIds.Count)
             return;
         string mapId = _mapIds[(int)index];
         byte[] payload = Encoding.UTF8.GetBytes(mapId);
-        if (Chat.TrySignAdminAction(AdminAction.SET_LOBBY_MAP, payload,
+        if (Admin.TrySignAdminAction(AdminAction.SET_LOBBY_MAP, payload,
                 out ulong sequence, out byte[] tag))
         {
             new LobbyMapUpdateMsg(mapId, sequence, tag).SendToServer();
@@ -233,11 +231,12 @@ public partial class LobbySettingsPanel : PanelContainer
     private void UpdateEditing(bool isAdmin)
     {
         bool canEdit = isAdmin && _hasServerState;
-        _adminStatus.Text = !_hasServerState
-            ? "Loading server setup..."
-            : isAdmin
-            ? "Admin controls enabled"
-            : "Read-only, use /admin <password> in chat to edit";
+        if (!_hasServerState)
+            _adminStatus.Text = "Loading server setup...";
+        else if (isAdmin)
+            _adminStatus.Text = "Admin controls enabled";
+        else
+            _adminStatus.Text = "Read-only, use /admin <password> in chat to edit";
         _adminStatus.Modulate = canEdit
             ? new Color("86efac")
             : new Color("94a3b8");

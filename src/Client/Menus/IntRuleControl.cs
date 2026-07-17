@@ -47,8 +47,7 @@ public partial class IntRuleControl : HBoxContainer, IMatchRuleControl
     {
         if (_updating)
             return;
-        int integer = value >= int.MaxValue ? int.MaxValue :
-            value <= int.MinValue ? int.MinValue : (int)value;
+        int integer = (int)Math.Clamp(value, int.MinValue, int.MaxValue);
         _descriptor.SetValue(_config, integer);
         _changed();
     }

@@ -44,6 +44,19 @@ public class ChatPolicyTests
     }
 
     [Fact]
+    public void Policy_RollsShareTheChatBudget()
+    {
+        ChatPolicy policy = new();
+        for (int i = 0; i < 5; i++)
+            Assert.True(policy.TryAcceptRoll(1, 1_000));
+        Assert.False(policy.TryAcceptRoll(1, 1_000));
+        Assert.False(policy.TryAccept(1, 1_000, "also blocked", out _,
+            out ChatRejectReason reason));
+        Assert.Equal(ChatRejectReason.RATE_LIMITED, reason);
+        Assert.True(policy.TryAcceptRoll(1, 2_000));
+    }
+
+    [Fact]
     public void Policy_InvalidMessagesAlsoConsumeAbuseBudget()
     {
         ChatPolicy policy = new();

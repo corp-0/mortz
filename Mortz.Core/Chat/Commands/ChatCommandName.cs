@@ -29,6 +29,6 @@ public readonly record struct ChatCommandName
     {
         normalized = value.ToLowerInvariant();
         return normalized.Length > 0 &&
-            normalized.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_');
+               normalized.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_');
     }
 }

@@ -86,11 +86,12 @@ public sealed class NetMessageGenerator : IIncrementalGenerator
         {
             foreach (ParameterSyntax p in parameters.Parameters)
             {
-                if (ctx.SemanticModel.GetDeclaredSymbol(p) is not IParameterSymbol ps)
+                if (ctx.SemanticModel.GetDeclaredSymbol(p) is not { } ps)
                     continue;
                 string type = ps.Type.ToDisplayString();
-                string? wireType = _supportedTypes.Contains(type) ? type :
-                    ps.Type is INamedTypeSymbol
+                string? wireType = _supportedTypes.Contains(type)
+                    ? type
+                    : ps.Type is INamedTypeSymbol
                     {
                         TypeKind: TypeKind.Enum,
                         EnumUnderlyingType.SpecialType: SpecialType.System_Byte
@@ -111,9 +112,10 @@ public sealed class NetMessageGenerator : IIncrementalGenerator
 
     private static void Emit(SourceProductionContext spc, ImmutableArray<MessageModel> models)
     {
-        foreach (MessageModel model in models)
-            foreach (Diagnostic d in model.Diagnostics)
-                spc.ReportDiagnostic(d);
+        foreach (Diagnostic d in models.SelectMany(model => model.Diagnostics))
+        {
+            spc.ReportDiagnostic(d);
+        }
 
         MessageModel[] valid = models
             .Where(m => m.Diagnostics.IsEmpty)
@@ -133,7 +135,10 @@ public sealed class NetMessageGenerator : IIncrementalGenerator
         }
 
         for (int id = 0; id < valid.Length; id++)
+        {
             spc.AddSource($"{valid[id].Name}.g.cs", SourceText.From(EmitMessage(valid[id], id), Encoding.UTF8));
+        }
+
         spc.AddSource("NetRegistry.g.cs", SourceText.From(EmitRegistry(valid), Encoding.UTF8));
     }
 

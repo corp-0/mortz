@@ -19,7 +19,7 @@ public readonly record struct PlayerInput(InputButtons Buttons, byte Aim = 0)
     public bool Parry => (Buttons & InputButtons.PARRY) != 0;
 
     /// <summary>-1, 0 or +1 horizontal drive.</summary>
-    public float MoveDir => (Right ? 1f : 0f) - (Left ? 1f : 0f);
+    public int MoveDir => (Right ? 1 : 0) - (Left ? 1 : 0);
 
     /// <summary>8-way direction from the held movement keys; Zero when none held.</summary>
     public Vec2 HeldDir

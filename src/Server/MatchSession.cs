@@ -11,13 +11,22 @@ internal enum MatchStage
 }
 
 internal readonly record struct ServerExplosion(
-    int X, int Y, int Radius, int OwnerId, int SpawnSeq);
+    int X,
+    int Y,
+    int Radius,
+    int OwnerId,
+    int SpawnSeq);
 
 internal readonly record struct ServerDeath(
-    int PeerId, Vec2 Position, int KillerId, bool Owned);
+    int PeerId,
+    Vec2 Position,
+    int KillerId,
+    bool Owned);
 
 internal readonly record struct ScoredElimination(
-    Scoreboard.DeathResult Score, bool Owned, bool FirstBlood);
+    Scoreboard.DeathResult Score,
+    bool Owned,
+    bool FirstBlood);
 
 internal readonly record struct FinalKillEvent(
     int Tick,
@@ -65,7 +74,9 @@ internal sealed class MatchSession
     /// other rule); anyone without one (late joiners) lands on the smallest.</summary>
     public byte AddPlayer(int peerId, byte lobbyTeam = 0)
     {
-        byte team = !Config.Teams ? (byte)0 : lobbyTeam != 0 ? lobbyTeam : NextTeam();
+        byte team = 0;
+        if (Config.Teams)
+            team = lobbyTeam != 0 ? lobbyTeam : NextTeam();
         World.AddPlayer(peerId, team);
         Scores.AddPlayer(peerId, team);
         return team;
@@ -150,6 +161,7 @@ internal sealed class MatchSession
             Winner = winner;
             _ticksUntilLobby = _victoryLapTicks;
         }
+
         return elimination;
     }
 
@@ -190,6 +202,7 @@ internal sealed class MatchSession
             nearest = explosion;
             nearestDistance = distance;
         }
+
         return nearest;
     }
 

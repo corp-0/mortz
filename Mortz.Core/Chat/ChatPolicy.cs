@@ -18,6 +18,9 @@ public sealed class ChatPolicy
         return ChatTextSanitizer.TrySanitize(value, out sanitized, out reason);
     }
 
+    /// <summary>A roll is a chat line, so it spends the same rate budget.</summary>
+    public bool TryAcceptRoll(long peerId, ulong nowMs) => _limiter.Allow(peerId, nowMs);
+
     public void Remove(long peerId) => _limiter.Remove(peerId);
     public void Reset() => _limiter.Reset();
 }

@@ -1,4 +1,5 @@
 using Mortz.Core.Chat.Commands;
+using Mortz.Core.Text;
 
 namespace Mortz.Client.Chat;
 
@@ -11,5 +12,14 @@ internal sealed class HelpChatCommand : ClientChatCommand
         return arguments.Count == 0;
     }
 
-    public override void Execute(ClientChatSession session) => session.ShowCommandHelp();
+    public override void Execute(ClientCommandContext context)
+    {
+        foreach (ChatCommandMetadata metadata in context.Chat.CommandCatalog)
+        {
+            RichText line = new RichText()
+                .Bold().ApplyTo(metadata.Usage)
+                .Add(" - ").Add(metadata.Description);
+            context.Chat.State.AddSystem(line, isPrivate: true);
+        }
+    }
 }

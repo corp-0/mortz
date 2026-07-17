@@ -29,9 +29,11 @@ public static class PlayerSim
 
         // Horizontal drive.
         float target = input.MoveDir * stats.MaxRunSpeed;
-        float rate = input.MoveDir != 0
-            ? (p.Grounded ? stats.GroundAccel : stats.AirAccel)
-            : (p.Grounded ? stats.GroundFriction : stats.AirAccel * 0.5f);
+        float rate;
+        if (input.MoveDir != 0)
+            rate = p.Grounded ? stats.GroundAccel : stats.AirAccel;
+        else
+            rate = p.Grounded ? stats.GroundFriction : stats.AirAccel * 0.5f;
         p.Velocity = p.Velocity with { X = MoveToward(p.Velocity.X, target, rate * DT) };
 
         // Gravity, capped harder while wall sliding.

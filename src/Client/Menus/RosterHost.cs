@@ -16,7 +16,7 @@ public partial class RosterHost : ViewVariantHost<RosterLayout>
     private bool _subscribed;
 
     [Dependency]
-    public IMatchSetup Setup => this.DependOn<IMatchSetup>();
+    public MatchSetup Setup => this.DependOn<MatchSetup>();
 
     public override void _Notification(int what) => this.Notify(what);
 

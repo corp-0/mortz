@@ -48,7 +48,7 @@ public static class MortarWire
         if (events.Count == 0)
             return [];
         List<byte[]> batches = new((events.Count + LIFECYCLE_EVENTS_PER_BATCH - 1) /
-            LIFECYCLE_EVENTS_PER_BATCH);
+                                   LIFECYCLE_EVENTS_PER_BATCH);
         for (int offset = 0; offset < events.Count; offset += LIFECYCLE_EVENTS_PER_BATCH)
         {
             int count = Math.Min(LIFECYCLE_EVENTS_PER_BATCH, events.Count - offset);
@@ -101,7 +101,7 @@ public static class MortarWire
             for (int i = 0; i < count; i++)
             {
                 SimWorld.MortarEventKind kind = (SimWorld.MortarEventKind)r.ReadByte();
-                if (kind is < SimWorld.MortarEventKind.SPAWN or > SimWorld.MortarEventKind.END)
+                if (kind > SimWorld.MortarEventKind.END)
                     return false;
                 MortarState state = new() { Id = r.ReadUInt16() };
                 if (kind != SimWorld.MortarEventKind.END)

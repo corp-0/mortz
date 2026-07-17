@@ -117,9 +117,13 @@ public class ChatCompositionTests
         {
             new RosterMsg([1, 2], ["Alice", "Bob"], [0, 0], [0, 0], [0, 1]).Broadcast();
             new EliminationMsg(1, 2, EliminationFlags.NONE, 1, 1, 0, 0).Broadcast();
+            new MatchEndMsg(false, 1).Broadcast();
+            new MatchEndMsg(true, 2).Broadcast();
 
             ClientChat chat = client.GetNode<ClientChat>("ClientChat");
             Assert.Contains(chat.State.Entries, entry => entry.Text == "Alice killed Bob");
+            Assert.Contains(chat.State.Entries, entry => entry.Text == "Alice wins!");
+            Assert.Contains(chat.State.Entries, entry => entry.Text == "Team 2 wins!");
         }
         finally
         {

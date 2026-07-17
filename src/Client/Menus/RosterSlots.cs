@@ -8,7 +8,7 @@ namespace Mortz.Client.Menus;
 /// ready state) so every roster layout renders identical slots.</summary>
 internal static class RosterSlots
 {
-    public static Control BuildSlot(LobbyMember member, IClientStats stats, long localId,
+    public static Control BuildSlot(LobbyMember member, ClientStats stats, long localId,
         Control? action = null)
     {
         string self = member.PeerId == localId ? " (you)" : "";

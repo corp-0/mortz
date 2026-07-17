@@ -1,32 +1,38 @@
 using Godot;
 using Mortz.Client.Roster;
+using Mortz.Core.Net.Messages;
 
 namespace Mortz.Client.Feed;
 
-/// <summary>Persistent owner of the kill feed stream. The composition root
-/// decides which displays consume the lines.</summary>
+/// <summary>Turns the authoritative elimination stream into display lines.
+/// Stateless besides its subscriptions: consumers keep whatever history they
+/// show, so there is nothing to reset at session boundaries.</summary>
 public partial class KillFeed : Node
 {
     [Export] private ClientRoster _roster = null!;
-    private KillFeedSession? _session;
 
     public event Action<string>? LineAdded;
 
     public override void _Ready()
     {
-        _session = new KillFeedSession(_roster.NameOf);
-        _session.LineAdded += OnLine;
-        _session.Subscribe();
+        EliminationMsg.Received += OnElimination;
+        MatchEndMsg.Received += OnMatchEnd;
     }
 
     public override void _ExitTree()
     {
-        if (_session == null)
-            return;
-        _session.LineAdded -= OnLine;
-        _session.Dispose();
-        _session = null;
+        EliminationMsg.Received -= OnElimination;
+        MatchEndMsg.Received -= OnMatchEnd;
     }
 
-    private void OnLine(string line) => LineAdded?.Invoke(line);
+    private void OnElimination(EliminationMsg message) =>
+        LineAdded?.Invoke(EliminationText.Format(message, _roster.NameOf));
+
+    private void OnMatchEnd(MatchEndMsg message)
+    {
+        string winner = message.ByTeam
+            ? $"Team {message.WinnerId}"
+            : _roster.NameOf(message.WinnerId);
+        LineAdded?.Invoke($"{winner} wins!");
+    }
 }

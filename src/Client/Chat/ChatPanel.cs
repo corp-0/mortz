@@ -7,7 +7,7 @@ using Mortz.Core.Text;
 
 namespace Mortz.Client.Chat;
 
-/// <summary>View of <see cref="IClientChat"/>. The owning scene decides
+/// <summary>View of <see cref="ClientChat"/>. The owning scene decides
 /// visibility, size, and placement.</summary>
 [Meta(typeof(IAutoNode))]
 public partial class ChatPanel : PanelContainer
@@ -19,7 +19,7 @@ public partial class ChatPanel : PanelContainer
     private bool _subscribed;
 
     [Dependency]
-    public IClientChat Chat => this.DependOn<IClientChat>();
+    public ClientChat Chat => this.DependOn<ClientChat>();
 
     public override void _Notification(int what) => this.Notify(what);
 
@@ -74,7 +74,7 @@ public partial class ChatPanel : PanelContainer
 
     private void OnEntryAdded(ChatEntry entry)
     {
-        AddLine(entry);
+        AddLine(entry, animate: true);
         CallDeferred(MethodName.ScrollToBottom);
     }
 
@@ -84,7 +84,7 @@ public partial class ChatPanel : PanelContainer
     {
         ClearLines();
         foreach (ChatEntry entry in Chat.State.Entries)
-            AddLine(entry);
+            AddLine(entry, animate: false);
         CallDeferred(MethodName.ScrollToBottom);
     }
 
@@ -107,7 +107,17 @@ public partial class ChatPanel : PanelContainer
         _subscribed = false;
     }
 
-    private void AddLine(ChatEntry entry)
+    private void AddLine(ChatEntry entry, bool animate)
+    {
+        _lines.AddChild(
+            entry.Kind == ChatEntryKind.ROLL && DiceRoll.TryParse(entry.Text, out int rolled)
+                ? RollLineLabel.Create(entry.SenderName, rolled, animate)
+                : BuildTextLine(entry));
+        while (_lines.GetChildCount() > NetConfig.MAX_CHAT_HISTORY)
+            _lines.GetChild(0).Free();
+    }
+
+    private static RichTextLabel BuildTextLine(ChatEntry entry)
     {
         RichText content = entry.Render();
         RichText text = entry.Kind switch
@@ -117,15 +127,13 @@ public partial class ChatPanel : PanelContainer
             ChatEntryKind.PRIVATE => new RichText().Italic().ApplyTo("* ").Add(content),
             _ => content,
         };
-        _lines.AddChild(new RichTextLabel
+        return new RichTextLabel
         {
             Text = text.ToString(),
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
             BbcodeEnabled = true,
             FitContent = true,
-        });
-        while (_lines.GetChildCount() > NetConfig.MAX_CHAT_HISTORY)
-            _lines.GetChild(0).Free();
+        };
     }
 
     private void ClearLines()

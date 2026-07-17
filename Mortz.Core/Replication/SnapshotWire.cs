@@ -70,7 +70,7 @@ internal static class SnapshotWire
             writer.Write(player.PeerId);
         WriteVec(writer, player.Position);
         writer.Write((byte)((byte)player.Rope | (player.Grounded ? GROUNDED_BIT : 0) |
-            (full ? FULL_STATE_BIT : 0)));
+                            (full ? FULL_STATE_BIT : 0)));
         if (full)
         {
             WriteVec(writer, player.Velocity);

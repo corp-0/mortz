@@ -55,7 +55,7 @@ public sealed class MortarReplicaSet
         if (_hasCorrection && unchecked(correctionTick - _lastCorrectionTick) <= 0)
             return true; // valid but stale/duplicate unreliable delivery
         if (!MortarWire.TryReadCorrections(data,
-            out List<(ushort Id, Vec2 Position, Vec2 Velocity)> corrections))
+                out List<(ushort Id, Vec2 Position, Vec2 Velocity)> corrections))
             return false;
         _hasCorrection = true;
         _lastCorrectionTick = correctionTick;

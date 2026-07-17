@@ -45,6 +45,13 @@ csharp_style_namespace_declarations = file_scoped:warning
 # Braces only required for multiline bodies; single-statement ifs stay braceless
 csharp_prefer_braces = when_multiline:suggestion
 
+# Loops always take braces, even single-statement bodies. Rider-only: Roslyn's
+# IDE0011 cannot target loops without also flagging every braceless if.
+resharper_csharp_braces_for_for = required
+resharper_csharp_braces_for_foreach = required
+resharper_enforce_for_statement_braces_highlighting = warning
+resharper_enforce_foreach_statement_braces_highlighting = warning
+
 # Usings outside the namespace, System.* first
 csharp_using_directive_placement = outside_namespace:warning
 dotnet_sort_system_directives_first = true

@@ -25,10 +25,10 @@ public partial class TeamColumnsRoster : ScrollContainer
     private bool _subscribed;
 
     [Dependency]
-    public IMatchSetup Setup => this.DependOn<IMatchSetup>();
+    public MatchSetup Setup => this.DependOn<MatchSetup>();
 
     [Dependency]
-    public IClientStats Stats => this.DependOn<IClientStats>();
+    public ClientStats Stats => this.DependOn<ClientStats>();
 
     public override void _Notification(int what) => this.Notify(what);
 
@@ -103,9 +103,14 @@ public partial class TeamColumnsRoster : ScrollContainer
     {
         bool outgoing = Setup.SwapOffers.Contains(new SwapOffer(localId, peerId));
         bool incoming = Setup.SwapOffers.Contains(new SwapOffer(peerId, localId));
+        string text = "SWAP";
+        if (outgoing)
+            text = "CANCEL";
+        else if (incoming)
+            text = "ACCEPT";
         Button button = new()
         {
-            Text = outgoing ? "CANCEL" : incoming ? "ACCEPT" : "SWAP",
+            Text = text,
             CustomMinimumSize = new Vector2(84, 0),
         };
         if (incoming)

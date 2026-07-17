@@ -45,6 +45,7 @@ public partial class ServerChat : Node, IServerAdminAuthorizer
         _network.PeerJoined += OnPeerJoined;
         _network.PeerLeft += OnPeerLeft;
         ChatSendMsg.Received += OnChatSend;
+        RollRequestMsg.Received += OnRollRequest;
         AdminAuthRequestMsg.Received += OnAdminAuthRequest;
         AdminProofMsg.Received += OnAdminProof;
         _subscribed = true;
@@ -57,6 +58,7 @@ public partial class ServerChat : Node, IServerAdminAuthorizer
         _network.PeerJoined -= OnPeerJoined;
         _network.PeerLeft -= OnPeerLeft;
         ChatSendMsg.Received -= OnChatSend;
+        RollRequestMsg.Received -= OnRollRequest;
         AdminAuthRequestMsg.Received -= OnAdminAuthRequest;
         AdminProofMsg.Received -= OnAdminProof;
         _chatPolicy.Reset();
@@ -101,12 +103,23 @@ public partial class ServerChat : Node, IServerAdminAuthorizer
         SendPrivateSystem(sender, status);
     }
 
+    // Silent when rate limited, same as chat: replying would amplify spam.
+    private void OnRollRequest(long sender, RollRequestMsg message)
+    {
+        if (!Session.ContainsPlayer(sender) ||
+            !_chatPolicy.TryAcceptRoll(sender, Time.GetTicksMsec()))
+            return;
+        int value = Random.Shared.Next(DiceRoll.MIN, DiceRoll.MAX + 1);
+        new ChatLineMsg(ChatLineKind.ROLL, sender, Session.PlayerName(sender),
+            value.ToString()).Broadcast();
+    }
+
     private void OnAdminAuthRequest(long sender, AdminAuthRequestMsg message)
     {
         if (!Session.IsLobby || !Session.ContainsPlayer(sender))
         {
             new AdminStateMsg(_admin.IsAdmin(sender),
-                "Admin authentication is only available in the lobby.")
+                    "Admin authentication is only available in the lobby.")
                 .SendTo(sender);
             return;
         }
@@ -133,20 +146,22 @@ public partial class ServerChat : Node, IServerAdminAuthorizer
         if (!Session.IsLobby || !Session.ContainsPlayer(sender))
         {
             new AdminStateMsg(_admin.IsAdmin(sender),
-                "Admin authentication is only available in the lobby.")
+                    "Admin authentication is only available in the lobby.")
                 .SendTo(sender);
             return;
         }
 
         AdminProofResult result = _admin.Verify(sender, Time.GetTicksMsec(), message.Proof);
         bool accepted = result == AdminProofResult.ACCEPTED;
-        string status = accepted ? "Admin access granted." : result switch
-        {
-            AdminProofResult.EXPIRED => "Admin challenge expired. Run /admin again.",
-            AdminProofResult.NO_CHALLENGE => "No admin challenge is active. Run /admin again.",
-            AdminProofResult.DISABLED => "Admin authentication is disabled on this server.",
-            _ => "Admin authentication failed.",
-        };
+        string status = accepted
+            ? "Admin access granted."
+            : result switch
+            {
+                AdminProofResult.EXPIRED => "Admin challenge expired. Run /admin again.",
+                AdminProofResult.NO_CHALLENGE => "No admin challenge is active. Run /admin again.",
+                AdminProofResult.DISABLED => "Admin authentication is disabled on this server.",
+                _ => "Admin authentication failed.",
+            };
         new AdminStateMsg(accepted, status).SendTo(sender);
         if (accepted)
             GD.Print($"[server] player {sender} authenticated as admin");

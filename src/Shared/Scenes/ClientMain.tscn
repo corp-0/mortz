@@ -13,18 +13,23 @@
 [ext_resource type="Script" path="res://src/Client/Score/MatchScore.cs" id="11_score"]
 [ext_resource type="Script" path="res://src/Client/Roster/ClientRoster.cs" id="12_roster"]
 [ext_resource type="Script" path="res://src/Client/Feed/KillFeed.cs" id="13_feed"]
+[ext_resource type="Script" path="res://src/Client/Admin/ClientAdmin.cs" id="14_admin"]
 
-[node name="ClientMain" type="Node" unique_id=282168119 node_paths=PackedStringArray("_clientChat", "_clientStats", "_matchSetup", "_matchScore", "_clientRoster")]
+[node name="ClientMain" type="Node" unique_id=282168119 node_paths=PackedStringArray("_clientChat", "_clientAdmin", "_clientStats", "_matchSetup", "_matchScore")]
 script = ExtResource("1_cmain")
 _clientChat = NodePath("ClientChat")
+_clientAdmin = NodePath("ClientAdmin")
 _clientStats = NodePath("ClientStats")
 _matchSetup = NodePath("MatchSetup")
 _matchScore = NodePath("MatchScore")
-_clientRoster = NodePath("ClientRoster")
 
-[node name="ClientChat" type="Node" parent="." unique_id=622475139 node_paths=PackedStringArray("_killFeed")]
+[node name="ClientChat" type="Node" parent="." unique_id=622475139 node_paths=PackedStringArray("_killFeed", "_admin")]
 script = ExtResource("7_chat")
 _killFeed = NodePath("../KillFeed")
+_admin = NodePath("../ClientAdmin")
+
+[node name="ClientAdmin" type="Node" parent="."]
+script = ExtResource("14_admin")
 
 [node name="ClientStats" type="Node" parent="."]
 script = ExtResource("9_stats")

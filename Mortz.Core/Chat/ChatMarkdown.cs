@@ -170,7 +170,7 @@ public static class ChatMarkdown
         if (value.Any(character => char.IsWhiteSpace(character) || character is '[' or ']'))
             return false;
         return Uri.TryCreate(value, UriKind.Absolute, out Uri? uri) &&
-            uri.Scheme is "http" or "https";
+               uri.Scheme is "http" or "https";
     }
 
     private static int FindUnescaped(string source, string value, int start)
@@ -212,7 +212,7 @@ public static class ChatMarkdown
 
         int nameLength = 1;
         while (nameLength < content.Length &&
-            (char.IsAsciiLetterOrDigit(content[nameLength]) || content[nameLength] == '_'))
+               (char.IsAsciiLetterOrDigit(content[nameLength]) || content[nameLength] == '_'))
         {
             nameLength++;
         }

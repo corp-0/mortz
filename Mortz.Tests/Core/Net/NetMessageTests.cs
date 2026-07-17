@@ -1,8 +1,5 @@
 using System.Security.Cryptography;
 using System.Text;
-using Mortz.Client;
-using Mortz.Client.Chat;
-using Mortz.Client.Session;
 using Mortz.Core.Admin;
 using Mortz.Core.Chat;
 using Mortz.Core.Match;
@@ -411,90 +408,21 @@ public class NetMessageTests : IDisposable
     }
 
     [Fact]
-    public void AdminCommand_NeverSerializesPasswordAsChatOrHistory()
+    public void RollRequestMsg_RoundTrips()
     {
-        ushort sentId = 0;
-        byte[] sentPayload = [];
-        NetTransport.Send = (id, payload, _, _) => (sentId, sentPayload) = (id, payload);
-        using var session = new ClientChatSession();
-        session.Subscribe();
-        session.Begin();
-        session.SetLocalPeerId(SENDER);
-
-        Assert.True(session.Submit("/admin definitely-not-a-chat-secret"));
-
-        Assert.Equal(NetRegistry.ID_AdminAuthRequestMsg, sentId);
-        Assert.DoesNotContain("definitely-not-a-chat-secret",
-            Encoding.UTF8.GetString(sentPayload));
-        Assert.DoesNotContain(session.State.Entries,
-            entry => entry.Text.Contains("definitely-not-a-chat-secret", StringComparison.Ordinal));
-    }
-
-    [Fact]
-    public void ClientAdminFlow_DerivesProofAndSignedSessionKey()
-    {
-        const string PASSWORD = "correct horse battery staple";
-        ushort sentId = 0;
-        byte[] sentPayload = [];
-        NetTransport.Send = (id, payload, _, _) => (sentId, sentPayload) = (id, payload);
-        using var session = new ClientChatSession();
-        session.Subscribe();
-        session.Begin();
-        session.SetLocalPeerId(SENDER);
-        Assert.True(session.Submit($"/admin \"{PASSWORD}\""));
-
-        byte[] sessionId = Enumerable.Repeat((byte)3, AdminCrypto.SESSION_ID_BYTES).ToArray();
-        byte[] nonce = Enumerable.Repeat((byte)7, AdminCrypto.NONCE_BYTES).ToArray();
-        byte[] challenge = AdminCrypto.BuildChallenge(sessionId, nonce);
-        byte[] challengePayload = Capture(NetRegistry.ID_AdminChallengeMsg,
-            () => new AdminChallengeMsg(challenge).SendTo(SENDER)).Payload;
-        NetTransport.Send = (id, payload, _, _) => (sentId, sentPayload) = (id, payload);
-
-        Assert.True(NetRegistry.Dispatch(NetRegistry.ID_AdminChallengeMsg, SENDER,
-            challengePayload, isServer: false));
-        Assert.Equal(NetRegistry.ID_AdminProofMsg, sentId);
-
-        AdminProofMsg receivedProof = default;
-        Action<long, AdminProofMsg> proofHandler = (_, message) => receivedProof = message;
-        AdminProofMsg.Received += proofHandler;
+        UseLoopback(receiverIsServer: true);
+        long sender = 0;
+        Action<long, RollRequestMsg> handler = (peerId, _) => sender = peerId;
+        RollRequestMsg.Received += handler;
         try
         {
-            Assert.True(NetRegistry.Dispatch(NetRegistry.ID_AdminProofMsg, SENDER,
-                sentPayload, isServer: true));
+            new RollRequestMsg().SendToServer();
         }
         finally
         {
-            AdminProofMsg.Received -= proofHandler;
+            RollRequestMsg.Received -= handler;
         }
-        byte[] passwordKey = AdminCrypto.DerivePasswordKey(PASSWORD);
-        Assert.Equal(AdminCrypto.ComputeProof(passwordKey, SENDER, challenge), receivedProof.Proof);
-
-        byte[] statePayload = Capture(NetRegistry.ID_AdminStateMsg,
-            () => new AdminStateMsg(true, "Admin access granted.").SendTo(SENDER)).Payload;
-        Assert.True(NetRegistry.Dispatch(NetRegistry.ID_AdminStateMsg, SENDER,
-            statePayload, isServer: false));
-        Assert.True(session.IsAdmin);
-        Assert.True(session.TrySignAdminAction(4, [1, 2, 3], out ulong sequence,
-            out byte[] tag));
-        byte[] sessionKey = AdminCrypto.DeriveSessionKey(passwordKey, SENDER, challenge);
-        Assert.Equal(AdminCrypto.ComputeCommandTag(sessionKey, SENDER, sequence, 4, [1, 2, 3]), tag);
-        CryptographicOperations.ZeroMemory(passwordKey);
-        CryptographicOperations.ZeroMemory(sessionKey);
-    }
-
-    [Fact]
-    public void ClientChatState_DropsUnknownServerLineKinds()
-    {
-        byte[] payload = [];
-        NetTransport.Send = (_, bytes, _, _) => payload = bytes;
-        new ChatLineMsg(ChatLineKind.PLAYER, SENDER, "Alice", "hello").Broadcast();
-        payload[0] = byte.MaxValue;
-        using var session = new ClientChatSession();
-        session.Subscribe();
-
-        Assert.True(NetRegistry.Dispatch(NetRegistry.ID_ChatLineMsg, SENDER,
-            payload, isServer: false));
-        Assert.Empty(session.State.Entries);
+        Assert.Equal(SENDER, sender);
     }
 
     [Fact]

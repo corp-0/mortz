@@ -28,10 +28,12 @@ public partial class KillAnnouncer : Node
         }
     }
 
-    internal static Cue? SelectCue(EliminationMsg msg, long localId) =>
-        (msg.Flags & EliminationFlags.FIRST_BLOOD) != 0
-            ? Cue.FIRST_BLOOD
-            : msg.KillerId == localId && (msg.Flags & EliminationFlags.OWNED) != 0
-                ? Cue.OWNED
-                : null;
+    internal static Cue? SelectCue(EliminationMsg msg, long localId)
+    {
+        if ((msg.Flags & EliminationFlags.FIRST_BLOOD) != 0)
+            return Cue.FIRST_BLOOD;
+        if (msg.KillerId == localId && (msg.Flags & EliminationFlags.OWNED) != 0)
+            return Cue.OWNED;
+        return null;
+    }
 }

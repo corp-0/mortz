@@ -137,7 +137,8 @@ public class DrainFidelityTests
         // in one delayed packet and land together on tick 33.
         for (int t = 0; t < 60; t++)
         {
-            PlayerInput input = t == FIRE_T ? Fire(AIM_UP) : Idle(t <= FIRE_T ? AIM_UP : AIM_RIGHT);
+            byte aim = t <= FIRE_T ? AIM_UP : AIM_RIGHT;
+            PlayerInput input = t == FIRE_T ? Fire(aim) : Idle(aim);
             predictor.LocalTick(input);
             foreach ((int seq, MortarState shell) in predictor.Shells)
                 if (seq == FIRE_T)

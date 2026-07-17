@@ -14,7 +14,7 @@ public partial class PlayerKillsHud : Control
     private bool _subscribed;
 
     [Dependency]
-    public IMatchScore Score => this.DependOn<IMatchScore>();
+    public MatchScore Score => this.DependOn<MatchScore>();
 
     public override void _Notification(int what) => this.Notify(what);
 

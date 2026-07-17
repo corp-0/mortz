@@ -26,12 +26,15 @@ public sealed class TerrainMask
         Height = height;
         _cells = new TerrainMaterial[width * height];
         for (int y = 0; y < height; y++)
+        {
             for (int x = 0; x < width; x++)
             {
                 // Solid wins where layers overlap.
                 if (solid(x, y)) _cells[y * width + x] = TerrainMaterial.SOLID;
                 else if (destructible(x, y)) _cells[y * width + x] = TerrainMaterial.DESTRUCTIBLE;
             }
+        }
+
         _original = (TerrainMaterial[])_cells.Clone();
     }
 
@@ -60,9 +63,14 @@ public sealed class TerrainMask
         int y0 = (int)MathF.Floor(minY);
         int y1 = (int)MathF.Ceiling(maxY) - 1;
         for (int y = y0; y <= y1; y++)
+        {
             for (int x = x0; x <= x1; x++)
+            {
                 if (IsSolid(x, y))
                     return true;
+            }
+        }
+
         return false;
     }
 
@@ -75,6 +83,7 @@ public sealed class TerrainMask
         List<(int, int)> removed = new List<(int, int)>();
         int r2 = radius * radius;
         for (int y = cy - radius; y <= cy + radius; y++)
+        {
             for (int x = cx - radius; x <= cx + radius; x++)
             {
                 if (!InBounds(x, y)) continue;
@@ -84,6 +93,8 @@ public sealed class TerrainMask
                 _cells[y * Width + x] = TerrainMaterial.EMPTY;
                 removed.Add((x, y));
             }
+        }
+
         return removed;
     }
 
