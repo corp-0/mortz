@@ -1,0 +1,53 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Read Godot version
+        id: godot
+        run: echo "version=$(grep -oP 'Godot\.NET\.Sdk/\K[0-9.]+' Mortz.csproj)" >> "$GITHUB_OUTPUT"
+
+      - uses: chickensoft-games/setup-godot@f166999204a4f2722c6fe042fbaa3b3ea0d9c789 # v2.4.1
+        with:
+          version: ${{ steps.godot.outputs.version }}
+          include-templates: true
+
+      # Fresh checkout has no .godot/; import before exporting. The import
+      # pass is known to exit nonzero on init races, hence the || true.
+      - name: Import resources
+        run: '"$GODOT" --headless --path . --import || true'
+
+      - name: Export
+        run: GODOT_PATH="$GODOT" dotnet run --project tools -- export
+
+      - name: Package
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          cd build
+          chmod +x Mortz-lin/*.x86_64
+          zip -qr "Mortz-win-${TAG}.zip" Mortz-win
+          tar -czf "Mortz-lin-${TAG}.tar.gz" Mortz-lin
+
+      - name: Upload to release
+        if: ${{ !env.ACT }} # act local runs stop after packaging
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 \
+            || gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes
+          gh release upload "$GITHUB_REF_NAME" build/Mortz-win-*.zip build/Mortz-lin-*.tar.gz --clobber

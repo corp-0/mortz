@@ -4,10 +4,13 @@ using System.Text.RegularExpressions;
 namespace Mortz.Tools;
 
 /// <summary>
-/// Exports the client and/or server presets and copies content/ next to the
-/// executable. Content is deliberately not embedded in the PCK (see
-/// exclude_filter in export_presets.cfg); builds load it from disk so map
-/// files can be swapped without re-exporting.
+/// Exports the client and/or server presets into one bundle per platform
+/// (build/Mortz-win, build/Mortz-lin): both executables plus the data dir
+/// and content/ they share. Content is deliberately not embedded in the PCK
+/// (see exclude_filter in export_presets.cfg); builds load it from disk so
+/// map files can be swapped without re-exporting. The build directory is
+/// wiped before exporting, so a partial export (client/server only or one
+/// platform) leaves only what it built.
 /// </summary>
 internal static class Export
 {
@@ -34,15 +37,17 @@ internal static class Export
         List<(string Name, string Dir, string Exe)> presets = new List<(string, string, string)>();
         if (preset is "client" or "all")
         {
-            if (linux != true) presets.Add(("Mortz Client", "client", "Mortz.exe"));
-            if (linux != false) presets.Add(("Mortz Client Linux", "client-linux", "Mortz.x86_64"));
+            if (linux != true) presets.Add(("Mortz Client", "Mortz-win", "Mortz.exe"));
+            if (linux != false) presets.Add(("Mortz Client Linux", "Mortz-lin", "Mortz.x86_64"));
         }
         if (preset is "server" or "all")
         {
-            if (linux != true) presets.Add(("Mortz Server", "server", "MortzServer.exe"));
-            if (linux != false) presets.Add(("Mortz Server Linux", "server-linux", "MortzServer.x86_64"));
+            if (linux != true) presets.Add(("Mortz Server", "Mortz-win", "MortzServer.exe"));
+            if (linux != false) presets.Add(("Mortz Server Linux", "Mortz-lin", "MortzServer.x86_64"));
         }
         string exportFlag = debug ? "--export-debug" : "--export-release";
+
+        CleanBuildDir(Path.Combine(root, "build"));
 
         foreach ((string name, string dir, string exe) in presets)
         {
@@ -57,11 +62,14 @@ internal static class Export
             if (name == "Mortz Server")
             {
                 MakeConsoleApp(exePath);
-                File.Delete(Path.ChangeExtension(exePath, ".console.exe")); // stale wrapper from older exports
                 Console.WriteLine("==> server exe flipped to console subsystem (blocks the terminal, Ctrl+C kills)");
             }
+        }
 
-            string contentDest = Path.Combine(outDir, "content");
+        // Client and server share the bundle, one content copy serves both.
+        foreach (string dir in presets.Select(p => p.Dir).Distinct())
+        {
+            string contentDest = Path.Combine(root, "build", dir, "content");
             MirrorContent(Path.Combine(root, "content"), contentDest);
             Console.WriteLine($"==> content copied to {contentDest}");
         }
@@ -193,9 +201,41 @@ internal static class Export
         return output;
     }
 
+    /// <summary>
+    /// Wipe everything under build/ except .gdignore so every export starts
+    /// clean. Also surfaces the "previous build still running" case up front:
+    /// a locked exe would otherwise make Godot's export fail at the final
+    /// rename and then hang instead of exiting.
+    /// </summary>
+    private static void CleanBuildDir(string buildDir)
+    {
+        Directory.CreateDirectory(buildDir);
+        try
+        {
+            foreach (string dir in Directory.EnumerateDirectories(buildDir))
+            {
+                Directory.Delete(dir, recursive: true);
+            }
+            foreach (string file in Directory.EnumerateFiles(buildDir))
+            {
+                if (Path.GetFileName(file) != ".gdignore")
+                    File.Delete(file);
+            }
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            throw new Exception($"cleaning {buildDir} failed ({e.Message.Trim()}), close any running build and retry");
+        }
+        Console.WriteLine("==> build directory cleaned");
+    }
+
     private static void RunProcess(string exe, string[] args)
     {
         ProcessStartInfo psi = new ProcessStartInfo(exe) { UseShellExecute = false };
+        // dotnet publish leaves idle MSBuild nodes behind that inherit the godot
+        // console wrapper's stdout pipe; the wrapper reads that pipe until EOF,
+        // which never comes while the nodes live, so it hangs after the export.
+        psi.Environment["MSBUILDDISABLENODEREUSE"] = "1";
         foreach (string arg in args)
         {
             psi.ArgumentList.Add(arg);
