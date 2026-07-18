@@ -1,9 +1,9 @@
 [gd_scene format=3 uid="uid://cvsgjdvwcbnme"]
 
 [ext_resource type="Script" uid="uid://c4clg3b07l4dn" path="res://src/Client/ClientMain.cs" id="1_cmain"]
-[ext_resource type="PackedScene" uid="uid://cjwh1mbdhwqhh" path="res://src/Shared/Scenes/GameView.tscn" id="2_gview"]
-[ext_resource type="PackedScene" path="res://src/Shared/Scenes/MainMenu.tscn" id="3_menu"]
-[ext_resource type="PackedScene" uid="uid://lccou7q7borc" path="res://src/Shared/Scenes/Lobby.tscn" id="4_lobby"]
+[ext_resource type="PackedScene" uid="uid://cjwh1mbdhwqhh" path="res://src/Shared/Scenes/Match/GameView.tscn" id="2_gview"]
+[ext_resource type="PackedScene" path="res://src/Shared/UI/Menus/MainMenu.tscn" id="3_menu"]
+[ext_resource type="PackedScene" uid="uid://lccou7q7borc" path="res://src/Shared/UI/Menus/Lobby.tscn" id="4_lobby"]
 [ext_resource type="Script" uid="uid://b46f55d4mmx7l" path="res://src/Client/Audio/Sfx.cs" id="5_sfx"]
 [ext_resource type="Resource" uid="uid://0gok5648oexn" path="res://Assets/Sounds/SoundRegistry.tres" id="6_sounds"]
 [ext_resource type="Script" uid="uid://b7xyv1173ixe1" path="res://src/Client/Chat/ClientChat.cs" id="7_chat"]

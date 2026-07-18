@@ -23,7 +23,7 @@ public class RosterCompositionTests
     {
         SceneTree tree = Assert.IsType<SceneTree>(Engine.GetMainLoop());
         PackedScene clientScene = ResourceLoader.Load<PackedScene>(
-            "res://src/Shared/Scenes/ClientMain.tscn");
+            "res://src/Shared/Scenes/Root/ClientMain.tscn");
         ClientMain client = clientScene.Instantiate<ClientMain>();
         tree.Root.AddChild(client);
         try
@@ -76,7 +76,7 @@ public class RosterCompositionTests
     {
         SceneTree tree = Assert.IsType<SceneTree>(Engine.GetMainLoop());
         PackedScene clientScene = ResourceLoader.Load<PackedScene>(
-            "res://src/Shared/Scenes/ClientMain.tscn");
+            "res://src/Shared/Scenes/Root/ClientMain.tscn");
         ClientMain client = clientScene.Instantiate<ClientMain>();
         tree.Root.AddChild(client);
         try
@@ -99,10 +99,10 @@ public class RosterCompositionTests
     [Fact]
     public void ScoreHudVariantsAreComposed()
     {
-        AssertSceneType<PlayerKillsHud>("PlayerKillsHud");
-        AssertSceneType<TeamKillsHud>("TeamKillsHud");
-        AssertSceneType<SingleColumnRoster>("SingleColumnRoster");
-        AssertSceneType<TeamColumnsRoster>("TeamColumnsRoster");
+        AssertSceneType<PlayerKillsHud>("UI/Hud/PlayerKillsHud");
+        AssertSceneType<TeamKillsHud>("UI/Hud/TeamKillsHud");
+        AssertSceneType<SingleColumnRoster>("UI/Controls/SingleColumnRoster");
+        AssertSceneType<TeamColumnsRoster>("UI/Controls/TeamColumnsRoster");
     }
 
     /// <summary>Buttons nested inside member slots (not the top-level JOIN
@@ -123,7 +123,7 @@ public class RosterCompositionTests
     private static void AssertSceneType<T>(string name) where T : Node
     {
         PackedScene scene = ResourceLoader.Load<PackedScene>(
-            $"res://src/Shared/Scenes/{name}.tscn");
+            $"res://src/Shared/{name}.tscn");
         T node = scene.Instantiate<T>();
         node.Free();
     }

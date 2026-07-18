@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://cjwh1mbdhwqhh"]
 
 [ext_resource type="Script" uid="uid://b4yn6nnq4p213" path="res://src/Client/Match/GameView.cs" id="1_gview"]
-[ext_resource type="PackedScene" uid="uid://pb6yifh4403o" path="res://src/Shared/Scenes/GameMap.tscn" id="2_gmap"]
+[ext_resource type="PackedScene" uid="uid://pb6yifh4403o" path="res://src/Shared/Scenes/Match/GameMap.tscn" id="2_gmap"]
 [ext_resource type="Script" uid="uid://jylbysmnxgfg" path="res://src/Client/Views/RopeOverlay.cs" id="3_ropes"]
 [ext_resource type="PackedScene" uid="uid://4ksxyg8c7l8k" path="res://src/Shared/Prefabs/Player.tscn" id="4_player"]
 [ext_resource type="Script" uid="uid://djway50o388at" path="res://src/Client/Effects/EffectsSpawner.cs" id="5_effects"]
@@ -16,8 +16,8 @@
 [ext_resource type="Script" uid="uid://bmyqbmcpf8of4" path="res://src/Client/Match/ShellRow.cs" id="14_shells"]
 [ext_resource type="Script" path="res://src/Client/Match/WinnerBanner.cs" id="15_score"]
 [ext_resource type="Script" path="res://src/Client/Match/ScoreHudHost.cs" id="18_scorehost"]
-[ext_resource type="PackedScene" path="res://src/Shared/Scenes/PlayerKillsHud.tscn" id="19_pkills"]
-[ext_resource type="PackedScene" path="res://src/Shared/Scenes/TeamKillsHud.tscn" id="20_tkills"]
+[ext_resource type="PackedScene" path="res://src/Shared/UI/Hud/PlayerKillsHud.tscn" id="19_pkills"]
+[ext_resource type="PackedScene" path="res://src/Shared/UI/Hud/TeamKillsHud.tscn" id="20_tkills"]
 [ext_resource type="Script" uid="uid://ukkp1bwihfne" path="res://src/Client/Audio/KillAnnouncer.cs" id="16_announcer"]
 [ext_resource type="Script" uid="uid://6aqxhxbup147" path="res://src/Client/Replay/FinalKillReplay.cs" id="17_replay"]
 

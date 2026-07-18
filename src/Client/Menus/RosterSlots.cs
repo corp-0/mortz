@@ -9,7 +9,7 @@ namespace Mortz.Client.Menus;
 internal static class RosterSlots
 {
     public static Control BuildSlot(LobbyMember member, ClientStats stats, long localId,
-        Control? action = null)
+        Control? action = null, bool compact = false)
     {
         string self = member.PeerId == localId ? " (you)" : "";
         PanelContainer slot = new() { CustomMinimumSize = new Vector2(0, 44) };
@@ -29,22 +29,34 @@ internal static class RosterSlots
         margin.AddThemeConstantOverride("margin_top", 8);
         margin.AddThemeConstantOverride("margin_bottom", 8);
         HBoxContainer row = new();
-        row.AddThemeConstantOverride("separation", 14);
+        row.AddThemeConstantOverride("separation", compact ? 8 : 14);
         margin.AddChild(row);
         slot.AddChild(margin);
 
+        // Keeps some name visible even when the fixed-width stats fill the row.
         row.AddChild(new Label
         {
             Text = $"{member.Name}{self}",
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
+            CustomMinimumSize = new Vector2(80, 0),
         });
         int wins = stats.Wins(member.PeerId);
-        row.AddChild(StatLabel(wins == 1 ? "1 WIN" : $"{wins} WINS", new Color("fbbf24"), 64));
-        row.AddChild(StatLabel(
-            stats.PingMs(member.PeerId) is { } ping ? $"{ping} ms" : "... ms",
-            new Color("64748b"), 64));
-        row.AddChild(StatLabel(member.Ready ? "READY" : "WAITING",
-            member.Ready ? new Color("86efac") : new Color("94a3b8"), 80));
+        string ping = stats.PingMs(member.PeerId) is { } pingMs ? $"{pingMs} ms" : "... ms";
+        if (compact)
+        {
+            row.AddChild(StatLabel($"{wins}W", new Color("fbbf24"), 30));
+            row.AddChild(StatLabel("●",
+                member.Ready ? new Color("86efac") : new Color("94a3b8"), 0));
+            slot.TooltipText = $"{member.Name}{self}\n{ping}";
+        }
+        else
+        {
+            row.AddChild(StatLabel(wins == 1 ? "1 WIN" : $"{wins} WINS", new Color("fbbf24"), 64));
+            row.AddChild(StatLabel(ping, new Color("64748b"), 64));
+            row.AddChild(StatLabel(member.Ready ? "READY" : "WAITING",
+                member.Ready ? new Color("86efac") : new Color("94a3b8"), 80));
+        }
         if (action != null)
             row.AddChild(action);
         return slot;

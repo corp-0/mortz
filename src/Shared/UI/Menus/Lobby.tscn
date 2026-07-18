@@ -1,11 +1,11 @@
 [gd_scene format=3 uid="uid://lccou7q7borc"]
 
 [ext_resource type="Script" uid="uid://dcji6fesaw34y" path="res://src/Client/Menus/Lobby.cs" id="1_lobby"]
-[ext_resource type="PackedScene" uid="uid://ciqycdoqosx85" path="res://src/Shared/Scenes/ChatPanel.tscn" id="2_chat"]
-[ext_resource type="PackedScene" uid="uid://d4e5uxg8yueq" path="res://src/Shared/Scenes/LobbySettingsPanel.tscn" id="3_settings"]
-[ext_resource type="Script" path="res://src/Client/Menus/RosterHost.cs" id="4_roster"]
-[ext_resource type="PackedScene" path="res://src/Shared/Scenes/SingleColumnRoster.tscn" id="5_single"]
-[ext_resource type="PackedScene" path="res://src/Shared/Scenes/TeamColumnsRoster.tscn" id="6_teams"]
+[ext_resource type="PackedScene" uid="uid://ciqycdoqosx85" path="res://src/Shared/UI/Chat/ChatPanel.tscn" id="2_chat"]
+[ext_resource type="PackedScene" uid="uid://d4e5uxg8yueq" path="res://src/Shared/UI/Menus/LobbySettingsPanel.tscn" id="3_settings"]
+[ext_resource type="Script" uid="uid://blykayha5ata5" path="res://src/Client/Menus/RosterHost.cs" id="4_roster"]
+[ext_resource type="PackedScene" path="res://src/Shared/UI/Controls/SingleColumnRoster.tscn" id="5_single"]
+[ext_resource type="PackedScene" uid="uid://bcyg5w5ortt37" path="res://src/Shared/UI/Controls/TeamColumnsRoster.tscn" id="6_teams"]
 
 [node name="Lobby" type="Control" unique_id=163944296 node_paths=PackedStringArray("_readyButton")]
 layout_mode = 3
@@ -45,7 +45,6 @@ theme_override_constants/separation = 16
 
 [node name="Settings" parent="Content/Main" unique_id=63379707 instance=ExtResource("3_settings")]
 layout_mode = 2
-size_flags_horizontal = 0
 
 [node name="Sidebar" type="VBoxContainer" parent="Content/Main" unique_id=1573526163]
 custom_minimum_size = Vector2(620, 0)
@@ -81,7 +80,7 @@ layout_mode = 2
 theme_override_colors/font_color = Color(0.45, 0.51, 0.6, 1)
 text = "The match starts when everyone is ready"
 
-[node name="Roster" type="Control" parent="Content/Main/Sidebar/LobbyCard/Margin/Column"]
+[node name="Roster" type="Control" parent="Content/Main/Sidebar/LobbyCard/Margin/Column" unique_id=1598982680]
 custom_minimum_size = Vector2(0, 220)
 layout_mode = 2
 size_flags_vertical = 3
@@ -98,6 +97,5 @@ text = "READY UP"
 custom_minimum_size = Vector2(0, 300)
 layout_mode = 2
 size_flags_vertical = 3
-size_flags_stretch_ratio = 1.0
 
 [connection signal="pressed" from="Content/Main/Sidebar/LobbyCard/Margin/Column/ReadyButton" to="." method="OnReadyPressed"]

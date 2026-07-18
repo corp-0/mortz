@@ -18,8 +18,7 @@ public partial class ChatPanel : PanelContainer
 
     private bool _subscribed;
 
-    [Dependency]
-    public ClientChat Chat => this.DependOn<ClientChat>();
+    [Dependency] private ClientChat Chat => this.DependOn<ClientChat>();
 
     public override void _Notification(int what) => this.Notify(what);
 

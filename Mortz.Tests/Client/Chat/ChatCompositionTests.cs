@@ -23,7 +23,7 @@ public class ChatCompositionTests
     {
         SceneTree tree = Assert.IsType<SceneTree>(Engine.GetMainLoop());
         PackedScene clientScene = ResourceLoader.Load<PackedScene>(
-            "res://src/Shared/Scenes/ClientMain.tscn");
+            "res://src/Shared/Scenes/Root/ClientMain.tscn");
         ClientMain client = clientScene.Instantiate<ClientMain>();
         tree.Root.AddChild(client);
         try
@@ -62,7 +62,7 @@ public class ChatCompositionTests
     public void LobbySettingsAndTypedControlsAreComposed()
     {
         PackedScene clientScene = ResourceLoader.Load<PackedScene>(
-            "res://src/Shared/Scenes/ClientMain.tscn");
+            "res://src/Shared/Scenes/Root/ClientMain.tscn");
         ClientMain client = clientScene.Instantiate<ClientMain>();
         try
         {
@@ -107,7 +107,7 @@ public class ChatCompositionTests
     {
         SceneTree tree = Assert.IsType<SceneTree>(Engine.GetMainLoop());
         PackedScene clientScene = ResourceLoader.Load<PackedScene>(
-            "res://src/Shared/Scenes/ClientMain.tscn");
+            "res://src/Shared/Scenes/Root/ClientMain.tscn");
         ClientMain client = clientScene.Instantiate<ClientMain>();
         tree.Root.AddChild(client);
         NetTransport.SendDelegate original = NetTransport.Send;
@@ -137,7 +137,7 @@ public class ChatCompositionTests
     public void ClientSceneProvidesChatAboveTheLobby()
     {
         PackedScene scene = ResourceLoader.Load<PackedScene>(
-            "res://src/Shared/Scenes/ClientMain.tscn");
+            "res://src/Shared/Scenes/Root/ClientMain.tscn");
         ClientMain root = scene.Instantiate<ClientMain>();
         try
         {
@@ -156,7 +156,7 @@ public class ChatCompositionTests
     public void ServerChatIsAnInjectedChildFeature()
     {
         PackedScene scene = ResourceLoader.Load<PackedScene>(
-            "res://src/Shared/Scenes/ServerMain.tscn");
+            "res://src/Shared/Scenes/Root/ServerMain.tscn");
         ServerMain root = scene.Instantiate<ServerMain>();
         try
         {
@@ -174,7 +174,7 @@ public class ChatCompositionTests
     private static void AssertSceneType<T>(string name) where T : Node
     {
         PackedScene scene = ResourceLoader.Load<PackedScene>(
-            $"res://src/Shared/Scenes/{name}.tscn");
+            $"res://src/Shared/UI/Controls/{name}.tscn");
         T node = scene.Instantiate<T>();
         node.Free();
     }

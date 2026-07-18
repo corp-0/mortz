@@ -28,7 +28,7 @@ public class ClientChatTests : IDisposable
     public ClientChatTests()
     {
         PackedScene scene = ResourceLoader.Load<PackedScene>(
-            "res://src/Shared/Scenes/ClientMain.tscn");
+            "res://src/Shared/Scenes/Root/ClientMain.tscn");
         _client = scene.Instantiate<ClientMain>();
         _tree.Root.AddChild(_client);
         _chat = _client.GetNode<ClientChat>("ClientChat");

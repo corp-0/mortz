@@ -91,7 +91,8 @@ public partial class TeamColumnsRoster : ScrollContainer
             bool acrossTheDivide = localTeam != 0 && member.Team != 0 &&
                                    member.Team != localTeam;
             column.AddChild(RosterSlots.BuildSlot(member, Stats, localId,
-                acrossTheDivide ? SwapButton(member.PeerId, localId) : null));
+                acrossTheDivide ? SwapButton(member.PeerId, localId) : null,
+                compact: true));
         }
 
         int capacity = TeamRules.SlotsPerTeam(Setup.Members.Count);
