@@ -6,6 +6,7 @@
 [ext_resource type="Script" uid="uid://blykayha5ata5" path="res://src/Client/Menus/RosterHost.cs" id="4_roster"]
 [ext_resource type="PackedScene" uid="uid://dc28x1qimy8d1" path="res://src/Shared/UI/Controls/SingleColumnRoster.tscn" id="5_single"]
 [ext_resource type="PackedScene" uid="uid://bcyg5w5ortt37" path="res://src/Shared/UI/Controls/TeamColumnsRoster.tscn" id="6_teams"]
+[ext_resource type="Script" uid="uid://b7xyv1173ixe1" path="res://src/Client/Chat/ClientChat.cs" id="7_chat"]
 
 [node name="Lobby" type="Control" unique_id=163944296 node_paths=PackedStringArray("_readyButton")]
 layout_mode = 3
@@ -16,6 +17,9 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_lobby")
 _readyButton = NodePath("Content/Main/Sidebar/LobbyCard/Margin/Column/ReadyButton")
+
+[node name="ClientChat" type="Node" parent="." unique_id=1745023861]
+script = ExtResource("7_chat")
 
 [node name="Background" type="ColorRect" parent="." unique_id=1588472463]
 layout_mode = 1
@@ -93,9 +97,10 @@ custom_minimum_size = Vector2(0, 46)
 layout_mode = 2
 text = "READY UP"
 
-[node name="ChatPanel" parent="Content/Main/Sidebar" unique_id=565259309 instance=ExtResource("2_chat")]
+[node name="ChatPanel" parent="Content/Main/Sidebar" unique_id=565259309 node_paths=PackedStringArray("_chat") instance=ExtResource("2_chat")]
 custom_minimum_size = Vector2(0, 300)
 layout_mode = 2
 size_flags_vertical = 3
+_chat = NodePath("../../../../ClientChat")
 
 [connection signal="pressed" from="Content/Main/Sidebar/LobbyCard/Margin/Column/ReadyButton" to="." method="OnReadyPressed"]

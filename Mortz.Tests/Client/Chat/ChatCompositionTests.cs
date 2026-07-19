@@ -1,12 +1,12 @@
 using Godot;
 using Mortz.Client;
 using Mortz.Client.Chat;
+using Mortz.Client.Feed;
+using Mortz.Client.Match;
 using Mortz.Client.Menus;
-using Mortz.Client.Session;
 using Mortz.Client.Setup;
 using Mortz.Client.Ui;
 using Mortz.Core.Match;
-using Mortz.Core.Net;
 using Mortz.Core.Net.Messages;
 using Mortz.Server;
 using Mortz.Server.Chat;
@@ -29,8 +29,8 @@ public class ChatCompositionTests
         tree.Root.AddChild(client);
         try
         {
-            Lobby lobby = client.GetNode<Lobby>("Lobby");
-            lobby.Visible = true;
+            Lobby lobby = InstantiateLobby();
+            client.AddChild(lobby);
             MatchSetup setup = client.GetNode<MatchSetup>("MatchSetup");
             setup.ApplyLobbyStateForTest(new LobbyStateMsg(
                 [1, 2], ["Host", "Guest"], [1, 0], [0, 0], [], []));
@@ -38,19 +38,18 @@ public class ChatCompositionTests
             MatchConfig config = new();
             setup.ApplySettingsForTest(new LobbySettingsMsg(
                 "castlewars", "hash", ["castlewars"], ["Castle Wars"], config.ToBytes()));
-            UiPropertySheet sheet = client.GetNode<UiPropertySheet>(
-                "Lobby/Content/Main/Settings/Margin/Column/RulesScroll/Rules");
+            UiPropertySheet sheet = lobby.GetNode<UiPropertySheet>(
+                "Content/Main/Settings/Margin/Column/RulesScroll/Rules");
             Assert.Equal(
                 MatchConfigUiMetadata.Categories.Sum(category => category.Properties.Count),
                 sheet.ControlCount);
             Assert.Equal(MatchConfigUiMetadata.Categories.Count, sheet.CategoryBlockCount);
 
-            VBoxContainer players = client.GetNode<VBoxContainer>(
-                "Lobby/Content/Main/Sidebar/LobbyCard/Margin/Column/Roster/" +
+            VBoxContainer players = lobby.GetNode<VBoxContainer>(
+                "Content/Main/Sidebar/LobbyCard/Margin/Column/Roster/" +
                 "SingleColumnRoster/Players");
             Assert.Equal(2, players.GetChildCount());
-            Assert.IsType<ChatPanel>(client.GetNode(
-                "Lobby/Content/Main/Sidebar/ChatPanel"));
+            Assert.IsType<ChatPanel>(lobby.GetNode("Content/Main/Sidebar/ChatPanel"));
         }
         finally
         {
@@ -62,16 +61,14 @@ public class ChatCompositionTests
     [Fact]
     public void LobbySettingsAndTypedControlsAreComposed()
     {
-        PackedScene clientScene = ResourceLoader.Load<PackedScene>(
-            "res://src/Shared/Scenes/Root/ClientMain.tscn");
-        ClientMain client = clientScene.Instantiate<ClientMain>();
+        Lobby lobby = InstantiateLobby();
         try
         {
-            Assert.IsType<LobbySettingsPanel>(client.GetNode("Lobby/Content/Main/Settings"));
+            Assert.IsType<LobbySettingsPanel>(lobby.GetNode("Content/Main/Settings"));
         }
         finally
         {
-            client.Free();
+            lobby.Free();
         }
 
         AssertSceneType<BoolPropertyControl>("BoolPropertyControl");
@@ -105,52 +102,31 @@ public class ChatCompositionTests
     }
 
     [Fact]
-    public void KillFeedLinesLandInChatWithResolvedNames()
+    public void EachScreenComposesItsOwnChat()
     {
-        SceneTree tree = Assert.IsType<SceneTree>(Engine.GetMainLoop());
-        PackedScene clientScene = ResourceLoader.Load<PackedScene>(
-            "res://src/Shared/Scenes/Root/ClientMain.tscn");
-        ClientMain client = clientScene.Instantiate<ClientMain>();
-        tree.Root.AddChild(client);
-        NetTransport.SendDelegate original = NetTransport.Send;
-        NetTransport.Send = (id, payload, _, _) =>
-            Assert.True(NetRegistry.Dispatch(id, 1, payload, isServer: false));
+        Lobby lobby = InstantiateLobby();
         try
         {
-            new RosterMsg([1, 2], ["Alice", "Bob"], [0, 0], [0, 0], [0, 1]).Broadcast();
-            new EliminationMsg(1, 2, EliminationFlags.NONE, 1, 1, 0, 0).Broadcast();
-            new MatchEndMsg(false, 1).Broadcast();
-            new MatchEndMsg(true, 2).Broadcast();
-
-            ClientChat chat = client.GetNode<ClientChat>("ClientChat");
-            Assert.Contains(chat.State.Entries, entry => entry.Text == "Alice killed Bob");
-            Assert.Contains(chat.State.Entries, entry => entry.Text == "Alice wins!");
-            Assert.Contains(chat.State.Entries, entry => entry.Text == "Team 2 wins!");
+            Assert.IsType<ClientChat>(lobby.GetNode("ClientChat"));
+            Assert.IsType<ChatPanel>(lobby.GetNode("Content/Main/Sidebar/ChatPanel"));
         }
         finally
         {
-            NetTransport.Send = original;
-            tree.Root.RemoveChild(client);
-            client.Free();
+            lobby.Free();
         }
-    }
 
-    [Fact]
-    public void ClientSceneProvidesChatAboveTheLobby()
-    {
-        PackedScene scene = ResourceLoader.Load<PackedScene>(
-            "res://src/Shared/Scenes/Root/ClientMain.tscn");
-        ClientMain root = scene.Instantiate<ClientMain>();
+        PackedScene gameScene = ResourceLoader.Load<PackedScene>(
+            "res://src/Shared/Scenes/Match/GameView.tscn");
+        GameView game = gameScene.Instantiate<GameView>();
         try
         {
-            Assert.IsType<ClientChat>(root.GetNode("ClientChat"));
-            Assert.IsType<ClientSessionController>(root.GetNode("Session"));
-            Assert.IsType<ChatPanel>(root.GetNode("Lobby/Content/Main/Sidebar/ChatPanel"));
-            Assert.IsType<LobbySettingsPanel>(root.GetNode("Lobby/Content/Main/Settings"));
+            Assert.IsType<KillFeed>(game.GetNode("KillFeed"));
+            Assert.IsType<ClientChat>(game.GetNode("ClientChat"));
+            Assert.IsType<ChatPanel>(game.GetNode("Hud/ChatPanel"));
         }
         finally
         {
-            root.Free();
+            game.Free();
         }
     }
 
@@ -172,6 +148,10 @@ public class ChatCompositionTests
             root.Free();
         }
     }
+
+    private static Lobby InstantiateLobby() =>
+        ResourceLoader.Load<PackedScene>("res://src/Shared/UI/Menus/Lobby.tscn")
+            .Instantiate<Lobby>();
 
     private static void AssertSceneType<T>(string name) where T : Node
     {

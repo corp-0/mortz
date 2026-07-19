@@ -1,3 +1,5 @@
+using Chickensoft.AutoInject;
+using Chickensoft.Introspection;
 using Godot;
 using Mortz.Client.Admin;
 using Mortz.Client.Feed;
@@ -8,38 +10,44 @@ using Mortz.Core.Net.Messages;
 
 namespace Mortz.Client.Chat;
 
-/// <summary>Connected-session chat: history and command execution. Outlives
-/// any view, so rearranging the UI keeps both. Also displays the kill feed
-/// and admin status lines; those stay separate services with their own
-/// subscribers.</summary>
-public partial class ClientChat : SessionScopedNode
+/// <summary>Chat history and command execution, one instance per screen
+/// (lobby, game view) so history dies with its screen.</summary>
+[Meta(typeof(IAutoNode))]
+public partial class ClientChat : Node
 {
-    [Export] private KillFeed _killFeed = null!;
-    [Export] private ClientAdmin _admin = null!;
-
     private readonly ChatCommandRegistry<ClientCommandContext> _commands = new();
+    private bool _subscribed;
 
     public ClientChat() => _commands.RegisterAssemblyCommands();
 
     public ChatState State { get; } = new();
     public IEnumerable<ChatCommandMetadata> CommandCatalog => _commands.Commands;
 
-    protected override void OnServiceReady()
+    [Dependency]
+    private ClientAdmin Admin => this.DependOn<ClientAdmin>();
+
+    [Dependency]
+    private IKillFeed KillFeed => this.DependOn<IKillFeed>(() => NoKillFeed.Instance);
+
+    public override void _Notification(int what) => this.Notify(what);
+
+    public void OnResolved()
     {
         ChatLineMsg.Received += OnChatLine;
-        _killFeed.LineAdded += OnKillFeedLine;
-        _admin.StatusLine += OnAdminStatusLine;
+        Admin.StatusLine += OnAdminStatusLine;
+        KillFeed.LineAdded += OnKillFeedLine;
+        _subscribed = true;
     }
 
-    protected override void OnServiceExit()
+    public void OnExitTree()
     {
+        if (!_subscribed)
+            return;
         ChatLineMsg.Received -= OnChatLine;
-        _killFeed.LineAdded -= OnKillFeedLine;
-        _admin.StatusLine -= OnAdminStatusLine;
-        State.Clear();
+        Admin.StatusLine -= OnAdminStatusLine;
+        KillFeed.LineAdded -= OnKillFeedLine;
+        _subscribed = false;
     }
-
-    protected override void OnSessionBoundary() => State.Clear();
 
     public bool Submit(string? input)
     {
@@ -53,7 +61,7 @@ public partial class ClientChat : SessionScopedNode
                 State.AddSystem(parseError, isPrivate: true);
                 return false;
             }
-            command!.Execute(new ClientCommandContext(this, _admin));
+            command!.Execute(new ClientCommandContext(this, Admin));
             return true;
         }
 

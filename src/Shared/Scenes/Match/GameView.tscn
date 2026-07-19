@@ -20,8 +20,11 @@
 [ext_resource type="Script" uid="uid://dncfdnttemm61" path="res://src/Client/Match/ScoreHudHost.cs" id="18_scorehost"]
 [ext_resource type="PackedScene" path="res://src/Shared/UI/Hud/PlayerKillsHud.tscn" id="19_pkills"]
 [ext_resource type="PackedScene" path="res://src/Shared/UI/Hud/TeamKillsHud.tscn" id="20_tkills"]
+[ext_resource type="Script" uid="uid://d0ub0gbtk36ja" path="res://src/Client/Feed/KillFeed.cs" id="21_feed"]
+[ext_resource type="Script" uid="uid://b7xyv1173ixe1" path="res://src/Client/Chat/ClientChat.cs" id="22_chat"]
+[ext_resource type="PackedScene" uid="uid://ciqycdoqosx85" path="res://src/Shared/UI/Chat/ChatPanel.tscn" id="23_chatpanel"]
 
-[node name="GameView" type="Node2D" unique_id=1808596722 node_paths=PackedStringArray("_gameMap", "_ropes", "_localPlayer", "_players", "_mortars", "_hud", "_finalKillReplay")]
+[node name="GameView" type="Node2D" unique_id=1808596722 node_paths=PackedStringArray("_gameMap", "_ropes", "_localPlayer", "_players", "_mortars", "_hud", "_finalKillReplay", "_killFeed")]
 script = ExtResource("1_gview")
 _gameMap = NodePath("GameMap")
 _ropes = NodePath("RopeOverlay")
@@ -30,6 +33,7 @@ _players = NodePath("Players")
 _mortars = NodePath("Mortars")
 _hud = NodePath("Hud")
 _finalKillReplay = NodePath("FinalKillReplay")
+_killFeed = NodePath("KillFeed")
 
 [node name="GameMap" parent="." unique_id=1523337900 instance=ExtResource("2_gmap")]
 
@@ -66,6 +70,12 @@ _replayCamera = NodePath("../ReplayCamera")
 
 [node name="KillAnnouncer" type="Node" parent="." unique_id=1595954289]
 script = ExtResource("16_announcer")
+
+[node name="KillFeed" type="Node" parent="." unique_id=1387256493]
+script = ExtResource("21_feed")
+
+[node name="ClientChat" type="Node" parent="." unique_id=1968473025]
+script = ExtResource("22_chat")
 
 [node name="Hud" type="CanvasLayer" parent="." unique_id=1180743937 node_paths=PackedStringArray("_healthLabel", "_shells", "_damageFlash")]
 script = ExtResource("13_hud")
@@ -134,6 +144,16 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_font_sizes/font_size = 42
 horizontal_alignment = 1
+
+[node name="ChatPanel" parent="Hud" unique_id=1206395184 node_paths=PackedStringArray("_chat") instance=ExtResource("23_chatpanel")]
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = -340.0
+offset_right = 392.0
+offset_bottom = -56.0
+grow_vertical = 0
+_chat = NodePath("../../ClientChat")
 
 [node name="Diagnostics" type="Node" parent="." unique_id=576473914]
 

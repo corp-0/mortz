@@ -6,27 +6,20 @@
 [ext_resource type="PackedScene" uid="uid://lccou7q7borc" path="res://src/Shared/UI/Menus/Lobby.tscn" id="4_lobby"]
 [ext_resource type="Script" uid="uid://b46f55d4mmx7l" path="res://src/Client/Audio/Sfx.cs" id="5_sfx"]
 [ext_resource type="Resource" uid="uid://0gok5648oexn" path="res://Assets/Sounds/SoundRegistry.tres" id="6_sounds"]
-[ext_resource type="Script" uid="uid://b7xyv1173ixe1" path="res://src/Client/Chat/ClientChat.cs" id="7_chat"]
 [ext_resource type="Script" uid="uid://drn2cynsax60k" path="res://src/Client/Session/ClientSessionController.cs" id="8_session"]
 [ext_resource type="Script" uid="uid://ds8420gb3q8xn" path="res://src/Client/Stats/ClientStats.cs" id="9_stats"]
 [ext_resource type="Script" uid="uid://bynxb81cf00xi" path="res://src/Client/Setup/MatchSetup.cs" id="10_setup"]
 [ext_resource type="Script" uid="uid://ht4g6pywavul" path="res://src/Client/Score/MatchScore.cs" id="11_score"]
 [ext_resource type="Script" uid="uid://ooyj4qa2sesu" path="res://src/Client/Roster/ClientRoster.cs" id="12_roster"]
-[ext_resource type="Script" uid="uid://d0ub0gbtk36ja" path="res://src/Client/Feed/KillFeed.cs" id="13_feed"]
 [ext_resource type="Script" uid="uid://d2se7ahca8huk" path="res://src/Client/Admin/ClientAdmin.cs" id="14_admin"]
 
-[node name="ClientMain" type="Node" unique_id=282168119 node_paths=PackedStringArray("_clientChat", "_clientAdmin", "_clientStats", "_matchSetup", "_matchScore")]
+[node name="ClientMain" type="Node" unique_id=282168119 node_paths=PackedStringArray("_clientAdmin", "_clientRoster", "_clientStats", "_matchSetup", "_matchScore")]
 script = ExtResource("1_cmain")
-_clientChat = NodePath("ClientChat")
 _clientAdmin = NodePath("ClientAdmin")
+_clientRoster = NodePath("ClientRoster")
 _clientStats = NodePath("ClientStats")
 _matchSetup = NodePath("MatchSetup")
 _matchScore = NodePath("MatchScore")
-
-[node name="ClientChat" type="Node" parent="." unique_id=622475139 node_paths=PackedStringArray("_killFeed", "_admin")]
-script = ExtResource("7_chat")
-_killFeed = NodePath("../KillFeed")
-_admin = NodePath("../ClientAdmin")
 
 [node name="ClientAdmin" type="Node" parent="." unique_id=1551742794]
 script = ExtResource("14_admin")
@@ -43,25 +36,17 @@ script = ExtResource("11_score")
 [node name="ClientRoster" type="Node" parent="." unique_id=1254125908]
 script = ExtResource("12_roster")
 
-[node name="KillFeed" type="Node" parent="." unique_id=1895319057 node_paths=PackedStringArray("_roster")]
-script = ExtResource("13_feed")
-_roster = NodePath("../ClientRoster")
-
 [node name="Sfx" type="Node" parent="." unique_id=552139458]
 script = ExtResource("5_sfx")
 _sounds = ExtResource("6_sounds")
 
 [node name="MainMenu" parent="." unique_id=1401714884 instance=ExtResource("3_menu")]
 
-[node name="Lobby" parent="." unique_id=1904857573 instance=ExtResource("4_lobby")]
-visible = false
-
-[node name="Session" type="Node" parent="." unique_id=1978618533 node_paths=PackedStringArray("_menu", "_lobby")]
+[node name="Session" type="Node" parent="." unique_id=1978618533 node_paths=PackedStringArray("_menu")]
 script = ExtResource("8_session")
 _gameViewScene = ExtResource("2_gview")
+_lobbyScene = ExtResource("4_lobby")
 _menu = NodePath("../MainMenu")
-_lobby = NodePath("../Lobby")
 
 [connection signal="HostRequested" from="MainMenu" to="Session" method="OnHostRequested"]
 [connection signal="JoinRequested" from="MainMenu" to="Session" method="OnJoinRequested"]
-[connection signal="ReadyToggled" from="Lobby" to="Session" method="OnReadyToggled"]

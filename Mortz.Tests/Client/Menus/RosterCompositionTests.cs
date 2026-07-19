@@ -11,12 +11,12 @@ using Xunit;
 namespace Mortz.Tests.Client.Menus;
 
 /// <summary>The lobby roster host swaps whole layouts on the Teams rule and
-/// the variants distribute the replicated members. Drives the real ClientMain
-/// composition through MatchSetup's test hooks.</summary>
+/// the variants distribute the replicated members. Drives the real client and
+/// lobby composition through MatchSetup's test hooks.</summary>
 [Collection(nameof(GodotHeadlessCollection))]
 public class RosterCompositionTests
 {
-    private const string ROSTER_PATH = "Lobby/Content/Main/Sidebar/LobbyCard/Margin/Column/Roster";
+    private const string ROSTER_PATH = "Content/Main/Sidebar/LobbyCard/Margin/Column/Roster";
 
     [Fact]
     public void TeamsToggleSwapsRosterLayoutsAndDistributesMembers()
@@ -28,8 +28,10 @@ public class RosterCompositionTests
         tree.Root.AddChild(client);
         try
         {
+            Lobby lobby = InstantiateLobby();
+            client.AddChild(lobby);
             MatchSetup setup = client.GetNode<MatchSetup>("MatchSetup");
-            Control roster = client.GetNode<Control>(ROSTER_PATH);
+            Control roster = lobby.GetNode<Control>(ROSTER_PATH);
             Assert.IsType<SingleColumnRoster>(roster.GetNode("SingleColumnRoster"));
 
             setup.ApplySettingsForTest(Settings(teams: true));
@@ -81,13 +83,15 @@ public class RosterCompositionTests
         tree.Root.AddChild(client);
         try
         {
+            Lobby lobby = InstantiateLobby();
+            client.AddChild(lobby);
             MatchSetup setup = client.GetNode<MatchSetup>("MatchSetup");
             setup.ApplySettingsForTest(Settings(teams: true));
-            Node before = client.GetNode(ROSTER_PATH + "/TeamColumnsRoster");
+            Node before = lobby.GetNode(ROSTER_PATH + "/TeamColumnsRoster");
 
             setup.ApplySettingsForTest(Settings(teams: true, killTarget: 42));
 
-            Assert.Equal(before, client.GetNode(ROSTER_PATH + "/TeamColumnsRoster"));
+            Assert.Equal(before, lobby.GetNode(ROSTER_PATH + "/TeamColumnsRoster"));
         }
         finally
         {
@@ -112,6 +116,10 @@ public class RosterCompositionTests
             .SelectMany(slot => slot.FindChildren("*", "Button", recursive: true, owned: false)
                 .OfType<Button>())
             .ToList();
+
+    private static Lobby InstantiateLobby() =>
+        ResourceLoader.Load<PackedScene>("res://src/Shared/UI/Menus/Lobby.tscn")
+            .Instantiate<Lobby>();
 
     private static LobbySettingsMsg Settings(bool teams, int killTarget = 20)
     {

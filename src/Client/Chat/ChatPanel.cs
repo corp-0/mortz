@@ -1,5 +1,3 @@
-using Chickensoft.AutoInject;
-using Chickensoft.Introspection;
 using Godot;
 using Mortz.Core.Chat;
 using Mortz.Core.Net;
@@ -9,30 +7,25 @@ namespace Mortz.Client.Chat;
 
 /// <summary>View of <see cref="ClientChat"/>. The owning scene decides
 /// visibility, size, and placement.</summary>
-[Meta(typeof(IAutoNode))]
 public partial class ChatPanel : PanelContainer
 {
+    [Export] private ClientChat _chat = null!;
     [Export] private ScrollContainer _scroll = null!;
     [Export] private VBoxContainer _lines = null!;
     [Export] private LineEdit _input = null!;
 
     private bool _subscribed;
 
-    [Dependency] private ClientChat Chat => this.DependOn<ClientChat>();
-
-    public override void _Notification(int what) => this.Notify(what);
-
-    public void OnReady()
+    public override void _Ready()
     {
         _input.TextSubmitted += OnTextSubmitted;
         _input.FocusEntered += OnFocusEntered;
         _input.FocusExited += OnFocusExited;
         VisibilityChanged += OnVisibilityChanged;
+        Subscribe();
     }
 
-    public void OnResolved() => Subscribe();
-
-    public void OnExitTree()
+    public override void _ExitTree()
     {
         Unsubscribe();
         ChatInputGuard.SetTyping(this, false);
@@ -58,7 +51,7 @@ public partial class ChatPanel : PanelContainer
     private void OnTextSubmitted(string text)
     {
         _input.Clear();
-        Chat.Submit(text);
+        _chat.Submit(text);
         _input.GrabFocus();
     }
 
@@ -82,7 +75,7 @@ public partial class ChatPanel : PanelContainer
     private void Rebuild()
     {
         ClearLines();
-        foreach (ChatEntry entry in Chat.State.Entries)
+        foreach (ChatEntry entry in _chat.State.Entries)
         {
             AddLine(entry, animate: false);
         }
@@ -93,8 +86,8 @@ public partial class ChatPanel : PanelContainer
     {
         if (_subscribed)
             return;
-        Chat.State.EntryAdded += OnEntryAdded;
-        Chat.State.Cleared += OnCleared;
+        _chat.State.EntryAdded += OnEntryAdded;
+        _chat.State.Cleared += OnCleared;
         _subscribed = true;
         Rebuild();
     }
@@ -103,8 +96,8 @@ public partial class ChatPanel : PanelContainer
     {
         if (!_subscribed)
             return;
-        Chat.State.EntryAdded -= OnEntryAdded;
-        Chat.State.Cleared -= OnCleared;
+        _chat.State.EntryAdded -= OnEntryAdded;
+        _chat.State.Cleared -= OnCleared;
         _subscribed = false;
     }
 

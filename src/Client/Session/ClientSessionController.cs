@@ -14,13 +14,14 @@ public partial class ClientSessionController : Node
     private const int CONNECT_RETRIES = 5;
 
     [Export] private PackedScene _gameViewScene = null!;
+    [Export] private PackedScene _lobbyScene = null!;
     [Export] private MainMenu _menu = null!;
-    [Export] private Lobby _lobby = null!;
 
     private readonly ClientConnectionAttempt _connection = new(CONNECT_RETRIES);
     private readonly ClientSession _session = new();
     private ClientMatchBootstrap? _pendingMatch;
     private GameView? _gameView;
+    private Lobby? _lobby;
     private bool _spawnedLocalServer;
     private bool _autoReady;
     private bool _subscribed;
@@ -148,12 +149,11 @@ public partial class ClientSessionController : Node
         {
             DisposeGameView();
             _pendingMatch = null;
-            _lobby.ResetLocalReady();
             if (_autoReady)
                 new SetReadyMsg(true).SendToServer();
         }
         _menu.Visible = false;
-        _lobby.Visible = true;
+        CreateLobby();
     }
 
     private void OnWelcome(WelcomeMsg message)
@@ -205,7 +205,7 @@ public partial class ClientSessionController : Node
         }
 
         _menu.Visible = false;
-        _lobby.Visible = false;
+        DisposeLobby();
         _gameView = gameView;
         AddChild(gameView);
         _pendingMatch = null;
@@ -230,10 +230,9 @@ public partial class ClientSessionController : Node
     private void ReturnToMenu(string status, bool stopLocalServer)
     {
         DisposeGameView();
+        DisposeLobby();
         _pendingMatch = null;
         _session.ReturnToMenu();
-        _lobby.Visible = false;
-        _lobby.ResetLocalReady();
         _menu.Visible = true;
         _menu.ShowHome();
         _menu.SetStatus(status);
@@ -242,6 +241,21 @@ public partial class ClientSessionController : Node
             ServerLauncher.Kill();
             _spawnedLocalServer = false;
         }
+    }
+
+    private void CreateLobby()
+    {
+        if (_lobby != null)
+            return;
+        _lobby = _lobbyScene.Instantiate<Lobby>();
+        _lobby.ReadyToggled += OnReadyToggled;
+        AddChild(_lobby);
+    }
+
+    private void DisposeLobby()
+    {
+        _lobby?.QueueFree();
+        _lobby = null;
     }
 
     private void DisposeGameView()

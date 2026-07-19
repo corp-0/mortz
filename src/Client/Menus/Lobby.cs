@@ -15,12 +15,6 @@ public partial class Lobby : Control
 
     private bool _localReady;
 
-    public void ResetLocalReady()
-    {
-        _localReady = false;
-        _readyButton.Text = "READY UP";
-    }
-
     public void OnReadyPressed()
     {
         _localReady = !_localReady;

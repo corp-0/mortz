@@ -1,8 +1,8 @@
 using System.Text;
-using Godot;
-using Mortz.Client;
+using Chickensoft.AutoInject;
 using Mortz.Client.Admin;
 using Mortz.Client.Chat;
+using Mortz.Client.Feed;
 using Mortz.Core.Admin;
 using Mortz.Core.Chat;
 using Mortz.Core.Net;
@@ -12,35 +12,23 @@ using Xunit;
 
 namespace Mortz.Tests.Client.Chat;
 
-/// <summary>Chat node behavior over the wire, hosted in the real client scene
-/// so the kill feed export resolves.</summary>
+/// <summary>Chat node behavior over the wire, with a real ClientAdmin faked
+/// in as its dependency.</summary>
 [Collection(nameof(GodotHeadlessCollection))]
-public class ClientChatTests : IDisposable
+public class ClientChatTests : NodeServiceTest
 {
     private const long SENDER = 42;
 
-    private readonly NetTransport.SendDelegate _original = NetTransport.Send;
-    private readonly SceneTree _tree = (SceneTree)Engine.GetMainLoop();
-    private readonly ClientMain _client;
     private readonly ClientChat _chat;
     private readonly ClientAdmin _admin;
 
     public ClientChatTests()
     {
-        PackedScene scene = ResourceLoader.Load<PackedScene>(
-            "res://src/Shared/Scenes/Root/ClientMain.tscn");
-        _client = scene.Instantiate<ClientMain>();
-        _tree.Root.AddChild(_client);
-        _chat = _client.GetNode<ClientChat>("ClientChat");
-        _admin = _client.GetNode<ClientAdmin>("ClientAdmin");
+        _admin = Host(new ClientAdmin());
         _admin.SetLocalPeerIdForTest(SENDER);
-    }
-
-    public void Dispose()
-    {
-        NetTransport.Send = _original;
-        _tree.Root.RemoveChild(_client);
-        _client.Free();
+        ClientChat chat = new();
+        chat.FakeDependency(_admin);
+        _chat = Host(chat);
     }
 
     [Fact]
@@ -118,6 +106,29 @@ public class ClientChatTests : IDisposable
         Assert.True(NetRegistry.Dispatch(NetRegistry.ID_ChatLineMsg, SENDER,
             payload, isServer: false));
         Assert.Empty(_chat.State.Entries);
+    }
+
+    [Fact]
+    public void KillFeedLinesLandInChatAsSystemEntries()
+    {
+        FakeKillFeed feed = new();
+        ClientChat chat = new();
+        chat.FakeDependency(_admin);
+        chat.FakeDependency<IKillFeed>(feed);
+        Host(chat);
+
+        feed.Emit("Alice killed Bob");
+
+        ChatEntry entry = Assert.Single(chat.State.Entries);
+        Assert.Equal(ChatEntryKind.SYSTEM, entry.Kind);
+        Assert.Equal("Alice killed Bob", entry.Text);
+    }
+
+    private sealed class FakeKillFeed : IKillFeed
+    {
+        public event Action<string>? LineAdded;
+
+        public void Emit(string line) => LineAdded?.Invoke(line);
     }
 
     private static byte[] Capture(Action send)

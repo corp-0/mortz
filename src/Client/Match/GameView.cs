@@ -1,5 +1,8 @@
+using Chickensoft.AutoInject;
+using Chickensoft.Introspection;
 using Godot;
 using Mortz.Client.Audio;
+using Mortz.Client.Feed;
 using Mortz.Client.Replay;
 using Mortz.Client.Views;
 using Mortz.Core.Match;
@@ -20,7 +23,8 @@ namespace Mortz.Client.Match;
 /// each rendered frame out to the map, player, mortar and rope views. All the
 /// pieces are separate nodes, wired in GameView.tscn.
 /// </summary>
-public partial class GameView : Node2D
+[Meta(typeof(IAutoNode))]
+public partial class GameView : Node2D, IProvide<IKillFeed>
 {
     [Export] private GameMap _gameMap = null!;
     [Export] private RopeOverlay _ropes = null!;
@@ -29,6 +33,11 @@ public partial class GameView : Node2D
     [Export] private MortarViewManager _mortars = null!;
     [Export] private Hud _hud = null!;
     [Export] private FinalKillReplay _finalKillReplay = null!;
+    [Export] private KillFeed _killFeed = null!;
+
+    IKillFeed IProvide<IKillFeed>.Value() => _killFeed;
+
+    public override void _Notification(int what) => this.Notify(what);
 
     /// <summary>Diagnostics tap: a snapshot was buffered and reconciled.</summary>
     public event Action<Snapshot>? SnapshotApplied;
@@ -55,7 +64,7 @@ public partial class GameView : Node2D
         _hud.Configure(PlayerStats.Resolve(config));
     }
 
-    public override void _Ready()
+    public void OnReady()
     {
         NetworkManager.Instance.SnapshotReceived += OnSnapshotReceived;
         CarveMsg.Received += OnCarve;
@@ -64,9 +73,10 @@ public partial class GameView : Node2D
         MortarCorrectionMsg.Received += OnMortarCorrection;
         RosterMsg.Received += OnRoster;
         PlayerModifiersMsg.Received += OnPlayerModifiers;
+        this.Provide();
     }
 
-    public override void _ExitTree()
+    public void OnExitTree()
     {
         NetworkManager.Instance.SnapshotReceived -= OnSnapshotReceived;
         CarveMsg.Received -= OnCarve;
