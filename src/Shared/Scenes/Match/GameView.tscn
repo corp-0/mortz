@@ -14,12 +14,12 @@
 [ext_resource type="Script" uid="uid://c4xs1n8kwl65d" path="res://src/Client/Diagnostics/E2EHooks.cs" id="12_e2e"]
 [ext_resource type="Script" uid="uid://bgioe7kfejn27" path="res://src/Client/Match/Hud.cs" id="13_hud"]
 [ext_resource type="Script" uid="uid://bmyqbmcpf8of4" path="res://src/Client/Match/ShellRow.cs" id="14_shells"]
-[ext_resource type="Script" path="res://src/Client/Match/WinnerBanner.cs" id="15_score"]
-[ext_resource type="Script" path="res://src/Client/Match/ScoreHudHost.cs" id="18_scorehost"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/Hud/PlayerKillsHud.tscn" id="19_pkills"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/Hud/TeamKillsHud.tscn" id="20_tkills"]
+[ext_resource type="Script" uid="uid://287ujoa71wsm" path="res://src/Client/Match/WinnerBanner.cs" id="15_score"]
 [ext_resource type="Script" uid="uid://ukkp1bwihfne" path="res://src/Client/Audio/KillAnnouncer.cs" id="16_announcer"]
 [ext_resource type="Script" uid="uid://6aqxhxbup147" path="res://src/Client/Replay/FinalKillReplay.cs" id="17_replay"]
+[ext_resource type="Script" uid="uid://dncfdnttemm61" path="res://src/Client/Match/ScoreHudHost.cs" id="18_scorehost"]
+[ext_resource type="PackedScene" path="res://src/Shared/UI/Hud/PlayerKillsHud.tscn" id="19_pkills"]
+[ext_resource type="PackedScene" path="res://src/Shared/UI/Hud/TeamKillsHud.tscn" id="20_tkills"]
 
 [node name="GameView" type="Node2D" unique_id=1808596722 node_paths=PackedStringArray("_gameMap", "_ropes", "_localPlayer", "_players", "_mortars", "_hud", "_finalKillReplay")]
 script = ExtResource("1_gview")
@@ -100,7 +100,7 @@ layout_mode = 2
 size_flags_vertical = 4
 script = ExtResource("14_shells")
 
-[node name="ScoreHud" type="Control" parent="Hud"]
+[node name="ScoreHud" type="Control" parent="Hud" unique_id=1037392052]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0

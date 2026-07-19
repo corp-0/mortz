@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://d4e5uxg8yueq"]
 
 [ext_resource type="Script" uid="uid://ccv87mfb0uwoq" path="res://src/Client/Menus/LobbySettingsPanel.cs" id="1"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/Controls/UiPropertySheet.tscn" id="2"]
+[ext_resource type="PackedScene" uid="uid://pbne52ymu80j" path="res://src/Shared/UI/Controls/UiPropertySheet.tscn" id="2"]
 
 [node name="LobbySettingsPanel" type="PanelContainer" unique_id=289524066 node_paths=PackedStringArray("_adminStatus", "_mapPicker", "_mapPreview", "_mapStatus", "_sheet")]
 custom_minimum_size = Vector2(440, 0)

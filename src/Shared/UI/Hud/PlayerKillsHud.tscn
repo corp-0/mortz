@@ -1,8 +1,9 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://b2yaaatxdf662"]
 
-[ext_resource type="Script" path="res://src/Client/Match/PlayerKillsHud.cs" id="1_hud"]
+[ext_resource type="Script" uid="uid://du4fnykw737u4" path="res://src/Client/Match/PlayerKillsHud.cs" id="1_hud"]
 
-[node name="PlayerKillsHud" type="Control" node_paths=PackedStringArray("_scoreLabel")]
+[node name="PlayerKillsHud" type="Control" unique_id=52592145 node_paths=PackedStringArray("_scoreLabel")]
+layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -12,7 +13,7 @@ mouse_filter = 2
 script = ExtResource("1_hud")
 _scoreLabel = NodePath("Score")
 
-[node name="Score" type="Label" parent="."]
+[node name="Score" type="Label" parent="." unique_id=1593906561]
 layout_mode = 0
 offset_left = 12.0
 offset_top = 12.0

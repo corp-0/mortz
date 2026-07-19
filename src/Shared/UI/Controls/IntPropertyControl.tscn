@@ -1,25 +1,24 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=3 uid="uid://bj6r04o17t0xc"]
 
-[ext_resource type="Script" path="res://src/Client/Ui/IntPropertyControl.cs" id="1"]
+[ext_resource type="Script" uid="uid://ttundnl67k51" path="res://src/Client/Ui/IntPropertyControl.cs" id="1"]
 
-[node name="IntPropertyControl" type="HBoxContainer" node_paths=PackedStringArray("_label", "_value")]
+[node name="IntPropertyControl" type="HBoxContainer" unique_id=1248639237 node_paths=PackedStringArray("_label", "_value")]
 custom_minimum_size = Vector2(0, 34)
 theme_override_constants/separation = 12
 script = ExtResource("1")
 _label = NodePath("Label")
 _value = NodePath("Value")
 
-[node name="Label" type="Label" parent="."]
+[node name="Label" type="Label" parent="." unique_id=1910861926]
 layout_mode = 2
 size_flags_horizontal = 3
 vertical_alignment = 1
 
-[node name="Value" type="SpinBox" parent="."]
+[node name="Value" type="SpinBox" parent="." unique_id=1958210837]
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 min_value = -100000.0
 max_value = 100000.0
-step = 1.0
+rounded = true
 allow_greater = true
 allow_lesser = true
-rounded = true

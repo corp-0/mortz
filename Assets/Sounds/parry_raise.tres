@@ -1,13 +1,10 @@
-[gd_resource type="Resource" script_class="SoundEffect" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="SoundEffect" format=3 uid="uid://xn8e72fnn234"]
 
-[ext_resource type="Script" path="res://src/Client/Audio/SoundEffect.cs" id="1"]
-[ext_resource type="AudioStream" path="res://Assets/Sounds/parry_raise.wav" id="2"]
+[ext_resource type="Script" uid="uid://ds47gmtfre85k" path="res://src/Client/Audio/SoundEffect.cs" id="1"]
+[ext_resource type="AudioStream" uid="uid://bne4c4fwyugp1" path="res://Assets/Sounds/parry_raise.wav" id="2"]
 
 [resource]
 script = ExtResource("1")
 Stream = ExtResource("2")
 VolumeDb = -4.0
-Bus = 0
 MaxDistance = 900.0
-Priority = 1
-TimeScaled = true

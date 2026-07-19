@@ -1,8 +1,9 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://bi41by236uedx"]
 
-[ext_resource type="Script" path="res://src/Client/Match/TeamKillsHud.cs" id="1_hud"]
+[ext_resource type="Script" uid="uid://bboq8pop3y3x1" path="res://src/Client/Match/TeamKillsHud.cs" id="1_hud"]
 
-[node name="TeamKillsHud" type="Control" node_paths=PackedStringArray("_team1Label", "_team2Label")]
+[node name="TeamKillsHud" type="Control" unique_id=383090048 node_paths=PackedStringArray("_team1Label", "_team2Label")]
+layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -13,29 +14,29 @@ script = ExtResource("1_hud")
 _team1Label = NodePath("Row/Team1")
 _team2Label = NodePath("Row/Team2")
 
-[node name="Row" type="HBoxContainer" parent="."]
-anchors_preset = 5
+[node name="Row" type="HBoxContainer" parent="." unique_id=71403688]
+layout_mode = 0
 anchor_left = 0.5
 anchor_right = 0.5
 offset_left = -80.0
-offset_right = 80.0
 offset_top = 10.0
+offset_right = 80.0
 offset_bottom = 44.0
 grow_horizontal = 2
-alignment = 1
 theme_override_constants/separation = 14
+alignment = 1
 
-[node name="Team1" type="Label" parent="Row"]
+[node name="Team1" type="Label" parent="Row" unique_id=2058643517]
 layout_mode = 2
 theme_override_font_sizes/font_size = 26
 text = "0"
 
-[node name="Dash" type="Label" parent="Row"]
+[node name="Dash" type="Label" parent="Row" unique_id=1722409235]
 layout_mode = 2
 theme_override_font_sizes/font_size = 26
 text = "-"
 
-[node name="Team2" type="Label" parent="Row"]
+[node name="Team2" type="Label" parent="Row" unique_id=1460055302]
 layout_mode = 2
 theme_override_font_sizes/font_size = 26
 text = "0"

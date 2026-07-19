@@ -1,13 +1,11 @@
-[gd_resource type="Resource" script_class="SoundEffect" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="SoundEffect" format=3 uid="uid://cgcvt4sox23hg"]
 
-[ext_resource type="Script" path="res://src/Client/Audio/SoundEffect.cs" id="1"]
-[ext_resource type="AudioStream" path="res://Assets/Sounds/shell_impact.wav" id="2"]
+[ext_resource type="Script" uid="uid://ds47gmtfre85k" path="res://src/Client/Audio/SoundEffect.cs" id="1"]
+[ext_resource type="AudioStream" uid="uid://dkq2dfoim7ohm" path="res://Assets/Sounds/shell_impact.wav" id="2"]
 
 [resource]
 script = ExtResource("1")
 Stream = ExtResource("2")
 VolumeDb = -2.0
-Bus = 0
 MaxDistance = 1600.0
 Priority = 2
-TimeScaled = true

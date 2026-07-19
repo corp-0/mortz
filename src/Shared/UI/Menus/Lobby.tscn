@@ -4,7 +4,7 @@
 [ext_resource type="PackedScene" uid="uid://ciqycdoqosx85" path="res://src/Shared/UI/Chat/ChatPanel.tscn" id="2_chat"]
 [ext_resource type="PackedScene" uid="uid://d4e5uxg8yueq" path="res://src/Shared/UI/Menus/LobbySettingsPanel.tscn" id="3_settings"]
 [ext_resource type="Script" uid="uid://blykayha5ata5" path="res://src/Client/Menus/RosterHost.cs" id="4_roster"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/Controls/SingleColumnRoster.tscn" id="5_single"]
+[ext_resource type="PackedScene" uid="uid://dc28x1qimy8d1" path="res://src/Shared/UI/Controls/SingleColumnRoster.tscn" id="5_single"]
 [ext_resource type="PackedScene" uid="uid://bcyg5w5ortt37" path="res://src/Shared/UI/Controls/TeamColumnsRoster.tscn" id="6_teams"]
 
 [node name="Lobby" type="Control" unique_id=163944296 node_paths=PackedStringArray("_readyButton")]

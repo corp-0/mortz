@@ -1,26 +1,26 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene format=3 uid="uid://wf7xp36uxmws"]
 
-[ext_resource type="Script" path="res://src/Server/ServerMain.cs" id="1_smain"]
-[ext_resource type="Script" path="res://src/Server/Chat/ServerChat.cs" id="2_chat"]
-[ext_resource type="Script" path="res://src/Server/ServerHost.cs" id="3_host"]
-[ext_resource type="Script" path="res://src/Server/ServerSessionController.cs" id="4_session"]
-[ext_resource type="Script" path="res://src/Server/ServerLobbySettings.cs" id="5_settings"]
+[ext_resource type="Script" uid="uid://yybh100y5emt" path="res://src/Server/ServerMain.cs" id="1_smain"]
+[ext_resource type="Script" uid="uid://bkg4l4yasixyj" path="res://src/Server/Chat/ServerChat.cs" id="2_chat"]
+[ext_resource type="Script" uid="uid://co0rsoejny0ud" path="res://src/Server/ServerHost.cs" id="3_host"]
+[ext_resource type="Script" uid="uid://cx8tip4e2hdek" path="res://src/Server/ServerSessionController.cs" id="4_session"]
+[ext_resource type="Script" uid="uid://ba4y2j3vh3tmu" path="res://src/Server/ServerLobbySettings.cs" id="5_settings"]
 
-[node name="ServerMain" type="Node" node_paths=PackedStringArray("_host", "_session", "_chat", "_lobbySettings")]
+[node name="ServerMain" type="Node" unique_id=1699106039 node_paths=PackedStringArray("_host", "_session", "_chat", "_lobbySettings")]
 script = ExtResource("1_smain")
 _host = NodePath("Host")
 _session = NodePath("Session")
 _chat = NodePath("Chat")
 _lobbySettings = NodePath("LobbySettings")
 
-[node name="Host" type="Node" parent="."]
+[node name="Host" type="Node" parent="." unique_id=573842423]
 script = ExtResource("3_host")
 
-[node name="Session" type="Node" parent="."]
+[node name="Session" type="Node" parent="." unique_id=853542824]
 script = ExtResource("4_session")
 
-[node name="Chat" type="Node" parent="."]
+[node name="Chat" type="Node" parent="." unique_id=1162415252]
 script = ExtResource("2_chat")
 
-[node name="LobbySettings" type="Node" parent="."]
+[node name="LobbySettings" type="Node" parent="." unique_id=952775275]
 script = ExtResource("5_settings")

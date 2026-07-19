@@ -1,20 +1,20 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=3 uid="uid://0yfe6odmt0rn"]
 
-[ext_resource type="Script" path="res://src/Client/Ui/FloatPropertyControl.cs" id="1"]
+[ext_resource type="Script" uid="uid://eyukr5pbbow8" path="res://src/Client/Ui/FloatPropertyControl.cs" id="1"]
 
-[node name="FloatPropertyControl" type="HBoxContainer" node_paths=PackedStringArray("_label", "_value")]
+[node name="FloatPropertyControl" type="HBoxContainer" unique_id=815308828 node_paths=PackedStringArray("_label", "_value")]
 custom_minimum_size = Vector2(0, 34)
 theme_override_constants/separation = 12
 script = ExtResource("1")
 _label = NodePath("Label")
 _value = NodePath("Value")
 
-[node name="Label" type="Label" parent="."]
+[node name="Label" type="Label" parent="." unique_id=1115730128]
 layout_mode = 2
 size_flags_horizontal = 3
 vertical_alignment = 1
 
-[node name="Value" type="SpinBox" parent="."]
+[node name="Value" type="SpinBox" parent="." unique_id=1782711841]
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 min_value = -100000.0

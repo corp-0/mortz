@@ -1,8 +1,8 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://dc28x1qimy8d1"]
 
-[ext_resource type="Script" path="res://src/Client/Menus/SingleColumnRoster.cs" id="1_roster"]
+[ext_resource type="Script" uid="uid://bdqrmvx8fqm24" path="res://src/Client/Menus/SingleColumnRoster.cs" id="1_roster"]
 
-[node name="SingleColumnRoster" type="ScrollContainer" node_paths=PackedStringArray("_players")]
+[node name="SingleColumnRoster" type="ScrollContainer" unique_id=529751271 node_paths=PackedStringArray("_players")]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -12,7 +12,7 @@ horizontal_scroll_mode = 0
 script = ExtResource("1_roster")
 _players = NodePath("Players")
 
-[node name="Players" type="VBoxContainer" parent="."]
+[node name="Players" type="VBoxContainer" parent="." unique_id=678959394]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 5

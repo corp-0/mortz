@@ -1,12 +1,12 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene format=3 uid="uid://pbne52ymu80j"]
 
-[ext_resource type="Script" path="res://src/Client/Ui/UiPropertySheet.cs" id="1"]
+[ext_resource type="Script" uid="uid://1h5x1b16t6s" path="res://src/Client/Ui/UiPropertySheet.cs" id="1"]
 [ext_resource type="PackedScene" uid="uid://cvkiettp7gns3" path="res://src/Shared/UI/Controls/BoolPropertyControl.tscn" id="2"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/Controls/IntPropertyControl.tscn" id="3"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/Controls/FloatPropertyControl.tscn" id="4"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/Controls/EnumPropertyControl.tscn" id="5"]
+[ext_resource type="PackedScene" uid="uid://bj6r04o17t0xc" path="res://src/Shared/UI/Controls/IntPropertyControl.tscn" id="3"]
+[ext_resource type="PackedScene" uid="uid://0yfe6odmt0rn" path="res://src/Shared/UI/Controls/FloatPropertyControl.tscn" id="4"]
+[ext_resource type="PackedScene" uid="uid://dto5p1v723pmd" path="res://src/Shared/UI/Controls/EnumPropertyControl.tscn" id="5"]
 
-[node name="UiPropertySheet" type="VBoxContainer"]
+[node name="UiPropertySheet" type="VBoxContainer" unique_id=217371672]
 theme_override_constants/separation = 12
 script = ExtResource("1")
 _boolControl = ExtResource("2")
