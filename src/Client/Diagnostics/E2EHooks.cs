@@ -4,6 +4,7 @@ using Mortz.Core.Net.Messages;
 using Mortz.Core.Replication;
 using Mortz.Core.Sim;
 using Mortz.Core.Terrain;
+using Mortz.Net;
 using Mortz.Shared;
 
 namespace Mortz.Client.Diagnostics;
@@ -63,7 +64,7 @@ public partial class E2EHooks : Node
 
     private void TrackNearestEnemy(Snapshot snapshot)
     {
-        int localId = Multiplayer.GetUniqueId();
+        int localId = NetworkManager.Instance.LocalPeerId;
         Vec2 me = _localPlayer.State.Position;
         float best = float.MaxValue;
         foreach (PlayerState p in snapshot.Players)

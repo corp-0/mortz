@@ -6,6 +6,7 @@ using Mortz.Client.Stats;
 using Mortz.Client.Ui;
 using Mortz.Core.Match;
 using Mortz.Core.Net.Messages;
+using Mortz.Net;
 
 namespace Mortz.Client.Menus;
 
@@ -73,7 +74,7 @@ public partial class TeamColumnsRoster : ScrollContainer
                 child.Free();
             }
         }
-        long localId = Multiplayer.GetUniqueId();
+        long localId = NetworkManager.Instance.LocalPeerId;
         byte localTeam = 0;
         foreach (LobbyMember member in Setup.Members)
         {

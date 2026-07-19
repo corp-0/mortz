@@ -103,7 +103,7 @@ public partial class GameView : Node2D
     /// can't fly on and carve a ghost. Deflected shells carry -1 and are skipped.</summary>
     private void OnCarve(CarveMsg msg)
     {
-        if (msg.SpawnSeq >= 0 && msg.OwnerId == Multiplayer.GetUniqueId() &&
+        if (msg.SpawnSeq >= 0 && msg.OwnerId == NetworkManager.Instance.LocalPeerId &&
             _localPlayer.RetireShell(msg.SpawnSeq))
             GD.Print($"[client] retired shell seq {msg.SpawnSeq} (authoritative explosion)");
     }
@@ -134,7 +134,7 @@ public partial class GameView : Node2D
             {
                 case SimWorld.MortarEventKind.SPAWN:
                     _remoteMortars.Spawn(e.State, tick, NewestSnapshotTick);
-                    if (e.State.FiredBy != Multiplayer.GetUniqueId())
+                    if (e.State.FiredBy != NetworkManager.Instance.LocalPeerId)
                         Sfx.PlayAt(Sfx.Sounds.MortarFire,
                             new Vector2(e.State.Position.X, e.State.Position.Y));
                     break;
@@ -153,7 +153,7 @@ public partial class GameView : Node2D
 
     private void RetireDeflectedPrediction(in MortarState state)
     {
-        if (state.FiredBy != Multiplayer.GetUniqueId())
+        if (state.FiredBy != NetworkManager.Instance.LocalPeerId)
             return;
         bool hadShell = _localPlayer.RetireShell(state.SpawnSeq);
         bool hadCarve = _gameMap.RevertPredictedCarve(state.SpawnSeq);
@@ -164,7 +164,7 @@ public partial class GameView : Node2D
     private void RetireEndedMortar(ushort id)
     {
         if (!_remoteMortars.TryEnd(id, out MortarState state) ||
-            state.FiredBy != Multiplayer.GetUniqueId())
+            state.FiredBy != NetworkManager.Instance.LocalPeerId)
             return;
         _localPlayer.RetireShell(state.SpawnSeq);
         _localPlayer.ForgetCompleted(state.SpawnSeq);
@@ -197,7 +197,7 @@ public partial class GameView : Node2D
         if (state == null)
             return;
 
-        int localId = Multiplayer.GetUniqueId();
+        int localId = NetworkManager.Instance.LocalPeerId;
         _ropes.Segments.Clear();
         _players.BeginFrame();
         List<ReplayPlayer> replayPlayers = [];

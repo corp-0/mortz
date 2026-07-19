@@ -1,6 +1,7 @@
 using Godot;
 using Mortz.Core.Net.Messages;
 using Mortz.Core.Sim;
+using Mortz.Net;
 
 namespace Mortz.Client.Views;
 
@@ -69,7 +70,7 @@ public partial class PlayerViewManager : Node2D
     public void Place(int peerId, PlayerViewState state)
     {
         _placed.Add(peerId);
-        bool isLocal = peerId == Multiplayer.GetUniqueId();
+        bool isLocal = peerId == NetworkManager.Instance.LocalPeerId;
         if (_skins.TryGetValue(peerId, out byte rosterSkin))
             state = state with { Skin = rosterSkin };
         if (!isLocal)

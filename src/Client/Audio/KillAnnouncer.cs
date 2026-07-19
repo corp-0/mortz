@@ -1,5 +1,6 @@
 using Godot;
 using Mortz.Core.Net.Messages;
+using Mortz.Net;
 
 namespace Mortz.Client.Audio;
 
@@ -17,7 +18,7 @@ public partial class KillAnnouncer : Node
 
     private void OnElimination(EliminationMsg msg)
     {
-        switch (SelectCue(msg, Multiplayer.GetUniqueId()))
+        switch (SelectCue(msg, NetworkManager.Instance.LocalPeerId))
         {
             case Cue.FIRST_BLOOD:
                 Sfx.Play(Sfx.Sounds.FirstBlood);

@@ -2,6 +2,7 @@ using Godot;
 using Mortz.Core.Match;
 using Mortz.Core.Net.Messages;
 using Mortz.Core.Terrain;
+using Mortz.Net;
 using Mortz.Shared;
 
 namespace Mortz.Client.Match;
@@ -130,7 +131,7 @@ public partial class GameMap : Node2D
         ulong now = Time.GetTicksMsec();
         _ledger.RecordConfirmed(x, y, radius, now);
 
-        bool mine = msg.OwnerId == Multiplayer.GetUniqueId() && msg.SpawnSeq >= 0;
+        bool mine = msg.OwnerId == NetworkManager.Instance.LocalPeerId && msg.SpawnSeq >= 0;
         if (mine)
             _ledger.MarkSettled(msg.SpawnSeq, now);
 

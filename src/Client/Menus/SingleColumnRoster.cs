@@ -3,6 +3,7 @@ using Chickensoft.Introspection;
 using Godot;
 using Mortz.Client.Setup;
 using Mortz.Client.Stats;
+using Mortz.Net;
 
 namespace Mortz.Client.Menus;
 
@@ -49,7 +50,7 @@ public partial class SingleColumnRoster : ScrollContainer
         {
             child.Free();
         }
-        long localId = Multiplayer.GetUniqueId();
+        long localId = NetworkManager.Instance.LocalPeerId;
         foreach (LobbyMember member in Setup.Members)
         {
             _players.AddChild(RosterSlots.BuildSlot(member, Stats, localId));

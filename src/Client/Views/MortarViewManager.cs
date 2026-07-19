@@ -3,6 +3,7 @@ using Mortz.Client.Audio;
 using Mortz.Client.Replay;
 using Mortz.Core.Replication;
 using Mortz.Core.Sim;
+using Mortz.Net;
 
 namespace Mortz.Client.Views;
 
@@ -26,7 +27,7 @@ public partial class MortarViewManager : Node2D
 
     public void SyncRemote(IReadOnlyList<RenderMortar> mortars, IReadOnlySet<int> completedSeqs)
     {
-        int localId = Multiplayer.GetUniqueId();
+        int localId = NetworkManager.Instance.LocalPeerId;
         _seenRemote.Clear();
         foreach (RenderMortar m in mortars)
         {

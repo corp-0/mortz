@@ -5,6 +5,7 @@ using Mortz.Client.Views;
 using Mortz.Core.Net.Messages;
 using Mortz.Core.Replication;
 using Mortz.Core.Sim;
+using Mortz.Net;
 
 namespace Mortz.Client.Replay;
 
@@ -188,7 +189,7 @@ public partial class FinalKillReplay : Node
         }
         else
         {
-            int localId = Multiplayer.GetUniqueId();
+            int localId = NetworkManager.Instance.LocalPeerId;
             int localIndex = Array.FindIndex(first.Players, player => player.PeerId == localId);
             _replayCamera.GlobalPosition = localIndex >= 0
                 ? first.Players[localIndex].State.Feet -

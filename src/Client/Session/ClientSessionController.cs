@@ -131,7 +131,7 @@ public partial class ClientSessionController : Node
     private void OnConnected()
     {
         _connection.Connected();
-        GD.Print($"[client] connected, peer id {Multiplayer.GetUniqueId()}");
+        GD.Print($"[client] connected, peer id {NetworkManager.Instance.LocalPeerId}");
         NetworkManager.Instance.SendHello(_connection.PlayerName);
         _menu.SetStatus("Entering lobby...");
         if (_autoReady)

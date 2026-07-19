@@ -47,6 +47,9 @@ public partial class NetworkManager : Node
 
     public bool IsServer => Multiplayer.MultiplayerPeer != null && Multiplayer.IsServer();
 
+    /// <summary>Safe at any time; 0 means no session (no real peer ever has id 0).</summary>
+    public int LocalPeerId => Multiplayer.HasMultiplayerPeer() ? Multiplayer.GetUniqueId() : 0;
+
     public override void _Ready()
     {
         Instance = this;

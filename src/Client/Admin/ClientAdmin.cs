@@ -62,7 +62,7 @@ public partial class ClientAdmin : Node
     private void OnConnected()
     {
         _flow.Reset();
-        _localPeerId = Multiplayer.GetUniqueId();
+        _localPeerId = NetworkManager.Instance.LocalPeerId;
     }
 
     private void OnSessionEnded()

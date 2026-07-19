@@ -85,7 +85,7 @@ public partial class LocalPlayerController : Node2D
     /// <summary>Rewind-and-replay against the authoritative state, if the local player is in it.</summary>
     public void Reconcile(Snapshot snapshot, int ack)
     {
-        int localId = Multiplayer.GetUniqueId();
+        int localId = NetworkManager.Instance.LocalPeerId;
         foreach (PlayerState player in snapshot.Players)
         {
             if (player.PeerId != localId)

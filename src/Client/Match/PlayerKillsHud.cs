@@ -2,6 +2,7 @@ using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
 using Mortz.Client.Score;
+using Mortz.Net;
 
 namespace Mortz.Client.Match;
 
@@ -38,7 +39,7 @@ public partial class PlayerKillsHud : Control
     {
         if (!IsInsideTree())
             return;
-        long localId = Multiplayer.GetUniqueId();
+        long localId = NetworkManager.Instance.LocalPeerId;
         _scoreLabel.Text = $"K {Score.Kills(localId)} / D {Score.Deaths(localId)}";
     }
 }
