@@ -4,6 +4,7 @@ using Mortz.Core.Net;
 using Mortz.Core.Net.Messages;
 using Mortz.Core.Replication;
 using Mortz.Core.Sim;
+using Mortz.Core.Sim.Modifiers;
 using Mortz.Core.Terrain;
 using Mortz.Net;
 using Mortz.Shared;
@@ -75,6 +76,13 @@ internal sealed class ServerProtocol
             peerIds.Select(peerId => match.World.Players[(int)peerId].TeamId).ToArray(),
             peerIds.Select(peerId => match.World.Players[(int)peerId].NetSlot).ToArray())
             .Broadcast();
+        // Modifier lists ride with every roster; clients resolve them through
+        // the same StatsPipeline, so both sides stay bit-identical.
+        foreach (long peerId in peerIds)
+        {
+            new PlayerModifiersMsg(peerId,
+                ModifierWire.Serialize(match.World.Modifiers((int)peerId))).Broadcast();
+        }
     }
 
     public void SyncPlayer(long peerId, MatchSession match)

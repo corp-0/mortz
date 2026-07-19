@@ -30,6 +30,8 @@ public partial class PlayerView : Node2D
 
     private static readonly Color _shieldColor = new(0.4f, 0.9f, 1f, 0.8f);
 
+    internal PlayerStats StatsForTest => _stats;
+
     private bool _boxVisible;
     private bool _shieldVisible;
     private bool _isLocal;
@@ -39,11 +41,13 @@ public partial class PlayerView : Node2D
     private PlayerViewState? _previous;
     private SfxHandle _reloadSound;
 
-    /// <summary>Must be called before the first Apply (PlayerViewManager does).</summary>
+    /// <summary>Called before the first Apply (PlayerViewManager does) and again
+    /// whenever this player's replicated stats change.</summary>
     public void Configure(PlayerStats stats)
     {
         _stats = stats;
         _reloadBar.Configure(stats);
+        QueueRedraw(); // the shield can be up while its radius changes
     }
 
     /// <summary>Only the local player's camera drives the screen, and only

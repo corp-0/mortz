@@ -1,6 +1,7 @@
 using Mortz.Core.Match;
 using Mortz.Core.Net;
 using Mortz.Core.Net.Messages;
+using Mortz.Core.Sim.Modifiers;
 using Mortz.Core.Terrain;
 using Xunit;
 
@@ -47,6 +48,28 @@ public class NetMessageTests : IDisposable
         Assert.Equal([3, 7], received.Skins);
         Assert.Equal([1, 2], received.Teams);
         Assert.Equal([1, 2], received.Slots);
+    }
+
+    [Fact]
+    public void PlayerModifiersMsg_RoundTrips()
+    {
+        UseLoopback(receiverIsServer: false);
+        byte[] blob = ModifierWire.Serialize([Modifiers.Water]);
+        PlayerModifiersMsg received = default;
+        Action<PlayerModifiersMsg> handler = m => received = m;
+        PlayerModifiersMsg.Received += handler;
+        try
+        {
+            new PlayerModifiersMsg(77890011223, blob).Broadcast();
+        }
+        finally
+        {
+            PlayerModifiersMsg.Received -= handler;
+        }
+        Assert.Equal(77890011223, received.PeerId);
+        StatsModifier got = Assert.Single(ModifierWire.Deserialize(received.Modifiers));
+        Assert.Equal(ModifierId.WATER, got.Id);
+        Assert.Equal(Modifiers.Water.Changes, got.Changes);
     }
 
     [Fact]

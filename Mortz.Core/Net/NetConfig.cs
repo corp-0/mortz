@@ -5,7 +5,7 @@ public static class NetConfig
 {
     /// <summary>Bumped on semantic wire changes. Message shape changes are caught
     /// automatically by NetRegistry.SCHEMA_HASH; both ride in Hello.</summary>
-    public const int PROTOCOL_VERSION = 31;
+    public const int PROTOCOL_VERSION = 32;
 
     public const int DEFAULT_PORT = 7777;
     public const int MAX_PLAYERS = 8;

@@ -23,6 +23,6 @@ public partial class PlayerReloadIndicator : ProgressBar
             MaxValue = _stats.MaxAmmo;
             Visible = true;
         }
-        Value = ammo + 1.0 - (double)reloadTicks / _stats.ReloadTicks;
+        Value = ammo + 1.0 - (double)reloadTicks / _stats.ReloadPerShellTicks;
     }
 }

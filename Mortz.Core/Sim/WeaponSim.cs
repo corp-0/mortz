@@ -33,9 +33,9 @@ public static class WeaponSim
         }
 
         if (p.ReloadTicks == 0 && (p.Ammo == 0 || (reloadPressed && p.Ammo < stats.MaxAmmo)))
-            p.ReloadTicks = stats.ReloadTicks;
+            p.ReloadTicks = stats.ReloadPerShellTicks;
         if (p.ReloadTicks > 0 && --p.ReloadTicks == 0 && ++p.Ammo < stats.MaxAmmo)
-            p.ReloadTicks = stats.ReloadTicks; // next shell
+            p.ReloadTicks = stats.ReloadPerShellTicks; // next shell
 
         return fired;
     }

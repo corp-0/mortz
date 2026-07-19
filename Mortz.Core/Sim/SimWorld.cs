@@ -2,6 +2,7 @@ using Mortz.Core.Input;
 using Mortz.Core.Match;
 using Mortz.Core.Net;
 using Mortz.Core.Replication;
+using Mortz.Core.Sim.Modifiers;
 using Mortz.Core.Terrain;
 
 namespace Mortz.Core.Sim;
@@ -30,8 +31,13 @@ public sealed class SimWorld
     // Sorted so iteration order (and thus any future interactions) is deterministic.
     private readonly SortedDictionary<int, PlayerState> _players = new();
     private readonly SortedDictionary<int, InputQueue> _inputs = new();
-    // Resolved per player at join; perk selections feed in here eventually.
+    // Tier 1 per player: config plus the persistent modifier stack, resolved.
+    // This is what replicates; situational effects compose on top per tick
+    // into _effective, which is what the sim actually reads.
     private readonly SortedDictionary<int, PlayerStats> _stats = new();
+    private readonly SortedDictionary<int, List<StatsModifier>> _modifiers = new();
+    private readonly SortedDictionary<int, Situations> _situations = new();
+    private readonly SortedDictionary<int, PlayerStats> _effective = new();
     private readonly SortedDictionary<int, byte> _netSlots = new();
     private readonly Vec2[] _spawnPoints;
 
@@ -49,6 +55,7 @@ public sealed class SimWorld
     private readonly Random _rng;
 
     public IReadOnlyDictionary<int, PlayerState> Players => _players;
+    public IReadOnlyDictionary<int, PlayerStats> Stats => _stats;
     public IReadOnlyList<MortarState> Mortars => _mortars;
 
     /// <summary>Terrain impacts from the last Step; the server broadcasts these
@@ -87,13 +94,69 @@ public sealed class SimWorld
             .Select(i => (byte)i)
             .First(i => !_netSlots.ContainsValue(i));
         _netSlots[peerId] = slot;
+        _modifiers[peerId] = [];
+        _situations[peerId] = Situations.NONE;
         _stats[peerId] = PlayerStats.Resolve(Config);
+        _effective[peerId] = _stats[peerId];
         _players[peerId] = FreshState(peerId, lastInputSeq: -1) with
         {
             Skin = (byte)_rng.Next(SimConfig.SKIN_COUNT),
             TeamId = teamId,
         };
         _inputs[peerId] = new InputQueue();
+    }
+
+    /// <summary>Persistent modifier entry point (perks, pickups). Same id
+    /// replaces; the stack stays sorted by id so composition is identical no
+    /// matter the acquisition order. The caller owns rebroadcasting
+    /// PlayerModifiersMsg so clients keep rendering and predicting the truth.</summary>
+    public void AddModifier(int peerId, StatsModifier modifier)
+    {
+        if (!_modifiers.TryGetValue(peerId, out List<StatsModifier>? mods))
+            return;
+        mods.RemoveAll(m => m.Id == modifier.Id);
+        int at = mods.FindIndex(m => m.Id > modifier.Id);
+        mods.Insert(at < 0 ? mods.Count : at, modifier);
+        RecomputeStats(peerId);
+    }
+
+    /// <summary>Removes only what the id added: the stack recomputes from
+    /// base without it, never subtracts.</summary>
+    public void RemoveModifier(int peerId, ModifierId id)
+    {
+        if (_modifiers.TryGetValue(peerId, out List<StatsModifier>? mods) &&
+            mods.RemoveAll(m => m.Id == id) > 0)
+            RecomputeStats(peerId);
+    }
+
+    public IReadOnlyList<StatsModifier> Modifiers(int peerId) => _modifiers[peerId];
+
+    private void RecomputeStats(int peerId)
+    {
+        _stats[peerId] = StatsPipeline.Resolve(Config, _modifiers[peerId]);
+        _effective[peerId] = Compose(peerId, _situations[peerId]);
+    }
+
+    private PlayerStats Compose(int peerId, Situations flags)
+    {
+        if (flags == Situations.NONE)
+            return _stats[peerId];
+        List<StatsModifier> all = new(_modifiers[peerId]);
+        SituationEffects.AppendModifiers(flags, all);
+        return StatsPipeline.Resolve(Config, all);
+    }
+
+    /// <summary>Situational stats recompute only when a player's situation
+    /// flips, not every tick.</summary>
+    private PlayerStats EffectiveStats(int id, in PlayerState state, in PlayerInput input)
+    {
+        Situations flags = SituationEffects.Detect(state, Terrain, input);
+        if (flags != _situations[id])
+        {
+            _situations[id] = flags;
+            _effective[id] = Compose(id, flags);
+        }
+        return _effective[id];
     }
 
     private PlayerState FreshState(int peerId, int lastInputSeq)
@@ -141,6 +204,9 @@ public sealed class SimWorld
         _players.Remove(peerId);
         _inputs.Remove(peerId);
         _stats.Remove(peerId);
+        _modifiers.Remove(peerId);
+        _situations.Remove(peerId);
+        _effective.Remove(peerId);
         _netSlots.Remove(peerId);
     }
 
@@ -179,7 +245,7 @@ public sealed class SimWorld
             }
             else
             {
-                PlayerStats stats = _stats[id];
+                PlayerStats stats = EffectiveStats(id, prev, input);
                 // The effective input may contain carried actions. Force any raw
                 // press consumed by the drain to be an edge against the simulated
                 // state, then restore the raw applied buttons as the next replay
@@ -273,7 +339,7 @@ public sealed class SimWorld
             if (p.ParryTicks == 0 || p.RespawnTicks > 0)
                 continue;
             Vec2 toCenter = BodyCenter(p) - m.Position;
-            float radius = _stats[id].ParryRadius;
+            float radius = _effective[id].ParryRadius;
             if (toCenter.LengthSquared() > radius * radius || Vec2.Dot(m.Velocity, toCenter) <= 0)
                 continue;
             m.Velocity = -m.Velocity;

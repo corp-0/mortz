@@ -7,6 +7,7 @@ using Mortz.Core.Net;
 using Mortz.Core.Net.Messages;
 using Mortz.Core.Replication;
 using Mortz.Core.Sim;
+using Mortz.Core.Sim.Modifiers;
 using Mortz.Core.Terrain;
 using Mortz.Net;
 using Mortz.Shared;
@@ -34,6 +35,7 @@ public partial class GameView : Node2D
 
     private readonly SnapshotInterpolator _interpolator = new();
     private MortarReplicaSet _remoteMortars = null!;
+    private MatchConfig _config = null!;
     private readonly Dictionary<byte, int> _peersBySlot = new();
 
     public int NewestSnapshotTick => _interpolator.NewestTick;
@@ -43,13 +45,14 @@ public partial class GameView : Node2D
     public void Initialize(MapPackage map, MatchConfig config,
         TerrainSyncEncoding terrainEncoding, byte[] terrainData)
     {
+        _config = config;
         _gameMap.Initialize(map, config, terrainEncoding, terrainData);
         _localPlayer.Initialize(new Predictor(_gameMap.Mask, config));
         _remoteMortars = new MortarReplicaSet(_gameMap.Mask, config);
-        // Remote players render with the base stats until perks exist.
-        PlayerStats stats = PlayerStats.Resolve(config);
-        _players.Configure(stats);
-        _hud.Configure(stats);
+        // Base stats to start from; the server's per-player modifier lists
+        // (PlayerModifiersMsg) take over as they arrive.
+        _players.Configure(config);
+        _hud.Configure(PlayerStats.Resolve(config));
     }
 
     public override void _Ready()
@@ -60,6 +63,7 @@ public partial class GameView : Node2D
         MortarLifecycleMsg.Received += OnMortarLifecycle;
         MortarCorrectionMsg.Received += OnMortarCorrection;
         RosterMsg.Received += OnRoster;
+        PlayerModifiersMsg.Received += OnPlayerModifiers;
     }
 
     public override void _ExitTree()
@@ -70,6 +74,7 @@ public partial class GameView : Node2D
         MortarLifecycleMsg.Received -= OnMortarLifecycle;
         MortarCorrectionMsg.Received -= OnMortarCorrection;
         RosterMsg.Received -= OnRoster;
+        PlayerModifiersMsg.Received -= OnPlayerModifiers;
     }
 
     private void OnSnapshotReceived(byte[] data, int ack)
@@ -86,6 +91,26 @@ public partial class GameView : Node2D
         _interpolator.Add(snapshot);
         _localPlayer.Reconcile(snapshot, ack);
         SnapshotApplied?.Invoke(snapshot);
+    }
+
+    // PlayerViewManager owns everyone's view stats; our own modifier list
+    // additionally drives prediction and the HUD.
+    private void OnPlayerModifiers(PlayerModifiersMsg msg)
+    {
+        if (msg.PeerId != NetworkManager.Instance.LocalPeerId)
+            return;
+        List<StatsModifier> modifiers;
+        try
+        {
+            modifiers = ModifierWire.Deserialize(msg.Modifiers);
+        }
+        catch (Exception e) when (e is IOException or InvalidDataException)
+        {
+            GD.PrintErr("[client] dropped malformed local player modifiers");
+            return;
+        }
+        _hud.Configure(StatsPipeline.Resolve(_config, modifiers));
+        _localPlayer.SetModifiers(modifiers);
     }
 
     private void OnRoster(RosterMsg msg)

@@ -208,7 +208,7 @@ public class MatchConfigTests
         Assert.Equal(SimConfig.MAX_RUN_SPEED, stats.MaxRunSpeed);
         Assert.Equal(SimConfig.TOTAL_JUMPS, stats.TotalJumps);
         Assert.Equal(SimConfig.DASH_COOLDOWN_TICKS, stats.DashCooldownTicks);
-        Assert.Equal(SimConfig.MORTAR_RELOAD_TICKS, stats.ReloadTicks);
+        Assert.Equal(SimConfig.MORTAR_RELOAD_TICKS, stats.ReloadPerShellTicks);
         Assert.Equal(SimConfig.COYOTE_MAX_TICKS, stats.CoyoteMaxTicks);
         Assert.Equal(SimConfig.MAX_HEALTH, stats.MaxHealth);
         Assert.Equal(SimConfig.PARRY_WINDOW_TICKS, stats.ParryWindowTicks);
@@ -236,7 +236,7 @@ public class MatchConfigTests
 
         Assert.InRange(stats.DashCooldownTicks, 1, 255);
         Assert.InRange(stats.RopeMissCooldownTicks, 1, 255);
-        Assert.InRange(stats.ReloadTicks, 1, 255);
+        Assert.InRange(stats.ReloadPerShellTicks, 1, 255);
         Assert.InRange(stats.CoyoteMaxTicks, 1, 255);
         Assert.InRange(maxed.RespawnDelayTicks, 1, 255);
         Assert.InRange(maxed.SpawnImmunityTicks, 1, 255);

@@ -3,6 +3,7 @@ using Mortz.Core.Input;
 using Mortz.Core.Net;
 using Mortz.Core.Replication;
 using Mortz.Core.Sim;
+using Mortz.Core.Sim.Modifiers;
 using Mortz.Net;
 
 namespace Mortz.Client.Match;
@@ -48,6 +49,11 @@ public partial class LocalPlayerController : Node2D
 
     /// <summary>Must be called right after instantiating, before entering the tree.</summary>
     public void Initialize(Predictor predictor) => _predictor = predictor;
+
+    /// <summary>The server's replicated modifier list for us; prediction must
+    /// compose the same numbers the sim does.</summary>
+    public void SetModifiers(IReadOnlyList<StatsModifier> modifiers) =>
+        _predictor.SetModifiers(modifiers);
 
     public override void _PhysicsProcess(double delta)
     {

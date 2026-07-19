@@ -1,6 +1,7 @@
 using Mortz.Core.Input;
 using Mortz.Core.Match;
 using Mortz.Core.Sim;
+using Mortz.Core.Sim.Modifiers;
 using Mortz.Core.Terrain;
 
 namespace Mortz.Core.Replication;
@@ -26,9 +27,14 @@ public sealed class Predictor
     private readonly InputHistory _history = new();
     private readonly TerrainMask _terrain;
     private readonly MatchConfig _cfg;
-    // The local player's resolved stats; must match what the server resolved,
-    // or every replay mispredicts.
-    private readonly PlayerStats _stats;
+    // The local player's stats, composed exactly like the server composes
+    // them (same config, same modifier list, same pipeline), or every replay
+    // mispredicts. _tier1 is config + replicated persistent modifiers;
+    // _effective adds the current situation on top.
+    private IReadOnlyList<StatsModifier> _modifiers = [];
+    private PlayerStats _tier1;
+    private Situations _flags = Situations.NONE;
+    private PlayerStats _effective;
     private readonly List<(int SpawnSeq, MortarState Shell)> _shells = new();
     private readonly List<(int SpawnSeq, Vec2 Position)> _impacts = new();
     private readonly HashSet<int> _retired = new();
@@ -42,7 +48,38 @@ public sealed class Predictor
     {
         _terrain = terrain;
         _cfg = config;
-        _stats = PlayerStats.Resolve(config);
+        _tier1 = PlayerStats.Resolve(config);
+        _effective = _tier1;
+    }
+
+    /// <summary>Adopt the server's replicated modifier list. The next
+    /// reconcile replays with it, curing any ticks predicted on stale stats.</summary>
+    public void SetModifiers(IReadOnlyList<StatsModifier> modifiers)
+    {
+        _modifiers = modifiers;
+        _tier1 = StatsPipeline.Resolve(_cfg, modifiers);
+        _effective = Compose(_flags);
+    }
+
+    /// <summary>Situational stats recompute only when the situation flips.</summary>
+    private PlayerStats Effective(in PlayerState state, in PlayerInput input)
+    {
+        Situations flags = SituationEffects.Detect(state, _terrain, input);
+        if (flags != _flags)
+        {
+            _flags = flags;
+            _effective = Compose(flags);
+        }
+        return _effective;
+    }
+
+    private PlayerStats Compose(Situations flags)
+    {
+        if (flags == Situations.NONE)
+            return _tier1;
+        List<StatsModifier> all = new(_modifiers);
+        SituationEffects.AppendModifiers(flags, all);
+        return StatsPipeline.Resolve(_cfg, all);
     }
 
     /// <summary>False until the first snapshot containing the local player arrives.</summary>
@@ -107,8 +144,9 @@ public sealed class Predictor
         if (Initialized)
         {
             InputButtons prevButtons = _state.PrevButtons;
-            _state = PlayerSim.Tick(_state, input, _terrain, _stats);
-            if (WeaponSim.Tick(ref _state, input, prevButtons, _stats, NextSeq))
+            PlayerStats stats = Effective(_state, input);
+            _state = PlayerSim.Tick(_state, input, _terrain, stats);
+            if (WeaponSim.Tick(ref _state, input, prevButtons, stats, NextSeq))
                 _shells.Add((NextSeq, WeaponSim.NewShell((ushort)NextSeq, NextSeq, _state, input, _cfg)));
             StepShells(_shells);
         }
@@ -174,10 +212,11 @@ public sealed class Predictor
         foreach ((int seq, PlayerInput input) in _history.Since(lastAppliedSeq))
         {
             InputButtons prevButtons = state.PrevButtons;
-            state = PlayerSim.Tick(state, input, _terrain, _stats);
+            PlayerStats stats = Effective(state, input);
+            state = PlayerSim.Tick(state, input, _terrain, stats);
             // Run the weapon even for a retired shot: its ammo and reload were
             // real, only the shell must not come back.
-            if (WeaponSim.Tick(ref state, input, prevButtons, _stats, seq) && !_retired.Contains(seq))
+            if (WeaponSim.Tick(ref state, input, prevButtons, stats, seq) && !_retired.Contains(seq))
                 rebuilt.Add((seq, WeaponSim.NewShell((ushort)seq, seq, state, input, _cfg)));
             StepShells(rebuilt); // fast-forward in lockstep with the replay
         }
