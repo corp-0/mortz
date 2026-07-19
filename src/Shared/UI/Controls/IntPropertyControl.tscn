@@ -1,8 +1,8 @@
 [gd_scene load_steps=2 format=3]
 
-[ext_resource type="Script" path="res://src/Client/Menus/FloatRuleControl.cs" id="1"]
+[ext_resource type="Script" path="res://src/Client/Ui/IntPropertyControl.cs" id="1"]
 
-[node name="FloatRuleControl" type="HBoxContainer" node_paths=PackedStringArray("_label", "_value")]
+[node name="IntPropertyControl" type="HBoxContainer" node_paths=PackedStringArray("_label", "_value")]
 custom_minimum_size = Vector2(0, 34)
 theme_override_constants/separation = 12
 script = ExtResource("1")
@@ -19,6 +19,7 @@ custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 min_value = -100000.0
 max_value = 100000.0
-step = 0.01
+step = 1.0
 allow_greater = true
 allow_lesser = true
+rounded = true

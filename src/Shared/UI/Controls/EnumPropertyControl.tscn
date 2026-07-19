@@ -1,8 +1,8 @@
 [gd_scene load_steps=2 format=3]
 
-[ext_resource type="Script" path="res://src/Client/Menus/EnumRuleControl.cs" id="1"]
+[ext_resource type="Script" path="res://src/Client/Ui/EnumPropertyControl.cs" id="1"]
 
-[node name="EnumRuleControl" type="HBoxContainer" node_paths=PackedStringArray("_label", "_value")]
+[node name="EnumPropertyControl" type="HBoxContainer" node_paths=PackedStringArray("_label", "_value")]
 custom_minimum_size = Vector2(0, 34)
 theme_override_constants/separation = 12
 script = ExtResource("1")

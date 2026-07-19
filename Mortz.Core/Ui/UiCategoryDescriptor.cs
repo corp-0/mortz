@@ -1,9 +1,9 @@
 namespace Mortz.Core.Ui;
 
-public sealed class UiCategoryDescriptor<TModel>(
+public sealed class UiCategoryDescriptor(
     string displayName,
-    IReadOnlyList<IUiPropertyDescriptor<TModel>> properties)
+    IReadOnlyList<IUiPropertyDescriptor> properties)
 {
     public string DisplayName { get; } = displayName;
-    public IReadOnlyList<IUiPropertyDescriptor<TModel>> Properties { get; } = properties;
+    public IReadOnlyList<IUiPropertyDescriptor> Properties { get; } = properties;
 }

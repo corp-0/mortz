@@ -4,6 +4,7 @@ using Mortz.Client.Chat;
 using Mortz.Client.Menus;
 using Mortz.Client.Session;
 using Mortz.Client.Setup;
+using Mortz.Client.Ui;
 using Mortz.Core.Match;
 using Mortz.Core.Net;
 using Mortz.Core.Net.Messages;
@@ -34,15 +35,15 @@ public class ChatCompositionTests
             setup.ApplyLobbyStateForTest(new LobbyStateMsg(
                 [1, 2], ["Host", "Guest"], [1, 0], [0, 0], [], []));
 
-            LobbySettingsPanel panel =
-                client.GetNode<LobbySettingsPanel>("Lobby/Content/Main/Settings");
             MatchConfig config = new();
             setup.ApplySettingsForTest(new LobbySettingsMsg(
                 "castlewars", "hash", ["castlewars"], ["Castle Wars"], config.ToBytes()));
+            UiPropertySheet sheet = client.GetNode<UiPropertySheet>(
+                "Lobby/Content/Main/Settings/Margin/Column/RulesScroll/Rules");
             Assert.Equal(
                 MatchConfigUiMetadata.Categories.Sum(category => category.Properties.Count),
-                panel.RuleControlCount);
-            Assert.Equal(MatchConfigUiMetadata.Categories.Count, panel.CategoryBlockCount);
+                sheet.ControlCount);
+            Assert.Equal(MatchConfigUiMetadata.Categories.Count, sheet.CategoryBlockCount);
 
             VBoxContainer players = client.GetNode<VBoxContainer>(
                 "Lobby/Content/Main/Sidebar/LobbyCard/Margin/Column/Roster/" +
@@ -73,10 +74,11 @@ public class ChatCompositionTests
             client.Free();
         }
 
-        AssertSceneType<BoolRuleControl>("BoolRuleControl");
-        AssertSceneType<IntRuleControl>("IntRuleControl");
-        AssertSceneType<FloatRuleControl>("FloatRuleControl");
-        AssertSceneType<EnumRuleControl>("EnumRuleControl");
+        AssertSceneType<BoolPropertyControl>("BoolPropertyControl");
+        AssertSceneType<IntPropertyControl>("IntPropertyControl");
+        AssertSceneType<FloatPropertyControl>("FloatPropertyControl");
+        AssertSceneType<EnumPropertyControl>("EnumPropertyControl");
+        AssertSceneType<UiPropertySheet>("UiPropertySheet");
 
         string contentRoot = ProjectSettings.GlobalizePath("res://content");
         MapPackage map = Assert.IsType<MapPackage>(MapPackage.Load("castlewars", contentRoot));

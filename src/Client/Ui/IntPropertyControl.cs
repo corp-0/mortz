@@ -1,16 +1,15 @@
 using Godot;
-using Mortz.Core.Match;
 using Mortz.Core.Ui;
 
-namespace Mortz.Client.Menus;
+namespace Mortz.Client.Ui;
 
-public partial class IntRuleControl : HBoxContainer, IMatchRuleControl
+public partial class IntPropertyControl : HBoxContainer, IUiPropertyControl
 {
     [Export] private Label _label = null!;
     [Export] private SpinBox _value = null!;
 
-    private IUiPropertyDescriptor<MatchConfig> _descriptor = null!;
-    private MatchConfig _config = null!;
+    private IUiPropertyDescriptor _descriptor = null!;
+    private object _model = null!;
     private Action _changed = null!;
     private bool _updating;
 
@@ -18,19 +17,19 @@ public partial class IntRuleControl : HBoxContainer, IMatchRuleControl
 
     public override void _ExitTree() => _value.ValueChanged -= OnValueChanged;
 
-    public void Bind(IUiPropertyDescriptor<MatchConfig> descriptor, MatchConfig config,
-        Action changed)
+    public void Bind(IUiPropertyDescriptor descriptor, object model, Action changed)
     {
         _descriptor = descriptor;
-        _config = config;
+        _model = model;
         _changed = changed;
         _label.Text = descriptor.DisplayName;
+        _value.ApplyRangeHints(descriptor);
         Refresh();
     }
 
-    public void UpdateConfig(MatchConfig config)
+    public void UpdateModel(object model)
     {
-        _config = config;
+        _model = model;
         Refresh();
     }
 
@@ -39,7 +38,7 @@ public partial class IntRuleControl : HBoxContainer, IMatchRuleControl
     private void Refresh()
     {
         _updating = true;
-        _value.Value = (int)_descriptor.GetValue(_config)!;
+        _value.Value = (int)_descriptor.GetValue(_model)!;
         _updating = false;
     }
 
@@ -48,7 +47,7 @@ public partial class IntRuleControl : HBoxContainer, IMatchRuleControl
         if (_updating)
             return;
         int integer = (int)Math.Clamp(value, int.MinValue, int.MaxValue);
-        _descriptor.SetValue(_config, integer);
+        _descriptor.SetValue(_model, integer);
         _changed();
     }
 }

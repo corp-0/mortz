@@ -1,12 +1,9 @@
 [gd_scene format=3 uid="uid://d4e5uxg8yueq"]
 
 [ext_resource type="Script" uid="uid://ccv87mfb0uwoq" path="res://src/Client/Menus/LobbySettingsPanel.cs" id="1"]
-[ext_resource type="PackedScene" uid="uid://cvkiettp7gns3" path="res://src/Shared/UI/Controls/BoolRuleControl.tscn" id="2"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/Controls/IntRuleControl.tscn" id="3"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/Controls/FloatRuleControl.tscn" id="4"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/Controls/EnumRuleControl.tscn" id="5"]
+[ext_resource type="PackedScene" path="res://src/Shared/UI/Controls/UiPropertySheet.tscn" id="2"]
 
-[node name="LobbySettingsPanel" type="PanelContainer" unique_id=289524066 node_paths=PackedStringArray("_adminStatus", "_mapPicker", "_mapPreview", "_mapStatus", "_rules")]
+[node name="LobbySettingsPanel" type="PanelContainer" unique_id=289524066 node_paths=PackedStringArray("_adminStatus", "_mapPicker", "_mapPreview", "_mapStatus", "_sheet")]
 custom_minimum_size = Vector2(440, 0)
 size_flags_horizontal = 0
 size_flags_vertical = 3
@@ -15,11 +12,7 @@ _adminStatus = NodePath("Margin/Column/Header/MapInfo/AdminStatus")
 _mapPicker = NodePath("Margin/Column/Header/MapInfo/MapPicker")
 _mapPreview = NodePath("Margin/Column/Header/PreviewFrame/MapPreview")
 _mapStatus = NodePath("Margin/Column/Header/MapInfo/MapStatus")
-_rules = NodePath("Margin/Column/RulesScroll/Rules")
-_boolControl = ExtResource("2")
-_intControl = ExtResource("3")
-_floatControl = ExtResource("4")
-_enumControl = ExtResource("5")
+_sheet = NodePath("Margin/Column/RulesScroll/Rules")
 
 [node name="Margin" type="MarginContainer" parent="." unique_id=531731578]
 layout_mode = 2
@@ -96,7 +89,6 @@ layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
-[node name="Rules" type="VBoxContainer" parent="Margin/Column/RulesScroll" unique_id=995309611]
+[node name="Rules" parent="Margin/Column/RulesScroll" unique_id=995309611 instance=ExtResource("2")]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 12

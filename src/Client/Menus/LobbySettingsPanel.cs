@@ -4,36 +4,28 @@ using Chickensoft.Introspection;
 using Godot;
 using Mortz.Client.Admin;
 using Mortz.Client.Setup;
+using Mortz.Client.Ui;
 using Mortz.Core.Admin;
 using Mortz.Core.Match;
 using Mortz.Core.Net.Messages;
-using Mortz.Core.Ui;
 using Mortz.Shared;
 
 namespace Mortz.Client.Menus;
 
 /// <summary>
-/// Lobby-owned presentation of the canonical server setup. Categories and
-/// rule bindings come from generated metadata; concrete value types select a
-/// reusable control prefab. State lives in MatchSetup; this panel renders it
-/// and pushes signed admin edits from its own editing copy.
+/// Lobby-owned presentation of the canonical server setup. State lives in
+/// MatchSetup; this panel renders it and pushes signed admin edits from its
+/// own editing copy.
 /// </summary>
 [Meta(typeof(IAutoNode))]
 public partial class LobbySettingsPanel : PanelContainer
 {
-    private const int CATEGORY_GAP = 22;
-
     [Export] private Label _adminStatus = null!;
     [Export] private OptionButton _mapPicker = null!;
     [Export] private TextureRect _mapPreview = null!;
     [Export] private Label _mapStatus = null!;
-    [Export] private VBoxContainer _rules = null!;
-    [Export] private PackedScene _boolControl = null!;
-    [Export] private PackedScene _intControl = null!;
-    [Export] private PackedScene _floatControl = null!;
-    [Export] private PackedScene _enumControl = null!;
+    [Export] private UiPropertySheet _sheet = null!;
 
-    private readonly List<IMatchRuleControl> _controls = [];
     private readonly List<string> _mapIds = [];
     private MatchConfig _config = new();
     private bool _applyingState;
@@ -48,16 +40,12 @@ public partial class LobbySettingsPanel : PanelContainer
 
     [Dependency] private MatchSetup Setup => this.DependOn<MatchSetup>();
 
-    internal int RuleControlCount => _controls.Count;
-    internal int CategoryBlockCount { get; private set; }
-    internal float RulesMinimumHeight => ((ScrollContainer)_rules.GetParent()).CustomMinimumSize.Y;
-
     public override void _Notification(int what) => this.Notify(what);
 
     public void OnReady()
     {
         _mapPicker.ItemSelected += OnMapSelected;
-        BuildRules();
+        _sheet.Build(MatchConfigUiMetadata.Categories, _config, OnRuleChanged);
         UpdateEditing(isAdmin: false);
     }
 
@@ -95,10 +83,7 @@ public partial class LobbySettingsPanel : PanelContainer
 
         _config = Setup.CopyRules();
         ApplyMapOptions(Setup.MapId, Setup.MapOptions);
-        foreach (IMatchRuleControl control in _controls)
-        {
-            control.UpdateConfig(_config);
-        }
+        _sheet.UpdateModel(_config);
         UpdateEditing(Admin.IsAdmin);
         UpdatePreview(Setup.MapId, Setup.MapHash);
     }
@@ -121,63 +106,6 @@ public partial class LobbySettingsPanel : PanelContainer
         if (selected >= 0)
             _mapPicker.Select(selected);
         _applyingState = false;
-    }
-
-    private void BuildRules()
-    {
-        int categoryIndex = 0;
-        foreach (UiCategoryDescriptor<MatchConfig> category in MatchConfigUiMetadata.Categories)
-        {
-            MarginContainer categoryMargin = new();
-            categoryMargin.AddThemeConstantOverride(
-                "margin_top", categoryIndex == 0 ? 0 : CATEGORY_GAP);
-            categoryMargin.AddThemeConstantOverride("margin_bottom", 6);
-            VBoxContainer categoryBlock = new();
-            categoryBlock.AddThemeConstantOverride("separation", 7);
-            categoryMargin.AddChild(categoryBlock);
-
-            Label heading = new() { Text = category.DisplayName };
-            heading.AddThemeFontSizeOverride("font_size", 18);
-            heading.AddThemeColorOverride("font_color", new Color("cbd5e1"));
-            categoryBlock.AddChild(heading);
-            categoryBlock.AddChild(new HSeparator());
-            foreach (IUiPropertyDescriptor<MatchConfig> descriptor in category.Properties)
-            {
-                PackedScene? scene = ControlScene(descriptor.ValueType);
-                if (scene == null)
-                {
-                    categoryBlock.AddChild(new Label
-                    {
-                        Text = $"{descriptor.DisplayName}: unsupported {descriptor.ValueType.Name}",
-                    });
-                    continue;
-                }
-                Node node = scene.Instantiate();
-                if (node is not IMatchRuleControl control)
-                {
-                    node.Free();
-                    continue;
-                }
-                control.Bind(descriptor, _config, OnRuleChanged);
-                _controls.Add(control);
-                categoryBlock.AddChild(node);
-            }
-
-            _rules.AddChild(categoryMargin);
-            categoryIndex++;
-        }
-        CategoryBlockCount = categoryIndex;
-    }
-
-    private PackedScene? ControlScene(Type valueType)
-    {
-        if (valueType == typeof(bool))
-            return _boolControl;
-        if (valueType == typeof(int))
-            return _intControl;
-        if (valueType == typeof(float))
-            return _floatControl;
-        return valueType.IsEnum ? _enumControl : null;
     }
 
     private void OnRuleChanged()
@@ -243,10 +171,7 @@ public partial class LobbySettingsPanel : PanelContainer
             ? new Color("86efac")
             : new Color("94a3b8");
         _mapPicker.Disabled = !canEdit;
-        foreach (IMatchRuleControl control in _controls)
-        {
-            control.SetEditable(canEdit);
-        }
+        _sheet.SetEditable(canEdit);
     }
 
     // Layer PNGs decode to whatever format they were saved in (an RGB

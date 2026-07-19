@@ -43,7 +43,10 @@ public sealed class UiMetadataGenerator : IIncrementalGenerator
         string Name,
         string DisplayName,
         int CategoryOrder,
-        string Type);
+        string Type,
+        float Min,
+        float Max,
+        float Step);
 
     private sealed record ConfigModel(
         string Namespace,
@@ -130,7 +133,10 @@ public sealed class UiMetadataGenerator : IIncrementalGenerator
                 property.Name,
                 StringArgument(propertyAttribute, 0),
                 currentCategory.Order,
-                property.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)));
+                property.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                FloatArgument(propertyAttribute, 1),
+                FloatArgument(propertyAttribute, 2),
+                FloatArgument(propertyAttribute, 3)));
         }
 
         return new ConfigModel(
@@ -172,14 +178,14 @@ public sealed class UiMetadataGenerator : IIncrementalGenerator
         }
         sb.AppendLine($"public static class {model.TypeName}UiMetadata");
         sb.AppendLine("{");
-        sb.AppendLine($"    public static global::System.Collections.Generic.IReadOnlyList<global::Mortz.Core.Ui.UiCategoryDescriptor<{model.FullyQualifiedType}>> Categories {{ get; }} =");
-        sb.AppendLine($"        global::System.Array.AsReadOnly(new global::Mortz.Core.Ui.UiCategoryDescriptor<{model.FullyQualifiedType}>[]");
+        sb.AppendLine("    public static global::System.Collections.Generic.IReadOnlyList<global::Mortz.Core.Ui.UiCategoryDescriptor> Categories { get; } =");
+        sb.AppendLine("        global::System.Array.AsReadOnly(new global::Mortz.Core.Ui.UiCategoryDescriptor[]");
         sb.AppendLine("        {");
         foreach (CategoryModel category in model.Categories)
         {
-            sb.AppendLine($"            new global::Mortz.Core.Ui.UiCategoryDescriptor<{model.FullyQualifiedType}>(");
+            sb.AppendLine("            new global::Mortz.Core.Ui.UiCategoryDescriptor(");
             sb.AppendLine($"                {Literal(category.DisplayName)},");
-            sb.AppendLine($"                global::System.Array.AsReadOnly<global::Mortz.Core.Ui.IUiPropertyDescriptor<{model.FullyQualifiedType}>>(new global::Mortz.Core.Ui.IUiPropertyDescriptor<{model.FullyQualifiedType}>[]");
+            sb.AppendLine("                global::System.Array.AsReadOnly<global::Mortz.Core.Ui.IUiPropertyDescriptor>(new global::Mortz.Core.Ui.IUiPropertyDescriptor[]");
             sb.AppendLine("                {");
             foreach (PropertyModel property in model.Properties.Where(
                          property => property.CategoryOrder == category.Order))
@@ -188,7 +194,10 @@ public sealed class UiMetadataGenerator : IIncrementalGenerator
                 sb.AppendLine($"                        {Literal(property.Name)},");
                 sb.AppendLine($"                        {Literal(property.DisplayName)},");
                 sb.AppendLine($"                        static model => model.{property.Name},");
-                sb.AppendLine($"                        static (model, value) => model.{property.Name} = value),");
+                sb.AppendLine($"                        static (model, value) => model.{property.Name} = value,");
+                sb.AppendLine($"                        min: {HintLiteral(property.Min)},");
+                sb.AppendLine($"                        max: {HintLiteral(property.Max)},");
+                sb.AppendLine($"                        step: {HintLiteral(property.Step)}),");
             }
             sb.AppendLine("                })),");
         }
@@ -206,6 +215,17 @@ public sealed class UiMetadataGenerator : IIncrementalGenerator
 
     private static string StringArgument(AttributeData attribute, int index) =>
         (string?)attribute.ConstructorArguments[index].Value ?? string.Empty;
+
+    private static float FloatArgument(AttributeData attribute, int index) =>
+        attribute.ConstructorArguments.Length > index
+        && attribute.ConstructorArguments[index].Value is float value
+            ? value
+            : float.NaN;
+
+    private static string HintLiteral(float value) =>
+        float.IsNaN(value)
+            ? "null"
+            : value.ToString("R", System.Globalization.CultureInfo.InvariantCulture) + "f";
 
     private static Location SourceLocation(IPropertySymbol property) =>
         property.Locations.First(location => location.IsInSource);

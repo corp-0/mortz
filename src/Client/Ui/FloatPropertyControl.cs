@@ -1,16 +1,15 @@
 using Godot;
-using Mortz.Core.Match;
 using Mortz.Core.Ui;
 
-namespace Mortz.Client.Menus;
+namespace Mortz.Client.Ui;
 
-public partial class FloatRuleControl : HBoxContainer, IMatchRuleControl
+public partial class FloatPropertyControl : HBoxContainer, IUiPropertyControl
 {
     [Export] private Label _label = null!;
     [Export] private SpinBox _value = null!;
 
-    private IUiPropertyDescriptor<MatchConfig> _descriptor = null!;
-    private MatchConfig _config = null!;
+    private IUiPropertyDescriptor _descriptor = null!;
+    private object _model = null!;
     private Action _changed = null!;
     private bool _updating;
 
@@ -18,19 +17,19 @@ public partial class FloatRuleControl : HBoxContainer, IMatchRuleControl
 
     public override void _ExitTree() => _value.ValueChanged -= OnValueChanged;
 
-    public void Bind(IUiPropertyDescriptor<MatchConfig> descriptor, MatchConfig config,
-        Action changed)
+    public void Bind(IUiPropertyDescriptor descriptor, object model, Action changed)
     {
         _descriptor = descriptor;
-        _config = config;
+        _model = model;
         _changed = changed;
         _label.Text = descriptor.DisplayName;
+        _value.ApplyRangeHints(descriptor);
         Refresh();
     }
 
-    public void UpdateConfig(MatchConfig config)
+    public void UpdateModel(object model)
     {
-        _config = config;
+        _model = model;
         Refresh();
     }
 
@@ -39,7 +38,7 @@ public partial class FloatRuleControl : HBoxContainer, IMatchRuleControl
     private void Refresh()
     {
         _updating = true;
-        _value.Value = (float)_descriptor.GetValue(_config)!;
+        _value.Value = (float)_descriptor.GetValue(_model)!;
         _updating = false;
     }
 
@@ -47,7 +46,7 @@ public partial class FloatRuleControl : HBoxContainer, IMatchRuleControl
     {
         if (_updating)
             return;
-        _descriptor.SetValue(_config, (float)value);
+        _descriptor.SetValue(_model, (float)value);
         _changed();
     }
 }

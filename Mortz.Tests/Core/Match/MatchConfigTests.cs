@@ -11,7 +11,7 @@ public class MatchConfigTests
     [Fact]
     public void GeneratedMetadata_CoversEveryWritableRule_InDeclarationOrder()
     {
-        IUiPropertyDescriptor<MatchConfig>[] descriptors = MatchConfigUiMetadata.Categories
+        IUiPropertyDescriptor[] descriptors = MatchConfigUiMetadata.Categories
             .SelectMany(category => category.Properties)
             .ToArray();
         PropertyInfo[] writableRules = WritableRules().ToArray();
@@ -19,7 +19,7 @@ public class MatchConfigTests
         Assert.Equal(
             writableRules.Select(property => property.Name),
             descriptors.Select(descriptor => descriptor.Name));
-        foreach (IUiPropertyDescriptor<MatchConfig> descriptor in descriptors)
+        foreach (IUiPropertyDescriptor descriptor in descriptors)
         {
             PropertyInfo property = Assert.Single(
                 writableRules, candidate => candidate.Name == descriptor.Name);
@@ -31,7 +31,7 @@ public class MatchConfigTests
     public void GeneratedMetadata_BindsTypedAndUntypedValues()
     {
         MatchConfig config = new();
-        IUiPropertyDescriptor<MatchConfig> gravity = MatchConfigUiMetadata.Categories
+        IUiPropertyDescriptor gravity = MatchConfigUiMetadata.Categories
             .SelectMany(category => category.Properties)
             .Single(property => property.Name == nameof(MatchConfig.Gravity));
         UiPropertyDescriptor<MatchConfig, float> typedGravity =
@@ -42,12 +42,40 @@ public class MatchConfigTests
         gravity.SetValue(config, 654f);
         Assert.Equal(654f, gravity.GetValue(config));
         Assert.Throws<ArgumentException>(() => gravity.SetValue(config, 654));
+        Assert.Throws<ArgumentException>(() => gravity.SetValue(new object(), 654f));
 
-        IUiPropertyDescriptor<MatchConfig> winCondition = MatchConfigUiMetadata.Categories
+        IUiPropertyDescriptor winCondition = MatchConfigUiMetadata.Categories
             .SelectMany(category => category.Properties)
             .Single(property => property.Name == nameof(MatchConfig.WinCondition));
         winCondition.SetValue(config, WinCondition.TEAM_KILLS);
         Assert.Equal(WinCondition.TEAM_KILLS, config.WinCondition);
+    }
+
+    [Fact]
+    public void GeneratedMetadata_CarriesRenderHints()
+    {
+        IUiPropertyDescriptor[] descriptors = MatchConfigUiMetadata.Categories
+            .SelectMany(category => category.Properties)
+            .ToArray();
+
+        IUiPropertyDescriptor gravity = descriptors
+            .Single(property => property.Name == nameof(MatchConfig.Gravity));
+        Assert.Equal(100, gravity.Min);
+        Assert.Equal(8000, gravity.Max);
+        Assert.Equal(50, gravity.Step);
+
+        // step not stated
+        IUiPropertyDescriptor killTarget = descriptors
+            .Single(property => property.Name == nameof(MatchConfig.KillTarget));
+        Assert.Equal(1, killTarget.Min);
+        Assert.Equal(999, killTarget.Max);
+        Assert.Null(killTarget.Step);
+
+        IUiPropertyDescriptor teams = descriptors
+            .Single(property => property.Name == nameof(MatchConfig.Teams));
+        Assert.Null(teams.Min);
+        Assert.Null(teams.Max);
+        Assert.Null(teams.Step);
     }
 
     /// <summary>Reflection so a new rule that nobody added to the codec fails
