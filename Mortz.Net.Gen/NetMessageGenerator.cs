@@ -137,13 +137,13 @@ public sealed class NetMessageGenerator : IIncrementalGenerator
 
         for (int id = 0; id < valid.Length; id++)
         {
-            spc.AddSource($"{valid[id].Name}.g.cs", SourceText.From(EmitMessage(valid[id], id), Encoding.UTF8));
+            spc.AddSource($"{valid[id].Name}.g.cs", SourceText.From(EmitMessage(valid[id]), Encoding.UTF8));
         }
 
         spc.AddSource("NetRegistry.g.cs", SourceText.From(EmitRegistry(valid), Encoding.UTF8));
     }
 
-    private static string EmitMessage(MessageModel m, int id)
+    private static string EmitMessage(MessageModel m)
     {
         string channel = m.Channel == 0 ? "RELIABLE" : "UNRELIABLE";
         bool toClient = m.Direction == 0;

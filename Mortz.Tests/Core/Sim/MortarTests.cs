@@ -338,7 +338,7 @@ public class MortarTests
         for (int t = 0; t < 30 && killed.Count == 0; t++)
         {
             InputButtons fire = t == 0 ? InputButtons.FIRE : InputButtons.NONE;
-            w.EnqueueInput(1, seq, new PlayerInput(fire, AIM_RIGHT));
+            w.EnqueueInput(1, seq, new PlayerInput(fire));
             w.EnqueueInput(2, seq, new PlayerInput(InputButtons.NONE));
             seq++;
             w.Step();

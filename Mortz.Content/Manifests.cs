@@ -2,12 +2,14 @@ using System.Collections.Immutable;
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
+using JetBrains.Annotations;
 using Tomlyn;
 using Tomlyn.Model;
 using Tomlyn.Syntax;
 
 namespace Mortz.Content;
 
+[UsedImplicitly(ImplicitUseTargetFlags.WithMembers)]
 public sealed record ContentPackManifest(
     string Id,
     string Name,
@@ -185,7 +187,7 @@ public static partial class ContentManifestReader
     private static string? OptionalString(TomlTable table, string key, string source,
         List<ContentDiagnostic> diagnostics)
     {
-        if (!table.TryGetValue(key, out object? value))
+        if (!table.TryGetValue(key, out object value))
             return null;
         if (value is string text)
             return text;
@@ -196,7 +198,7 @@ public static partial class ContentManifestReader
     private static int? RequiredInt(TomlTable table, string key, string source,
         List<ContentDiagnostic> diagnostics)
     {
-        if (!table.TryGetValue(key, out object? value))
+        if (!table.TryGetValue(key, out object value))
         {
             Error(diagnostics, source, $"missing required key '{key}'");
             return null;
@@ -207,7 +209,7 @@ public static partial class ContentManifestReader
     private static ImmutableArray<MapSpawnPoint> ReadSpawnPoints(TomlTable table, string source,
         List<ContentDiagnostic> diagnostics)
     {
-        if (!table.TryGetValue("spawn_points", out object? value))
+        if (!table.TryGetValue("spawn_points", out object value))
             return [];
         if (value is not TomlTableArray entries)
         {
@@ -248,7 +250,7 @@ public static partial class ContentManifestReader
     private static int? RequiredSpawnInt(TomlTable table, string key, int index, string source,
         List<ContentDiagnostic> diagnostics)
     {
-        if (!table.TryGetValue(key, out object? value))
+        if (!table.TryGetValue(key, out object value))
         {
             Error(diagnostics, source, $"spawn_points[{index}] is missing required key '{key}'");
             return null;
@@ -262,7 +264,7 @@ public static partial class ContentManifestReader
     private static int OptionalInt(TomlTable table, string key, int fallback, string source,
         List<ContentDiagnostic> diagnostics)
     {
-        if (!table.TryGetValue(key, out object? value))
+        if (!table.TryGetValue(key, out object value))
             return fallback;
         return ConvertInt(value, key, source, diagnostics) ?? fallback;
     }

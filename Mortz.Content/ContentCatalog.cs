@@ -1,12 +1,13 @@
 using System.Collections.Frozen;
 using System.Collections.Immutable;
+using JetBrains.Annotations;
 
 namespace Mortz.Content;
 
 public sealed record ContentPackDefinition(ContentPackManifest Manifest, string DirectoryPath);
 
 public sealed record MapDefinition(
-    string Id,
+    [property: UsedImplicitly] string Id,
     MapManifest Manifest,
     string DirectoryPath,
     ContentPackDefinition SourcePack)
@@ -48,7 +49,7 @@ public sealed class ContentCatalog
         _maps = maps.ToFrozenDictionary(StringComparer.Ordinal);
     }
 
-    public string RootPath { get; }
+    [UsedImplicitly] public string RootPath { get; }
     public ImmutableArray<ContentPackDefinition> Packs { get; }
     public IReadOnlyDictionary<string, ResolvedMapDefinition> Maps => _maps;
 

@@ -126,7 +126,7 @@ public class PlayerSimTests
         // A 3 px ledge on the floor ahead of the player.
         TerrainMask world = TestWorlds.Flat(extraSolid: (x, y) => x is >= 260 and < 300 && y >= TestWorlds.FLOOR_Y - 3);
 
-        PlayerState p = NewGroundedPlayer(200);
+        PlayerState p = NewGroundedPlayer();
         for (int i = 0; i < 2 * SimConfig.TICK_RATE; i++)
         {
             p = PlayerSim.Tick(p, _right, world, _stats);
@@ -141,7 +141,7 @@ public class PlayerSimTests
     {
         TerrainMask world = TestWorlds.Flat(extraSolid: (x, y) => x is >= 260 and < 300 && y >= TestWorlds.FLOOR_Y - 40);
 
-        PlayerState p = NewGroundedPlayer(200);
+        PlayerState p = NewGroundedPlayer();
         for (int i = 0; i < 2 * SimConfig.TICK_RATE; i++)
         {
             p = PlayerSim.Tick(p, _right, world, _stats);
@@ -156,7 +156,7 @@ public class PlayerSimTests
     {
         // Slab whose underside is at y=160; jumping from the floor would
         // otherwise reach ~100 px of rise. Feet can't get above 160 + body height.
-        TerrainMask world = TestWorlds.Flat(extraSolid: (x, y) => y < 160);
+        TerrainMask world = TestWorlds.Flat(extraSolid: (_, y) => y < 160);
         float minFeetY = float.MaxValue;
 
         PlayerState p = NewGroundedPlayer();

@@ -1,3 +1,5 @@
+using JetBrains.Annotations;
+
 namespace Mortz.Core.Chat.Commands;
 
 /// <summary>
@@ -11,10 +13,10 @@ public sealed class ChatCommandAttribute(string name, params string[] aliases) :
 {
     public string Name { get; } = name;
     public string[] Aliases { get; } = aliases;
-    public string Usage { get; set; } = "";
-    public string Description { get; set; } = "";
+    [UsedImplicitly] public string Usage { get; set; } = "";
+    [UsedImplicitly] public string Description { get; set; } = "";
 
     /// <summary>Arguments must never take the ordinary chat wire path or appear
     /// in history (passwords and similar).</summary>
-    public bool Sensitive { get; set; }
+    [UsedImplicitly] public bool Sensitive { get; set; }
 }

@@ -18,7 +18,7 @@ public class SnapshotBufferTests
 
         InterpolatedState? mid = buf.Sample(11f);
         Assert.NotNull(mid);
-        Assert.Equal(150, mid!.Players[0].Position.X, 3);
+        Assert.Equal(150, mid.Players[0].Position.X, 3);
     }
 
     [Fact]

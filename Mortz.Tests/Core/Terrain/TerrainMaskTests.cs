@@ -13,7 +13,7 @@ public class TerrainMaskTests
     {
         TerrainMask a = BlobWorld();
         TerrainMask b = BlobWorld();
-        foreach (TerrainMask? m in new[] { a, b })
+        foreach (TerrainMask m in new[] { a, b })
         {
             m.CarveCircle(150, 150, 30);
             m.CarveCircle(120, 110, 25);

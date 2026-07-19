@@ -15,8 +15,6 @@ public sealed class RichText
     /// <summary>Creates rich text containing unstyled, escaped text.</summary>
     public RichText(string? text) => Add(text);
 
-    private RichText(string bbcode, bool _) => _builder.Append(bbcode);
-
     public static implicit operator string(RichText richText) => richText.ToString();
 
     public override string ToString() => _builder.ToString();
@@ -71,7 +69,13 @@ public sealed class RichText
 
     public RichText AddOnNewLine(string? text) => Add("\n").Add(text);
 
-    internal static RichText FromTrustedBbCode(string bbcode) => new(bbcode, true);
+    internal static RichText FromTrustedBbCode(string bbcode) => new RichText().AppendRaw(bbcode);
+
+    private RichText AppendRaw(string bbcode)
+    {
+        _builder.Append(bbcode);
+        return this;
+    }
 
     internal static string Escape(string? text)
     {

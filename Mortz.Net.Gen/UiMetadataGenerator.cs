@@ -37,7 +37,7 @@ public sealed class UiMetadataGenerator : IIncrementalGenerator
         "Property '{0}' must be a public, non-static property with public get and set accessors",
         "Mortz.UI", DiagnosticSeverity.Error, isEnabledByDefault: true);
 
-    private sealed record CategoryModel(int Order, string DisplayName, Location Location);
+    private sealed record CategoryModel(int Order, string DisplayName);
 
     private sealed record PropertyModel(
         string Name,
@@ -97,7 +97,7 @@ public sealed class UiMetadataGenerator : IIncrementalGenerator
             {
                 string displayName = StringArgument(categoryAttribute, 0);
                 Location categoryLocation = AttributeLocation(categoryAttribute, location);
-                currentCategory = new CategoryModel(categories.Count, displayName, categoryLocation);
+                currentCategory = new CategoryModel(categories.Count, displayName);
                 categories.Add(currentCategory);
                 if (!categoryNames.Add(displayName))
                 {

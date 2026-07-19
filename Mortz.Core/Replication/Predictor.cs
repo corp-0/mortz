@@ -144,6 +144,9 @@ public sealed class Predictor
     /// Returns how far the predicted position moved (old - new); feed it to
     /// a decaying visual offset so corrections ease in over a few frames.
     /// </summary>
+    /// <param name="serverState">The player's state in the snapshot.</param>
+    /// <param name="lastAppliedSeq">Last input seq the server applied; only
+    /// later inputs are replayed.</param>
     /// <param name="serverTick">Snapshot tick; a tick no newer than the last one
     /// reconciled is an out-of-order straggler and is dropped (replaying from
     /// already-pruned history would mispredict). -1 skips the check.</param>
@@ -165,7 +168,7 @@ public sealed class Predictor
         // These impacts came from the unacked trajectory we are about to replace.
         // Keeping them would let the view carve a position the replay invalidated.
         _impacts.RemoveAll(i => i.SpawnSeq > lastAppliedSeq);
-        List<(int SpawnSeq, MortarState Shell)> rebuilt = new();
+        List<(int SpawnSeq, MortarState Shell)> rebuilt = [];
 
         PlayerState state = serverState;
         foreach ((int seq, PlayerInput input) in _history.Since(lastAppliedSeq))

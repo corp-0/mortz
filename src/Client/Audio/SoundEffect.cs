@@ -32,7 +32,7 @@ public static class SoundBusExtensions
 [GlobalClass]
 public partial class SoundEffect : Resource
 {
-    [Export] public AudioStream Stream { get; private set; } = null!;
+    [Export] public AudioStream? Stream { get; private set; }
     [Export(PropertyHint.Range, "-40,10")] public float VolumeDb { get; private set; }
     [Export] public SoundBus Bus { get; private set; } = SoundBus.SFX;
     public StringName BusName => Bus.ToGodotName();

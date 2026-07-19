@@ -138,7 +138,7 @@ public class MatchSessionTests
         Assert.NotNull(winner.Score.Winner);
         Assert.Equal(MatchStage.VICTORY_LAP, match.Stage);
 
-        match.EnqueueInput(1, 0, new PlayerInput(InputButtons.RIGHT, 0));
+        match.EnqueueInput(1, 0, new PlayerInput(InputButtons.RIGHT));
         Assert.Equal(0, match.World.PendingInputs(1));
         Assert.Null(match.DebugCarve(20, 20));
 

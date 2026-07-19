@@ -62,7 +62,7 @@ public class MovementTests
         Assert.Equal(SimConfig.TOTAL_JUMPS, p.JumpsLeft);
     }
 
-    private static PlayerState RunOffLedge(TerrainMask world, out PlayerState atExit)
+    private static PlayerState RunOffLedge(TerrainMask world)
     {
         PlayerState p = Grounded() with { Position = new Vec2(200, 200) };
         PlayerInput right = new PlayerInput(InputButtons.RIGHT);
@@ -70,7 +70,6 @@ public class MovementTests
         {
             p = PlayerSim.Tick(p, right, world, _stats);
         }
-        atExit = p;
         return p;
     }
 
@@ -81,7 +80,7 @@ public class MovementTests
     public void CoyoteJump_RightAfterLedge_IsAFullGroundJump()
     {
         TerrainMask world = LedgeWorld();
-        PlayerState p = RunOffLedge(world, out _);
+        PlayerState p = RunOffLedge(world);
         Assert.False(p.Grounded);
         Assert.True(p.CoyoteTicks > 0);
 
@@ -97,7 +96,7 @@ public class MovementTests
         // Walk off a ledge, let coyote expire: the whole 2-jump budget is
         // still usable mid-air, because none of it was spent getting airborne.
         TerrainMask world = LedgeWorld();
-        PlayerState p = RunOffLedge(world, out _);
+        PlayerState p = RunOffLedge(world);
 
         for (int i = 0; i < SimConfig.COYOTE_MAX_TICKS + 1; i++)
         {

@@ -66,7 +66,8 @@ internal static class ConvertLxl
         int destSize = (int)BitConverter.ToUInt32(bytes, 152);
         Console.WriteLine($"'{name}' {w}x{h}, output scale {scale}x");
 
-        using MemoryStream ms = new MemoryStream(bytes) { Position = 156 };
+        using MemoryStream ms = new MemoryStream(bytes);
+        ms.Position = 156;
         using ZLibStream zlib = new ZLibStream(ms, CompressionMode.Decompress);
         byte[] data = new byte[destSize];
         int read = zlib.ReadAtLeast(data, destSize, throwOnEndOfStream: false);
@@ -142,7 +143,7 @@ internal static class ConvertLxl
 
     private static byte[] EncodePng(Rgba32[] rgba, int w, int h)
     {
-        using Image<Rgba32> image = Image.LoadPixelData<Rgba32>(rgba, w, h);
+        using Image<Rgba32> image = Image.LoadPixelData(rgba, w, h);
         using MemoryStream stream = new();
         image.SaveAsPng(stream);
         return stream.ToArray();

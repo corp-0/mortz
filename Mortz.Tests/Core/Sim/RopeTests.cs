@@ -8,7 +8,7 @@ namespace Mortz.Tests.Core.Sim;
 public class RopeTests
 {
     // Flat world plus a solid ceiling slab at y < 60 to hook onto.
-    private static TerrainMask CeilingWorld() => TestWorlds.Flat(extraSolid: (x, y) => y < 60);
+    private static TerrainMask CeilingWorld() => TestWorlds.Flat(extraSolid: (_, y) => y < 60);
 
     private static readonly PlayerStats _stats = TestWorlds.Stats;
     private static readonly byte _aimUp = PlayerInput.AimFromVector(new Vec2(0, -1));

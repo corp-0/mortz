@@ -12,7 +12,7 @@ public class SimWorldTests
     {
         SimWorld a = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         SimWorld b = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
-        foreach (SimWorld? w in new[] { a, b })
+        foreach (SimWorld w in new[] { a, b })
         {
             w.AddPlayer(1);
             w.AddPlayer(2);
@@ -23,7 +23,7 @@ public class SimWorldTests
         {
             PlayerInput i1 = new PlayerInput((InputButtons)((t / 7) % 128), (byte)(t * 5));
             PlayerInput i2 = new PlayerInput((InputButtons)((t / 11) % 128), (byte)(t * 13));
-            foreach (SimWorld? w in new[] { a, b })
+            foreach (SimWorld w in new[] { a, b })
             {
                 w.EnqueueInput(1, t, i1);
                 w.EnqueueInput(2, t, i2);

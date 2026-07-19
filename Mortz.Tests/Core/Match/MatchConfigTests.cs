@@ -59,12 +59,12 @@ public class MatchConfigTests
         foreach (PropertyInfo property in WritableRules())
         {
             object current = property.GetValue(expected)!;
-            object changed = property.PropertyType switch
+            object changed = current switch
             {
-                Type type when type == typeof(float) => (float)current + 0.01f,
-                Type type when type == typeof(int) => (int)current + 1,
-                Type type when type == typeof(bool) => !(bool)current,
-                Type type when type == typeof(WinCondition) => WinCondition.TEAM_KILLS,
+                float f => f + 0.01f,
+                int i => i + 1,
+                bool b => !b,
+                WinCondition => WinCondition.TEAM_KILLS,
                 _ => throw new InvalidOperationException($"Unhandled rule type {property.PropertyType}"),
             };
             property.SetValue(expected, changed);

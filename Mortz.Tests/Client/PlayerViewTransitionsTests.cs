@@ -1,5 +1,4 @@
 using Godot;
-using Mortz.Client;
 using Mortz.Client.Views;
 using Mortz.Core.Replication;
 using Xunit;
@@ -41,7 +40,9 @@ public class PlayerViewTransitionsTests
         PlayerViewState previous = State(ammo: 1, reload: 30);
         PlayerViewState next = State(ammo: 1, reload: respawnTicks == 0 ? (byte)0 : (byte)29)
             with
-        { RespawnTicks = respawnTicks };
+        {
+            RespawnTicks = respawnTicks
+        };
 
         PlayerViewTransition transition = PlayerViewTransitions.Between(
             previous, next, isLocal: true);
@@ -79,8 +80,9 @@ public class PlayerViewTransitionsTests
         RenderMortar local = new(1, 7, false, 42, default, default);
         RenderMortar remote = local with { OwnerId = 8 };
         RenderMortar deflected = local with { Deflected = true };
-        HashSet<int> none = new();
-        HashSet<int> seq42 = new() { 42 };
+        // ReSharper disable once CollectionNeverUpdated.Local
+        HashSet<int> none = [];
+        HashSet<int> seq42 = [42];
 
         Assert.False(MortarViewManager.ShouldRenderAuthoritative(local, 7, seq42, none));
         Assert.False(MortarViewManager.ShouldRenderAuthoritative(local, 7, none, seq42));

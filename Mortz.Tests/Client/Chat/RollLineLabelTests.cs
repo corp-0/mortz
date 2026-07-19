@@ -13,13 +13,13 @@ public class RollLineLabelTests
         RollLineLabel label = RollLineLabel.Create("Alice", 73, animate: true);
         try
         {
-            Assert.Contains("rolls...", (string)label.Text);
+            Assert.Contains("rolls...", label.Text);
 
             label._Process(2.0); // one giant tick lands past the spin window
 
-            Assert.Contains("rolled", (string)label.Text);
-            Assert.Contains("73", (string)label.Text);
-            Assert.Contains("(1-100)", (string)label.Text);
+            Assert.Contains("rolled", label.Text);
+            Assert.Contains("73", label.Text);
+            Assert.Contains("(1-100)", label.Text);
         }
         finally
         {
@@ -33,8 +33,8 @@ public class RollLineLabelTests
         RollLineLabel label = RollLineLabel.Create("Alice", 73, animate: false);
         try
         {
-            Assert.DoesNotContain("rolls...", (string)label.Text);
-            Assert.Contains("73", (string)label.Text);
+            Assert.DoesNotContain("rolls...", label.Text);
+            Assert.Contains("73", label.Text);
         }
         finally
         {

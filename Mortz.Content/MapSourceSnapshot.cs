@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using JetBrains.Annotations;
 
 namespace Mortz.Content;
 
@@ -30,7 +31,7 @@ public sealed class MapSourceSnapshot
     public ReadOnlyMemory<byte> BackgroundPng { get; }
     public ReadOnlyMemory<byte> SolidPng { get; }
     public ReadOnlyMemory<byte> DestructiblePng { get; }
-    public ReadOnlyMemory<byte> ManifestBytes { get; }
+    [UsedImplicitly] public ReadOnlyMemory<byte> ManifestBytes { get; }
     public string CompatibilityHash { get; }
 
     public static ContentReadResult<MapSourceSnapshot> Read(MapDefinition definition)

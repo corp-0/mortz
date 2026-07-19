@@ -1,4 +1,3 @@
-using Mortz.Client;
 using Mortz.Client.Session;
 using Mortz.Core.Match;
 using Mortz.Core.Net.Messages;

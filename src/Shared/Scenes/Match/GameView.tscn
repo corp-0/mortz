@@ -11,7 +11,7 @@
 [ext_resource type="PackedScene" uid="uid://bs35s8cifnvm2" path="res://src/Shared/Prefabs/Mortar.tscn" id="9_mortar"]
 [ext_resource type="Script" uid="uid://da7tme6kkv2xu" path="res://src/Client/Diagnostics/NetStatsProbe.cs" id="10_netstats"]
 [ext_resource type="Script" uid="uid://b3jq6f2xj1ct" path="res://src/Client/Diagnostics/LagProbes.cs" id="11_lagprobes"]
-[ext_resource type="Script" uid="uid://c4xs1n8kwl65d" path="res://src/Client/Diagnostics/E2eHooks.cs" id="12_e2e"]
+[ext_resource type="Script" uid="uid://c4xs1n8kwl65d" path="res://src/Client/Diagnostics/E2EHooks.cs" id="12_e2e"]
 [ext_resource type="Script" uid="uid://bgioe7kfejn27" path="res://src/Client/Match/Hud.cs" id="13_hud"]
 [ext_resource type="Script" uid="uid://bmyqbmcpf8of4" path="res://src/Client/Match/ShellRow.cs" id="14_shells"]
 [ext_resource type="Script" path="res://src/Client/Match/WinnerBanner.cs" id="15_score"]
@@ -147,7 +147,7 @@ script = ExtResource("11_lagprobes")
 _localPlayer = NodePath("../../LocalPlayer")
 _players = NodePath("../../Players")
 
-[node name="E2eHooks" type="Node" parent="Diagnostics" unique_id=176005610 node_paths=PackedStringArray("_gameView", "_localPlayer", "_gameMap")]
+[node name="E2EHooks" type="Node" parent="Diagnostics" unique_id=176005610 node_paths=PackedStringArray("_gameView", "_localPlayer", "_gameMap")]
 script = ExtResource("12_e2e")
 _gameView = NodePath("../..")
 _localPlayer = NodePath("../../LocalPlayer")

@@ -17,7 +17,7 @@ namespace Mortz.Client.Diagnostics;
 /// plus parry on both clients drives direct hits and deflections, the two ways
 /// the server ends a shell early: exactly what the shell-retirement path needs.
 /// </summary>
-public partial class E2eHooks : Node
+public partial class E2EHooks : Node
 {
     [Export] private GameView _gameView = null!;
     [Export] private LocalPlayerController _localPlayer = null!;

@@ -1,5 +1,6 @@
 using Godot;
 using Mortz.Client.Replay;
+using Mortz.Shared;
 
 namespace Mortz.Client.Audio;
 
@@ -43,7 +44,7 @@ public partial class Sfx : Node
         public Node2D? Target;
     }
 
-    [Export] private SoundRegistry _sounds = null!;
+    [Export] private SoundRegistry? _sounds;
 
     private static Sfx? _instance;
     private readonly List<Voice> _flat = new();
@@ -73,7 +74,6 @@ public partial class Sfx : Node
         {
             AddVoice(spatial: true);
         }
-        ValidateRegistry();
     }
 
     public override void _ExitTree()
@@ -96,22 +96,23 @@ public partial class Sfx : Node
         }
     }
 
-    public static SfxHandle Play(SoundEffect sound) =>
+    public static SfxHandle Play(SoundEffect? sound) =>
         _instance?.Start(sound, spatial: false, default, null) ?? default;
 
-    public static SfxHandle PlayAt(SoundEffect sound, Vector2 position) =>
+    public static SfxHandle PlayAt(SoundEffect? sound, Vector2 position) =>
         _instance?.Start(sound, spatial: true, position, null) ?? default;
 
-    public static SfxHandle PlayAttached(SoundEffect sound, Node2D target) =>
+    public static SfxHandle PlayAttached(SoundEffect? sound, Node2D target) =>
         _instance?.Start(sound, spatial: true,
-            GodotObject.IsInstanceValid(target) ? target.GlobalPosition : default, target) ?? default;
+            target.OrNull()?.GlobalPosition ?? default, target) ?? default;
 
     internal void Stop(bool spatial, int index, uint generation) =>
         ReleaseVoice(spatial ? _spatial : _flat, index, generation, stop: true);
 
-    private SfxHandle Start(SoundEffect sound, bool spatial, Vector2 position, Node2D? target)
+    private SfxHandle Start(SoundEffect? sound, bool spatial, Vector2 position, Node2D? target)
     {
-        if (!Valid(sound) || (target != null && !GodotObject.IsInstanceValid(target)))
+        sound = sound.OrNull();
+        if (sound?.Stream == null || (target != null && target.OrNull() == null))
             return default;
 
         List<Voice> pool = spatial ? _spatial : _flat;
@@ -218,12 +219,13 @@ public partial class Sfx : Node
             Voice voice = pool[i];
             if (!voice.Active || voice.Target == null)
                 continue;
-            if (!GodotObject.IsInstanceValid(voice.Target) || voice.Target.IsQueuedForDeletion())
+            Node2D? target = voice.Target.OrNull();
+            if (target == null || target.IsQueuedForDeletion())
             {
                 ReleaseVoice(pool, i, voice.Generation, stop: true);
                 continue;
             }
-            ((AudioStreamPlayer2D)voice.Player).GlobalPosition = voice.Target.GlobalPosition;
+            ((AudioStreamPlayer2D)voice.Player).GlobalPosition = target.GlobalPosition;
         }
     }
 
@@ -235,30 +237,6 @@ public partial class Sfx : Node
                 SetPitch(voice.Player, voice.BasePitch * scale);
         }
     }
-
-    private void ValidateRegistry()
-    {
-        List<string> errors = new();
-        if (_sounds == null)
-            errors.Add("SoundRegistry is missing");
-        else
-        {
-            foreach ((string name, SoundEffect sound) in _sounds.Entries())
-            {
-                if (sound == null)
-                    errors.Add($"{name}: definition is missing");
-                else if (sound.Stream == null)
-                    errors.Add($"{name}: stream is missing");
-                else if (AudioServer.GetBusIndex(sound.BusName) < 0)
-                    errors.Add($"{name}: bus '{sound.BusName}' does not exist");
-            }
-        }
-        if (errors.Count > 0)
-            GD.PushError("Invalid sound registry:\n  " + string.Join("\n  ", errors));
-    }
-
-    private static bool Valid(SoundEffect? sound) =>
-        sound != null && GodotObject.IsInstanceValid(sound) && sound.Stream != null;
 
     private static float CurrentTimeScale() =>
         Mathf.Clamp(ClientClock.TimeScale, 0.05f, 1f);

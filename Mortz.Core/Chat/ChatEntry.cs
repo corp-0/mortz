@@ -1,10 +1,11 @@
+using JetBrains.Annotations;
 using Mortz.Core.Text;
 
 namespace Mortz.Core.Chat;
 
 public readonly record struct ChatEntry(
     ChatEntryKind Kind,
-    long SenderId,
+    [property: UsedImplicitly] long SenderId,
     string SenderName,
     string Text,
     ChatTextFormat TextFormat = ChatTextFormat.PLAIN)

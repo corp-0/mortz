@@ -1,4 +1,3 @@
-using Mortz.Client;
 using Mortz.Client.Chat;
 using Mortz.Client.Match;
 using Mortz.Core.Sim;
