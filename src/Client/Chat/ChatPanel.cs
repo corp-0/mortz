@@ -112,7 +112,7 @@ public partial class ChatPanel : PanelContainer
     {
         _lines.AddChild(
             entry.Kind == ChatEntryKind.ROLL && DiceRoll.TryParse(entry.Text, out int rolled)
-                ? RollLineLabel.Create(entry.SenderName, rolled, animate)
+                ? RollLine.Create(entry.SenderName, rolled, animate)
                 : BuildTextLine(entry));
         while (_lines.GetChildCount() > NetConfig.MAX_CHAT_HISTORY)
         {
