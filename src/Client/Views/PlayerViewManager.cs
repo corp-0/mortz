@@ -102,8 +102,6 @@ public partial class PlayerViewManager : Node2D
             PlayerView.DrawSimBoxes = !PlayerView.DrawSimBoxes;
     }
 
-    internal void SetPlayerSceneForTest(PackedScene scene) => _playerScene = scene;
-    internal void ApplyModifiersForTest(PlayerModifiersMsg msg) => OnPlayerModifiers(msg);
     internal PlayerView ViewForTest(int peerId) => _views[peerId];
 
     public void BeginFrame() => _placed.Clear();

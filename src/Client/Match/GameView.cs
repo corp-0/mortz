@@ -1,9 +1,13 @@
 using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
+using Mortz.Client.Admin;
 using Mortz.Client.Audio;
 using Mortz.Client.Feed;
 using Mortz.Client.Replay;
+using Mortz.Client.Roster;
+using Mortz.Client.Score;
+using Mortz.Client.Setup;
 using Mortz.Client.Views;
 using Mortz.Core.Match;
 using Mortz.Core.Net;
@@ -24,7 +28,12 @@ namespace Mortz.Client.Match;
 /// pieces are separate nodes, wired in GameView.tscn.
 /// </summary>
 [Meta(typeof(IAutoNode))]
-public partial class GameView : Node2D, IProvide<IKillFeed>
+public partial class GameView : Node2D,
+    IProvide<IKillFeed>,
+    IProvide<MatchSetup>,
+    IProvide<MatchScore>,
+    IProvide<ClientAdmin>,
+    IProvide<ClientRoster>
 {
     [Export] private GameMap _gameMap = null!;
     [Export] private RopeOverlay _ropes = null!;
@@ -35,7 +44,23 @@ public partial class GameView : Node2D, IProvide<IKillFeed>
     [Export] private FinalKillReplay _finalKillReplay = null!;
     [Export] private KillFeed _killFeed = null!;
 
+    [Dependency]
+    private MatchSetup Setup => this.DependOn<MatchSetup>();
+
+    [Dependency]
+    private MatchScore Score => this.DependOn<MatchScore>();
+
+    [Dependency]
+    private ClientAdmin Admin => this.DependOn<ClientAdmin>();
+
+    [Dependency]
+    private ClientRoster Roster => this.DependOn<ClientRoster>();
+
     IKillFeed IProvide<IKillFeed>.Value() => _killFeed;
+    MatchSetup IProvide<MatchSetup>.Value() => Setup;
+    MatchScore IProvide<MatchScore>.Value() => Score;
+    ClientAdmin IProvide<ClientAdmin>.Value() => Admin;
+    ClientRoster IProvide<ClientRoster>.Value() => Roster;
 
     public override void _Notification(int what) => this.Notify(what);
 
@@ -73,8 +98,9 @@ public partial class GameView : Node2D, IProvide<IKillFeed>
         MortarCorrectionMsg.Received += OnMortarCorrection;
         RosterMsg.Received += OnRoster;
         PlayerModifiersMsg.Received += OnPlayerModifiers;
-        this.Provide();
     }
+
+    public void OnResolved() => this.Provide();
 
     public void OnExitTree()
     {

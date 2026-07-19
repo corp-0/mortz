@@ -1,4 +1,5 @@
 using Godot;
+using Mortz.Client.Match;
 using Mortz.Client.Views;
 using Mortz.Core.Match;
 using Mortz.Core.Net.Messages;
@@ -14,42 +15,44 @@ namespace Mortz.Tests.Client;
 /// PlayerView whether the modifiers or the view arrive first, and never
 /// bleed onto other players.</summary>
 [Collection(nameof(GodotHeadlessCollection))]
-public class PlayerViewStatsTests
+public class PlayerViewStatsTests : NodeServiceTest
 {
     [Fact]
     public void PerPlayerModifiers_ConfigureTheMatchingView()
     {
-        SceneTree tree = Assert.IsType<SceneTree>(Engine.GetMainLoop());
-        PlayerViewManager manager = new PlayerViewManager();
-        manager.SetPlayerSceneForTest(
-            ResourceLoader.Load<PackedScene>("res://src/Shared/Prefabs/Player.tscn"));
+        PlayerViewManager manager = Host(TakeManagerFromGameViewScene());
         manager.Configure(new MatchConfig());
-        tree.Root.AddChild(manager);
-        try
-        {
-            float baseRadius = TestWorlds.Stats.ParryRadius;
-            byte[] bigParry = ModifierWire.Serialize(
-                [new StatsModifier(ModifierId.SPECIAL, Mul(Stat.PARRY_RADIUS, 4f))]);
-            byte[] smallParry = ModifierWire.Serialize(
-                [new StatsModifier(ModifierId.SPECIAL, Mul(Stat.PARRY_RADIUS, 0.5f))]);
 
-            // Peer 2's modifiers land before its view exists, peer 3's only after.
-            manager.ApplyModifiersForTest(new PlayerModifiersMsg(2, bigParry));
-            manager.BeginFrame();
-            manager.Place(2, ViewState());
-            manager.Place(3, ViewState());
+        float baseRadius = TestWorlds.Stats.ParryRadius;
+        byte[] bigParry = ModifierWire.Serialize(
+            [new StatsModifier(ModifierId.SPECIAL, Mul(Stat.PARRY_RADIUS, 4f))]);
+        byte[] smallParry = ModifierWire.Serialize(
+            [new StatsModifier(ModifierId.SPECIAL, Mul(Stat.PARRY_RADIUS, 0.5f))]);
 
-            Assert.Equal(baseRadius * 4, manager.ViewForTest(2).StatsForTest.ParryRadius);
-            Assert.Equal(baseRadius, manager.ViewForTest(3).StatsForTest.ParryRadius);
+        // Peer 2's modifiers land before its view exists, peer 3's only after.
+        new PlayerModifiersMsg(2, bigParry).Broadcast();
+        manager.BeginFrame();
+        manager.Place(2, ViewState());
+        manager.Place(3, ViewState());
 
-            manager.ApplyModifiersForTest(new PlayerModifiersMsg(3, smallParry));
-            Assert.Equal(baseRadius * 0.5f, manager.ViewForTest(3).StatsForTest.ParryRadius);
-            Assert.Equal(baseRadius * 4, manager.ViewForTest(2).StatsForTest.ParryRadius);
-        }
-        finally
-        {
-            manager.Free();
-        }
+        Assert.Equal(baseRadius * 4, manager.ViewForTest(2).StatsForTest.ParryRadius);
+        Assert.Equal(baseRadius, manager.ViewForTest(3).StatsForTest.ParryRadius);
+
+        new PlayerModifiersMsg(3, smallParry).Broadcast();
+        Assert.Equal(baseRadius * 0.5f, manager.ViewForTest(3).StatsForTest.ParryRadius);
+        Assert.Equal(baseRadius * 4, manager.ViewForTest(2).StatsForTest.ParryRadius);
+    }
+
+    /// <summary>The real scene wires the player prefab export; the shell is
+    /// discarded so only the node under test enters the tree.</summary>
+    private static PlayerViewManager TakeManagerFromGameViewScene()
+    {
+        GameView shell = ResourceLoader.Load<PackedScene>(
+            "res://src/Shared/Scenes/Match/GameView.tscn").Instantiate<GameView>();
+        PlayerViewManager manager = shell.GetNode<PlayerViewManager>("Players");
+        shell.RemoveChild(manager);
+        shell.Free();
+        return manager;
     }
 
     private static PlayerViewState ViewState() => new(

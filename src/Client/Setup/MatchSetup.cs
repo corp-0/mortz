@@ -71,9 +71,6 @@ public partial class MatchSetup : SessionScopedNode
 
     protected override void OnSessionBoundary() => Clear();
 
-    internal void ApplySettingsForTest(LobbySettingsMsg message) => ApplySettings(message);
-    internal void ApplyLobbyStateForTest(LobbyStateMsg message) => ApplyLobbyState(message);
-
     private void Clear()
     {
         bool hadState = HasServerState || SettingsError != "" || MapId != "" ||
