@@ -1,15 +1,10 @@
 namespace Mortz.Core.Sim;
 
 /// <summary>
-/// Simulation constants. Units are pixels and seconds; +Y is down (screen space),
-/// matching Godot 2D so positions pass through the shell unconverted.
-/// Game feel is tuned here, but these are only the defaults: hosts override
-/// the tweakable ones through MatchConfig, and the sim reads that (or the
-/// player's PlayerStats) instead. The sim only reads this class directly for
-/// infrastructure that must not vary per match: tick rate, hitbox, skin
-/// sheet, numerical guards.
-/// Durations are in seconds; the *Ticks values are derived at compile time,
-/// don't edit those. Arena dimensions come from the loaded map.
+/// Sim constants. Units are pixels and seconds; +Y is down, matching Godot
+/// 2D. Defaults only: hosts override the tweakables through MatchConfig; the
+/// sim reads this class directly only for what must not vary per match. The
+/// *_TICKS values are derived, edit the seconds.
 /// </summary>
 public static class SimConfig
 {
@@ -44,8 +39,7 @@ public static class SimConfig
     public const float WALL_JUMP_SPEED_Y = 520;   // px/s   upward
     public const float WALL_JUMP_KICK_X = 380;    // px/s   away from the wall
 
-    // Coyote time scales with horizontal speed: fast exits off a ledge buy
-    // more grace, rewarding momentum play.
+    // Coyote time scales with exit speed: fast ledge exits buy more grace.
     public const float COYOTE_BASE = 0.067f;            // s     grace at a standstill
     public const float COYOTE_BONUS_PER_100_SPEED = 0.021f;// s     extra grace per 100 px/s of exit speed
     public const float COYOTE_MAX = 0.2f;               // s     cap
@@ -72,11 +66,9 @@ public static class SimConfig
     public const float MORTAR_MUZZLE_OFFSET = 20; // px     spawn distance from body center along the aim
     /// <summary>Explosion radius: the carved hole and the kill zone (LieroX-sized).</summary>
     public const int MORTAR_CARVE_RADIUS = 48;    // px
-    // No cooldown between shots: the magazine is the limiter. Reload loads one
-    // shell per second until full (auto when empty, R anytime below full) and
-    // each completed second banks a shell right away. Firing mid-reload is
-    // allowed if a shell is loaded, but scraps the one in progress and stops
-    // the reload; banked shells are kept.
+    // No cooldown between shots: the magazine is the limiter. Reload banks
+    // one shell at a time (auto when empty, R anytime below full); firing
+    // scraps the shell in progress and stops the reload.
     public const int MORTAR_MAX_AMMO = 5;
     public const float MORTAR_RELOAD_PER_SHELL = 1.25f; // s
     // Backstop so a shell always retires, even at zero gravity or under custom rules.
@@ -85,17 +77,15 @@ public static class SimConfig
     public const int MAX_ACTIVE_MORTARS = 128;
 
     // ---- parry ----
-    // F raises a bubble that flips any incoming shell straight back along its
-    // path. The cooldown is charged in full at the press; a successful deflect
-    // refunds it, so good parries chain, only a whiff pays.
+    // Cooldown charges in full at the press; a deflect refunds it, so only a
+    // whiff pays.
     public const float PARRY_RADIUS = 35;     // px    around the body center
     public const float PARRY_WINDOW = 0.6f;   // s     bubble uptime per press
     public const float PARRY_COOLDOWN = 10f;  // s     the price of a whiff
 
     // ---- health / blast ----
-    // The blast circle is MORTAR_CARVE_RADIUS. Inside the core fraction a hit
-    // is a guaranteed kill; from there damage falls off linearly to the rim.
-    // Distances are measured to the nearest point of the body box.
+    // Blast circle is MORTAR_CARVE_RADIUS: lethal inside the core fraction,
+    // linear falloff to the rim, measured to the nearest point of the body box.
     public const int MAX_HEALTH = 100;
     public const int MORTAR_DAMAGE = 100;           //        in the lethal core
     public const float BLAST_CORE_FRACTION = 0.50f; //        of the radius
@@ -112,7 +102,7 @@ public static class SimConfig
     public const int KILL_TARGET = 5;
 
     // ---- dev tools ----
-    /// <summary>Radius of the dev click-to-carve, the stand-in weapon until mortars exist.</summary>
+    /// <summary>Radius of the dev click-to-carve.</summary>
     public const int DEBUG_CARVE_RADIUS = 24;
 
     // ---- derived tick values (edit the seconds above, not these) ----

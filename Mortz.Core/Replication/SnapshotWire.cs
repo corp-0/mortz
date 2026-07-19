@@ -4,14 +4,12 @@ using Mortz.Core.Sim;
 namespace Mortz.Core.Replication;
 
 /// <summary>
-/// Hand-rolled binary layout for Snapshot, quantized to keep the broadcast
-/// cheap: points in 1/4 px, velocities in 1/4 px/s, both i16 (maps up to ~8k
-/// px a side). LastInputSeq stays off the wire; each client gets its own ack
-/// beside the packet instead of everyone's inside it. A recipient gets its own
-/// complete prediction state (including PrevButtons); remote players use a
-/// compact render-only record and omit simulation-only fields. Reconciling from
-/// a deserialized state can miss by up to 1/8 px, which the correction offset
-/// eats invisibly. Full records for everyone on the persistence path. Bump
+/// Hand-rolled binary layout for Snapshot, quantized to 1/4 px i16 (maps up
+/// to ~8k px a side). LastInputSeq stays off the wire; each client gets its
+/// own ack beside the packet. A recipient gets its own complete prediction
+/// state; remote players are compact render-only records (full records for
+/// everyone on the persistence path). Reconciling from a deserialized state
+/// can miss by up to 1/8 px; the correction offset eats it. Bump
 /// <see cref="NetConfig.PROTOCOL_VERSION"/> on any layout change.
 /// </summary>
 internal static class SnapshotWire

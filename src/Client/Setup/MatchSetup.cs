@@ -5,14 +5,12 @@ using Mortz.Core.Net.Messages;
 namespace Mortz.Client.Setup;
 
 /// <summary>
-/// Connected-session owner of the canonical match setup as the server
-/// currently knows it: parsed rules, selected map and catalog, and the lobby
-/// roster with team assignments. UI reads current values here and re-renders
-/// on the events instead of tracking the wire messages itself; events fire on
-/// actual value transitions, never once per message. The frozen Welcome config
-/// keeps Rules honest mid-match (a late joiner never saw the lobby), and every
-/// lobby broadcast triggers a settings request, closing the one-shot snapshot
-/// race on lobby entry.
+/// The canonical match setup as the server knows it: parsed rules, selected
+/// map and catalog, lobby roster with teams. UI reads values here and
+/// re-renders on the events; events fire on actual value transitions, never
+/// once per message. The Welcome config keeps Rules honest for a late joiner,
+/// and every lobby broadcast triggers a settings request, closing the
+/// snapshot race on lobby entry.
 /// </summary>
 public partial class MatchSetup : SessionScopedNode
 {

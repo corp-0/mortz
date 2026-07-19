@@ -6,30 +6,22 @@ using Mortz.Core.Ui;
 namespace Mortz.Core.Match;
 
 /// <summary>
-/// The host-tweakable half of the ruleset. Every value here is match data:
-/// fixed once the match starts, replicated to clients in the Welcome so
-/// prediction runs the exact numbers the server runs. Defaults are the
-/// SimConfig constants; load-bearing infrastructure (tick rate, hitbox,
-/// net rates) stays const there and is deliberately not in here.
-///
-/// Each property is the single declaration of its field: [PlayerStat] for
-/// per-player, modifier-targetable stats, [MatchRule] for match-level
-/// rules. ConfigGenerator expands them into the Stat enum, Clamp(), the
-/// wire, PlayerStats and the pipeline switches. Clamp()
-/// runs wherever a config enters the process (preset load, wire receipt),
-/// so a broken or hostile config can't produce a degenerate sim; ranges
-/// also keep tick-count values inside the byte fields PlayerState stores
-/// them in.
-///
-/// The wire blob is field-by-field, hidden inside WelcomeMsg's byte[]
-/// where NetRegistry.SCHEMA_HASH can't see it: adding, removing or
-/// reordering fields needs a PROTOCOL_VERSION bump.
+/// The host-tweakable half of the ruleset: fixed once the match starts,
+/// replicated in the Welcome so prediction runs the server's exact numbers.
+/// Each property is the single declaration of its field ([PlayerStat] or
+/// [MatchRule]); ConfigGenerator expands them into the Stat enum, Clamp(),
+/// the wire, PlayerStats and the pipeline. Clamp() runs wherever a config
+/// enters the process, so a hostile config can't produce a degenerate sim;
+/// ranges also keep tick counts inside PlayerState's byte fields.
+/// The wire blob rides inside WelcomeMsg's byte[] where SCHEMA_HASH can't
+/// see it: adding, removing or reordering fields needs a PROTOCOL_VERSION
+/// bump.
 /// </summary>
 public sealed partial class MatchConfig
 {
-    // Teams and WinCondition are stored independently so toggling teams in the
-    // lobby never destroys the admin's win condition choice; TEAM_KILLS with
-    // teams off plays as PLAYER_KILLS (resolved in Scoreboard, not here).
+    // Independent of WinCondition so toggling teams never destroys the win
+    // condition choice; TEAM_KILLS with teams off plays as PLAYER_KILLS
+    // (resolved in Scoreboard).
     [UiCategory("Mode")]
     [UiProperty("Teams")]
     [MatchRule]

@@ -8,15 +8,11 @@ using Mortz.Shared;
 namespace Mortz.Client.Match;
 
 /// <summary>
-/// The loaded map on screen: the three layer sprites, the collision mask, and
-/// carve events punching holes into the destructible layer.
-///
-/// Destruction is predicted for the local player's shells: the hole appears
-/// the instant the predicted shell lands, and the CarveLedger holds the entry
-/// until the authoritative carve with the same owner+spawnSeq confirms it. On
-/// a mismatch the mispredicted pixels are restored from the pristine map,
-/// except where another carve legitimately covers them; a pending carve the
-/// server never confirms reverts fully on timeout.
+/// The loaded map on screen: layer sprites, collision mask, and carve events.
+/// Local shells carve predictively; the CarveLedger holds each hole until the
+/// authoritative carve with the same owner+spawnSeq confirms it. Mispredicted
+/// pixels restore from the pristine map unless another carve covers them;
+/// unconfirmed carves revert on timeout.
 /// </summary>
 public partial class GameMap : Node2D
 {
@@ -97,11 +93,9 @@ public partial class GameMap : Node2D
         }
     }
 
-    /// <summary>
-    /// Predicted destruction: the shell landed, so the hole happens now instead
-    /// of a round trip later. Skipped if the shot is already pending or settled;
-    /// carving it twice would leave a hole the server never confirms.
-    /// </summary>
+    /// <summary>The hole happens now instead of a round trip later. Skipped if
+    /// already pending or settled: carving twice would leave a hole the server
+    /// never confirms.</summary>
     public void PredictCarve(int spawnSeq, Vector2 impact)
     {
         if (_ledger.IsPending(spawnSeq) || _ledger.IsSettled(spawnSeq))
@@ -112,9 +106,9 @@ public partial class GameMap : Node2D
         _ledger.AddPending(spawnSeq, x, y, _carveRadius, removed, Time.GetTicksMsec());
     }
 
-    /// <summary>A parry took over the shell that made this predicted carve. Revert
-    /// it now instead of waiting for the timeout: the deflected shell's carve is
-    /// -1 and never confirms this seq. Returns true if a pending carve was reverted.</summary>
+    /// <summary>A parry took over this shell; its carve broadcasts -1 and never
+    /// confirms this seq, so revert now instead of on timeout. True if a
+    /// pending carve was reverted.</summary>
     public bool RevertPredictedCarve(int spawnSeq)
     {
         _ledger.MarkSettled(spawnSeq, Time.GetTicksMsec());
@@ -137,9 +131,8 @@ public partial class GameMap : Node2D
 
         if (mine && _ledger.TryConfirm(msg.SpawnSeq, out CarveLedger.PendingCarve? pending))
         {
-            // Our shell, already predicted (boom included). Usually a perfect
-            // match and both steps are no-ops; on a mispredict this moves the
-            // hole quietly.
+            // Our shell, already predicted. Usually both steps are no-ops; on
+            // a mispredict this moves the hole quietly.
             Restore(pending, x, y, radius);
             Carve(x, y, radius, withDebris: false);
             return;
@@ -172,9 +165,8 @@ public partial class GameMap : Node2D
         return removed;
     }
 
-    /// <summary>Visually rebuild just the pixels removed by the winning blast.
-    /// The real image and collision mask remain carved; recorded actors therefore
-    /// see the pre-impact floor without gameplay state being rolled back.</summary>
+    /// <summary>Visually rebuild the pixels the winning blast removed; mask and
+    /// image stay carved, only the overlay shows the pre-impact floor.</summary>
     public void BeginReplayTerrain(FinalKillMsg final)
     {
         EndReplayTerrain();
@@ -222,11 +214,8 @@ public partial class GameMap : Node2D
             _recentCarves.RemoveAt(0);
     }
 
-    /// <summary>
-    /// The ground takes its stains with it: after the carve, wipe blood off
-    /// every cell in the blast with no ground left under it, including stains
-    /// hanging over older holes. Stains on surviving solid rock stay.
-    /// </summary>
+    /// <summary>Wipe blood off every blast cell with no ground left under it;
+    /// stains on surviving rock stay.</summary>
     private void EraseLooseBlood(int x, int y, int radius)
     {
         int r2 = radius * radius;
@@ -241,10 +230,8 @@ public partial class GameMap : Node2D
         }
     }
 
-    /// <summary>
-    /// Give back the pixels a predicted carve removed, where the ledger says
-    /// no confirmed or live carve really covers them.
-    /// </summary>
+    /// <summary>Give back pixels a predicted carve removed, where the ledger
+    /// says no confirmed or live carve covers them.</summary>
     private void Restore(CarveLedger.PendingCarve pending, int confirmedX, int confirmedY, int confirmedRadius)
     {
         bool dirty = false;

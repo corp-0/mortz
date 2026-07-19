@@ -22,12 +22,8 @@ public class DrainFidelityTests
     private static PlayerInput Fire(byte aim) => new(InputButtons.FIRE, aim);
     private static PlayerInput Idle(byte aim) => new(InputButtons.NONE, aim);
 
-    /// <summary>
-    /// A fire press overtaken by the drain must fire along the aim it was
-    /// pressed with, not the aim of the later input that overtook it. Today the
-    /// shell inherits the applied input's aim, so a shot clicked while aiming up
-    /// leaves the muzzle heading down.
-    /// </summary>
+    /// <summary>A fire press overtaken by the drain must fire along the aim it
+    /// was pressed with, not the aim of the input that overtook it.</summary>
     [Fact]
     public void OvertakenFirePress_KeepsTheAimItWasPressedWith()
     {
@@ -88,12 +84,8 @@ public class DrainFidelityTests
         Assert.Equal(InputButtons.JUMP, w.Players[1].PrevButtons);
     }
 
-    /// <summary>
-    /// Two separate trigger pulls delivered in one bunch must produce two
-    /// shells. Today the carried Fire from the first press bleeds across the
-    /// release, so the second press reads as held and never fires: one shell
-    /// for two clicks.
-    /// </summary>
+    /// <summary>Two separate trigger pulls delivered in one bunch must produce
+    /// two shells.</summary>
     [Fact]
     public void TwoClicksInOneBunch_FireTwoShells()
     {

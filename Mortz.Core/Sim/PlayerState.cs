@@ -1,9 +1,8 @@
 namespace Mortz.Core.Sim;
 
 /// <summary>
-/// Complete simulation state of one player. Prediction copies and re-ticks
-/// these, so anything that affects gameplay has to live here, not in nodes.
-/// It also has to be on the wire, or replaying from a server state drifts.
+/// Complete sim state of one player. Anything that affects gameplay must
+/// live here and ride the wire, or prediction replay drifts.
 /// </summary>
 public record struct PlayerState
 {
@@ -14,24 +13,16 @@ public record struct PlayerState
     public Vec2 Velocity;
     public bool Grounded;
 
-    /// <summary>
-    /// Jump presses remaining from the 2-jump budget. Refilled to TOTAL_JUMPS
-    /// while grounded; a ground/coyote/wall jump spends the first, air jumps
-    /// spend the rest. Falling without jumping keeps the whole budget.
-    /// </summary>
+    /// <summary>Jump presses remaining; refilled while grounded.</summary>
     public byte JumpsLeft;
 
     /// <summary>Ticks until the next dash is allowed.</summary>
     public byte DashCooldown;
 
-    /// <summary>Mortar shells in the magazine. Weapon state lives in
-    /// WeaponSim (run by both SimWorld and the Predictor, never PlayerSim)
-    /// and rides the snapshot like everything else replayed.</summary>
+    /// <summary>Mortar shells in the magazine.</summary>
     public byte Ammo;
 
-    /// <summary>Ticks until the next shell loads; 0 = not reloading. Shells
-    /// bank one at a time until the magazine is full; firing throws away the
-    /// one in progress and stops the reload.</summary>
+    /// <summary>Ticks until the next shell banks; 0 = not reloading.</summary>
     public byte ReloadTicks;
 
     /// <summary>Grace ticks after leaving a ledge where a jump still counts as grounded.</summary>
@@ -50,53 +41,46 @@ public record struct PlayerState
     /// <summary>Ticks left on the active parry bubble; nonzero = deflecting shells.</summary>
     public byte ParryTicks;
 
-    /// <summary>Ticks until the next parry. Charged in full at the press;
-    /// SimWorld zeroes it when the bubble deflects a shell, so only a whiff
-    /// pays. ushort: 20 s of ticks overflows a byte.</summary>
+    /// <summary>Ticks until the next parry; charged at the press, zeroed on a
+    /// deflect. ushort: 20 s of ticks overflows a byte.</summary>
     public ushort ParryCooldown;
 
     /// <summary>Aim byte from the last applied input, so remote clients can render the weapon.</summary>
     public byte Aim;
 
-    /// <summary>Server-authoritative and never predicted: blasts subtract it in
-    /// SimWorld only, prediction just carries the acked value through replay.
-    /// 0 while the body lies dead; respawn restores MAX_HEALTH.</summary>
+    /// <summary>Server-authoritative, never predicted: prediction carries the
+    /// acked value through replay.</summary>
     public byte Health;
 
-    /// <summary>Ticks until respawn; nonzero = dead. A dead body is frozen and
-    /// untouchable: PlayerSim and WeaponSim no-op on it (which also freezes
-    /// prediction replay), blasts skip it, shells fly through it. Only the
-    /// server counts it down and respawns at 0.</summary>
+    /// <summary>Ticks until respawn; nonzero = dead. A dead body is frozen:
+    /// PlayerSim and WeaponSim no-op on it, blasts skip it, shells fly
+    /// through. Only the server counts it down.</summary>
     public byte RespawnTicks;
 
-    /// <summary>Ticks of spawn protection left; nonzero = can't shoot, can't be
-    /// hurt. PlayerSim counts it down so prediction and the server agree on the
-    /// first tick a shot is allowed. Clients flicker the body while it runs.</summary>
+    /// <summary>Ticks of spawn protection; nonzero = can't shoot, can't be
+    /// hurt. PlayerSim counts it down so prediction and server agree on the
+    /// first tick a shot is allowed.</summary>
     public byte SpawnImmunityTicks;
 
-    /// <summary>Last input seq that still counts as protected. The tick timer
-    /// runs on sim time, so a click pressed while protected can reach the server
-    /// after the timer expired and fire anyway; this fence catches those. Rides
-    /// in the owner's full snapshot so replay agrees.</summary>
+    /// <summary>Last input seq that still counts as protected. A click pressed
+    /// while protected can reach the server after the tick timer expired and
+    /// fire anyway; this fence catches those. Rides the owner's snapshot so
+    /// replay agrees.</summary>
     public int SpawnImmunityFireThroughSeq;
 
     /// <summary>Sprite frame dealt by the server at join; survives respawns.</summary>
     public byte Skin;
 
-    /// <summary>0 = no team, 1/2 = the teams. Assigned in the lobby, frozen for
-    /// the match like every other rule; the sim reads it for friendly fire.</summary>
+    /// <summary>0 = no team, 1/2 = the teams; the sim reads it for friendly fire.</summary>
     public byte TeamId;
 
-    /// <summary>
-    /// Newest input sequence the server applied to this player (-1 before any).
-    /// Set by SimWorld, not PlayerSim; this is the ack prediction replays from.
-    /// Not in the snapshot itself: only the owner cares, so the server sends
-    /// each client its own ack beside the packet.
-    /// </summary>
+    /// <summary>Newest input seq the server applied (-1 before any); the ack
+    /// prediction replays from. Not in the snapshot: the server sends each
+    /// client its own ack beside the packet.</summary>
     public int LastInputSeq;
 
-    /// <summary>Authoritative raw buttons held on the newest consumed input, for
-    /// press-edge detection (jump, dash, rope, weapon). Serialized because queue
-    /// draining and respawn mean it cannot safely be inferred from the ack.</summary>
+    /// <summary>Raw buttons held on the newest consumed input, for press-edge
+    /// detection. Serialized because queue draining and respawn make it
+    /// non-inferable from the ack.</summary>
     public InputButtons PrevButtons;
 }

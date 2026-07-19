@@ -3,18 +3,13 @@ using Mortz.Core.Sim;
 namespace Mortz.Core.Input;
 
 /// <summary>
-/// Server-side per-player input feed. Applies inputs in sequence order, one
-/// per tick. Tolerates the unreliable transport: gaps (lost packets) are
-/// skipped over, starvation repeats the last input, and a backlog (burst
-/// after a stall) is drained at two inputs per tick so it can't add permanent
-/// input latency.
-///
-/// The drain drops the overtaken tick's movement (reconciliation absorbs it)
-/// but not its actions. Movement buttons of overtaken inputs merge into the
-/// applied one so a jump or dash still acts. Weapon buttons (Fire/Reload) don't
-/// merge: every consumed input is exposed in <see cref="Consumed"/> so the sim
-/// runs the weapon per input, an overtaken fire keeps its own aim, and the
-/// applied input stays an honest PrevButtons anchor for the owner's replay.
+/// Server-side per-player input feed: applies inputs in sequence order, one
+/// per tick. Gaps are skipped, starvation repeats the last input, and a
+/// backlog drains at two inputs per tick so it can't add permanent latency.
+/// The drain drops an overtaken tick's movement (reconciliation absorbs it)
+/// but not its actions: movement buttons merge into the applied input, while
+/// weapon buttons ride <see cref="Consumed"/> so the sim runs the weapon per
+/// input and an overtaken fire keeps its own aim.
 /// </summary>
 public sealed class InputQueue
 {
@@ -44,20 +39,19 @@ public sealed class InputQueue
     /// <summary>Sequence of the newest input applied, acked to the client in snapshots. -1 before any.</summary>
     public int LastAppliedSeq { get; private set; } = -1;
 
-    /// <summary>Sequence of the input that carried the newest fire press edge.
-    /// Diagnostics only now that shells are stamped per consumed input.</summary>
+    /// <summary>Seq of the input with the newest fire press edge; diagnostics only.</summary>
     public int FireSeq { get; private set; } = -1;
 
-    /// <summary>Diagnostics: inputs waiting to be applied. Every pending input is a tick of added latency.</summary>
+    /// <summary>Diagnostics: inputs waiting; each is a tick of added latency.</summary>
     public int PendingCount => _pending.Count;
 
     /// <summary>Inputs consumed by the most recent Next(), oldest first (the last
     /// is the applied one). Run the weapon over each so overtaken fires still fire.</summary>
     public IReadOnlyList<(int Seq, PlayerInput Input)> Consumed => _consumed;
 
-    /// <summary>Press edges present anywhere in the inputs consumed by the most
-    /// recent Next(). SimWorld uses this to preserve an overtaken release/press
-    /// transition even when the effective input is merged into one tick.</summary>
+    /// <summary>Press edges anywhere in the inputs consumed by the most recent
+    /// Next(); SimWorld uses this to preserve an overtaken press even when the
+    /// effective input is merged into one tick.</summary>
     public InputButtons PressedButtons => _pressedButtons;
 
     /// <summary>The raw input at LastAppliedSeq, before carried actions were
@@ -83,9 +77,8 @@ public sealed class InputQueue
             SkipNext();
         }
 
-        // Every input still waiting after this tick is a tick of standing
-        // latency, so a backlog consumes one extra input per tick until a
-        // single buffered input (jitter headroom) remains after the apply.
+        // A backlog consumes one extra input per tick until a single buffered
+        // input (jitter headroom) remains after the apply.
         if (_pending.Count > 2)
             SkipNext();
         ApplyNext();

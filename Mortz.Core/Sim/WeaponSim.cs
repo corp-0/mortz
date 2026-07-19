@@ -3,13 +3,11 @@ using Mortz.Core.Match;
 namespace Mortz.Core.Sim;
 
 /// <summary>
-/// The mortar magazine, as a pure function so the server (SimWorld) and client
-/// prediction (Predictor) run the exact same rules. No cooldown between shots.
-/// A reload (auto when empty, R anytime below full) loads one shell per second
-/// and banks each completed shell immediately; firing a loaded shell scraps
-/// the one in progress and stops the reload. A dry trigger pull cancels
-/// nothing. Spawning the shell is the caller's job: shells are world entities
-/// on the server and cosmetic locals in prediction.
+/// The mortar magazine, as a pure function so the server and prediction run
+/// the exact same rules. No cooldown between shots. A reload (auto when
+/// empty, R anytime below full) banks one shell per reload interval; firing
+/// scraps the one in progress and stops the reload. Spawning the shell is the
+/// caller's job.
 /// </summary>
 public static class WeaponSim
 {

@@ -7,28 +7,18 @@ using Mortz.Core.Terrain;
 namespace Mortz.Core.Replication;
 
 /// <summary>
-/// Client-side prediction of the local player. Local inputs apply to a
-/// private copy of the player right away so movement feels instant. On every
-/// snapshot we rewind to the server's state and replay the not-yet-acked
-/// inputs through the same PlayerSim.Tick the server runs. When client and
-/// server agree the replay lands exactly where the prediction already was;
-/// when they don't, the returned correction delta lets the view ease the
-/// fix-up in instead of snapping.
-///
-/// Gunplay is predicted too: WeaponSim runs in the same replay (so ammo and
-/// the reload bar react instantly) and every local shot spawns a cosmetic
-/// shell here, keyed by the input seq that fired it. The owner only ever sees
-/// these local shells; the authoritative copies in the snapshot are hidden by
-/// the view. Explosions, carving and damage stay server-only: a predicted
-/// shell simply vanishes on impact and the boom arrives with the carve.
+/// Client-side prediction of the local player: apply inputs immediately, then
+/// on every snapshot rewind to the server's state and replay unacked inputs.
+/// Gunplay too: local shots spawn cosmetic shells keyed by firing input seq,
+/// and the view hides the authoritative copies. Explosions, carving and
+/// damage stay server-only.
 /// </summary>
 public sealed class Predictor
 {
     private readonly InputHistory _history = new();
     private readonly TerrainMask _terrain;
     private readonly MatchConfig _cfg;
-    // The local player's stats, composed exactly like the server composes
-    // them (same config, same modifier list, same pipeline), or every replay
+    // Stats must compose exactly like the server's or every replay
     // mispredicts. _tier1 is config + replicated persistent modifiers;
     // _effective adds the current situation on top.
     private IReadOnlyList<StatsModifier> _modifiers = [];
@@ -43,7 +33,6 @@ public sealed class Predictor
     private PlayerState _state;
 
     /// <param name="terrain">The client's mask; carve events mutate it in place.</param>
-    /// <param name="config">The match config the server replicated in the Welcome.</param>
     public Predictor(TerrainMask terrain, MatchConfig config)
     {
         _terrain = terrain;
@@ -52,8 +41,8 @@ public sealed class Predictor
         _effective = _tier1;
     }
 
-    /// <summary>Adopt the server's replicated modifier list. The next
-    /// reconcile replays with it, curing any ticks predicted on stale stats.</summary>
+    /// <summary>Adopt the server's replicated modifier list; the next reconcile
+    /// replays with it.</summary>
     public void SetModifiers(IReadOnlyList<StatsModifier> modifiers)
     {
         _modifiers = modifiers;
@@ -61,7 +50,7 @@ public sealed class Predictor
         _effective = Compose(_flags);
     }
 
-    /// <summary>Situational stats recompute only when the situation flips.</summary>
+    /// <summary>Recomputes only when the situation flips.</summary>
     private PlayerStats Effective(in PlayerState state, in PlayerInput input)
     {
         Situations flags = SituationEffects.Detect(state, _terrain, input);
@@ -88,24 +77,20 @@ public sealed class Predictor
     public PlayerState State => _state;
     public int NextSeq { get; private set; }
 
-    /// <summary>The local player's own shells, predicted. SpawnSeq is a stable
-    /// identity across reconciles (same input, same shell).</summary>
+    /// <summary>Predicted local shells. SpawnSeq is a stable identity across
+    /// reconciles.</summary>
     public IReadOnlyList<(int SpawnSeq, MortarState Shell)> Shells => _shells;
 
-    /// <summary>Shots whose ending the owner has already seen (predicted impact,
-    /// fizzle, or authoritative retire). The authoritative replica trails the
-    /// prediction by a full round trip, so the view keeps hiding these copies
-    /// until the server's End event clears them via ForgetCompleted.</summary>
+    /// <summary>Shots whose ending the owner already saw. The authoritative
+    /// replica trails by a round trip, so the view keeps hiding these until
+    /// the server's End event clears them via ForgetCompleted.</summary>
     public IReadOnlySet<int> CompletedShells => _completed;
 
     /// <summary>The authoritative shell ended; its seq no longer needs hiding.</summary>
     public void ForgetCompleted(int spawnSeq) => _completed.Remove(spawnSeq);
 
-    /// <summary>
-    /// Predicted terrain impacts since the last drain, for predicted carving.
-    /// Replays can re-report a shell's impact, so consumers must dedupe by
-    /// SpawnSeq. Fizzles (out of the map) don't impact anything.
-    /// </summary>
+    /// <summary>Predicted terrain impacts since the last drain. Replays can
+    /// re-report an impact, so callers must dedupe by SpawnSeq.</summary>
     public List<(int SpawnSeq, Vec2 Position)> DrainImpacts()
     {
         List<(int, Vec2)> drained = new(_impacts);
@@ -113,8 +98,8 @@ public sealed class Predictor
         return drained;
     }
 
-    /// <summary>The server ended this shell early (direct hit or parry). Drop the
-    /// local copy and remember the seq so a replay can't respawn it.</summary>
+    /// <summary>The server ended this shell early: drop the local copy and
+    /// remember the seq so a replay can't respawn it.</summary>
     /// <returns>True if a still-flying shell was dropped.</returns>
     public bool RetireShell(int spawnSeq)
     {
@@ -125,8 +110,7 @@ public sealed class Predictor
         return dropped || droppedImpact;
     }
 
-    /// <summary>True if a predicted shell for this seq is still live. The deflection
-    /// retire checks this: a deflected shell is only ours if we predicted it.</summary>
+    /// <summary>True if a predicted shell for this seq is still live.</summary>
     public bool HasShell(int spawnSeq)
     {
         foreach ((int seq, MortarState _) in _shells)
@@ -153,9 +137,7 @@ public sealed class Predictor
         NextSeq++;
     }
 
-    /// <summary>Mirrors SimWorld's order: a shell moves on its spawn tick.
-    /// Impacts are reported for predicted carving and the shell despawns; the
-    /// server still owns the real consequences (authoritative carve, damage).</summary>
+    /// <summary>Mirrors SimWorld's order: a shell moves on its spawn tick.</summary>
     private void StepShells(List<(int SpawnSeq, MortarState Shell)> shells)
     {
         for (int i = shells.Count - 1; i >= 0; i--)
@@ -178,16 +160,12 @@ public sealed class Predictor
     public IReadOnlyList<(int Seq, PlayerInput Input)> RecentInputs(int n) => _history.Newest(n);
 
     /// <summary>
-    /// Rewind to the authoritative state and replay unacked inputs.
-    /// Returns how far the predicted position moved (old - new); feed it to
-    /// a decaying visual offset so corrections ease in over a few frames.
+    /// Rewind to the authoritative state and replay unacked inputs. Returns
+    /// how far the predicted position moved (old - new); feed it to a decaying
+    /// visual offset so corrections ease in.
     /// </summary>
-    /// <param name="serverState">The player's state in the snapshot.</param>
-    /// <param name="lastAppliedSeq">Last input seq the server applied; only
-    /// later inputs are replayed.</param>
-    /// <param name="serverTick">Snapshot tick; a tick no newer than the last one
-    /// reconciled is an out-of-order straggler and is dropped (replaying from
-    /// already-pruned history would mispredict). -1 skips the check.</param>
+    /// <param name="serverTick">Out-of-order stragglers are dropped (replaying
+    /// from pruned history would mispredict); -1 skips the check.</param>
     public Vec2 Reconcile(PlayerState serverState, int lastAppliedSeq, int serverTick = -1)
     {
         if (serverTick >= 0)
@@ -199,12 +177,10 @@ public sealed class Predictor
 
         Vec2 before = _state.Position;
 
-        // Shells from acked inputs stay: the server has spawned its copies,
-        // but the owner keeps watching the local ones so nothing jumps back
-        // in time. Shells from unacked inputs are re-derived by the replay.
+        // Acked shells stay (the owner keeps watching the local copies);
+        // unacked ones are re-derived by the replay.
         _shells.RemoveAll(s => s.SpawnSeq > lastAppliedSeq);
-        // These impacts came from the unacked trajectory we are about to replace.
-        // Keeping them would let the view carve a position the replay invalidated.
+        // Unacked impacts would carve a position the replay may invalidate.
         _impacts.RemoveAll(i => i.SpawnSeq > lastAppliedSeq);
         List<(int SpawnSeq, MortarState Shell)> rebuilt = [];
 
@@ -218,7 +194,7 @@ public sealed class Predictor
             // real, only the shell must not come back.
             if (WeaponSim.Tick(ref state, input, prevButtons, stats, seq) && !_retired.Contains(seq))
                 rebuilt.Add((seq, WeaponSim.NewShell((ushort)seq, seq, state, input, _cfg)));
-            StepShells(rebuilt); // fast-forward in lockstep with the replay
+            StepShells(rebuilt);
         }
         _shells.AddRange(rebuilt);
 

@@ -85,7 +85,7 @@ public class MortarTests
         Assert.Equal(shellsBefore, w.Mortars.Count);
         Assert.Equal(reloadBefore - 1, w.Players[1].ReloadTicks);
 
-        // Shells bank one per second until the magazine is full.
+        // Shells bank one per reload interval until the magazine is full.
         for (int t = 0; t < SimConfig.MORTAR_RELOAD_TICKS; t++)
         {
             StepWith(w, ref seq, InputButtons.NONE, AIM_UP_LEFT);
@@ -131,7 +131,7 @@ public class MortarTests
         Assert.Equal(SimConfig.MORTAR_MAX_AMMO, w.Players[1].Ammo);
     }
 
-    /// <summary>Shoot 4 of 5, reload for 2 s (banking 2 shells), then fire.
+    /// <summary>Shoot 4 of 5, reload long enough to bank 2 shells, then fire.
     /// The shot goes out, the shell in progress is lost, the reload stops,
     /// and you're left holding exactly 2 shots.</summary>
     [Fact]

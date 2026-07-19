@@ -5,12 +5,9 @@ namespace Mortz.Tools;
 
 /// <summary>
 /// Exports the client and/or server presets into one bundle per platform
-/// (build/Mortz-win, build/Mortz-lin): both executables plus the data dir
-/// and content/ they share. Content is deliberately not embedded in the PCK
-/// (see exclude_filter in export_presets.cfg); builds load it from disk so
-/// map files can be swapped without re-exporting. The build directory is
-/// wiped before exporting, so a partial export (client/server only or one
-/// platform) leaves only what it built.
+/// (build/Mortz-win, build/Mortz-lin). Content stays out of the PCK
+/// (exclude_filter in export_presets.cfg) so maps swap without re-exporting.
+/// The build dir is wiped first, so a partial export leaves only what it built.
 /// </summary>
 internal static class Export
 {
@@ -79,13 +76,10 @@ internal static class Export
     }
 
     /// <summary>
-    /// The editor has to match the SDK the project builds against, or the export
-    /// runs on different templates than the code was compiled for. A mismatched
-    /// editor also migrates Mortz.csproj down to its own version (backing the
-    /// original up as Mortz.csproj.old) and exits 0, so the downgrade is silent.
-    /// The csproj is the source of truth, which keeps a Godots upgrade to a
-    /// one-line edit there. GODOT_PATH overrides where to look, never which
-    /// version is acceptable.
+    /// The editor must match the SDK the project builds against. A mismatched
+    /// editor also silently migrates Mortz.csproj to its own version (backing
+    /// it up as .old) and exits 0. GODOT_PATH overrides where to look, never
+    /// which version is acceptable.
     /// </summary>
     private static string ResolveGodot(string root)
     {
@@ -105,8 +99,8 @@ internal static class Export
         return godot;
     }
 
-    /// <summary>Godots installs each version in a directory named for it, with
-    /// the binary carrying a version string we don't want to reconstruct.</summary>
+    /// <summary>Godots installs each version in a directory named for it; the
+    /// binary's own name carries a version string, hence the glob.</summary>
     private static string FindGodot(string version)
     {
         string installs = Environment.GetEnvironmentVariable("GODOT_ROOT") ?? @"E:\filax\Godot";
@@ -132,11 +126,9 @@ internal static class Export
     }
 
     /// <summary>
-    /// Godot only exports GUI-subsystem exes (its console option ships a
-    /// wrapper stub instead), so a terminal never owns the server and Ctrl+C
-    /// can't kill it. Flipping the PE subsystem to console fixes that with one
-    /// ushort; host-and-play is unaffected because OS.CreateProcess spawns
-    /// children windowless.
+    /// Godot only exports GUI-subsystem exes, so Ctrl+C can't kill the server.
+    /// Flip the PE subsystem to console; host-and-play is unaffected because
+    /// OS.CreateProcess spawns children windowless.
     /// </summary>
     private static void MakeConsoleApp(string exePath)
     {
@@ -202,10 +194,9 @@ internal static class Export
     }
 
     /// <summary>
-    /// Wipe everything under build/ except .gdignore so every export starts
-    /// clean. Also surfaces the "previous build still running" case up front:
-    /// a locked exe would otherwise make Godot's export fail at the final
-    /// rename and then hang instead of exiting.
+    /// Wipe build/ except .gdignore. Also surfaces a still-running previous
+    /// build up front: a locked exe would make Godot's export hang at the
+    /// final rename.
     /// </summary>
     private static void CleanBuildDir(string buildDir)
     {

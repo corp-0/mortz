@@ -6,12 +6,10 @@ namespace Mortz.Core.Match;
 /// Declares a MatchConfig property as a per-player stat: the single source
 /// ConfigGenerator expands into the Stat enum member, clamp line, wire
 /// lines, PlayerStats field and modifier pipeline cases. The property
-/// carries the type and the default (its initializer); this attribute
-/// carries the sim contract. Presentation stays separate: [UiProperty] is
-/// the general auto-render contract (any decorated object renders without
-/// hand-built controls), orthogonal to what a field means to the sim.
-/// statsName overrides the derived PlayerStats/enum name where the
-/// mechanical one is clumsy (MortarReloadPerShell -> ReloadPerShell).
+/// carries the type and default; this attribute carries the sim contract.
+/// Presentation stays separate in [UiProperty]. statsName overrides the
+/// derived name where the mechanical one is clumsy
+/// (MortarReloadPerShell -> ReloadPerShell).
 /// </summary>
 [AttributeUsage(AttributeTargets.Property)]
 public sealed class PlayerStatAttribute : Attribute

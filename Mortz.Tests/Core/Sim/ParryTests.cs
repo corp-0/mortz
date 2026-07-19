@@ -5,7 +5,7 @@ using Xunit;
 namespace Mortz.Tests.Core.Sim;
 
 /// <summary>
-/// Parry: F raises a 0.5 s bubble that flips incoming shells straight back.
+/// Parry: F raises a short-lived bubble that flips incoming shells straight back.
 /// Spawns on the flat world are deterministic: peer 2 lands at x=130, peer 1
 /// at x=241, both on the floor, so a shell fired by peer 2 at aim 0 (+X)
 /// flies level into peer 1's bubble.

@@ -1,11 +1,10 @@
 namespace Mortz.Core.Match;
 
 /// <summary>
-/// Match score state, owned by the server and rebuilt every match. Two
-/// tables: per-player rows (any scoreboard needs them, whatever the mode) and
-/// per-team kill totals accumulated at kill time, never derived from current
-/// members, so a leaver's kills stay counted for their team. Win conditions
-/// are predicates over one of the tables, checked after every scored death.
+/// Match score state, owned by the server and rebuilt every match: per-player
+/// rows plus per-team kill totals accumulated at kill time (never derived
+/// from current members, so a leaver's kills stay counted). Win conditions
+/// are predicates over one table, checked after every scored death.
 /// </summary>
 public sealed class Scoreboard
 {
@@ -23,9 +22,8 @@ public sealed class Scoreboard
     /// <summary>Id is a team id when ByTeam, a peer id otherwise.</summary>
     public readonly record struct MatchWinner(bool ByTeam, int Id);
 
-    /// <summary>The complete result of applying one death to the board. This is
-    /// the single source of truth for attribution: presentation and networking
-    /// must not independently re-classify the same death.</summary>
+    /// <summary>The complete result of applying one death; the single source of
+    /// truth for attribution, nothing may re-classify the same death.</summary>
     public readonly record struct DeathResult(
         int KillerId,
         int VictimId,

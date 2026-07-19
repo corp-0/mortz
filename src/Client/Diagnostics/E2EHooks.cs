@@ -119,8 +119,8 @@ public partial class E2EHooks : Node
         MatchEndMsg.Received -= LogMatchEnd;
     }
 
-    /// <summary>Score echoes prove the wire end to end until the kill feed UI
-    /// exists; peer ids, not names, this side stays dumb.</summary>
+    /// <summary>Score echoes for E2E log matching; peer ids, not names, this
+    /// side stays dumb.</summary>
     private static void LogScore(EliminationMsg m)
     {
         bool suicide = (m.Flags & EliminationFlags.SUICIDE) != 0;

@@ -32,11 +32,10 @@ public partial class MortarViewManager : Node2D
         foreach (RenderMortar m in mortars)
         {
             // Own shells are already on screen as predicted copies, and the
-            // authoritative copy trails by a full round trip: once the owner
-            // has watched the shot end, the late copy stays hidden too or it
-            // ghosts down the tail of the arc. A deflected shell is the
-            // exception: nobody predicted that trajectory, so the
-            // authoritative copy is the only one there is.
+            // authoritative copy trails by a round trip; once the owner watched
+            // the shot end, the late copy stays hidden too or it ghosts down
+            // the tail of the arc. Deflected shells are the exception: nobody
+            // predicted that trajectory.
             if (!ShouldRenderAuthoritative(m, localId, _seenPredicted, completedSeqs))
                 continue;
             _seenRemote.Add(m.Id);

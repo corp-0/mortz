@@ -8,10 +8,9 @@ using Mortz.Core.Terrain;
 namespace Mortz.Core.Sim;
 
 /// <summary>
-/// The authoritative game simulation: a fixed-tick, deterministic state machine.
-/// The server owns the real one; clients run a predicted copy of their own
-/// player. Don't touch engine APIs, wall-clock time or unordered collections
-/// in here: the same inputs must always produce the same state.
+/// The authoritative fixed-tick sim. No engine APIs, wall-clock time or
+/// unordered collections in here: the same inputs must always produce the
+/// same state.
 /// </summary>
 public sealed class SimWorld
 {
@@ -28,12 +27,11 @@ public sealed class SimWorld
     public TerrainMask Terrain { get; }
     public MatchConfig Config { get; }
 
-    // Sorted so iteration order (and thus any future interactions) is deterministic.
+    // Sorted for deterministic iteration order.
     private readonly SortedDictionary<int, PlayerState> _players = new();
     private readonly SortedDictionary<int, InputQueue> _inputs = new();
-    // Tier 1 per player: config plus the persistent modifier stack, resolved.
-    // This is what replicates; situational effects compose on top per tick
-    // into _effective, which is what the sim actually reads.
+    // _stats replicates (config + persistent modifiers); situations compose
+    // on top into _effective, which is what the sim reads.
     private readonly SortedDictionary<int, PlayerStats> _stats = new();
     private readonly SortedDictionary<int, List<StatsModifier>> _modifiers = new();
     private readonly SortedDictionary<int, Situations> _situations = new();
@@ -50,33 +48,28 @@ public sealed class SimWorld
     private readonly List<(int PeerId, Vec2 Position, int KillerId, bool Owned)> _deaths = new();
     private ushort _nextMortarId;
 
-    // Only ever drawn from at AddPlayer; a fixed seed keeps tests reproducible,
-    // the server passes a random one.
+    // Only drawn from at AddPlayer; a fixed seed keeps tests reproducible.
     private readonly Random _rng;
 
     public IReadOnlyDictionary<int, PlayerState> Players => _players;
     public IReadOnlyDictionary<int, PlayerStats> Stats => _stats;
     public IReadOnlyList<MortarState> Mortars => _mortars;
 
-    /// <summary>Terrain impacts from the last Step; the server broadcasts these
-    /// as carves. Owner and firing seq let the owner's client match its
-    /// predicted carve to the authoritative one.</summary>
+    /// <summary>Terrain impacts from the last Step; OwnerId and SpawnSeq let the
+    /// owner's client match its predicted carve to the authoritative one.</summary>
     public IReadOnlyList<(int X, int Y, int Radius, int OwnerId, int SpawnSeq)> Explosions => _explosions;
 
-    /// <summary>Predicted shells the server took over this Step. The server sends
-    /// these reliably to the original shooter; snapshots remain only a fallback.</summary>
+    /// <summary>Predicted shells the server took over this Step, sent reliably
+    /// to the original shooter.</summary>
     public IReadOnlyList<(int FiredBy, int SpawnSeq)> ShellRetirements => _shellRetirements;
 
-    /// <summary>Ordered authoritative shell lifecycle changes from the last
-    /// Step. Reliable delivery replaces repeating complete shells in every
-    /// player snapshot.</summary>
+    /// <summary>Ordered authoritative shell lifecycle changes from the last Step.</summary>
     public IReadOnlyList<MortarEvent> MortarEvents => _mortarEvents;
 
-    /// <summary>Deaths from the last Step (blast or death pit), with the body
-    /// center at the moment of death; the server broadcasts these for gibs and
-    /// scores them. KillerId is the explosion's owner (a parried shell belongs
-    /// to the parrier), 0 for a death pit; the victim's own id is a suicide.
-    /// Owned = a parried shell killed the very player who fired it.</summary>
+    /// <summary>Deaths from the last Step, body center at the moment of death.
+    /// KillerId is the explosion's owner (the parrier for a parried shell), 0
+    /// for a death pit, the victim's own id for suicide. Owned = a parried
+    /// shell killed the very player who fired it.</summary>
     public IReadOnlyList<(int PeerId, Vec2 Position, int KillerId, bool Owned)> Deaths => _deaths;
 
     public SimWorld(TerrainMask terrain, MatchConfig config, int seed = 0,
@@ -106,10 +99,8 @@ public sealed class SimWorld
         _inputs[peerId] = new InputQueue();
     }
 
-    /// <summary>Persistent modifier entry point (perks, pickups). Same id
-    /// replaces; the stack stays sorted by id so composition is identical no
-    /// matter the acquisition order. The caller owns rebroadcasting
-    /// PlayerModifiersMsg so clients keep rendering and predicting the truth.</summary>
+    /// <summary>Same id replaces; the stack stays sorted by id so composition is
+    /// order-independent. The caller must rebroadcast PlayerModifiersMsg.</summary>
     public void AddModifier(int peerId, StatsModifier modifier)
     {
         if (!_modifiers.TryGetValue(peerId, out List<StatsModifier>? mods))
@@ -120,8 +111,7 @@ public sealed class SimWorld
         RecomputeStats(peerId);
     }
 
-    /// <summary>Removes only what the id added: the stack recomputes from
-    /// base without it, never subtracts.</summary>
+    /// <summary>Recomputes from base without the id, never subtracts.</summary>
     public void RemoveModifier(int peerId, ModifierId id)
     {
         if (_modifiers.TryGetValue(peerId, out List<StatsModifier>? mods) &&
@@ -146,8 +136,7 @@ public sealed class SimWorld
         return StatsPipeline.Resolve(Config, all);
     }
 
-    /// <summary>Situational stats recompute only when a player's situation
-    /// flips, not every tick.</summary>
+    /// <summary>Recomputes only when the situation flips, not every tick.</summary>
     private PlayerStats EffectiveStats(int id, in PlayerState state, in PlayerInput input)
     {
         Situations flags = SituationEffects.Detect(state, Terrain, input);
@@ -178,10 +167,8 @@ public sealed class SimWorld
         };
     }
 
-    /// <summary>
-    /// Authored spawn points, handed out by net slot. Maps without any fall
-    /// back to the old stable-per-peer column search.
-    /// </summary>
+    /// <summary>Authored spawn points by net slot; maps without any fall back
+    /// to a stable-per-peer column search.</summary>
     private Vec2 FindSpawn(int peerId)
     {
         if (_spawnPoints.Length > 0)
@@ -216,7 +203,7 @@ public sealed class SimWorld
             queue.Enqueue(seq, input);
     }
 
-    /// <summary>Diagnostics: input backlog for one player (ticks of standing latency).</summary>
+    /// <summary>Diagnostics: input backlog in ticks.</summary>
     public int PendingInputs(int peerId) =>
         _inputs.TryGetValue(peerId, out InputQueue? queue) ? queue.PendingCount : 0;
 
@@ -246,20 +233,17 @@ public sealed class SimWorld
             else
             {
                 PlayerStats stats = EffectiveStats(id, prev, input);
-                // The effective input may contain carried actions. Force any raw
-                // press consumed by the drain to be an edge against the simulated
-                // state, then restore the raw applied buttons as the next replay
-                // anchor; carried buttons are one-tick actions, not held state.
+                // Force presses the drain carried to read as edges, then restore
+                // the raw applied buttons as the replay anchor: carried buttons
+                // are one-tick actions, not held state.
                 PlayerState simPrev = prev with
                 {
                     PrevButtons = prev.PrevButtons & ~queue.PressedButtons,
                 };
                 state = PlayerSim.Tick(simPrev, input, Terrain, stats);
-                // Shells are world entities and this is the authoritative sim, so
-                // the spawn happens here; prediction runs the same WeaponSim but
-                // keeps its shells cosmetic. Run the weapon per consumed input, not
-                // just the applied one, so a fire the drain overtook still fires
-                // with its own aim and seq, and reload advances a step per input.
+                // Run the weapon per consumed input, not just the applied one: a
+                // fire the drain overtook still fires with its own aim and seq,
+                // and reload advances a step per input.
                 InputButtons prevButtons = prev.PrevButtons;
                 foreach ((int seq, PlayerInput consumed) in queue.Consumed)
                 {
@@ -323,14 +307,11 @@ public sealed class SimWorld
     }
 
     /// <summary>
-    /// An active parry bubble flips an approaching shell straight back along
-    /// its trajectory and refunds the parrier's cooldown. The parrier takes
-    /// ownership (their kill now), FiredBy remembers who shot it for the OWNED
-    /// check, and SpawnSeq is kept so the original shooter can recognise its
-    /// deflected shell in a snapshot and retire the predicted copy that would
-    /// otherwise keep flying straight. The eventual carve still matches nobody:
-    /// Explode broadcasts -1 for a deflected shell. The approach test doubles
-    /// as the re-deflect guard: once flipped, the shell is receding.
+    /// A parry flips an approaching shell back and refunds the cooldown. The
+    /// parrier takes ownership; FiredBy and SpawnSeq are kept so the OWNED
+    /// check and the shooter's predicted-shell retirement still work. The
+    /// approach test doubles as the re-deflect guard: a flipped shell is
+    /// receding.
     /// </summary>
     private void TryDeflect(ref MortarState m)
     {
@@ -354,12 +335,9 @@ public sealed class SimWorld
     }
 
     /// <summary>
-    /// A shell touching someone else's body detonates on them. The shooter is
-    /// immune to contact (the muzzle would pop diagonal shots at spawn), but
-    /// not to the blast. A raised parry bubble keeps shells off the body: they
-    /// deflect before they can ever reach it. Checked once per tick: at 15
-    /// px/tick against a 32 px body a shell can't pass through anyone between
-    /// checks.
+    /// Contact detonation on someone else's body. The shooter is immune to
+    /// contact (the muzzle would pop diagonal shots at spawn), not to the
+    /// blast. Once per tick is enough: 15 px/tick can't tunnel a 32 px body.
     /// </summary>
     private bool DirectHit(in MortarState m)
     {
@@ -376,17 +354,14 @@ public sealed class SimWorld
         return false;
     }
 
-    /// <summary>Carve the hole, then hurt everyone in the blast circle with
-    /// BlastSim's falloff, shooter included: point blank is still suicide.
-    /// Running out of health is a death like any other. The explosion is
-    /// reported even when the carve removes nothing (all Solid).</summary>
+    /// <summary>Carve, then damage everyone in the blast, shooter included:
+    /// point blank is suicide. Reported even when the carve removes nothing.</summary>
     private void Explode(in MortarState m)
     {
         Vec2 at = m.Position;
         Terrain.CarveCircle((int)at.X, (int)at.Y, Config.MortarCarveRadius);
-        // A deflected shell keeps the shooter's seq for snapshot retirement, but
-        // its carve belongs to no prediction: broadcast -1 so the new owner can't
-        // match it.
+        // A deflected shell keeps the shooter's seq for retirement, but its
+        // carve matches no prediction: broadcast -1.
         int carveSeq = m.Deflected ? -1 : m.SpawnSeq;
         _explosions.Add(((int)at.X, (int)at.Y, Config.MortarCarveRadius, m.OwnerId, carveSeq));
 
@@ -394,7 +369,7 @@ public sealed class SimWorld
         {
             PlayerState p = _players[id];
             if (!CombatEligibility.CanTakeDamage(p))
-                continue; // already gibbed or protected, nothing to hurt
+                continue;
             int damage = BlastSim.Damage(p, at, Config);
             if (damage == 0 || SparedByFriendlyFire(p, m.OwnerId))
                 continue;
@@ -410,18 +385,15 @@ public sealed class SimWorld
         }
     }
 
-    /// <summary>Friendly fire off spares teammates from blast damage; shells
-    /// still explode and carve. The shooter is never spared: point blank stays
-    /// suicide. A parried shell belongs to the parrier, so it hurts the
-    /// original shooter regardless of teams.</summary>
+    /// <summary>Only blast damage is spared; shells still explode and carve.</summary>
     private bool SparedByFriendlyFire(in PlayerState victim, int shooterId) =>
         !Config.FriendlyFire && Config.Teams &&
         victim.PeerId != shooterId && victim.TeamId != 0 &&
         _players.TryGetValue(shooterId, out PlayerState shooter) &&
         shooter.TeamId == victim.TeamId;
 
-    /// <summary>The body stays where it died (hidden by the view, gibs mark the
-    /// spot) until Step's countdown respawns it. Rope drops so nothing renders.</summary>
+    /// <summary>Body stays where it died until the respawn countdown ends;
+    /// rope drops so nothing renders.</summary>
     private PlayerState Corpse(in PlayerState p) => p with
     {
         Velocity = Vec2.Zero,
@@ -434,9 +406,7 @@ public sealed class SimWorld
     private static Vec2 BodyCenter(in PlayerState p) =>
         p.Position with { Y = p.Position.Y - SimConfig.PLAYER_HALF_HEIGHT };
 
-    /// <summary>Body entirely below the bottom edge plus a grace depth, so the
-    /// fall reads as a fall. Side/top exits aren't lethal on their own; gravity
-    /// brings them down here anyway.</summary>
+    /// <summary>Only the bottom edge kills; side/top exits fall back in.</summary>
     private bool FellOutOfTheMap(in PlayerState p) =>
         p.Position.Y - SimConfig.PLAYER_HALF_HEIGHT * 2 > Terrain.Height + SimConfig.DEATH_PIT_DEPTH;
 

@@ -80,9 +80,8 @@ public static class PlayerSim
             p.DashCooldown = stats.DashCooldownTicks;
         }
 
-        // Parry: raise the bubble and charge the cooldown up front. SimWorld
-        // refunds it on a successful deflect (the deflection itself happens
-        // there, shells are world entities); a whiff pays in full.
+        // Parry: raise the bubble and charge the cooldown up front; SimWorld
+        // refunds it on a deflect, a whiff pays in full.
         bool parryPressed = input.Parry && (p.PrevButtons & InputButtons.PARRY) == 0;
         if (parryPressed && p.ParryCooldown == 0 && p.ParryTicks == 0)
         {

@@ -19,11 +19,8 @@ public class ShellRetirementTests
     private const byte AIM_UP = 192;         // straight up: flies into open sky, stays alive
     private const int FIRE_TICK = 5;
 
-    /// <summary>
-    /// A deflection must keep the shot's identity so the original shooter can
-    /// find and retire its own predicted copy. Today the parry sets SpawnSeq to
-    /// -1, erasing exactly that identity.
-    /// </summary>
+    /// <summary>A deflection must keep the shot's identity so the original
+    /// shooter can find and retire its own predicted copy.</summary>
     [Fact]
     public void Deflection_PreservesShotIdentity_SoTheShooterCanRetireItsPrediction()
     {
@@ -50,11 +47,8 @@ public class ShellRetirementTests
         Assert.Contains((2, firedSeq), w.ShellRetirements); // reliable notice targets the original shooter
     }
 
-    /// <summary>
-    /// The shot's identity has to reach the owner. A deflected shell keeps
-    /// flying (no carve event yet), so the only channel is the snapshot, and the
-    /// snapshot drops SpawnSeq today.
-    /// </summary>
+    /// <summary>The shot's identity has to reach the owner: a deflected shell
+    /// keeps flying (no carve event yet), so the snapshot must carry it.</summary>
     [Fact]
     public void Snapshot_RoundTripsMortarSpawnSeq()
     {
@@ -65,12 +59,9 @@ public class ShellRetirementTests
         Assert.Equal(9, restored.Mortars[0].FiredBy);
     }
 
-    /// <summary>
-    /// Once the server retires a shell, the predictor must drop it and keep it
-    /// dropped: a reconcile that still owns the shot in its unacked replay window
-    /// must not resurrect it. The terminal set that guarantees this does not
-    /// exist yet, so the replay re-derives the shell every reconcile.
-    /// </summary>
+    /// <summary>Once the server retires a shell, the predictor must drop it and
+    /// keep it dropped: a reconcile that still owns the shot in its unacked
+    /// replay window must not resurrect it.</summary>
     [Fact]
     public void RetiredShell_LeavesFlight_AndNeverReturnsOnReplay()
     {

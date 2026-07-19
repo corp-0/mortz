@@ -6,12 +6,10 @@ using Mortz.Shared;
 namespace Mortz.Net;
 
 /// <summary>
-/// Autoload owning the ENet peer. Pure transport glue: connection lifecycle,
-/// peer validation (Hello), and the generic message envelope that every
-/// generated [NetMessage] rides through. The only bespoke RPCs left are the
-/// hot path (inputs up, snapshots down; per-peer acks and redundancy framing
-/// don't fit a uniform envelope) and Hello itself, which is the validation
-/// bootstrap the envelope relies on.
+/// Autoload owning the ENet peer: connection lifecycle, peer validation
+/// (Hello), and the envelope every generated [NetMessage] rides. The only
+/// bespoke RPCs are the hot path (inputs up, snapshots down) and Hello
+/// itself.
 /// </summary>
 public partial class NetworkManager : Node
 {
