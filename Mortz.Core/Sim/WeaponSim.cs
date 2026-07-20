@@ -20,8 +20,8 @@ public static class WeaponSim
         if (p.RespawnTicks > 0)
             return false; // corpses don't fire or reload
 
-        bool firePressed = input.Fire && (prevButtons & InputButtons.FIRE) == 0;
-        bool reloadPressed = input.Reload && (prevButtons & InputButtons.RELOAD) == 0;
+        bool firePressed = input.Fire && !prevButtons.HasFlag(InputButtons.FIRE);
+        bool reloadPressed = input.Reload && !prevButtons.HasFlag(InputButtons.RELOAD);
 
         bool fired = firePressed && p.Ammo > 0 && CombatEligibility.CanFire(p, inputSeq);
         if (fired)

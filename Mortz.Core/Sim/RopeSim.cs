@@ -16,7 +16,7 @@ public static class RopeSim
         if (p.RopeCooldown > 0)
             p.RopeCooldown--;
 
-        bool ropePressed = input.Rope && (p.PrevButtons & InputButtons.ROPE) == 0;
+        bool ropePressed = input.Rope && !p.PrevButtons.HasFlag(InputButtons.ROPE);
         if (ropePressed)
         {
             if (p.Rope == RopeMode.NONE && p.RopeCooldown == 0)

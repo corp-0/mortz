@@ -72,10 +72,18 @@ public partial class GameView : Node2D,
     /// <summary>Diagnostics tap: a snapshot was buffered and reconciled.</summary>
     public event Action<Snapshot>? SnapshotApplied;
 
+    /// <summary>Successive parries of one mortar climb a major pentatonic scale,
+    /// with rising gain since resampling up thins the sound.</summary>
+    private static readonly float[] _parryPitches =
+        Array.ConvertAll(new[] { 0, 2, 4, 7, 9, 12 }, st => Mathf.Pow(2f, st / 12f));
+
+    private const float PARRY_GAIN_DB_PER_STEP = 1f;
+
     private readonly SnapshotInterpolator _interpolator = new();
     private MortarReplicaSet _remoteMortars = null!;
     private MatchConfig _config = null!;
     private readonly Dictionary<byte, int> _peersBySlot = new();
+    private readonly Dictionary<ushort, int> _parriesByMortar = new();
 
     public int NewestSnapshotTick => _interpolator.NewestTick;
     public float RenderTick => _interpolator.RenderTick;
@@ -206,14 +214,24 @@ public partial class GameView : Node2D,
                 case SimWorld.MortarEventKind.DEFLECT:
                     _remoteMortars.Deflect(e.State, tick, NewestSnapshotTick);
                     RetireDeflectedPrediction(e.State);
-                    Sfx.PlayAt(Sfx.Sounds.ParrySuccess,
-                        new Vector2(e.State.Position.X, e.State.Position.Y));
+                    PlayParrySound(e.State);
                     break;
                 case SimWorld.MortarEventKind.END:
+                    _parriesByMortar.Remove(e.State.Id);
                     RetireEndedMortar(e.State.Id);
                     break;
             }
         }
+    }
+
+    private void PlayParrySound(in MortarState state)
+    {
+        int step = _parriesByMortar.GetValueOrDefault(state.Id);
+        _parriesByMortar[state.Id] = step + 1;
+        step = Math.Min(step, _parryPitches.Length - 1);
+        Sfx.PlayAt(Sfx.Sounds.ParrySuccess,
+            new Vector2(state.Position.X, state.Position.Y),
+            _parryPitches[step], step * PARRY_GAIN_DB_PER_STEP);
     }
 
     private void RetireDeflectedPrediction(in MortarState state)

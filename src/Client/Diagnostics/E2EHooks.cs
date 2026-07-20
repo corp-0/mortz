@@ -131,7 +131,7 @@ public partial class E2EHooks : Node
     /// side stays dumb.</summary>
     private static void LogScore(EliminationMsg m)
     {
-        bool suicide = (m.Flags & EliminationFlags.SUICIDE) != 0;
+        bool suicide = m.Flags.HasFlag(EliminationFlags.SUICIDE);
         GD.Print(suicide
             ? $"[client] score: {m.VictimId} suicides ({m.KillerKills} kills, {m.VictimDeaths} deaths)"
             : $"[client] score: {m.KillerId} killed {m.VictimId} ({m.KillerKills} kills), " +

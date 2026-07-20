@@ -238,7 +238,7 @@ public sealed class SimWorld
                 // are one-tick actions, not held state.
                 PlayerState simPrev = prev with
                 {
-                    PrevButtons = prev.PrevButtons & ~queue.PressedButtons,
+                    PrevButtons = prev.PrevButtons.Except(queue.PressedButtons),
                 };
                 state = PlayerSim.Tick(simPrev, input, Terrain, stats);
                 // Run the weapon per consumed input, not just the applied one: a

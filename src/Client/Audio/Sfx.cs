@@ -96,20 +96,23 @@ public partial class Sfx : Node
         }
     }
 
-    public static SfxHandle Play(SoundEffect? sound) =>
-        _instance?.Start(sound, spatial: false, default, null) ?? default;
+    public static SfxHandle Play(SoundEffect? sound, float pitch = 1f, float gainDb = 0f) =>
+        _instance?.Start(sound, spatial: false, default, null, pitch, gainDb) ?? default;
 
-    public static SfxHandle PlayAt(SoundEffect? sound, Vector2 position) =>
-        _instance?.Start(sound, spatial: true, position, null) ?? default;
+    public static SfxHandle PlayAt(SoundEffect? sound, Vector2 position, float pitch = 1f,
+        float gainDb = 0f) =>
+        _instance?.Start(sound, spatial: true, position, null, pitch, gainDb) ?? default;
 
-    public static SfxHandle PlayAttached(SoundEffect? sound, Node2D target) =>
+    public static SfxHandle PlayAttached(SoundEffect? sound, Node2D target, float pitch = 1f,
+        float gainDb = 0f) =>
         _instance?.Start(sound, spatial: true,
-            target.OrNull()?.GlobalPosition ?? default, target) ?? default;
+            target.OrNull()?.GlobalPosition ?? default, target, pitch, gainDb) ?? default;
 
     internal void Stop(bool spatial, int index, uint generation) =>
         ReleaseVoice(spatial ? _spatial : _flat, index, generation, stop: true);
 
-    private SfxHandle Start(SoundEffect? sound, bool spatial, Vector2 position, Node2D? target)
+    private SfxHandle Start(SoundEffect? sound, bool spatial, Vector2 position, Node2D? target,
+        float pitch, float gainDb)
     {
         sound = sound.OrNull();
         if (sound?.Stream == null || (target != null && target.OrNull() == null))
@@ -126,10 +129,10 @@ public partial class Sfx : Node
         voice.StartSerial = ++_startSerial;
         voice.Priority = sound.Priority;
         voice.TimeScaled = sound.TimeScaled;
-        voice.BasePitch = 1f;
+        voice.BasePitch = pitch;
         voice.Target = target;
         ConfigurePlayer(voice.Player, sound, position,
-            sound.TimeScaled ? CurrentTimeScale() : 1f);
+            sound.TimeScaled ? pitch * CurrentTimeScale() : pitch, gainDb);
         PlayPlayer(voice.Player);
         return new SfxHandle(this, spatial, index, voice.Generation);
     }
@@ -241,19 +244,20 @@ public partial class Sfx : Node
     private static float CurrentTimeScale() =>
         Mathf.Clamp(ClientClock.TimeScale, 0.05f, 1f);
 
-    private static void ConfigurePlayer(Node player, SoundEffect sound, Vector2 position, float pitch)
+    private static void ConfigurePlayer(Node player, SoundEffect sound, Vector2 position,
+        float pitch, float gainDb)
     {
         switch (player)
         {
             case AudioStreamPlayer flat:
                 flat.Stream = sound.Stream;
-                flat.VolumeDb = sound.VolumeDb;
+                flat.VolumeDb = sound.VolumeDb + gainDb;
                 flat.Bus = sound.BusName;
                 flat.PitchScale = pitch;
                 break;
             case AudioStreamPlayer2D spatial:
                 spatial.Stream = sound.Stream;
-                spatial.VolumeDb = sound.VolumeDb;
+                spatial.VolumeDb = sound.VolumeDb + gainDb;
                 spatial.Bus = sound.BusName;
                 spatial.PitchScale = pitch;
                 spatial.MaxDistance = sound.MaxDistance;

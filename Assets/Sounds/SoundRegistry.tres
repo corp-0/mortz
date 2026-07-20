@@ -10,13 +10,14 @@
 [ext_resource type="Resource" uid="uid://n40shrfn7i7a" path="res://Assets/Sounds/mortar_reload.tres" id="3_k3oql"]
 [ext_resource type="Resource" uid="uid://cgcvt4sox23hg" path="res://Assets/Sounds/shell_impact.tres" id="4"]
 [ext_resource type="AudioStream" uid="uid://b7hyrv23ifscb" path="res://Assets/Sounds/malescream_4.ogg" id="4_g5vpd"]
-[ext_resource type="Resource" uid="uid://xn8e72fnn234" path="res://Assets/Sounds/parry_raise.tres" id="5"]
 [ext_resource type="AudioStream" uid="uid://b4gcm0u56xn6x" path="res://Assets/Sounds/malescream_5.ogg" id="5_haxh4"]
 [ext_resource type="Resource" uid="uid://0vvoxt3nv7bd" path="res://Assets/Sounds/parry_success.tres" id="6"]
 [ext_resource type="AudioStream" uid="uid://di7ap87rwqh1h" path="res://Assets/Sounds/malescream_6.ogg" id="6_p6q71"]
 [ext_resource type="Resource" uid="uid://c5a1f31x2e1dw" path="res://Assets/Sounds/regular_kill.tres" id="7"]
 [ext_resource type="Script" uid="uid://ds47gmtfre85k" path="res://src/Client/Audio/SoundEffect.cs" id="7_graqg"]
 [ext_resource type="Resource" uid="uid://bkkkoim76s6me" path="res://Assets/Sounds/owned.tres" id="8"]
+[ext_resource type="AudioStream" uid="uid://ooxbt0ao7tns" path="res://Assets/Sounds/parry_raise1.wav" id="12_ox5b5"]
+[ext_resource type="AudioStream" uid="uid://smgbvo27lpwv" path="res://Assets/Sounds/parry_raise2.wav" id="13_2oxye"]
 
 [sub_resource type="AudioStreamRandomizer" id="AudioStreamRandomizer_vptec"]
 streams_count = 6
@@ -35,6 +36,17 @@ Bus = 3
 MaxDistance = 900.0
 metadata/_custom_type_script = "uid://ds47gmtfre85k"
 
+[sub_resource type="AudioStreamRandomizer" id="AudioStreamRandomizer_4r3ks"]
+streams_count = 2
+stream_0/stream = ExtResource("12_ox5b5")
+stream_1/stream = ExtResource("13_2oxye")
+
+[sub_resource type="Resource" id="Resource_rvoui"]
+script = ExtResource("7_graqg")
+Stream = SubResource("AudioStreamRandomizer_4r3ks")
+MaxDistance = 1200.0
+metadata/_custom_type_script = "uid://ds47gmtfre85k"
+
 [resource]
 script = ExtResource("1")
 MortarFire = ExtResource("2")
@@ -42,7 +54,7 @@ MortarReload = ExtResource("3_k3oql")
 ShellWhoosh = ExtResource("3")
 ShellImpact = ExtResource("4")
 DeathScream = SubResource("Resource_npbm6")
-ParryRaise = ExtResource("5")
+ParryRaise = SubResource("Resource_rvoui")
 ParrySuccess = ExtResource("6")
 RegularKill = ExtResource("7")
 FirstBlood = ExtResource("1_r7fwr")

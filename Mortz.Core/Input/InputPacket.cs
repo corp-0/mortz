@@ -60,7 +60,7 @@ public static class InputPacket
         {
             InputButtons buttons = (InputButtons)System.Buffers.Binary.BinaryPrimitives
                 .ReadUInt16LittleEndian(data.Slice(offset, sizeof(ushort)));
-            if ((buttons & ~DEFINED_BUTTONS) != 0)
+            if (buttons.Except(DEFINED_BUTTONS) != InputButtons.NONE)
                 return false;
             int seq = unchecked(newestSeq - count + 1 + i);
             decoded.Add((seq, new PlayerInput(buttons, data[offset + sizeof(ushort)])));

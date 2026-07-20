@@ -54,7 +54,7 @@ public partial class MatchScore : Node
         _deaths[message.VictimId] = message.VictimDeaths;
         // On a suicide KillerKills carries the victim's own (possibly
         // penalized) count; otherwise it is the killer's total after the kill.
-        if ((message.Flags & EliminationFlags.SUICIDE) != 0)
+        if (message.Flags.HasFlag(EliminationFlags.SUICIDE))
             _kills[message.VictimId] = message.KillerKills;
         else if (message.KillerId != 0)
             _kills[message.KillerId] = message.KillerKills;

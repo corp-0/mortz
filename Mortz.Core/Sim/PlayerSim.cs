@@ -43,7 +43,7 @@ public static class PlayerSim
         p.Velocity = p.Velocity with { Y = MathF.Min(p.Velocity.Y + stats.Gravity * DT, maxFall) };
 
         // Jumps: ground (incl. coyote grace), then wall, then air.
-        bool jumpPressed = input.Jump && (p.PrevButtons & InputButtons.JUMP) == 0;
+        bool jumpPressed = input.Jump && !p.PrevButtons.HasFlag(InputButtons.JUMP);
         if (jumpPressed)
         {
             // On a rope, jump only lets go: dropping out of a swing keeps your
@@ -73,7 +73,7 @@ public static class PlayerSim
 
         // Dash: an impulse along the held movement keys (8-way), added onto the
         // current velocity. Aim stays free for shooting; no keys held = no dash.
-        bool dashPressed = input.Dash && (p.PrevButtons & InputButtons.DASH) == 0;
+        bool dashPressed = input.Dash && !p.PrevButtons.HasFlag(InputButtons.DASH);
         if (dashPressed && p.DashCooldown == 0 && input.HeldDir != Vec2.Zero)
         {
             p.Velocity += input.HeldDir * stats.DashSpeed;
@@ -82,7 +82,7 @@ public static class PlayerSim
 
         // Parry: raise the bubble and charge the cooldown up front; SimWorld
         // refunds it on a deflect, a whiff pays in full.
-        bool parryPressed = input.Parry && (p.PrevButtons & InputButtons.PARRY) == 0;
+        bool parryPressed = input.Parry && !p.PrevButtons.HasFlag(InputButtons.PARRY);
         if (parryPressed && p.ParryCooldown == 0 && p.ParryTicks == 0)
         {
             p.ParryTicks = stats.ParryWindowTicks;

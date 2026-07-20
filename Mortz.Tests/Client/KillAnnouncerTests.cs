@@ -26,12 +26,14 @@ public class KillAnnouncerTests
     }
 
     [Fact]
-    public void OwnedRemainsPersonalToTheKiller()
+    public void OwnedPlaysForKillerAndVictimOnly()
     {
         EliminationMsg msg = Message(killer: 7, EliminationFlags.OWNED);
 
         Assert.Equal(KillAnnouncer.Cue.OWNED,
             KillAnnouncer.SelectCue(msg, localId: 7));
+        Assert.Equal(KillAnnouncer.Cue.OWNED,
+            KillAnnouncer.SelectCue(msg, localId: 8));
         Assert.Null(KillAnnouncer.SelectCue(msg, localId: 99));
     }
 

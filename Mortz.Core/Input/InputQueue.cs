@@ -89,9 +89,9 @@ public sealed class InputQueue
     {
         int seq = FirstPendingSeq();
         PlayerInput input = _pending[seq];
-        bool ropePressed = input.Rope && (_prevConsumedButtons & InputButtons.ROPE) == 0;
+        bool ropePressed = input.Rope && !_prevConsumedButtons.HasFlag(InputButtons.ROPE);
         Consume(seq, input);
-        _carriedButtons |= input.Buttons & CARRIED_BUTTONS;
+        _carriedButtons |= input.Buttons.Only(CARRIED_BUTTONS);
         if (ropePressed && _carriedRopeAim == null)
             _carriedRopeAim = input.Aim;
         _pending.Remove(seq);
@@ -120,8 +120,8 @@ public sealed class InputQueue
     private void Consume(int seq, PlayerInput input)
     {
         _consumed.Add((seq, input));
-        _pressedButtons |= input.Buttons & ~_prevConsumedButtons;
-        if (input.Fire && (_prevConsumedButtons & InputButtons.FIRE) == 0)
+        _pressedButtons |= input.Buttons.Except(_prevConsumedButtons);
+        if (input.Fire && !_prevConsumedButtons.HasFlag(InputButtons.FIRE))
             FireSeq = seq;
         _prevConsumedButtons = input.Buttons;
     }

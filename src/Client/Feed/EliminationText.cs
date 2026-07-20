@@ -6,13 +6,13 @@ public static class EliminationText
 {
     public static string Format(EliminationMsg message, Func<long, string> name)
     {
-        if ((message.Flags & EliminationFlags.OWNED) != 0)
+        if (message.Flags.HasFlag(EliminationFlags.OWNED))
             return $"{name(message.KillerId)} OWNED {name(message.VictimId)}";
-        if ((message.Flags & EliminationFlags.FALL) != 0)
+        if (message.Flags.HasFlag(EliminationFlags.FALL))
             return $"{name(message.VictimId)} fell out of the world";
-        if ((message.Flags & EliminationFlags.SUICIDE) != 0)
+        if (message.Flags.HasFlag(EliminationFlags.SUICIDE))
             return $"{name(message.VictimId)} blew themselves up";
-        if ((message.Flags & EliminationFlags.TEAM_KILL) != 0)
+        if (message.Flags.HasFlag(EliminationFlags.TEAM_KILL))
             return $"{name(message.KillerId)} team-killed {name(message.VictimId)}";
         return $"{name(message.KillerId)} killed {name(message.VictimId)}";
     }

@@ -39,9 +39,10 @@ public partial class KillAnnouncer : Node
 
     internal static Cue? SelectCue(EliminationMsg msg, long localId)
     {
-        if ((msg.Flags & EliminationFlags.FIRST_BLOOD) != 0)
+        if (msg.Flags.HasFlag(EliminationFlags.FIRST_BLOOD))
             return Cue.FIRST_BLOOD;
-        if (msg.KillerId == localId && (msg.Flags & EliminationFlags.OWNED) != 0)
+        if ((msg.KillerId == localId || msg.VictimId == localId) &&
+            msg.Flags.HasFlag(EliminationFlags.OWNED))
             return Cue.OWNED;
         return null;
     }
