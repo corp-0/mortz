@@ -16,6 +16,7 @@ namespace Mortz.Server.Chat;
 public partial class ServerChat : Node, IServerAdminAuthorizer
 {
     private readonly ChatPolicy _chatPolicy = new();
+    private readonly HashSet<long> _typing = new();
     private AdminAuthenticator _admin = null!;
     private bool _subscribed;
 
@@ -47,6 +48,7 @@ public partial class ServerChat : Node, IServerAdminAuthorizer
         Network.PeerLeft += OnPeerLeft;
         ChatSendMsg.Received += OnChatSend;
         RollRequestMsg.Received += OnRollRequest;
+        TypingMsg.Received += OnTyping;
         AdminAuthRequestMsg.Received += OnAdminAuthRequest;
         AdminProofMsg.Received += OnAdminProof;
         _subscribed = true;
@@ -60,8 +62,10 @@ public partial class ServerChat : Node, IServerAdminAuthorizer
         Network.PeerLeft -= OnPeerLeft;
         ChatSendMsg.Received -= OnChatSend;
         RollRequestMsg.Received -= OnRollRequest;
+        TypingMsg.Received -= OnTyping;
         AdminAuthRequestMsg.Received -= OnAdminAuthRequest;
         AdminProofMsg.Received -= OnAdminProof;
+        _typing.Clear();
         _chatPolicy.Reset();
         _admin.Dispose();
         _subscribed = false;
@@ -77,6 +81,18 @@ public partial class ServerChat : Node, IServerAdminAuthorizer
     {
         _chatPolicy.Remove(peerId);
         _admin.Remove(peerId);
+        if (_typing.Remove(peerId))
+            new TypingStateMsg(peerId, false).Broadcast();
+    }
+
+    // Dropping no-op repeats is the flood guard: one broadcast per state flip.
+    private void OnTyping(long sender, TypingMsg message)
+    {
+        if (!Session.ContainsPlayer(sender))
+            return;
+        bool changed = message.IsTyping ? _typing.Add(sender) : _typing.Remove(sender);
+        if (changed)
+            new TypingStateMsg(sender, message.IsTyping).Broadcast();
     }
 
     private void OnChatSend(long sender, ChatSendMsg message)

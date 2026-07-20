@@ -21,6 +21,12 @@ buses/default_bus_layout="uid://bebvex8an0eju"
 
 [autoload]
 
+
+
+
+
+
+
 NetworkManager="*res://src/Net/NetworkManager.cs"
 
 [display]

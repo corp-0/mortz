@@ -19,7 +19,13 @@ public partial class RollLine : HBoxContainer
 
     public static RollLine Create(string senderName, int value, bool animate)
     {
-        RollLine line = new() { _senderName = senderName, _value = value };
+        // Never takes the mouse; the in-game overlay stays click-through.
+        RollLine line = new()
+        {
+            _senderName = senderName,
+            _value = value,
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
         if (animate)
             line.BuildReel();
         else
@@ -58,8 +64,9 @@ public partial class RollLine : HBoxContainer
             ClipContents = true,
             CustomMinimumSize = new Vector2(rowWidth, rowHeight),
             SizeFlagsVertical = SizeFlags.ShrinkCenter,
+            MouseFilter = MouseFilterEnum.Ignore,
         };
-        _column = new Control();
+        _column = new Control { MouseFilter = MouseFilterEnum.Ignore };
         for (int i = 0; i < REEL_ROWS; i++)
         {
             int shown = i == REEL_ROWS - 1
@@ -91,6 +98,7 @@ public partial class RollLine : HBoxContainer
             AutowrapMode = TextServer.AutowrapMode.Off,
             CustomMinimumSize = new Vector2(
                 font.GetStringSize(prefix, fontSize: fontSize).X + 2f, 0f),
+            MouseFilter = MouseFilterEnum.Ignore,
         };
     }
 
@@ -115,5 +123,6 @@ public partial class RollLine : HBoxContainer
         BbcodeEnabled = true,
         FitContent = true,
         SizeFlagsHorizontal = SizeFlags.ExpandFill,
+        MouseFilter = MouseFilterEnum.Ignore,
     };
 }

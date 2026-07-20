@@ -109,7 +109,7 @@ public class ChatCompositionTests : NodeServiceTest
         {
             Assert.IsType<KillFeed>(game.GetNode("KillFeed"));
             Assert.IsType<ClientChat>(game.GetNode("ClientChat"));
-            Assert.IsType<ChatPanel>(game.GetNode("Hud/ChatPanel"));
+            Assert.IsType<GameChat>(game.GetNode("Hud/GameChat"));
         }
         finally
         {

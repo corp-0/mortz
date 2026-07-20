@@ -4,6 +4,7 @@
 [ext_resource type="Texture2D" uid="uid://dwe3tj73fx26j" path="res://Assets/BaseCannon.png" id="2_2h1fo"]
 [ext_resource type="Script" uid="uid://b7lehci78rb18" path="res://src/Client/Views/PlayerView.cs" id="3_pview"]
 [ext_resource type="Script" uid="uid://b6jvo56n8bmbd" path="res://src/Client/Views/PlayerReloadIndicator.cs" id="4_reload"]
+[ext_resource type="Texture2D" uid="uid://dtss4v1mjjkm6" path="res://Assets/ImanorBalloon.png" id="5_rvoui"]
 
 [sub_resource type="Curve" id="Curve_dash"]
 _data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
@@ -12,7 +13,64 @@ point_count = 2
 [sub_resource type="Gradient" id="Gradient_dash"]
 colors = PackedColorArray(0.82, 0.78, 0.7, 0.85, 0.6, 0.57, 0.5, 0)
 
-[node name="Player" type="Node2D" unique_id=1524314240 node_paths=PackedStringArray("_body", "_aimPivot", "_launcher", "_camera", "_reloadBar", "_nameplate", "_dashDust")]
+[sub_resource type="AtlasTexture" id="AtlasTexture_4r3ks"]
+atlas = ExtResource("5_rvoui")
+region = Rect2(16, 16, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_kvhn5"]
+atlas = ExtResource("5_rvoui")
+region = Rect2(32, 16, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ga83w"]
+atlas = ExtResource("5_rvoui")
+region = Rect2(48, 16, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_78rdn"]
+atlas = ExtResource("5_rvoui")
+region = Rect2(64, 16, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_uk5lo"]
+atlas = ExtResource("5_rvoui")
+region = Rect2(80, 16, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_2ybii"]
+atlas = ExtResource("5_rvoui")
+region = Rect2(96, 16, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_lmcet"]
+atlas = ExtResource("5_rvoui")
+region = Rect2(112, 16, 16, 16)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_vawe1"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_4r3ks")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_kvhn5")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ga83w")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_78rdn")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_uk5lo")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_2ybii")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_lmcet")
+}],
+"loop": 1,
+"name": &"default",
+"speed": 5.0
+}]
+
+[node name="Player" type="Node2D" unique_id=1524314240 node_paths=PackedStringArray("_body", "_aimPivot", "_launcher", "_camera", "_reloadBar", "_nameplate", "_dashDust", "_typingAnimation")]
 script = ExtResource("3_pview")
 _body = NodePath("PlayerSprite")
 _aimPivot = NodePath("AimPivot")
@@ -21,6 +79,7 @@ _camera = NodePath("Camera2D")
 _reloadBar = NodePath("ReloadingTime")
 _nameplate = NodePath("Nameplate")
 _dashDust = NodePath("DashDust")
+_typingAnimation = NodePath("AnimatedSprite2D")
 
 [node name="PlayerSprite" type="Sprite2D" parent="." unique_id=1209316856]
 texture = ExtResource("1_el0ul")
@@ -78,3 +137,9 @@ grow_horizontal = 2
 theme_override_font_sizes/font_size = 10
 text = "PlayerName with 24 chars"
 horizontal_alignment = 1
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=1022348885]
+visible = false
+position = Vector2(0, -38)
+sprite_frames = SubResource("SpriteFrames_vawe1")
+frame_progress = 0.44544294

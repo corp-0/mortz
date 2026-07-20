@@ -1,13 +1,14 @@
 [gd_scene format=3 uid="uid://ciqycdoqosx85"]
 
 [ext_resource type="Script" uid="uid://dfrjixf7towk0" path="res://src/Client/Chat/ChatPanel.cs" id="1_chat"]
+[ext_resource type="Script" path="res://src/Client/Chat/ChatFeed.cs" id="2_feed"]
 
-[node name="ChatPanel" type="PanelContainer" unique_id=2023193911 node_paths=PackedStringArray("_scroll", "_lines", "_input")]
+[node name="ChatPanel" type="PanelContainer" unique_id=2023193911 node_paths=PackedStringArray("_scroll", "_feed", "_input")]
 offset_right = 520.0
 offset_bottom = 258.0
 script = ExtResource("1_chat")
 _scroll = NodePath("Margin/Column/Scroll")
-_lines = NodePath("Margin/Column/Scroll/Lines")
+_feed = NodePath("Margin/Column/Scroll/Feed")
 _input = NodePath("Margin/Column/Input")
 
 [node name="Margin" type="MarginContainer" parent="." unique_id=1271554942]
@@ -26,9 +27,10 @@ layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
-[node name="Lines" type="VBoxContainer" parent="Margin/Column/Scroll" unique_id=1603471409]
+[node name="Feed" type="VBoxContainer" parent="Margin/Column/Scroll" unique_id=1603471409]
 layout_mode = 2
 size_flags_horizontal = 3
+script = ExtResource("2_feed")
 
 [node name="Input" type="LineEdit" parent="Margin/Column" unique_id=700069443]
 layout_mode = 2

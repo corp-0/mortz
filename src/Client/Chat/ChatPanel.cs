@@ -1,7 +1,4 @@
 using Godot;
-using Mortz.Core.Chat;
-using Mortz.Core.Net;
-using Mortz.Core.Text;
 
 namespace Mortz.Client.Chat;
 
@@ -11,25 +8,24 @@ public partial class ChatPanel : PanelContainer
 {
     [Export] private ClientChat _chat = null!;
     [Export] private ScrollContainer _scroll = null!;
-    [Export] private VBoxContainer _lines = null!;
+    [Export] private ChatFeed _feed = null!;
     [Export] private LineEdit _input = null!;
 
-    private bool _subscribed;
+    private ScrollBottomPin _scrollPin = null!;
 
     public override void _Ready()
     {
+        _scrollPin = new ScrollBottomPin(_scroll);
         _input.TextSubmitted += OnTextSubmitted;
         _input.FocusEntered += OnFocusEntered;
         _input.FocusExited += OnFocusExited;
         VisibilityChanged += OnVisibilityChanged;
-        Subscribe();
+        _feed.LineAdded += OnLineAdded;
+        _feed.Rebuilt += _scrollPin.Arm;
+        _feed.Bind(_chat);
     }
 
-    public override void _ExitTree()
-    {
-        Unsubscribe();
-        ChatInputGuard.SetTyping(this, false);
-    }
+    public override void _ExitTree() => ChatInputGuard.SetTyping(this, false);
 
     public override void _UnhandledKeyInput(InputEvent @event)
     {
@@ -64,83 +60,5 @@ public partial class ChatPanel : PanelContainer
             _input.ReleaseFocus();
     }
 
-    private void OnEntryAdded(ChatEntry entry)
-    {
-        AddLine(entry, animate: true);
-        CallDeferred(MethodName.ScrollToBottom);
-    }
-
-    private void OnCleared() => ClearLines();
-
-    private void Rebuild()
-    {
-        ClearLines();
-        foreach (ChatEntry entry in _chat.State.Entries)
-        {
-            AddLine(entry, animate: false);
-        }
-        CallDeferred(MethodName.ScrollToBottom);
-    }
-
-    private void Subscribe()
-    {
-        if (_subscribed)
-            return;
-        _chat.State.EntryAdded += OnEntryAdded;
-        _chat.State.Cleared += OnCleared;
-        _subscribed = true;
-        Rebuild();
-    }
-
-    private void Unsubscribe()
-    {
-        if (!_subscribed)
-            return;
-        _chat.State.EntryAdded -= OnEntryAdded;
-        _chat.State.Cleared -= OnCleared;
-        _subscribed = false;
-    }
-
-    private void AddLine(ChatEntry entry, bool animate)
-    {
-        _lines.AddChild(
-            entry.Kind == ChatEntryKind.ROLL && DiceRoll.TryParse(entry.Text, out int rolled)
-                ? RollLine.Create(entry.SenderName, rolled, animate)
-                : BuildTextLine(entry));
-        while (_lines.GetChildCount() > NetConfig.MAX_CHAT_HISTORY)
-        {
-            _lines.GetChild(0).Free();
-        }
-    }
-
-    private static RichTextLabel BuildTextLine(ChatEntry entry)
-    {
-        RichText content = entry.Render();
-        RichText text = entry.Kind switch
-        {
-            ChatEntryKind.PLAYER => new RichText().Bold().ApplyTo(entry.SenderName)
-                .Add(": ").Add(content),
-            ChatEntryKind.PRIVATE => new RichText().Italic().ApplyTo("* ").Add(content),
-            _ => content,
-        };
-        return new RichTextLabel
-        {
-            Text = text.ToString(),
-            AutowrapMode = TextServer.AutowrapMode.WordSmart,
-            BbcodeEnabled = true,
-            FitContent = true,
-        };
-    }
-
-    private void ClearLines()
-    {
-        foreach (Node child in _lines.GetChildren())
-        {
-            _lines.RemoveChild(child);
-            child.QueueFree();
-        }
-    }
-
-    private void ScrollToBottom() =>
-        _scroll.ScrollVertical = checked((int)_scroll.GetVScrollBar().MaxValue);
+    private void OnLineAdded(Control line) => _scrollPin.Arm();
 }

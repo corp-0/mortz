@@ -1,6 +1,7 @@
 using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
+using Mortz.Client.Chat;
 using Mortz.Core.Match;
 using Mortz.Core.Net.Messages;
 using Mortz.Core.Sim;
@@ -32,6 +33,7 @@ public partial class PlayerViewManager : Node2D
     private readonly Dictionary<int, string> _names = new();
     private readonly Dictionary<int, byte> _skins = new();
     private readonly Dictionary<int, byte> _teams = new();
+    private readonly HashSet<int> _typing = new();
     private bool _replayActive;
 
     // Replicated per-player modifier lists resolve through the same
@@ -54,12 +56,27 @@ public partial class PlayerViewManager : Node2D
     {
         RosterMsg.Received += OnRoster;
         PlayerModifiersMsg.Received += OnPlayerModifiers;
+        TypingStateMsg.Received += OnTypingState;
     }
 
     public void OnExitTree()
     {
         RosterMsg.Received -= OnRoster;
         PlayerModifiersMsg.Received -= OnPlayerModifiers;
+        TypingStateMsg.Received -= OnTypingState;
+    }
+
+    // Same race as rosters: applied at spawn and to the live view when a
+    // broadcast lands. The local player polls ChatInputGuard in Place instead.
+    private void OnTypingState(TypingStateMsg msg)
+    {
+        int peerId = (int)msg.PeerId;
+        if (msg.IsTyping)
+            _typing.Add(peerId);
+        else
+            _typing.Remove(peerId);
+        if (peerId != Network.LocalPeerId && _views.TryGetValue(peerId, out PlayerView? view))
+            view.SetTyping(msg.IsTyping);
     }
 
     // Modifiers race views the same way rosters do: they apply at spawn from
@@ -130,9 +147,13 @@ public partial class PlayerViewManager : Node2D
             view.SetReplayActive(_replayActive);
             view.SetPlayerName(_names.GetValueOrDefault(peerId, ""));
             view.SetTeam(_teams.GetValueOrDefault(peerId));
+            if (!isLocal)
+                view.SetTyping(_typing.Contains(peerId));
             AddChild(view);
             _views[peerId] = view;
         }
+        if (isLocal)
+            view.SetTyping(ChatInputGuard.IsTyping);
         view.Apply(state, playTransitions: !_replayActive);
     }
 

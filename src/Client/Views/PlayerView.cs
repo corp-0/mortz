@@ -18,7 +18,7 @@ public partial class PlayerView : Node2D
 
     private const float HIT_FLASH_TIME = 0.2f; // s
     private const int IMMUNITY_TOGGLES_PER_SECOND = 10;
-    internal const byte IMMUNITY_FLICKER_TICKS = SimConfig.TICK_RATE / IMMUNITY_TOGGLES_PER_SECOND;
+    private const byte IMMUNITY_FLICKER_TICKS = SimConfig.TICK_RATE / IMMUNITY_TOGGLES_PER_SECOND;
 
     [Export] private Sprite2D _body = null!;
     [Export] private Node2D _aimPivot = null!;
@@ -27,17 +27,17 @@ public partial class PlayerView : Node2D
     [Export] private PlayerReloadIndicator _reloadBar = null!;
     [Export] private Label _nameplate = null!;
     [Export] private CpuParticles2D _dashDust = null!;
+    [Export] private AnimatedSprite2D _typingAnimation = null!;
 
     private static readonly Color _shieldColor = new(0.4f, 0.9f, 1f, 0.8f);
 
-    internal PlayerStats StatsForTest => _stats;
+    internal PlayerStats StatsForTest { get; private set; } = null!;
 
     private bool _boxVisible;
     private bool _shieldVisible;
     private bool _isLocal;
     private bool _replayActive;
     private float _hitFlash;
-    private PlayerStats _stats = null!;
     private PlayerViewState? _previous;
     private SfxHandle _reloadSound;
 
@@ -45,7 +45,7 @@ public partial class PlayerView : Node2D
     /// whenever this player's replicated stats change.</summary>
     public void Configure(PlayerStats stats)
     {
-        _stats = stats;
+        StatsForTest = stats;
         _reloadBar.Configure(stats);
         QueueRedraw(); // the shield can be up while its radius changes
     }
@@ -66,6 +66,18 @@ public partial class PlayerView : Node2D
     }
 
     public void SetPlayerName(string name) => _nameplate.Text = name;
+
+    /// <summary>The chat balloon; everyone sees it, including the typist.</summary>
+    public void SetTyping(bool typing)
+    {
+        if (_typingAnimation.Visible == typing)
+            return;
+        _typingAnimation.Visible = typing;
+        if (typing)
+            _typingAnimation.Play();
+        else
+            _typingAnimation.Stop();
+    }
 
     /// <summary>Nameplates wear the team color; body tint stays free for the
     /// hit flash. 0 restores the neutral color when teams turn off.</summary>
@@ -145,7 +157,7 @@ public partial class PlayerView : Node2D
     {
         // Placeholder parry bubble until real shield art exists.
         if (_shieldVisible)
-            DrawArc(Vector2.Zero, _stats.ParryRadius, 0, MathF.Tau, 48, _shieldColor, 2f, antialiased: true);
+            DrawArc(Vector2.Zero, StatsForTest.ParryRadius, 0, MathF.Tau, 48, _shieldColor, 2f, antialiased: true);
         _boxVisible = DrawSimBoxes;
         if (!DrawSimBoxes)
             return;
