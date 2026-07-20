@@ -35,8 +35,5 @@ public abstract class NodeServiceTest : IDisposable
             node.GetParent()?.RemoveChild(node);
             node.Free();
         }
-        // Boundary tests call ResetPeer, which nulls the peer; later tests
-        // expect the engine default (offline peer, unique id 1) back.
-        NetworkManager.Instance.Multiplayer.MultiplayerPeer ??= new OfflineMultiplayerPeer();
     }
 }

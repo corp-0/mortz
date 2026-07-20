@@ -20,10 +20,10 @@ public partial class ServerHost : Node
 
     public override void _Ready() => IsConfigured = TryLoadConfiguration();
 
-    public bool Listen()
+    public bool Listen(NetworkManager network)
     {
         int port = CmdArgs.GetInt("--port", NetConfig.DEFAULT_PORT);
-        Error error = NetworkManager.Instance.StartServer(port);
+        Error error = network.StartServer(port);
         if (error != Error.Ok)
         {
             GD.PrintErr($"[server] failed to listen on port {port}: {error}");

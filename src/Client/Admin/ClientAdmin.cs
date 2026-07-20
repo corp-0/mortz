@@ -1,3 +1,5 @@
+using Chickensoft.AutoInject;
+using Chickensoft.Introspection;
 using Godot;
 using Mortz.Core.Net.Messages;
 using Mortz.Net;
@@ -7,41 +9,40 @@ namespace Mortz.Client.Admin;
 /// <summary>Connected-session admin authority: owns the handshake secrets and
 /// signs privileged actions. Human-readable progress goes out as status lines;
 /// chat displays them but owns none of this.</summary>
+[Meta(typeof(IAutoNode))]
 public partial class ClientAdmin : Node
 {
     private readonly AdminAuthFlow _flow = new();
-    private long _localPeerId;
+    private bool _subscribed;
 
     public bool IsAdmin => _flow.IsAdmin;
     public event Action<bool>? AdminChanged;
     public event Action<string>? StatusLine;
 
-    public override void _Ready()
+    [Dependency]
+    private INetwork Network => this.DependOn<INetwork>();
+
+    public override void _Notification(int what) => this.Notify(what);
+
+    public void OnResolved()
     {
         AdminChallengeMsg.Received += OnChallenge;
         AdminStateMsg.Received += OnState;
-        NetworkManager network = NetworkManager.Instance;
-        network.Connected += OnConnected;
-        network.ConnectionFailed += OnSessionEnded;
-        network.Disconnected += OnSessionEnded;
-        network.TransportReset += OnSessionEnded;
+        _subscribed = true;
     }
 
-    public override void _ExitTree()
+    public void OnExitTree()
     {
+        if (!_subscribed)
+            return;
         AdminChallengeMsg.Received -= OnChallenge;
         AdminStateMsg.Received -= OnState;
-        NetworkManager network = NetworkManager.Instance;
-        network.Connected -= OnConnected;
-        network.ConnectionFailed -= OnSessionEnded;
-        network.Disconnected -= OnSessionEnded;
-        network.TransportReset -= OnSessionEnded;
-        OnSessionEnded();
+        _subscribed = false;
     }
 
     public void BeginAuthentication(string password)
     {
-        if (_localPeerId == 0)
+        if (Network.LocalPeerId == 0)
         {
             StatusLine?.Invoke("Connect to a server before authenticating.");
             return;
@@ -55,28 +56,11 @@ public partial class ClientAdmin : Node
 
     public bool TrySignAdminAction(byte action, ReadOnlySpan<byte> payload,
         out ulong sequence, out byte[] tag) =>
-        _flow.TrySign(_localPeerId, action, payload, out sequence, out tag);
-
-    internal void SetLocalPeerIdForTest(long peerId) => _localPeerId = peerId;
-
-    private void OnConnected()
-    {
-        _flow.Reset();
-        _localPeerId = NetworkManager.Instance.LocalPeerId;
-    }
-
-    private void OnSessionEnded()
-    {
-        bool changed = IsAdmin;
-        _flow.Reset();
-        _localPeerId = 0;
-        if (changed)
-            AdminChanged?.Invoke(false);
-    }
+        _flow.TrySign(Network.LocalPeerId, action, payload, out sequence, out tag);
 
     private void OnChallenge(AdminChallengeMsg message)
     {
-        if (!_flow.TryAnswerChallenge(_localPeerId, message))
+        if (!_flow.TryAnswerChallenge(Network.LocalPeerId, message))
             StatusLine?.Invoke("Invalid admin challenge.");
     }
 

@@ -21,6 +21,9 @@ public partial class SingleColumnRoster : ScrollContainer
     [Dependency]
     public ClientStats Stats => this.DependOn<ClientStats>();
 
+    [Dependency]
+    private INetwork Network => this.DependOn<INetwork>();
+
     public override void _Notification(int what) => this.Notify(what);
 
     public void OnResolved()
@@ -50,7 +53,7 @@ public partial class SingleColumnRoster : ScrollContainer
         {
             child.Free();
         }
-        long localId = NetworkManager.Instance.LocalPeerId;
+        long localId = Network.LocalPeerId;
         foreach (LobbyMember member in Setup.Members)
         {
             _players.AddChild(RosterSlots.BuildSlot(member, Stats, localId));

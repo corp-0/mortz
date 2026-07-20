@@ -1,9 +1,12 @@
+using Chickensoft.AutoInject;
+using Chickensoft.Introspection;
 using Godot;
 using Mortz.Core.Net.Messages;
 using Mortz.Net;
 
 namespace Mortz.Client.Audio;
 
+[Meta(typeof(IAutoNode))]
 public partial class KillAnnouncer : Node
 {
     internal enum Cue
@@ -12,13 +15,18 @@ public partial class KillAnnouncer : Node
         OWNED,
     }
 
-    public override void _Ready() => EliminationMsg.Received += OnElimination;
+    [Dependency]
+    private INetwork Network => this.DependOn<INetwork>();
 
-    public override void _ExitTree() => EliminationMsg.Received -= OnElimination;
+    public override void _Notification(int what) => this.Notify(what);
+
+    public void OnReady() => EliminationMsg.Received += OnElimination;
+
+    public void OnExitTree() => EliminationMsg.Received -= OnElimination;
 
     private void OnElimination(EliminationMsg msg)
     {
-        switch (SelectCue(msg, NetworkManager.Instance.LocalPeerId))
+        switch (SelectCue(msg, Network.LocalPeerId))
         {
             case Cue.FIRST_BLOOD:
                 Sfx.Play(Sfx.Sounds.FirstBlood);

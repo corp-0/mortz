@@ -7,6 +7,7 @@ using Mortz.Client.Setup;
 using Mortz.Client.Stats;
 using Mortz.Core.Match;
 using Mortz.Core.Net.Messages;
+using Mortz.Net;
 using twodog.xunit;
 using Xunit;
 
@@ -83,14 +84,18 @@ public class RosterCompositionTests : NodeServiceTest
 
     private Lobby MountLobby()
     {
+        FakeNetwork network = new() { LocalPeerId = 1 };
         MatchSetup setup = Host(new MatchSetup());
         ClientStats stats = Host(new ClientStats());
-        ClientAdmin admin = Host(new ClientAdmin());
+        ClientAdmin admin = new();
+        admin.FakeDependency<INetwork>(network);
+        Host(admin);
         Lobby lobby = ResourceLoader.Load<PackedScene>(
             "res://src/Shared/UI/Menus/Lobby.tscn").Instantiate<Lobby>();
         lobby.FakeDependency(setup);
         lobby.FakeDependency(stats);
         lobby.FakeDependency(admin);
+        lobby.FakeDependency<INetwork>(network);
         return Host(lobby);
     }
 

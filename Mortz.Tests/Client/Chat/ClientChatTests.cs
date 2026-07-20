@@ -7,6 +7,7 @@ using Mortz.Core.Admin;
 using Mortz.Core.Chat;
 using Mortz.Core.Net;
 using Mortz.Core.Net.Messages;
+using Mortz.Net;
 using twodog.xunit;
 using Xunit;
 
@@ -17,15 +18,17 @@ namespace Mortz.Tests.Client.Chat;
 [Collection(nameof(GodotHeadlessCollection))]
 public class ClientChatTests : NodeServiceTest
 {
-    private const long SENDER = 42;
+    private const int SENDER = 42;
 
     private readonly ClientChat _chat;
     private readonly ClientAdmin _admin;
 
     public ClientChatTests()
     {
-        _admin = Host(new ClientAdmin());
-        _admin.SetLocalPeerIdForTest(SENDER);
+        FakeNetwork network = new() { LocalPeerId = SENDER };
+        ClientAdmin admin = new();
+        admin.FakeDependency<INetwork>(network);
+        _admin = Host(admin);
         ClientChat chat = new();
         chat.FakeDependency(_admin);
         _chat = Host(chat);

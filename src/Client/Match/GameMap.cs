@@ -1,3 +1,5 @@
+using Chickensoft.AutoInject;
+using Chickensoft.Introspection;
 using Godot;
 using Mortz.Core.Match;
 using Mortz.Core.Net.Messages;
@@ -14,9 +16,15 @@ namespace Mortz.Client.Match;
 /// pixels restore from the pristine map unless another carve covers them;
 /// unconfirmed carves revert on timeout.
 /// </summary>
+[Meta(typeof(IAutoNode))]
 public partial class GameMap : Node2D
 {
     private static readonly Color _hole = new(0, 0, 0, 0);
+
+    [Dependency]
+    private INetwork Network => this.DependOn<INetwork>();
+
+    public override void _Notification(int what) => this.Notify(what);
 
     [Export] private Sprite2D _background = null!;
     [Export] private Sprite2D _solid = null!;
@@ -125,7 +133,7 @@ public partial class GameMap : Node2D
         ulong now = Time.GetTicksMsec();
         _ledger.RecordConfirmed(x, y, radius, now);
 
-        bool mine = msg.OwnerId == NetworkManager.Instance.LocalPeerId && msg.SpawnSeq >= 0;
+        bool mine = msg.OwnerId == Network.LocalPeerId && msg.SpawnSeq >= 0;
         if (mine)
             _ledger.MarkSettled(msg.SpawnSeq, now);
 

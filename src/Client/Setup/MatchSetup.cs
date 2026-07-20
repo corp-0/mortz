@@ -1,3 +1,4 @@
+using Godot;
 using Mortz.Core.Match;
 using Mortz.Core.Net;
 using Mortz.Core.Net.Messages;
@@ -12,7 +13,7 @@ namespace Mortz.Client.Setup;
 /// and every lobby broadcast triggers a settings request, closing the
 /// snapshot race on lobby entry.
 /// </summary>
-public partial class MatchSetup : SessionScopedNode
+public partial class MatchSetup : Node
 {
     private readonly List<MapOption> _mapOptions = [];
     private readonly List<LobbyMember> _members = [];
@@ -54,35 +55,18 @@ public partial class MatchSetup : SessionScopedNode
 
     public MatchConfig CopyRules() => MatchConfig.FromBytes(_rulesBytes);
 
-    protected override void OnServiceReady()
+    public override void _Ready()
     {
         LobbySettingsMsg.Received += ApplySettings;
         LobbyStateMsg.Received += OnLobbyState;
         WelcomeMsg.Received += ApplyWelcome;
     }
 
-    protected override void OnServiceExit()
+    public override void _ExitTree()
     {
         LobbySettingsMsg.Received -= ApplySettings;
         LobbyStateMsg.Received -= OnLobbyState;
         WelcomeMsg.Received -= ApplyWelcome;
-        Clear();
-    }
-
-    protected override void OnSessionBoundary() => Clear();
-
-    private void Clear()
-    {
-        bool hadState = HasServerState || SettingsError != "" || MapId != "" ||
-                        _mapOptions.Count > 0;
-        HasServerState = false;
-        SettingsError = "";
-        MapId = "";
-        MapHash = "";
-        _mapOptions.Clear();
-        ApplyRules(new MatchConfig(), raiseSettings: hadState);
-        ApplyMembers([]);
-        ApplyOffers([]);
     }
 
     private void OnLobbyState(LobbyStateMsg message)

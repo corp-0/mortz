@@ -11,9 +11,10 @@ namespace Mortz.Net;
 /// bespoke RPCs are the hot path (inputs up, snapshots down) and Hello
 /// itself.
 /// </summary>
-public partial class NetworkManager : Node
+public partial class NetworkManager : Node, INetwork
 {
-    public static NetworkManager Instance { get; private set; } = null!;
+    /// <summary>Composition roots resolve the autoload here.</summary>
+    public const string AUTOLOAD_PATH = "/root/NetworkManager";
 
     /// <summary>Server side: a peer connected AND passed the protocol/schema check.</summary>
     [Signal] public delegate void PeerJoinedEventHandler(long peerId, string playerName);
@@ -21,12 +22,12 @@ public partial class NetworkManager : Node
     [Signal] public delegate void InputsReceivedEventHandler(long peerId, byte[] packet);
 
     /// <summary>Client side.</summary>
-    [Signal] public delegate void ConnectedEventHandler();
-    [Signal] public delegate void ConnectionFailedEventHandler();
-    [Signal] public delegate void DisconnectedEventHandler();
-    [Signal] public delegate void TransportResetEventHandler();
+    public event Action? Connected;
+    public event Action? ConnectionFailed;
+    public event Action? Disconnected;
+    public event Action? TransportReset;
     /// <summary>ack = newest input sequence the server applied for THIS client.</summary>
-    [Signal] public delegate void SnapshotReceivedEventHandler(byte[] data, int ack);
+    public event Action<byte[], int>? SnapshotReceived;
 
     private readonly PeerAdmissionState _admission = new();
     // Normal traffic is ~30 input datagrams/s and only occasional messages.
@@ -50,16 +51,15 @@ public partial class NetworkManager : Node
 
     public override void _Ready()
     {
-        Instance = this;
         NetTransport.Send = SendEnvelope;
         _fakeLagMs = CmdArgs.GetInt("--fake-lag", 0);
         if (_fakeLagMs > 0)
             GD.Print($"[net] simulating {_fakeLagMs} ms round-trip latency");
         Multiplayer.PeerConnected += OnPeerConnected;
         Multiplayer.PeerDisconnected += OnPeerDisconnected;
-        Multiplayer.ConnectedToServer += () => EmitSignal(SignalName.Connected);
-        Multiplayer.ConnectionFailed += () => EmitSignal(SignalName.ConnectionFailed);
-        Multiplayer.ServerDisconnected += () => EmitSignal(SignalName.Disconnected);
+        Multiplayer.ConnectedToServer += () => Connected?.Invoke();
+        Multiplayer.ConnectionFailed += () => ConnectionFailed?.Invoke();
+        Multiplayer.ServerDisconnected += () => Disconnected?.Invoke();
     }
 
     public Error StartServer(int port)
@@ -91,7 +91,7 @@ public partial class NetworkManager : Node
         _admission.Reset();
         _inputLimiter.Reset();
         _messageLimiter.Reset();
-        EmitSignal(SignalName.TransportReset);
+        TransportReset?.Invoke();
     }
 
     private void OnPeerConnected(long id)
@@ -245,7 +245,7 @@ public partial class NetworkManager : Node
         if (_fakeLagMs > 0)
             _delayedSnapshots.Enqueue((Time.GetTicksMsec() + (ulong)(_fakeLagMs / 2), data, ack));
         else
-            EmitSignal(SignalName.SnapshotReceived, data, ack);
+            SnapshotReceived?.Invoke(data, ack);
     }
 
     /// <summary>Server side: ENet's smoothed round-trip time per validated peer.
@@ -295,7 +295,7 @@ public partial class NetworkManager : Node
         while (_delayedSnapshots.Count > 0 && _delayedSnapshots.Peek().Due <= now)
         {
             (ulong _, byte[] data, int ack) = _delayedSnapshots.Dequeue();
-            EmitSignal(SignalName.SnapshotReceived, data, ack);
+            SnapshotReceived?.Invoke(data, ack);
         }
         while (_delayedOutMsgs.Count > 0 && _delayedOutMsgs.Peek().Due <= now)
         {

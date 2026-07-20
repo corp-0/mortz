@@ -1,3 +1,5 @@
+using Chickensoft.AutoInject;
+using Chickensoft.Introspection;
 using Godot;
 using Mortz.Core.Match;
 using Mortz.Core.Net.Messages;
@@ -14,9 +16,13 @@ namespace Mortz.Client.Views;
 /// match start and every later join/leave. F3 toggles the sim collision box
 /// outlines.
 /// </summary>
+[Meta(typeof(IAutoNode))]
 public partial class PlayerViewManager : Node2D
 {
     [Export] private PackedScene _playerScene = null!;
+
+    [Dependency]
+    private INetwork Network => this.DependOn<INetwork>();
 
     /// <summary>A remote player's rendered feet position this frame (lag probe tap).</summary>
     public event Action<Vector2>? RemotePlaced;
@@ -42,13 +48,15 @@ public partial class PlayerViewManager : Node2D
         _stats = PlayerStats.Resolve(config);
     }
 
-    public override void _Ready()
+    public override void _Notification(int what) => this.Notify(what);
+
+    public void OnReady()
     {
         RosterMsg.Received += OnRoster;
         PlayerModifiersMsg.Received += OnPlayerModifiers;
     }
 
-    public override void _ExitTree()
+    public void OnExitTree()
     {
         RosterMsg.Received -= OnRoster;
         PlayerModifiersMsg.Received -= OnPlayerModifiers;
@@ -109,7 +117,7 @@ public partial class PlayerViewManager : Node2D
     public void Place(int peerId, PlayerViewState state)
     {
         _placed.Add(peerId);
-        bool isLocal = peerId == NetworkManager.Instance.LocalPeerId;
+        bool isLocal = peerId == Network.LocalPeerId;
         if (_skins.TryGetValue(peerId, out byte rosterSkin))
             state = state with { Skin = rosterSkin };
         if (!isLocal)

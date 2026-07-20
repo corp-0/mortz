@@ -1,3 +1,5 @@
+using Chickensoft.AutoInject;
+using Chickensoft.Introspection;
 using Godot;
 using Mortz.Client.Match;
 using Mortz.Core.Net.Messages;
@@ -18,11 +20,17 @@ namespace Mortz.Client.Diagnostics;
 /// plus parry on both clients drives direct hits and deflections, the two ways
 /// the server ends a shell early: exactly what the shell-retirement path needs.
 /// </summary>
+[Meta(typeof(IAutoNode))]
 public partial class E2EHooks : Node
 {
     [Export] private GameView _gameView = null!;
     [Export] private LocalPlayerController _localPlayer = null!;
     [Export] private GameMap _gameMap = null!;
+
+    [Dependency]
+    private INetwork Network => this.DependOn<INetwork>();
+
+    public override void _Notification(int what) => this.Notify(what);
 
     private int _lastLoggedSecond = -1;
     private bool _testCarveSent;
@@ -64,7 +72,7 @@ public partial class E2EHooks : Node
 
     private void TrackNearestEnemy(Snapshot snapshot)
     {
-        int localId = NetworkManager.Instance.LocalPeerId;
+        int localId = Network.LocalPeerId;
         Vec2 me = _localPlayer.State.Position;
         float best = float.MaxValue;
         foreach (PlayerState p in snapshot.Players)

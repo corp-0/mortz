@@ -139,28 +139,6 @@ public class MatchSetupTests : NodeServiceTest
     }
 
     [Fact]
-    public void TransportResetForgetsEverythingAndNotifies()
-    {
-        MatchSetup setup = Host(new MatchSetup());
-        Settings(new MatchConfig { Teams = true }).Broadcast();
-        new LobbyStateMsg([1], ["A"], [0], [1], [], []).Broadcast();
-        int teams = 0, roster = 0, settings = 0;
-        setup.TeamsChanged += () => teams++;
-        setup.RosterChanged += () => roster++;
-        setup.SettingsChanged += () => settings++;
-
-        NetworkManager.Instance.ResetPeer();
-
-        Assert.False(setup.HasServerState);
-        Assert.False(setup.Rules.Teams);
-        Assert.Empty(setup.Members);
-        Assert.Equal("", setup.MapId);
-        Assert.Empty(setup.MapOptions);
-        // Teams fires twice: the rule toggled off AND the assignments cleared.
-        Assert.Equal((2, 1, 1), (teams, roster, settings));
-    }
-
-    [Fact]
     public void NodeOutsideTheTreeIgnoresTraffic()
     {
         MatchSetup setup = Host(new MatchSetup());

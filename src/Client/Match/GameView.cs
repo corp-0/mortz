@@ -33,7 +33,8 @@ public partial class GameView : Node2D,
     IProvide<MatchSetup>,
     IProvide<MatchScore>,
     IProvide<ClientAdmin>,
-    IProvide<ClientRoster>
+    IProvide<ClientRoster>,
+    IProvide<INetwork>
 {
     [Export] private GameMap _gameMap = null!;
     [Export] private RopeOverlay _ropes = null!;
@@ -56,11 +57,15 @@ public partial class GameView : Node2D,
     [Dependency]
     private ClientRoster Roster => this.DependOn<ClientRoster>();
 
+    [Dependency]
+    private INetwork Network => this.DependOn<INetwork>();
+
     IKillFeed IProvide<IKillFeed>.Value() => _killFeed;
     MatchSetup IProvide<MatchSetup>.Value() => Setup;
     MatchScore IProvide<MatchScore>.Value() => Score;
     ClientAdmin IProvide<ClientAdmin>.Value() => Admin;
     ClientRoster IProvide<ClientRoster>.Value() => Roster;
+    INetwork IProvide<INetwork>.Value() => Network;
 
     public override void _Notification(int what) => this.Notify(what);
 
@@ -89,22 +94,21 @@ public partial class GameView : Node2D,
         _hud.Configure(PlayerStats.Resolve(config));
     }
 
-    public void OnReady()
+    public void OnResolved()
     {
-        NetworkManager.Instance.SnapshotReceived += OnSnapshotReceived;
+        Network.SnapshotReceived += OnSnapshotReceived;
         CarveMsg.Received += OnCarve;
         ShellRetireMsg.Received += OnShellRetire;
         MortarLifecycleMsg.Received += OnMortarLifecycle;
         MortarCorrectionMsg.Received += OnMortarCorrection;
         RosterMsg.Received += OnRoster;
         PlayerModifiersMsg.Received += OnPlayerModifiers;
+        this.Provide();
     }
-
-    public void OnResolved() => this.Provide();
 
     public void OnExitTree()
     {
-        NetworkManager.Instance.SnapshotReceived -= OnSnapshotReceived;
+        Network.SnapshotReceived -= OnSnapshotReceived;
         CarveMsg.Received -= OnCarve;
         ShellRetireMsg.Received -= OnShellRetire;
         MortarLifecycleMsg.Received -= OnMortarLifecycle;
@@ -133,7 +137,7 @@ public partial class GameView : Node2D,
     // additionally drives prediction and the HUD.
     private void OnPlayerModifiers(PlayerModifiersMsg msg)
     {
-        if (msg.PeerId != NetworkManager.Instance.LocalPeerId)
+        if (msg.PeerId != Network.LocalPeerId)
             return;
         List<StatsModifier> modifiers;
         try
@@ -164,7 +168,7 @@ public partial class GameView : Node2D,
     /// can't fly on and carve a ghost. Deflected shells carry -1 and are skipped.</summary>
     private void OnCarve(CarveMsg msg)
     {
-        if (msg.SpawnSeq >= 0 && msg.OwnerId == NetworkManager.Instance.LocalPeerId &&
+        if (msg.SpawnSeq >= 0 && msg.OwnerId == Network.LocalPeerId &&
             _localPlayer.RetireShell(msg.SpawnSeq))
             GD.Print($"[client] retired shell seq {msg.SpawnSeq} (authoritative explosion)");
     }
@@ -195,7 +199,7 @@ public partial class GameView : Node2D,
             {
                 case SimWorld.MortarEventKind.SPAWN:
                     _remoteMortars.Spawn(e.State, tick, NewestSnapshotTick);
-                    if (e.State.FiredBy != NetworkManager.Instance.LocalPeerId)
+                    if (e.State.FiredBy != Network.LocalPeerId)
                         Sfx.PlayAt(Sfx.Sounds.MortarFire,
                             new Vector2(e.State.Position.X, e.State.Position.Y));
                     break;
@@ -214,7 +218,7 @@ public partial class GameView : Node2D,
 
     private void RetireDeflectedPrediction(in MortarState state)
     {
-        if (state.FiredBy != NetworkManager.Instance.LocalPeerId)
+        if (state.FiredBy != Network.LocalPeerId)
             return;
         bool hadShell = _localPlayer.RetireShell(state.SpawnSeq);
         bool hadCarve = _gameMap.RevertPredictedCarve(state.SpawnSeq);
@@ -225,7 +229,7 @@ public partial class GameView : Node2D,
     private void RetireEndedMortar(ushort id)
     {
         if (!_remoteMortars.TryEnd(id, out MortarState state) ||
-            state.FiredBy != NetworkManager.Instance.LocalPeerId)
+            state.FiredBy != Network.LocalPeerId)
             return;
         _localPlayer.RetireShell(state.SpawnSeq);
         _localPlayer.ForgetCompleted(state.SpawnSeq);
@@ -258,7 +262,7 @@ public partial class GameView : Node2D,
         if (state == null)
             return;
 
-        int localId = NetworkManager.Instance.LocalPeerId;
+        int localId = Network.LocalPeerId;
         _ropes.Segments.Clear();
         _players.BeginFrame();
         List<ReplayPlayer> replayPlayers = [];

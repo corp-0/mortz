@@ -1,3 +1,5 @@
+using Chickensoft.AutoInject;
+using Chickensoft.Introspection;
 using Godot;
 using Mortz.Client.Match;
 using Mortz.Client.Menus;
@@ -8,25 +10,39 @@ using Mortz.Shared;
 
 namespace Mortz.Client.Session;
 
-/// <summary>Owns connection, lobby, and match-scene transitions for one client.</summary>
+/// <summary>Owns connection, session, lobby, and match-scene transitions for
+/// one client.</summary>
+[Meta(typeof(IAutoNode))]
 public partial class ClientSessionController : Node
 {
     private const int CONNECT_RETRIES = 5;
 
     [Export] private PackedScene _gameViewScene = null!;
     [Export] private PackedScene _lobbyScene = null!;
+    [Export] private PackedScene _sessionScene = null!;
     [Export] private MainMenu _menu = null!;
 
     private readonly ClientConnectionAttempt _connection = new(CONNECT_RETRIES);
     private readonly ClientSession _session = new();
     private ClientMatchBootstrap? _pendingMatch;
+    private ConnectedSession? _connectedSession;
     private GameView? _gameView;
     private Lobby? _lobby;
     private bool _spawnedLocalServer;
     private bool _autoReady;
     private bool _subscribed;
 
-    public override void _Ready()
+    [Dependency]
+    private NetworkManager Network => this.DependOn<NetworkManager>();
+
+    public override void _Notification(int what)
+    {
+        if (what == NotificationWMCloseRequest)
+            ServerLauncher.Kill();
+        this.Notify(what);
+    }
+
+    public void OnResolved()
     {
         Subscribe();
         string? autoConnect = CmdArgs.GetValue("--connect");
@@ -37,17 +53,11 @@ public partial class ClientSessionController : Node
         StartConnecting(autoConnect, CmdArgs.GetInt("--port", NetConfig.DEFAULT_PORT), playerName);
     }
 
-    public override void _ExitTree()
+    public void OnExitTree()
     {
         Unsubscribe();
         _connection.Cancel();
         ServerLauncher.Kill();
-    }
-
-    public override void _Notification(int what)
-    {
-        if (what == NotificationWMCloseRequest)
-            ServerLauncher.Kill();
     }
 
     public void OnHostRequested(int port, string playerName, string adminPassword)
@@ -68,10 +78,9 @@ public partial class ClientSessionController : Node
 
     private void Subscribe()
     {
-        NetworkManager network = NetworkManager.Instance;
-        network.Connected += OnConnected;
-        network.ConnectionFailed += OnConnectionFailed;
-        network.Disconnected += OnDisconnected;
+        Network.Connected += OnConnected;
+        Network.ConnectionFailed += OnConnectionFailed;
+        Network.Disconnected += OnDisconnected;
         LobbyStateMsg.Received += OnLobbyState;
         WelcomeMsg.Received += OnWelcome;
         TerrainChunkMsg.Received += OnTerrainChunk;
@@ -82,10 +91,9 @@ public partial class ClientSessionController : Node
     {
         if (!_subscribed)
             return;
-        NetworkManager network = NetworkManager.Instance;
-        network.Connected -= OnConnected;
-        network.ConnectionFailed -= OnConnectionFailed;
-        network.Disconnected -= OnDisconnected;
+        Network.Connected -= OnConnected;
+        Network.ConnectionFailed -= OnConnectionFailed;
+        Network.Disconnected -= OnDisconnected;
         LobbyStateMsg.Received -= OnLobbyState;
         WelcomeMsg.Received -= OnWelcome;
         TerrainChunkMsg.Received -= OnTerrainChunk;
@@ -104,8 +112,8 @@ public partial class ClientSessionController : Node
 
     private void TryConnect()
     {
-        NetworkManager.Instance.ResetPeer();
-        Error error = NetworkManager.Instance.StartClient(_connection.Address, _connection.Port);
+        Network.ResetPeer();
+        Error error = Network.StartClient(_connection.Address, _connection.Port);
         if (error != Error.Ok)
             OnConnectionFailed();
     }
@@ -125,15 +133,16 @@ public partial class ClientSessionController : Node
         }
 
         GD.Print("[client] connection failed");
-        NetworkManager.Instance.ResetPeer();
+        Network.ResetPeer();
         ReturnToMenu("Connection failed.", stopLocalServer: true);
     }
 
     private void OnConnected()
     {
         _connection.Connected();
-        GD.Print($"[client] connected, peer id {NetworkManager.Instance.LocalPeerId}");
-        NetworkManager.Instance.SendHello(_connection.PlayerName);
+        GD.Print($"[client] connected, peer id {Network.LocalPeerId}");
+        CreateConnectedSession();
+        Network.SendHello(_connection.PlayerName);
         _menu.SetStatus("Entering lobby...");
         if (_autoReady)
             new SetReadyMsg(true).SendToServer();
@@ -189,7 +198,7 @@ public partial class ClientSessionController : Node
 
     private void EnterMatch(ClientMatchBootstrap bootstrap, byte[] terrainData)
     {
-        if (!_session.TryEnterMatch())
+        if (_connectedSession == null || !_session.TryEnterMatch())
             return;
         GameView gameView = _gameViewScene.Instantiate<GameView>();
         try
@@ -207,7 +216,7 @@ public partial class ClientSessionController : Node
         _menu.Visible = false;
         DisposeLobby();
         _gameView = gameView;
-        AddChild(gameView);
+        _connectedSession.AddChild(gameView);
         _pendingMatch = null;
     }
 
@@ -215,7 +224,7 @@ public partial class ClientSessionController : Node
     {
         GD.PrintErr($"[client] {reason} Disconnecting.");
         _connection.Cancel();
-        NetworkManager.Instance.ResetPeer();
+        Network.ResetPeer();
         ReturnToMenu(reason, stopLocalServer: true);
     }
 
@@ -223,7 +232,7 @@ public partial class ClientSessionController : Node
     {
         GD.Print("[client] disconnected from server");
         _connection.Cancel();
-        NetworkManager.Instance.ResetPeer();
+        Network.ResetPeer();
         ReturnToMenu("Disconnected.", stopLocalServer: true);
     }
 
@@ -231,6 +240,7 @@ public partial class ClientSessionController : Node
     {
         DisposeGameView();
         DisposeLobby();
+        DisposeConnectedSession();
         _pendingMatch = null;
         _session.ReturnToMenu();
         _menu.Visible = true;
@@ -243,13 +253,27 @@ public partial class ClientSessionController : Node
         }
     }
 
+    private void CreateConnectedSession()
+    {
+        if (_connectedSession != null)
+            return;
+        _connectedSession = _sessionScene.Instantiate<ConnectedSession>();
+        AddChild(_connectedSession);
+    }
+
+    private void DisposeConnectedSession()
+    {
+        _connectedSession?.QueueFree();
+        _connectedSession = null;
+    }
+
     private void CreateLobby()
     {
-        if (_lobby != null)
+        if (_lobby != null || _connectedSession == null)
             return;
         _lobby = _lobbyScene.Instantiate<Lobby>();
         _lobby.ReadyToggled += OnReadyToggled;
-        AddChild(_lobby);
+        _connectedSession.AddChild(_lobby);
     }
 
     private void DisposeLobby()

@@ -1,3 +1,4 @@
+using Godot;
 using Mortz.Core.Net.Messages;
 
 namespace Mortz.Client.Score;
@@ -6,7 +7,7 @@ namespace Mortz.Client.Score;
 /// sync seed replaces everything (it arrives with every match entry, so a new
 /// match or a late join always starts from the server's truth); eliminations
 /// patch the affected rows afterwards.</summary>
-public partial class MatchScore : SessionScopedNode
+public partial class MatchScore : Node
 {
     private readonly Dictionary<long, int> _kills = [];
     private readonly Dictionary<long, int> _deaths = [];
@@ -20,28 +21,16 @@ public partial class MatchScore : SessionScopedNode
     public int TeamKills(byte teamId) =>
         teamId switch { 1 => _team1Kills, 2 => _team2Kills, _ => 0 };
 
-    protected override void OnServiceReady()
+    public override void _Ready()
     {
         ScoreSyncMsg.Received += OnScoreSync;
         EliminationMsg.Received += OnElimination;
     }
 
-    protected override void OnServiceExit()
+    public override void _ExitTree()
     {
         ScoreSyncMsg.Received -= OnScoreSync;
         EliminationMsg.Received -= OnElimination;
-        Clear();
-    }
-
-    protected override void OnSessionBoundary() => Clear();
-
-    private void Clear()
-    {
-        _kills.Clear();
-        _deaths.Clear();
-        _team1Kills = 0;
-        _team2Kills = 0;
-        Changed?.Invoke();
     }
 
     private void OnScoreSync(ScoreSyncMsg message)

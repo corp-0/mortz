@@ -31,6 +31,9 @@ public partial class TeamColumnsRoster : ScrollContainer
     [Dependency]
     public ClientStats Stats => this.DependOn<ClientStats>();
 
+    [Dependency]
+    private INetwork Network => this.DependOn<INetwork>();
+
     public override void _Notification(int what) => this.Notify(what);
 
     public void OnReady()
@@ -74,7 +77,7 @@ public partial class TeamColumnsRoster : ScrollContainer
                 child.Free();
             }
         }
-        long localId = NetworkManager.Instance.LocalPeerId;
+        long localId = Network.LocalPeerId;
         byte localTeam = 0;
         foreach (LobbyMember member in Setup.Members)
         {

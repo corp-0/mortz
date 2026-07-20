@@ -54,19 +54,4 @@ public class MatchScoreTests : NodeServiceTest
         Assert.Equal(1, score.TeamKills(1));
     }
 
-    [Fact]
-    public void TransportResetClearsAndNotifies()
-    {
-        MatchScore score = Host(new MatchScore());
-        new ScoreSyncMsg([7], [3], [1], 3, 0).SendTo(1);
-        int changes = 0;
-        score.Changed += () => changes++;
-
-        NetworkManager.Instance.ResetPeer();
-
-        Assert.Equal(0, score.Kills(7));
-        Assert.Equal(0, score.Deaths(7));
-        Assert.Equal(0, score.TeamKills(1));
-        Assert.Equal(1, changes);
-    }
 }

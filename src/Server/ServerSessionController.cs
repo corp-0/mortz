@@ -37,6 +37,9 @@ public partial class ServerSessionController : Node, IServerSession
     [Dependency]
     public IServerLobbySettings LobbySettings => this.DependOn<IServerLobbySettings>();
 
+    [Dependency]
+    private NetworkManager Network => this.DependOn<NetworkManager>();
+
     public bool IsLobby => _lobby != null;
     public bool ContainsPlayer(long peerId) => _players.Contains(peerId);
     public string PlayerName(long peerId) => _players.Name(peerId);
@@ -45,20 +48,18 @@ public partial class ServerSessionController : Node, IServerSession
 
     public void OnResolved()
     {
-        NetworkManager network = NetworkManager.Instance;
-        _protocol = new ServerProtocol(network, LobbySettings, _players,
+        _protocol = new ServerProtocol(Network, LobbySettings, _players,
             CmdArgs.HasFlag("--net-stats"));
-        Subscribe(network);
+        Subscribe(Network);
     }
 
     public void OnExitTree()
     {
         if (!_subscribed)
             return;
-        NetworkManager network = NetworkManager.Instance;
-        network.PeerJoined -= OnPeerJoined;
-        network.PeerLeft -= OnPeerLeft;
-        network.InputsReceived -= OnInputsReceived;
+        Network.PeerJoined -= OnPeerJoined;
+        Network.PeerLeft -= OnPeerLeft;
+        Network.InputsReceived -= OnInputsReceived;
         SetReadyMsg.Received -= OnSetReady;
         TeamJoinRequestMsg.Received -= OnTeamJoinRequest;
         TeamSwapRequestMsg.Received -= OnTeamSwapRequest;

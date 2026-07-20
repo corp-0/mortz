@@ -1,3 +1,5 @@
+using Chickensoft.AutoInject;
+using Chickensoft.Introspection;
 using Godot;
 using Mortz.Client.Effects;
 using Mortz.Client.Match;
@@ -11,10 +13,14 @@ namespace Mortz.Client.Replay;
 
 /// <summary>Owns the final-kill cinematic: event handling, render history,
 /// freeze state, playback, camera, temporary terrain, effects, and hold.</summary>
+[Meta(typeof(IAutoNode))]
 public partial class FinalKillReplay : Node
 {
     private const float IMPACT_HOLD_SECONDS = 0.12f;
     private const float REPLAY_ZOOM = 1.65f;
+
+    [Dependency]
+    private INetwork Network => this.DependOn<INetwork>();
 
     [Export] private GameMap _gameMap = null!;
     [Export] private EffectsSpawner _effects = null!;
@@ -39,6 +45,8 @@ public partial class FinalKillReplay : Node
     private float _cameraStartRotation;
 
     internal bool MatchFrozen => _matchFrozen;
+
+    public override void _Notification(int what) => this.Notify(what);
 
     public override void _Ready() => FinalKillMsg.Received += OnFinalKill;
 
@@ -189,7 +197,7 @@ public partial class FinalKillReplay : Node
         }
         else
         {
-            int localId = NetworkManager.Instance.LocalPeerId;
+            int localId = Network.LocalPeerId;
             int localIndex = Array.FindIndex(first.Players, player => player.PeerId == localId);
             _replayCamera.GlobalPosition = localIndex >= 0
                 ? first.Players[localIndex].State.Feet -

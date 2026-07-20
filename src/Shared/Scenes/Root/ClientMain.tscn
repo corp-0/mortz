@@ -6,35 +6,11 @@
 [ext_resource type="PackedScene" uid="uid://lccou7q7borc" path="res://src/Shared/UI/Menus/Lobby.tscn" id="4_lobby"]
 [ext_resource type="Script" uid="uid://b46f55d4mmx7l" path="res://src/Client/Audio/Sfx.cs" id="5_sfx"]
 [ext_resource type="Resource" uid="uid://0gok5648oexn" path="res://Assets/Sounds/SoundRegistry.tres" id="6_sounds"]
+[ext_resource type="PackedScene" path="res://src/Shared/Scenes/Root/ConnectedSession.tscn" id="7_csession"]
 [ext_resource type="Script" uid="uid://drn2cynsax60k" path="res://src/Client/Session/ClientSessionController.cs" id="8_session"]
-[ext_resource type="Script" uid="uid://ds8420gb3q8xn" path="res://src/Client/Stats/ClientStats.cs" id="9_stats"]
-[ext_resource type="Script" uid="uid://bynxb81cf00xi" path="res://src/Client/Setup/MatchSetup.cs" id="10_setup"]
-[ext_resource type="Script" uid="uid://ht4g6pywavul" path="res://src/Client/Score/MatchScore.cs" id="11_score"]
-[ext_resource type="Script" uid="uid://ooyj4qa2sesu" path="res://src/Client/Roster/ClientRoster.cs" id="12_roster"]
-[ext_resource type="Script" uid="uid://d2se7ahca8huk" path="res://src/Client/Admin/ClientAdmin.cs" id="14_admin"]
 
-[node name="ClientMain" type="Node" unique_id=282168119 node_paths=PackedStringArray("_clientAdmin", "_clientRoster", "_clientStats", "_matchSetup", "_matchScore")]
+[node name="ClientMain" type="Node" unique_id=282168119]
 script = ExtResource("1_cmain")
-_clientAdmin = NodePath("ClientAdmin")
-_clientRoster = NodePath("ClientRoster")
-_clientStats = NodePath("ClientStats")
-_matchSetup = NodePath("MatchSetup")
-_matchScore = NodePath("MatchScore")
-
-[node name="ClientAdmin" type="Node" parent="." unique_id=1551742794]
-script = ExtResource("14_admin")
-
-[node name="ClientStats" type="Node" parent="." unique_id=730860700]
-script = ExtResource("9_stats")
-
-[node name="MatchSetup" type="Node" parent="." unique_id=1992460456]
-script = ExtResource("10_setup")
-
-[node name="MatchScore" type="Node" parent="." unique_id=1034551531]
-script = ExtResource("11_score")
-
-[node name="ClientRoster" type="Node" parent="." unique_id=1254125908]
-script = ExtResource("12_roster")
 
 [node name="Sfx" type="Node" parent="." unique_id=552139458]
 script = ExtResource("5_sfx")
@@ -46,6 +22,7 @@ _sounds = ExtResource("6_sounds")
 script = ExtResource("8_session")
 _gameViewScene = ExtResource("2_gview")
 _lobbyScene = ExtResource("4_lobby")
+_sessionScene = ExtResource("7_csession")
 _menu = NodePath("../MainMenu")
 
 [connection signal="HostRequested" from="MainMenu" to="Session" method="OnHostRequested"]

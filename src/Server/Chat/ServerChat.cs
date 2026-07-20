@@ -16,7 +16,6 @@ namespace Mortz.Server.Chat;
 public partial class ServerChat : Node, IServerAdminAuthorizer
 {
     private readonly ChatPolicy _chatPolicy = new();
-    private NetworkManager _network = null!;
     private AdminAuthenticator _admin = null!;
     private bool _subscribed;
 
@@ -25,6 +24,9 @@ public partial class ServerChat : Node, IServerAdminAuthorizer
 
     [Dependency]
     public IServerSession Session => this.DependOn<IServerSession>();
+
+    [Dependency]
+    private NetworkManager Network => this.DependOn<NetworkManager>();
 
     public override void _Notification(int what) => this.Notify(what);
 
@@ -40,10 +42,9 @@ public partial class ServerChat : Node, IServerAdminAuthorizer
     {
         if (_subscribed)
             return;
-        _network = NetworkManager.Instance;
         _admin = new AdminAuthenticator(Host.AdminPassword);
-        _network.PeerJoined += OnPeerJoined;
-        _network.PeerLeft += OnPeerLeft;
+        Network.PeerJoined += OnPeerJoined;
+        Network.PeerLeft += OnPeerLeft;
         ChatSendMsg.Received += OnChatSend;
         RollRequestMsg.Received += OnRollRequest;
         AdminAuthRequestMsg.Received += OnAdminAuthRequest;
@@ -55,8 +56,8 @@ public partial class ServerChat : Node, IServerAdminAuthorizer
     {
         if (!_subscribed)
             return;
-        _network.PeerJoined -= OnPeerJoined;
-        _network.PeerLeft -= OnPeerLeft;
+        Network.PeerJoined -= OnPeerJoined;
+        Network.PeerLeft -= OnPeerLeft;
         ChatSendMsg.Received -= OnChatSend;
         RollRequestMsg.Received -= OnRollRequest;
         AdminAuthRequestMsg.Received -= OnAdminAuthRequest;

@@ -1,3 +1,5 @@
+using Chickensoft.AutoInject;
+using Chickensoft.Introspection;
 using Godot;
 using Mortz.Core.Input;
 using Mortz.Core.Net;
@@ -14,6 +16,7 @@ namespace Mortz.Client.Match;
 /// against incoming snapshots. Small corrections ease in over a few frames
 /// (CorrectionOffset), teleport-scale ones snap.
 /// </summary>
+[Meta(typeof(IAutoNode))]
 public partial class LocalPlayerController : Node2D
 {
     /// <summary>How fast reconciliation corrections blend away (per second).</summary>
@@ -38,6 +41,9 @@ public partial class LocalPlayerController : Node2D
     private Vector2 _correctionOffset;
     private byte _aim;
 
+    [Dependency]
+    private INetwork Network => this.DependOn<INetwork>();
+
     /// <summary>False until the first snapshot containing the local player arrives.</summary>
     public bool Initialized => _predictor.Initialized;
     public PlayerState State => _predictor.State;
@@ -49,6 +55,8 @@ public partial class LocalPlayerController : Node2D
 
     /// <summary>Must be called right after instantiating, before entering the tree.</summary>
     public void Initialize(Predictor predictor) => _predictor = predictor;
+
+    public override void _Notification(int what) => this.Notify(what);
 
     /// <summary>The server's replicated modifier list for us; prediction must
     /// compose the same numbers the sim does.</summary>
@@ -79,7 +87,7 @@ public partial class LocalPlayerController : Node2D
         _predictor.LocalTick(new PlayerInput(buttons, _aim));
         if (_predictor.NextSeq % NetConfig.TICKS_PER_INPUT_PACKET == 0)
         {
-            NetworkManager.Instance.SendInputs(
+            Network.SendInputs(
                 InputPacket.Encode(_predictor.RecentInputs(NetConfig.INPUT_REDUNDANCY)));
             PacketSent?.Invoke(_predictor.NextSeq - 1);
         }
@@ -91,7 +99,7 @@ public partial class LocalPlayerController : Node2D
     /// <summary>Rewind-and-replay against the authoritative state, if the local player is in it.</summary>
     public void Reconcile(Snapshot snapshot, int ack)
     {
-        int localId = NetworkManager.Instance.LocalPeerId;
+        int localId = Network.LocalPeerId;
         foreach (PlayerState player in snapshot.Players)
         {
             if (player.PeerId != localId)

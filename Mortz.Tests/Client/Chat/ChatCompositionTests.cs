@@ -10,6 +10,7 @@ using Mortz.Client.Stats;
 using Mortz.Client.Ui;
 using Mortz.Core.Match;
 using Mortz.Core.Net.Messages;
+using Mortz.Net;
 using Mortz.Server;
 using Mortz.Server.Chat;
 using Mortz.Shared;
@@ -139,16 +140,19 @@ public class ChatCompositionTests : NodeServiceTest
         ResourceLoader.Load<PackedScene>("res://src/Shared/UI/Menus/Lobby.tscn")
             .Instantiate<Lobby>();
 
-    /// <summary>Hosts a lobby fed by real services faked into its root.</summary>
     private Lobby MountLobby()
     {
+        FakeNetwork network = new() { LocalPeerId = 1 };
         MatchSetup setup = Host(new MatchSetup());
         ClientStats stats = Host(new ClientStats());
-        ClientAdmin admin = Host(new ClientAdmin());
+        ClientAdmin admin = new();
+        admin.FakeDependency<INetwork>(network);
+        Host(admin);
         Lobby lobby = InstantiateLobby();
         lobby.FakeDependency(setup);
         lobby.FakeDependency(stats);
         lobby.FakeDependency(admin);
+        lobby.FakeDependency<INetwork>(network);
         return Host(lobby);
     }
 

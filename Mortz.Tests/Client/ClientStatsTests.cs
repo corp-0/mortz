@@ -41,22 +41,6 @@ public class ClientStatsTests : NodeServiceTest
     }
 
     [Fact]
-    public void TransportResetClearsAndNotifies()
-    {
-        ClientStats stats = Host(new ClientStats());
-        new PingUpdateMsg([7], [42]).Broadcast();
-        new SessionWinsMsg([7], [2]).Broadcast();
-        int changes = 0;
-        stats.Changed += () => changes++;
-
-        NetworkManager.Instance.ResetPeer();
-
-        Assert.Null(stats.PingMs(7));
-        Assert.Equal(0, stats.Wins(7));
-        Assert.Equal(1, changes);
-    }
-
-    [Fact]
     public void NodeOutsideTheTreeIgnoresTraffic()
     {
         ClientStats stats = Host(new ClientStats());

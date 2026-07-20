@@ -1,9 +1,11 @@
+using Chickensoft.AutoInject;
 using Godot;
 using Mortz.Client.Match;
 using Mortz.Client.Views;
 using Mortz.Core.Match;
 using Mortz.Core.Net.Messages;
 using Mortz.Core.Sim.Modifiers;
+using Mortz.Net;
 using Mortz.Tests.Core;
 using twodog.xunit;
 using Xunit;
@@ -20,7 +22,9 @@ public class PlayerViewStatsTests : NodeServiceTest
     [Fact]
     public void PerPlayerModifiers_ConfigureTheMatchingView()
     {
-        PlayerViewManager manager = Host(TakeManagerFromGameViewScene());
+        PlayerViewManager manager = TakeManagerFromGameViewScene();
+        manager.FakeDependency<INetwork>(new FakeNetwork());
+        Host(manager);
         manager.Configure(new MatchConfig());
 
         float baseRadius = TestWorlds.Stats.ParryRadius;
@@ -43,8 +47,8 @@ public class PlayerViewStatsTests : NodeServiceTest
         Assert.Equal(baseRadius * 4, manager.ViewForTest(2).StatsForTest.ParryRadius);
     }
 
-    /// <summary>The real scene wires the player prefab export; the shell is
-    /// discarded so only the node under test enters the tree.</summary>
+    /// <summary>The real scene wires the player-prefab export; the shell never
+    /// enters the tree.</summary>
     private static PlayerViewManager TakeManagerFromGameViewScene()
     {
         GameView shell = ResourceLoader.Load<PackedScene>(

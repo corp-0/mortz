@@ -17,6 +17,9 @@ public partial class PlayerKillsHud : Control
     [Dependency]
     public MatchScore Score => this.DependOn<MatchScore>();
 
+    [Dependency]
+    private INetwork Network => this.DependOn<INetwork>();
+
     public override void _Notification(int what) => this.Notify(what);
 
     public void OnResolved()
@@ -39,7 +42,7 @@ public partial class PlayerKillsHud : Control
     {
         if (!IsInsideTree())
             return;
-        long localId = NetworkManager.Instance.LocalPeerId;
+        long localId = Network.LocalPeerId;
         _scoreLabel.Text = $"K {Score.Kills(localId)} / D {Score.Deaths(localId)}";
     }
 }

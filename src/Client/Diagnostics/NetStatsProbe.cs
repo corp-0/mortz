@@ -1,3 +1,5 @@
+using Chickensoft.AutoInject;
+using Chickensoft.Introspection;
 using Godot;
 using Mortz.Client.Match;
 using Mortz.Core.Sim;
@@ -11,10 +13,16 @@ namespace Mortz.Client.Diagnostics;
 /// local player controller and the interpolation clock through their
 /// diagnostics events. Inert without the flag.
 /// </summary>
+[Meta(typeof(IAutoNode))]
 public partial class NetStatsProbe : Node
 {
     [Export] private GameView _gameView = null!;
     [Export] private LocalPlayerController _localPlayer = null!;
+
+    [Dependency]
+    private NetworkManager Network => this.DependOn<NetworkManager>();
+
+    public override void _Notification(int what) => this.Notify(what);
 
     private readonly Dictionary<int, ulong> _inputSendTimes = new();
     private int _frames;
@@ -72,7 +80,7 @@ public partial class NetStatsProbe : Node
         if (++_frames < SimConfig.TICK_RATE)
             return;
         _frames = 0;
-        (double sent, double recv, double sentPk, double recvPk) = NetworkManager.Instance.PopWireStats();
+        (double sent, double recv, double sentPk, double recvPk) = Network.PopWireStats();
         int newest = _gameView.NewestSnapshotTick;
         float interpTicks = newest >= 0 ? newest - _gameView.RenderTick : -1;
         double snapAge = _lastSnapshotMsec > 0 ? Time.GetTicksMsec() - _lastSnapshotMsec : -1;

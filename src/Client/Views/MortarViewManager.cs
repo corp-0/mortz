@@ -1,3 +1,5 @@
+using Chickensoft.AutoInject;
+using Chickensoft.Introspection;
 using Godot;
 using Mortz.Client.Audio;
 using Mortz.Client.Replay;
@@ -14,9 +16,15 @@ namespace Mortz.Client.Views;
 /// predicted ones are already on screen (and at present time, not
 /// interpolation-delay time).
 /// </summary>
+[Meta(typeof(IAutoNode))]
 public partial class MortarViewManager : Node2D
 {
     [Export] private PackedScene _mortarScene = null!;
+
+    [Dependency]
+    private INetwork Network => this.DependOn<INetwork>();
+
+    public override void _Notification(int what) => this.Notify(what);
 
     private readonly Dictionary<ushort, MortarView> _remote = new();
     private readonly Dictionary<int, MortarView> _predicted = new();
@@ -27,7 +35,7 @@ public partial class MortarViewManager : Node2D
 
     public void SyncRemote(IReadOnlyList<RenderMortar> mortars, IReadOnlySet<int> completedSeqs)
     {
-        int localId = NetworkManager.Instance.LocalPeerId;
+        int localId = Network.LocalPeerId;
         _seenRemote.Clear();
         foreach (RenderMortar m in mortars)
         {

@@ -1,0 +1,31 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/Client/Session/ConnectedSession.cs" id="1_root"]
+[ext_resource type="Script" uid="uid://bynxb81cf00xi" path="res://src/Client/Setup/MatchSetup.cs" id="2_setup"]
+[ext_resource type="Script" uid="uid://ds8420gb3q8xn" path="res://src/Client/Stats/ClientStats.cs" id="3_stats"]
+[ext_resource type="Script" uid="uid://ht4g6pywavul" path="res://src/Client/Score/MatchScore.cs" id="4_score"]
+[ext_resource type="Script" uid="uid://ooyj4qa2sesu" path="res://src/Client/Roster/ClientRoster.cs" id="5_roster"]
+[ext_resource type="Script" uid="uid://d2se7ahca8huk" path="res://src/Client/Admin/ClientAdmin.cs" id="6_admin"]
+
+[node name="ConnectedSession" type="Node" node_paths=PackedStringArray("_matchSetup", "_clientStats", "_matchScore", "_clientRoster", "_clientAdmin")]
+script = ExtResource("1_root")
+_matchSetup = NodePath("MatchSetup")
+_clientStats = NodePath("ClientStats")
+_matchScore = NodePath("MatchScore")
+_clientRoster = NodePath("ClientRoster")
+_clientAdmin = NodePath("ClientAdmin")
+
+[node name="MatchSetup" type="Node" parent="."]
+script = ExtResource("2_setup")
+
+[node name="ClientStats" type="Node" parent="."]
+script = ExtResource("3_stats")
+
+[node name="MatchScore" type="Node" parent="."]
+script = ExtResource("4_score")
+
+[node name="ClientRoster" type="Node" parent="."]
+script = ExtResource("5_roster")
+
+[node name="ClientAdmin" type="Node" parent="."]
+script = ExtResource("6_admin")
