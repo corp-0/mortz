@@ -1,6 +1,5 @@
 namespace Mortz.Tools;
 
-/// <summary>Dev tools, one subcommand each: dotnet run --project tools -- &lt;tool&gt; ...</summary>
 internal static class Program
 {
     private static int Main(string[] args)
@@ -12,12 +11,14 @@ internal static class Program
                 case "convert-lxl": ConvertLxl.Run(args[1..]); return 0;
                 case "export": Export.Run(args[1..]); return 0;
                 case "official": OfficialOverlay.Run(args[1..]); return 0;
+                case "publish-playtest": PublishPlaytest.Run(args[1..]); return 0;
                 case "gen-sounds": GenSounds.Run(); return 0;
                 default:
                     Console.Error.WriteLine("usage:");
                     Console.Error.WriteLine("  dotnet run --project tools -- convert-lxl <path.lxl> <mapId> [--scale N] [--players N] [--out DIR]");
                     Console.Error.WriteLine("  dotnet run --project tools -- export [client|server|all] [--debug] [--require-official]");
                     Console.Error.WriteLine("  dotnet run --project tools -- official check");
+                    Console.Error.WriteLine("  dotnet run --project tools -- publish-playtest");
                     Console.Error.WriteLine("  dotnet run --project tools -- gen-sounds");
                     return 1;
             }
@@ -29,8 +30,7 @@ internal static class Program
         }
     }
 
-    /// <summary>Tools resolve paths against the repo root, so refuse to run from
-    /// anywhere else. (The old script version once wrote to a drive root.)</summary>
+    // An old script resolved this path to a drive root.
     internal static string RepoRoot()
     {
         if (!File.Exists("project.godot"))

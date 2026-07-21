@@ -3,12 +3,6 @@ using System.Text.RegularExpressions;
 
 namespace Mortz.Tools;
 
-/// <summary>
-/// Exports the client and/or server presets into one bundle per platform
-/// (build/Mortz-win, build/Mortz-lin). Content stays out of the PCK
-/// (exclude_filter in export_presets.cfg) so maps swap without re-exporting.
-/// The build dir is wiped first, so a partial export leaves only what it built.
-/// </summary>
 internal static class Export
 {
     public static void Run(string[] args)
@@ -58,15 +52,13 @@ internal static class Export
             Console.WriteLine($"==> exporting '{name}' to build/{dir}/{exe}");
             RunProcess(godot, ["--headless", "--path", root, exportFlag, name, exePath]);
 
-            // Linux binaries are terminal apps already; only Windows needs the flip.
             if (name == "Mortz Server")
             {
                 MakeConsoleApp(exePath);
-                Console.WriteLine("==> server exe flipped to console subsystem (blocks the terminal, Ctrl+C kills)");
+                Console.WriteLine("==> server exe now blocks the terminal so Ctrl+C stops it");
             }
         }
 
-        // Client and server share the bundle, one content copy serves both.
         foreach (string dir in presets.Select(p => p.Dir).Distinct())
         {
             string contentDest = Path.Combine(root, "build", dir, "content");
@@ -78,12 +70,7 @@ internal static class Export
             Console.WriteLine("note: exporting from Windows loses the executable bit; chmod +x the .x86_64 on the box");
     }
 
-    /// <summary>
-    /// The editor must match the SDK the project builds against. A mismatched
-    /// editor also silently migrates Mortz.csproj to its own version (backing
-    /// it up as .old) and exits 0. GODOT_PATH overrides where to look, never
-    /// which version is acceptable.
-    /// </summary>
+    // A mismatched editor rewrites Mortz.csproj and exits 0.
     private static string ResolveGodot(string root)
     {
         string csproj = Path.Combine(root, "Mortz.csproj");
@@ -102,8 +89,6 @@ internal static class Export
         return godot;
     }
 
-    /// <summary>Godots installs each version in a directory named for it; the
-    /// binary's own name carries a version string, hence the glob.</summary>
     private static string FindGodot(string version)
     {
         string installs = Environment.GetEnvironmentVariable("GODOT_ROOT") ?? @"E:\filax\Godot";
@@ -116,8 +101,7 @@ internal static class Export
         return hits[0];
     }
 
-    /// <summary>Godot drops a zero patch from its version string ("4.7.stable.mono"),
-    /// the csproj SDK version never does. Compare as padded triples.</summary>
+    // Godot reports 4.7.0 as "4.7.stable.mono".
     private static string NormalizeVersion(string version)
     {
         List<string> parts = Regex.Match(version, @"^\d+(\.\d+)*").Value.Split('.').ToList();
@@ -128,11 +112,7 @@ internal static class Export
         return string.Join('.', parts);
     }
 
-    /// <summary>
-    /// Godot only exports GUI-subsystem exes, so Ctrl+C can't kill the server.
-    /// Flip the PE subsystem to console; host-and-play is unaffected because
-    /// OS.CreateProcess spawns children windowless.
-    /// </summary>
+    // Dedicated servers need the console subsystem for Ctrl+C.
     private static void MakeConsoleApp(string exePath)
     {
         const ushort IMAGE_SUBSYSTEM_WINDOWS_CUI = 3;
@@ -143,14 +123,12 @@ internal static class Export
         fs.Position = peHeader;
         if (r.ReadUInt32() != 0x00004550) // "PE\0\0"
             throw new Exception($"{exePath} is not a PE image");
-        // COFF header (20 bytes), then Subsystem at offset 68 of the optional
-        // header (same offset in PE32 and PE32+).
+        // Subsystem is 68 bytes into the PE32 and PE32+ optional header.
         fs.Position = peHeader + 4 + 20 + 68;
         new BinaryWriter(fs).Write(IMAGE_SUBSYSTEM_WINDOWS_CUI);
     }
 
-    /// <summary>Mirror source into dest, skipping .import files (editor
-    /// metadata; the game reads the raw files) and deleting anything stale.</summary>
+    // The game reads raw content files, not Godot's .import metadata.
     private static void MirrorContent(string source, string dest)
     {
         Directory.CreateDirectory(dest);
@@ -196,11 +174,7 @@ internal static class Export
         return output;
     }
 
-    /// <summary>
-    /// Wipe build/ except .gdignore. Also surfaces a still-running previous
-    /// build up front: a locked exe would make Godot's export hang at the
-    /// final rename.
-    /// </summary>
+    // A running build is reported here before Godot hangs on its final rename.
     private static void CleanBuildDir(string buildDir)
     {
         Directory.CreateDirectory(buildDir);
@@ -226,10 +200,10 @@ internal static class Export
     private static void RunProcess(string exe, string[] args)
     {
         ProcessStartInfo psi = new ProcessStartInfo(exe) { UseShellExecute = false };
-        // dotnet publish leaves idle MSBuild nodes behind that inherit the godot
-        // console wrapper's stdout pipe; the wrapper reads that pipe until EOF,
-        // which never comes while the nodes live, so it hangs after the export.
+        // Build servers keep Godot's stdout pipe open after the export finishes.
         psi.Environment["MSBUILDDISABLENODEREUSE"] = "1";
+        psi.Environment["DOTNET_CLI_USE_MSBUILD_SERVER"] = "0";
+        psi.Environment["UseSharedCompilation"] = "false";
         foreach (string arg in args)
         {
             psi.ArgumentList.Add(arg);
