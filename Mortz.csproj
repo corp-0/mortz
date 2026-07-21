@@ -14,6 +14,7 @@
     <Compile Remove="Mortz.Core\**" />
     <Compile Remove="Mortz.Net.Gen\**" />
     <Compile Remove="tools\**" />
+    <Compile Remove="build\**" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="Mortz.Core\Mortz.Core.csproj" />

@@ -15,6 +15,7 @@ internal static class Export
     {
         string preset = "all";
         bool debug = false;
+        bool requireOfficial = false;
         bool? linux = null; // null = both platforms
         foreach (string arg in args)
         {
@@ -22,6 +23,7 @@ internal static class Export
             {
                 case "client" or "server" or "all": preset = arg; break;
                 case "--debug": debug = true; break;
+                case "--require-official": requireOfficial = true; break;
                 case "--linux": linux = true; break;
                 case "--windows": linux = false; break;
                 default: throw new Exception($"unexpected argument '{arg}'");
@@ -29,6 +31,7 @@ internal static class Export
         }
 
         string root = Program.RepoRoot();
+        OfficialOverlay.Validate(root, requireOfficial);
         string godot = ResolveGodot(root);
 
         List<(string Name, string Dir, string Exe)> presets = new List<(string, string, string)>();

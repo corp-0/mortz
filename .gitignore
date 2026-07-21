@@ -8,6 +8,8 @@ mono_crash.*.json
 build/**
 !build/.gdignore
 
+/official/
+
 # .NET
 bin/
 obj/
