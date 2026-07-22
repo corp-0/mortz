@@ -7,10 +7,15 @@ import sys
 import tomllib
 from pathlib import Path
 
+import bmesh
 import bpy
+from mathutils import Matrix, Vector
 
 
-SCRIPT_VERSION = 3
+SCRIPT_VERSION = 6
+
+DEFAULT_MAX_EDGE_LENGTH = 0.5
+MAX_SUBDIVIDE_PASSES = 6
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".tga", ".webp"}
 NORMAL_SUFFIXES = ("_n", "_normal", "_norm", "-n", "-normal")
 EMISSION_SUFFIXES = ("_e", "_emission", "_emissive", "-e", "-emission")
@@ -25,6 +30,7 @@ def parse_args():
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--overrides", type=Path, required=True)
     parser.add_argument("--rebuild", action="store_true")
+    parser.add_argument("--max-edge-length", type=float, default=DEFAULT_MAX_EDGE_LENGTH)
     return parser.parse_args(values)
 
 
@@ -80,8 +86,8 @@ def image_candidates(pack):
     return sorted(result)
 
 
-def hash_job(source, textures, overrides_path):
-    digest = hashlib.sha256(str(SCRIPT_VERSION).encode())
+def hash_job(source, textures, overrides_path, max_edge_length):
+    digest = hashlib.sha256(f"{SCRIPT_VERSION}:{max_edge_length}".encode())
     for path in [source, *textures, overrides_path]:
         if not path.exists():
             continue
@@ -268,6 +274,59 @@ def descriptive_mesh_name(mesh):
     material = next((slot.material for slot in mesh.material_slots if slot.material), None)
     return f"{material.name}_{mesh.name}" if material else mesh.name
 
+def base_center(meshes):
+    lo = [1e30] * 3
+    hi = [-1e30] * 3
+    for obj in meshes:
+        for corner in obj.bound_box:
+            world = obj.matrix_world @ Vector(corner)
+            for k in range(3):
+                lo[k] = min(lo[k], world[k])
+                hi[k] = max(hi[k], world[k])
+    return Vector(((lo[0] + hi[0]) / 2.0, (lo[1] + hi[1]) / 2.0, lo[2]))
+
+
+def recenter_to_origin(meshes):
+    offset = base_center(meshes)
+    shift = Matrix.Translation(-offset)
+    for obj in bpy.context.scene.objects:
+        if obj.parent is None:
+            obj.matrix_world = shift @ obj.matrix_world
+
+def tessellate_long_edges(obj, max_edge_length, max_passes):
+    matrix = obj.matrix_world
+    total = 0
+    for _ in range(max_passes):
+        mesh = obj.data
+        bm = bmesh.new()
+        bm.from_mesh(mesh)
+        long_edges = [
+            edge for edge in bm.edges
+            if ((matrix @ edge.verts[0].co) - (matrix @ edge.verts[1].co)).length > max_edge_length
+        ]
+        if not long_edges:
+            bm.free()
+            break
+        bmesh.ops.subdivide_edges(bm, edges=long_edges, cuts=1, use_grid_fill=True)
+        bm.to_mesh(mesh)
+        mesh.update()
+        bm.free()
+        total += len(long_edges)
+    return total
+
+
+def tessellate_scene(max_edge_length, max_passes):
+    if max_edge_length <= 0.0:
+        return 0
+    total = 0
+    seen = set()
+    for obj in bpy.context.scene.objects:
+        if obj.type != "MESH" or obj.data in seen:
+            continue
+        seen.add(obj.data)
+        total += tessellate_long_edges(obj, max_edge_length, max_passes)
+    return total
+
 
 def export_meshes(output_dir, source, split_objects):
     meshes = sorted(
@@ -284,6 +343,7 @@ def export_meshes(output_dir, source, split_objects):
         for mesh in meshes:
             mesh.select_set(True)
         bpy.context.view_layer.objects.active = meshes[0]
+        recenter_to_origin(meshes)
         bpy.ops.export_scene.gltf(
             filepath=str(output),
             export_format="GLB",
@@ -308,8 +368,7 @@ def export_meshes(output_dir, source, split_objects):
         bpy.ops.object.select_all(action="DESELECT")
         mesh.select_set(True)
         bpy.context.view_layer.objects.active = mesh
-        original = mesh.matrix_world.copy()
-        mesh.matrix_world.translation = (0.0, 0.0, 0.0)
+        recenter_to_origin([mesh])
         bpy.ops.export_scene.gltf(
             filepath=str(output),
             export_format="GLB",
@@ -317,7 +376,6 @@ def export_meshes(output_dir, source, split_objects):
             export_cameras=False,
             export_lights=False,
         )
-        mesh.matrix_world = original
         outputs.append(output)
     return outputs
 
@@ -365,7 +423,7 @@ def main():
         textures = image_candidates(pack)
         key = str(source.relative_to(args.source_root)).replace("\\", "/")
         active_keys.add(key)
-        fingerprint = hash_job(source, textures, args.overrides)
+        fingerprint = hash_job(source, textures, args.overrides, args.max_edge_length)
         cached = cache["jobs"].get(key, {})
         cached_outputs = cached.get("outputs", [])
         outputs_exist = cached_outputs and all((args.output_root / path).is_file() for path in cached_outputs)
@@ -395,6 +453,10 @@ def main():
             material_results.append(configure_material(pack, material, source, textures, overrides))
         unresolved += sum(result["color"] is None for result in material_results)
 
+        edges_split = tessellate_scene(args.max_edge_length, MAX_SUBDIVIDE_PASSES)
+        if edges_split:
+            print(f"TESSELLATE {key} edges_split={edges_split}")
+
         remove_old_outputs(args.output_root, cached_outputs)
         output_dir = args.output_root / pack.name
         if split_objects:
@@ -411,6 +473,7 @@ def main():
             "status": "converted",
             "outputs": relative_outputs,
             "materials": material_results,
+            "edges_split": edges_split,
         })
         converted += 1
 
