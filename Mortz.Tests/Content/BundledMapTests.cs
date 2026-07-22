@@ -3,16 +3,15 @@ using Mortz.Content;
 using Mortz.Core.Match;
 using Mortz.Core.Sim;
 using Mortz.Shared;
-using twodog.xunit;
 using Xunit;
 
 namespace Mortz.Tests.Content;
 
-[Collection(nameof(GodotHeadlessCollection))]
+[Collection(nameof(MortzGodotCollection))]
 public class BundledMapTests
 {
     [Fact]
-    public void EveryBundledMapLoads_AndItsSpawnPointsHold()
+    public void EveryBundledMapLoadsAndItsSpawnPointsHold()
     {
         string contentRoot = ProjectSettings.GlobalizePath("res://content");
         ContentCatalogResult result = ContentCatalog.Load(contentRoot);

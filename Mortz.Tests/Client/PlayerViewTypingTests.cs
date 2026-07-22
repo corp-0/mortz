@@ -6,15 +6,11 @@ using Mortz.Client.Views;
 using Mortz.Core.Match;
 using Mortz.Core.Net.Messages;
 using Mortz.Net;
-using twodog.xunit;
 using Xunit;
 
 namespace Mortz.Tests.Client;
 
-/// <summary>Typing balloons: remote players follow the server broadcast
-/// whichever side of the view spawn it lands on; the local player follows
-/// the chat input guard with no round trip.</summary>
-[Collection(nameof(GodotHeadlessCollection))]
+[Collection(nameof(MortzGodotCollection))]
 public class PlayerViewTypingTests : NodeServiceTest
 {
     private readonly PlayerViewManager _manager;
@@ -30,7 +26,7 @@ public class PlayerViewTypingTests : NodeServiceTest
     [Fact]
     public void RemoteBalloonsFollowBroadcastsOnBothSidesOfTheSpawn()
     {
-        new TypingStateMsg(2, true).Broadcast(); // before the view exists
+        new TypingStateMsg(2, true).Broadcast();
         _manager.BeginFrame();
         _manager.Place(2, ViewState());
         _manager.Place(3, ViewState());
@@ -38,7 +34,7 @@ public class PlayerViewTypingTests : NodeServiceTest
         Assert.True(Balloon(2).Visible);
         Assert.False(Balloon(3).Visible);
 
-        new TypingStateMsg(3, true).Broadcast(); // live view
+        new TypingStateMsg(3, true).Broadcast();
         Assert.True(Balloon(3).Visible);
 
         new TypingStateMsg(3, false).Broadcast();
@@ -60,7 +56,7 @@ public class PlayerViewTypingTests : NodeServiceTest
             Assert.True(Balloon(1).Visible);
 
             ChatInputGuard.SetTyping(owner, false);
-            new TypingStateMsg(1, true).Broadcast(); // stale echo loses to the poll
+            new TypingStateMsg(1, true).Broadcast();
             _manager.Place(1, ViewState());
             Assert.False(Balloon(1).Visible);
         }
@@ -73,8 +69,6 @@ public class PlayerViewTypingTests : NodeServiceTest
     private AnimatedSprite2D Balloon(int peerId) =>
         _manager.ViewForTest(peerId).GetNode<AnimatedSprite2D>("AnimatedSprite2D");
 
-    /// <summary>The real scene wires the player-prefab export; the shell never
-    /// enters the tree.</summary>
     private static PlayerViewManager TakeManagerFromGameViewScene()
     {
         GameView shell = ResourceLoader.Load<PackedScene>(

@@ -4,12 +4,11 @@ using Mortz.Core.Match;
 using Mortz.Core.Net.Messages;
 using Mortz.Core.Terrain;
 using Mortz.Net;
-using twodog.xunit;
 using Xunit;
 
 namespace Mortz.Tests.Client;
 
-[Collection(nameof(GodotHeadlessCollection))]
+[Collection(nameof(MortzGodotCollection))]
 public class MatchSetupTests : NodeServiceTest
 {
     private static LobbySettingsMsg Settings(MatchConfig config,

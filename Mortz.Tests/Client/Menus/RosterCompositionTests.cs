@@ -8,15 +8,11 @@ using Mortz.Client.Stats;
 using Mortz.Core.Match;
 using Mortz.Core.Net.Messages;
 using Mortz.Net;
-using twodog.xunit;
 using Xunit;
 
 namespace Mortz.Tests.Client.Menus;
 
-/// <summary>The lobby roster host swaps whole layouts on the Teams rule and
-/// the variants distribute the replicated members, driven over the wire on a
-/// mounted lobby.</summary>
-[Collection(nameof(GodotHeadlessCollection))]
+[Collection(nameof(MortzGodotCollection))]
 public class RosterCompositionTests : NodeServiceTest
 {
     private const string ROSTER_PATH = "Content/Main/Sidebar/LobbyCard/Margin/Column/Roster";
@@ -36,25 +32,21 @@ public class RosterCompositionTests : NodeServiceTest
             Assert.IsType<TeamColumnsRoster>(roster.GetNode("TeamColumnsRoster"));
         Assert.Null(roster.GetNodeOrNull("SingleColumnRoster"));
 
-        // Capacity is 2 per team for 3 players: team 1 is full, team 2
-        // shows its member plus one clickable free slot.
         Node team1 = columns.GetNode("Column/Teams/Team1/Slots");
         Node team2 = columns.GetNode("Column/Teams/Team2/Slots");
         Assert.Equal(2, team1.GetChildCount());
         Assert.Equal(2, team2.GetChildCount());
         Assert.Empty(team1.GetChildren().OfType<Button>());
         Button join = Assert.Single(team2.GetChildren().OfType<Button>());
-        Assert.False(join.Disabled); // local peer 1 sits on team 1
+        Assert.False(join.Disabled);
         Assert.Equal(0, columns.GetNode("Column/Unassigned").GetChildCount());
 
-        // Opponent slots carry a swap button; an incoming offer flips it
-        // to ACCEPT.
-        Assert.Equal("SWAP", SlotButtons(team2)[0].Text);
-        Assert.Empty(SlotButtons(team1));
+        Assert.Equal("SWAP", MemberSlotButtons(team2)[0].Text);
+        Assert.Empty(MemberSlotButtons(team1));
         new LobbyStateMsg([1, 2, 3], ["A", "B", "C"], [0, 0, 0], [1, 2, 1], [2], [1])
             .Broadcast();
         Assert.Equal("ACCEPT",
-            SlotButtons(columns.GetNode("Column/Teams/Team2/Slots"))[0].Text);
+            MemberSlotButtons(columns.GetNode("Column/Teams/Team2/Slots"))[0].Text);
 
         Settings(teams: false).Broadcast();
         Assert.IsType<SingleColumnRoster>(roster.GetNode("SingleColumnRoster"));
@@ -99,9 +91,7 @@ public class RosterCompositionTests : NodeServiceTest
         return Host(lobby);
     }
 
-    /// <summary>Buttons nested inside member slots (not the top-level JOIN
-    /// slots, which are direct children of the column).</summary>
-    private static List<Button> SlotButtons(Node column) =>
+    private static List<Button> MemberSlotButtons(Node column) =>
         column.GetChildren().Where(child => child is not Button)
             .SelectMany(slot => slot.FindChildren("*", "Button", recursive: true, owned: false)
                 .OfType<Button>())

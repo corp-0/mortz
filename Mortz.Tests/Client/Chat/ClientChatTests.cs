@@ -8,14 +8,11 @@ using Mortz.Core.Chat;
 using Mortz.Core.Net;
 using Mortz.Core.Net.Messages;
 using Mortz.Net;
-using twodog.xunit;
 using Xunit;
 
 namespace Mortz.Tests.Client.Chat;
 
-/// <summary>Chat node behavior over the wire, with a real ClientAdmin faked
-/// in as its dependency.</summary>
-[Collection(nameof(GodotHeadlessCollection))]
+[Collection(nameof(MortzGodotCollection))]
 public class ClientChatTests : NodeServiceTest
 {
     private const int SENDER = 42;

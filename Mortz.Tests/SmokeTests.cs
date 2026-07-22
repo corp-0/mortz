@@ -1,10 +1,9 @@
 using Godot;
-using twodog.xunit;
 using Xunit;
 
 namespace Mortz.Tests;
 
-[Collection(nameof(GodotHeadlessCollection))]
+[Collection(nameof(MortzGodotCollection))]
 public class SmokeTests
 {
     [Fact]

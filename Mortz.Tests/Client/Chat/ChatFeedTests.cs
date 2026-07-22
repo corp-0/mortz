@@ -5,14 +5,11 @@ using Mortz.Client.Chat;
 using Mortz.Core.Chat;
 using Mortz.Core.Net;
 using Mortz.Net;
-using twodog.xunit;
 using Xunit;
 
 namespace Mortz.Tests.Client.Chat;
 
-/// <summary>The shared line list renders one ClientChat's entries the same
-/// way for the lobby panel and the in-game overlay.</summary>
-[Collection(nameof(GodotHeadlessCollection))]
+[Collection(nameof(MortzGodotCollection))]
 public class ChatFeedTests : NodeServiceTest
 {
     private readonly ClientChat _chat;

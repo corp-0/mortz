@@ -2,14 +2,11 @@ using Chickensoft.AutoInject;
 using Mortz.Client.Feed;
 using Mortz.Client.Roster;
 using Mortz.Core.Net.Messages;
-using twodog.xunit;
 using Xunit;
 
 namespace Mortz.Tests.Client.Feed;
 
-/// <summary>Elimination and match-end lines formatted with roster-resolved
-/// names.</summary>
-[Collection(nameof(GodotHeadlessCollection))]
+[Collection(nameof(MortzGodotCollection))]
 public class KillFeedTests : NodeServiceTest
 {
     [Fact]

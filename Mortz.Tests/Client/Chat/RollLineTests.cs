@@ -1,11 +1,10 @@
 using Godot;
 using Mortz.Client.Chat;
-using twodog.xunit;
 using Xunit;
 
 namespace Mortz.Tests.Client.Chat;
 
-[Collection(nameof(GodotHeadlessCollection))]
+[Collection(nameof(MortzGodotCollection))]
 public class RollLineTests
 {
     [Fact]
@@ -18,7 +17,7 @@ public class RollLineTests
             Assert.Contains("rolls", prefix.Text);
             Assert.DoesNotContain("rolled", prefix.Text);
 
-            line._Process(60.0); // one giant step lands past the spin window
+            line._Process(60.0);
 
             RichTextLabel settled = Assert.IsType<RichTextLabel>(line.GetChild(0));
             Assert.Contains("rolled", settled.Text);

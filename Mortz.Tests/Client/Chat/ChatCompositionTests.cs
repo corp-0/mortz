@@ -14,12 +14,11 @@ using Mortz.Net;
 using Mortz.Server;
 using Mortz.Server.Chat;
 using Mortz.Shared;
-using twodog.xunit;
 using Xunit;
 
 namespace Mortz.Tests.Client.Chat;
 
-[Collection(nameof(GodotHeadlessCollection))]
+[Collection(nameof(MortzGodotCollection))]
 public class ChatCompositionTests : NodeServiceTest
 {
     [Fact]
@@ -74,8 +73,7 @@ public class ChatCompositionTests : NodeServiceTest
     [Fact]
     public void MapPreviewComposesWhateverFormatsTheLayersDecodeTo()
     {
-        // fightbox ships an RGB background (no alpha); BlendRect would
-        // silently skip mismatched layers, leaving a background-only preview.
+        // BlendRect skips layers when their formats differ.
         string contentRoot = ProjectSettings.GlobalizePath("res://content");
         MapPackage map = Assert.IsType<MapPackage>(MapPackage.Load("fightbox", contentRoot));
         Assert.NotEqual(Image.Format.Rgba8, map.Background.GetFormat());
@@ -83,7 +81,8 @@ public class ChatCompositionTests : NodeServiceTest
         Image preview = LobbySettingsPanel.ComposePreview(map);
 
         Assert.Equal(Image.Format.Rgba8, preview.GetFormat());
-        Assert.Equal(Image.Format.Rgba8, map.Solid.GetFormat()); // untouched shared image
+        // ComposePreview must not mutate the shared image.
+        Assert.Equal(Image.Format.Rgba8, map.Solid.GetFormat());
         Assert.Equal(map.Width, preview.GetWidth());
         Assert.Equal(map.Height, preview.GetHeight());
     }

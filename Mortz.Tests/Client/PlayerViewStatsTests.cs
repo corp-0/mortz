@@ -7,20 +7,16 @@ using Mortz.Core.Net.Messages;
 using Mortz.Core.Sim.Modifiers;
 using Mortz.Net;
 using Mortz.Tests.Core;
-using twodog.xunit;
 using Xunit;
 using static Mortz.Core.Sim.Modifiers.StatChange;
 
 namespace Mortz.Tests.Client;
 
-/// <summary>Replicated per-player modifier lists reach the matching
-/// PlayerView whether the modifiers or the view arrive first, and never
-/// bleed onto other players.</summary>
-[Collection(nameof(GodotHeadlessCollection))]
+[Collection(nameof(MortzGodotCollection))]
 public class PlayerViewStatsTests : NodeServiceTest
 {
     [Fact]
-    public void PerPlayerModifiers_ConfigureTheMatchingView()
+    public void PerPlayerModifiersConfigureTheMatchingView()
     {
         PlayerViewManager manager = TakeManagerFromGameViewScene();
         manager.FakeDependency<INetwork>(new FakeNetwork());
@@ -33,7 +29,6 @@ public class PlayerViewStatsTests : NodeServiceTest
         byte[] smallParry = ModifierWire.Serialize(
             [new StatsModifier(ModifierId.SPECIAL, Mul(Stat.PARRY_RADIUS, 0.5f))]);
 
-        // Peer 2's modifiers land before its view exists, peer 3's only after.
         new PlayerModifiersMsg(2, bigParry).Broadcast();
         manager.BeginFrame();
         manager.Place(2, ViewState());
@@ -47,8 +42,6 @@ public class PlayerViewStatsTests : NodeServiceTest
         Assert.Equal(baseRadius * 4, manager.ViewForTest(2).StatsForTest.ParryRadius);
     }
 
-    /// <summary>The real scene wires the player-prefab export; the shell never
-    /// enters the tree.</summary>
     private static PlayerViewManager TakeManagerFromGameViewScene()
     {
         GameView shell = ResourceLoader.Load<PackedScene>(

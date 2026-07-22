@@ -1,12 +1,11 @@
 using Mortz.Client.Score;
 using Mortz.Core.Net.Messages;
 using Mortz.Net;
-using twodog.xunit;
 using Xunit;
 
 namespace Mortz.Tests.Client;
 
-[Collection(nameof(GodotHeadlessCollection))]
+[Collection(nameof(MortzGodotCollection))]
 public class MatchScoreTests : NodeServiceTest
 {
     [Fact]
@@ -53,5 +52,4 @@ public class MatchScoreTests : NodeServiceTest
         Assert.Equal(1, score.Deaths(8));
         Assert.Equal(1, score.TeamKills(1));
     }
-
 }

@@ -2,12 +2,11 @@ using Godot;
 using Mortz.Client.Stats;
 using Mortz.Core.Net.Messages;
 using Mortz.Net;
-using twodog.xunit;
 using Xunit;
 
 namespace Mortz.Tests.Client;
 
-[Collection(nameof(GodotHeadlessCollection))]
+[Collection(nameof(MortzGodotCollection))]
 public class ClientStatsTests : NodeServiceTest
 {
     [Fact]
