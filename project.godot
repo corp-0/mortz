@@ -21,12 +21,6 @@ buses/default_bus_layout="uid://bebvex8an0eju"
 
 [autoload]
 
-
-
-
-
-
-
 NetworkManager="*res://src/Net/NetworkManager.cs"
 
 [display]
@@ -107,3 +101,38 @@ toggle_sim_boxes={
 textures/canvas_textures/default_texture_filter=0
 textures/decals/filter=0
 textures/light_projectors/filter=0
+
+[shader_globals]
+
+affine_texture_mapping={
+"type": "bool",
+"value": false
+}
+fog_color={
+"type": "color",
+"value": Color(0.04, 0.055, 0.07, 1)
+}
+fog_start_distance={
+"type": "float",
+"value": 10.0
+}
+fog_end_distance={
+"type": "float",
+"value": 26.0
+}
+cull_distance={
+"type": "float",
+"value": 45.0
+}
+texture_filtering={
+"type": "bool",
+"value": false
+}
+texture_lod_halve_distance={
+"type": "float",
+"value": 0.0
+}
+vertex_snap_intensity={
+"type": "int",
+"value": 0
+}

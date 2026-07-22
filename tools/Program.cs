@@ -18,6 +18,7 @@ internal static class Program
                     Console.Error.WriteLine("  dotnet run --project tools -- convert-lxl <path.lxl> <mapId> [--scale N] [--players N] [--out DIR]");
                     Console.Error.WriteLine("  dotnet run --project tools -- export [client|server|all] [--debug] [--require-official]");
                     Console.Error.WriteLine("  dotnet run --project tools -- official check");
+                    Console.Error.WriteLine("  dotnet run --project tools -- official import-3d [--blender PATH] [--rebuild]");
                     Console.Error.WriteLine("  dotnet run --project tools -- publish-playtest");
                     Console.Error.WriteLine("  dotnet run --project tools -- gen-sounds");
                     return 1;

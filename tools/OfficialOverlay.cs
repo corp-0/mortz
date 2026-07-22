@@ -7,12 +7,19 @@ internal static class OfficialOverlay
 
     public static void Run(string[] args)
     {
-        if (args is not ["check"])
-            throw new Exception("usage: dotnet run --project tools -- official check");
-
-        string root = Program.RepoRoot();
-        Validate(root, required: true);
-        Console.WriteLine($"official overlay ready at {Path.Combine(root, DIRECTORY_NAME)}");
+        switch (args)
+        {
+            case ["check"]:
+                string root = Program.RepoRoot();
+                Validate(root, required: true);
+                Console.WriteLine($"official overlay ready at {Path.Combine(root, DIRECTORY_NAME)}");
+                return;
+            case ["import-3d", ..]:
+                Import3D.Run(args[1..]);
+                return;
+            default:
+                throw new Exception("usage: dotnet run --project tools -- official <check|import-3d>");
+        }
     }
 
     public static void Validate(string root, bool required)
