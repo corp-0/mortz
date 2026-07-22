@@ -1,0 +1,9 @@
+[gd_scene format=3 uid="uid://bt1lcdvbv07cu"]
+
+[ext_resource type="Texture2D" uid="uid://dlrrd3ofcobcq" path="res://Assets/mortarthingy.png" id="1_juy44"]
+
+[node name="3dMortar" type="Sprite3D" unique_id=2046372361]
+pixel_size = 0.5
+billboard = 2
+shaded = true
+texture = ExtResource("1_juy44")
