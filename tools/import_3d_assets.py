@@ -17,6 +17,7 @@ SCRIPT_VERSION = 6
 DEFAULT_MAX_EDGE_LENGTH = 0.5
 MAX_SUBDIVIDE_PASSES = 6
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".tga", ".webp"}
+EXCLUDED_TEXTURE_DIRS = {"promo materials", "other-formats"}
 NORMAL_SUFFIXES = ("_n", "_normal", "_norm", "-n", "-normal")
 EMISSION_SUFFIXES = ("_e", "_emission", "_emissive", "-e", "-emission")
 COLOR_SUFFIXES = ("_map", "_albedo", "_diffuse", "_color", "_basecolor", "_c", "_cd")
@@ -80,9 +81,12 @@ def discover_jobs(source_root):
 def image_candidates(pack):
     result = []
     for path in pack.rglob("*"):
-        if path.is_file() and path.suffix.lower() in IMAGE_EXTENSIONS:
-            if "promo materials" not in [part.lower() for part in path.parts]:
-                result.append(path)
+        if not (path.is_file() and path.suffix.lower() in IMAGE_EXTENSIONS):
+            continue
+        parts = {part.lower() for part in path.parts}
+        if parts & EXCLUDED_TEXTURE_DIRS:
+            continue
+        result.append(path)
     return sorted(result)
 
 
@@ -289,7 +293,7 @@ def base_center(meshes):
 def recenter_to_origin(meshes):
     offset = base_center(meshes)
     shift = Matrix.Translation(-offset)
-    for obj in bpy.context.scene.objects:
+    for obj in bpy.context.view_layer.objects:
         if obj.parent is None:
             obj.matrix_world = shift @ obj.matrix_world
 
@@ -320,7 +324,7 @@ def tessellate_scene(max_edge_length, max_passes):
         return 0
     total = 0
     seen = set()
-    for obj in bpy.context.scene.objects:
+    for obj in bpy.context.view_layer.objects:
         if obj.type != "MESH" or obj.data in seen:
             continue
         seen.add(obj.data)
@@ -330,7 +334,7 @@ def tessellate_scene(max_edge_length, max_passes):
 
 def export_meshes(output_dir, source, split_objects):
     meshes = sorted(
-        (obj for obj in bpy.context.scene.objects if obj.type == "MESH"),
+        (obj for obj in bpy.context.view_layer.objects if obj.type == "MESH"),
         key=lambda obj: obj.name.lower(),
     )
     if not meshes:
@@ -446,7 +450,7 @@ def main():
         material_results = []
         used_materials = {
             slot.material
-            for mesh in bpy.context.scene.objects if mesh.type == "MESH"
+            for mesh in bpy.context.view_layer.objects if mesh.type == "MESH"
             for slot in mesh.material_slots if slot.material is not None
         }
         for material in sorted(used_materials, key=lambda item: item.name.lower()):
