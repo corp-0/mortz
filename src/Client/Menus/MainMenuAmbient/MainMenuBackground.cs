@@ -10,7 +10,7 @@ public partial class MainMenuBackground : SubViewportContainer
     [Export] private AnimationPlayer _player = null!;
     [Export] private AudioStreamPlayer _ambientLoop = null!;
     [Export(PropertyHint.Range, "0.1,10,0.1")]
-    private float _ambientFadeSeconds = 4.0f;
+    private float _ambientFadeSeconds = 2.5f;
 
     private bool _hasStarted;
 
