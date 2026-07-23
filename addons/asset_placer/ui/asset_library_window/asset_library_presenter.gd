@@ -1,0 +1,153 @@
+class_name AssetLibraryPresenter
+extends RefCounted
+
+signal assets_loaded(assets: Array[AssetResource])
+signal asset_selection_change
+signal show_filter_info(size: int)
+signal show_empty_view(type: EmptyType)
+
+enum EmptyType { Search, Collection, All, None }
+
+var synchronizer: Synchronize
+var is_sort_ascending := true
+
+var _active_collections: Array[AssetCollection] = []
+var _filtered_assets: Array[AssetResource] = []
+var _current_query: String
+var _current_sort_method: AssetSortBy.SortMethod
+
+var _asset_library: AssetLibrary:
+	get:
+		return AssetLibraryManager.get_asset_library()
+
+
+func _init():
+	synchronizer = Synchronize.instance
+
+
+func on_ready():
+	show_filter_info.emit(0)
+	_asset_library.assets_changed.connect(_filter_by_collections_and_query)
+	_asset_library.folders_changed.connect(sync)
+	_filter_by_collections_and_query()
+
+
+func add_folder(path: String):
+	var new_folder := AssetFolder.new(path)
+	_asset_library.add_folder(new_folder)
+
+
+func on_query_change(query: String):
+	_current_query = query
+	_filter_by_collections_and_query()
+
+
+func add_asset(path: String, folder_path: String):
+	if not AssetResource.is_file_supported(path):
+		push_warning("Creating a Resource for file %s is not supported." % path)
+		return
+
+	var tags: Array[int] = []
+	for collection in _active_collections:
+		tags.push_back(collection.id)
+
+	var id = ResourceIdCompat.path_to_uid(path)
+	assert(id != path, "Error getting uid from path %s" % path)
+
+	var existing := _asset_library.get_asset(id)
+	if existing:
+		existing.add_tags(tags)
+		_asset_library.update_asset(existing)
+	else:
+		var new_asset := AssetResource.new(
+			id, path.get_file(), tags, folder_path, -1, Time.get_unix_time_from_system()
+		)
+		_asset_library.add_asset(new_asset)
+
+
+func delete_asset(asset: AssetResource):
+	_asset_library.remove_asset(asset)
+
+
+func add_assets_or_folders(files: PackedStringArray):
+	for file in files:
+		if file.get_extension().is_empty():
+			add_folder(file)
+		elif AssetResource.is_file_supported(file):
+			add_asset(file, "")
+
+
+func toggle_asset_collection(asset: AssetResource, collection: AssetCollection, add: bool):
+	if add:
+		asset.add_tag(collection.id)
+	else:
+		asset.remove_tag(collection.id)
+	_asset_library.update_asset(asset)
+
+
+func toggle_collection_filter(collection: AssetCollection, enabled: bool):
+	if enabled:
+		_active_collections.push_back(collection)
+	else:
+		_active_collections = _active_collections.filter(func(a): return a.id != collection.id)
+	show_filter_info.emit(_active_collections.size())
+	_filter_by_collections_and_query()
+
+
+func on_sort_method_change(method: AssetSortBy.SortMethod):
+	_current_sort_method = method
+	_filter_by_collections_and_query()
+
+
+func _filter_by_collections_and_query():
+	var filtered: Array[AssetResource] = []
+
+	var query_words := Array(_current_query.strip_edges().to_lower().split(" ", false))
+	var include_words: Array[String] = []
+	var exclude_words: Array[String] = []
+	for w: String in query_words:
+		if w.begins_with("-") && w.length() > 1:
+			exclude_words.append(w.substr(1))
+		else:
+			include_words.append(w)
+
+	for asset: AssetResource in _asset_library.get_assets():
+		if (
+			_active_collections.is_empty() == false
+			and asset.belongs_to_some_collection(_active_collections) == false
+		):
+			continue
+
+		var matches_query := true
+		var asset_lower := asset.name.to_lower()
+
+		for w in include_words:
+			if asset_lower.contains(w) == false:
+				matches_query = false
+				break
+
+		if matches_query:
+			for w in exclude_words:
+				if asset_lower.contains(w):
+					matches_query = false
+					break
+
+		if matches_query:
+			filtered.push_back(asset)
+
+	filtered.sort_custom(AssetSortBy.get_sort_function(_current_sort_method, is_sort_ascending))
+	if filtered.is_empty():
+		if _active_collections.is_empty() && _current_query.is_empty():
+			show_empty_view.emit(EmptyType.All)
+		elif _active_collections.is_empty() == false:
+			show_empty_view.emit(EmptyType.Collection)
+		else:
+			show_empty_view.emit(EmptyType.Search)
+	else:
+		assets_loaded.emit(filtered)
+		show_empty_view.emit(EmptyType.None)
+	_filtered_assets = filtered
+
+
+func sync():
+	synchronizer.sync_all()
