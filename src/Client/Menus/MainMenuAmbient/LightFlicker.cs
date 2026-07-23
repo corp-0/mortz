@@ -8,6 +8,9 @@ public partial class LightFlicker : Node3D
     [Export] private bool _isMainLight;
     [Export] private bool _isAllowedToRandomFlick;
     [Export] private Node3D _root = null!;
+    [Export] private AudioStreamPlayer3D _flickerSfx = null!;
+    [Export(PropertyHint.Range, "0.5,1.5,0.01")] private float _minFlickPitch = 0.95f;
+    [Export(PropertyHint.Range, "0.5,1.5,0.01")] private float _maxFlickPitch = 1.05f;
 
     [Export] private float _minLitTime = 4.0f;
     [Export] private float _maxLitTime = 9.0f;
@@ -82,6 +85,8 @@ public partial class LightFlicker : Node3D
         Visible = lit;
         _light.Visible = lit;
         _ambientLight?.LightEnergy = lit ? TARGET_DIRECTIONAL_ENERGY : 0.0f;
+        _flickerSfx.PitchScale = RandRange(_minFlickPitch, _maxFlickPitch);
+        _flickerSfx.Play();
     }
 
     public override void _Ready()

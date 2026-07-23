@@ -4,6 +4,9 @@
 damping = 0.65
 wet = 0.35
 
+[sub_resource type="AudioEffectReverb" id="AudioEffectReverb_j3pel"]
+resource_name = "Reverb"
+
 [resource]
 bus/1/name = &"Sfx"
 bus/1/solo = false
@@ -28,6 +31,14 @@ bus/4/solo = false
 bus/4/mute = false
 bus/4/bypass_fx = false
 bus/4/volume_db = -3.0
-bus/4/send = &"Master"
+bus/4/send = &"Sfx"
 bus/4/effect/0/effect = SubResource("AudioEffectReverb_death")
 bus/4/effect/0/enabled = true
+bus/5/name = &"MenuAmbientSfx"
+bus/5/solo = false
+bus/5/mute = false
+bus/5/bypass_fx = false
+bus/5/volume_db = 0.0
+bus/5/send = &"Sfx"
+bus/5/effect/0/effect = SubResource("AudioEffectReverb_j3pel")
+bus/5/effect/0/enabled = true
