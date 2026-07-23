@@ -81,6 +81,8 @@ public partial class MainMenu : Control
         ShowPanel(_homePanel);
     }
 
+    public void OnExitPressed() => GetTree().Quit();
+
     public void OnJoinConfirmed()
     {
         string playerName = _joinNameEdit.Text.Trim();
