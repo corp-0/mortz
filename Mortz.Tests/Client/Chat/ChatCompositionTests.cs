@@ -142,19 +142,24 @@ public class ChatCompositionTests : NodeServiceTest
 
     private Lobby MountLobby()
     {
+        Lobby lobby = InstantiateLobby();
+        HostServiceRoot().AddChild(lobby);
+        return lobby;
+    }
+
+    private ServiceRoot HostServiceRoot()
+    {
         FakeNetwork network = new() { LocalPeerId = 1 };
-        MatchSetup setup = Host(new MatchSetup());
-        ClientStats stats = Host(new ClientStats());
         ClientAdmin admin = new();
         admin.FakeDependency<INetwork>(network);
-        Host(admin);
-        Lobby lobby = InstantiateLobby();
-        lobby.FakeDependency(setup);
-        lobby.FakeDependency(stats);
-        lobby.FakeDependency(admin);
-        lobby.FakeDependency<INetwork>(network);
-        lobby.FakeDependency<ISessionExit>(new FakeSessionExit());
-        return Host(lobby);
+        return Host(new ServiceRoot
+        {
+            Setup = Host(new MatchSetup()),
+            Stats = Host(new ClientStats()),
+            Admin = Host(admin),
+            Network = network,
+            SessionExit = new FakeSessionExit(),
+        });
     }
 
     private static void AssertSceneType<T>(string name) where T : Node

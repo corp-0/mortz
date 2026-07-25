@@ -78,19 +78,20 @@ public class RosterCompositionTests : NodeServiceTest
     private Lobby MountLobby()
     {
         FakeNetwork network = new() { LocalPeerId = 1 };
-        MatchSetup setup = Host(new MatchSetup());
-        ClientStats stats = Host(new ClientStats());
         ClientAdmin admin = new();
         admin.FakeDependency<INetwork>(network);
-        Host(admin);
+        ServiceRoot root = Host(new ServiceRoot
+        {
+            Setup = Host(new MatchSetup()),
+            Stats = Host(new ClientStats()),
+            Admin = Host(admin),
+            Network = network,
+            SessionExit = new FakeSessionExit(),
+        });
         Lobby lobby = ResourceLoader.Load<PackedScene>(
             "res://src/Shared/UI/Menus/Lobby.tscn").Instantiate<Lobby>();
-        lobby.FakeDependency(setup);
-        lobby.FakeDependency(stats);
-        lobby.FakeDependency(admin);
-        lobby.FakeDependency<INetwork>(network);
-        lobby.FakeDependency<ISessionExit>(new FakeSessionExit());
-        return Host(lobby);
+        root.AddChild(lobby);
+        return lobby;
     }
 
     private static List<Button> MemberSlotButtons(Node column) =>

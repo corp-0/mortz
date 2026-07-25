@@ -32,13 +32,7 @@ namespace Mortz.Client.Match;
 [Meta(typeof(IAutoNode))]
 public partial class GameView : Node2D,
     IProvide<IKillFeed>,
-    IProvide<AnnouncementDirector>,
-    IProvide<MatchSetup>,
-    IProvide<MatchScore>,
-    IProvide<ClientAdmin>,
-    IProvide<ClientRoster>,
-    IProvide<INetwork>,
-    IProvide<ISessionExit>
+    IProvide<AnnouncementDirector>
 {
     [Export] private GameMap _gameMap = null!;
     [Export] private RopeOverlay _ropes = null!;
@@ -51,31 +45,10 @@ public partial class GameView : Node2D,
     [Export] private AnnouncementDirector _announcements = null!;
 
     [Dependency]
-    private MatchSetup Setup => this.DependOn<MatchSetup>();
-
-    [Dependency]
-    private MatchScore Score => this.DependOn<MatchScore>();
-
-    [Dependency]
-    private ClientAdmin Admin => this.DependOn<ClientAdmin>();
-
-    [Dependency]
-    private ClientRoster Roster => this.DependOn<ClientRoster>();
-
-    [Dependency]
     private INetwork Network => this.DependOn<INetwork>();
-
-    [Dependency]
-    private ISessionExit SessionExit => this.DependOn<ISessionExit>();
 
     IKillFeed IProvide<IKillFeed>.Value() => _killFeed;
     AnnouncementDirector IProvide<AnnouncementDirector>.Value() => _announcements;
-    MatchSetup IProvide<MatchSetup>.Value() => Setup;
-    MatchScore IProvide<MatchScore>.Value() => Score;
-    ClientAdmin IProvide<ClientAdmin>.Value() => Admin;
-    ClientRoster IProvide<ClientRoster>.Value() => Roster;
-    INetwork IProvide<INetwork>.Value() => Network;
-    ISessionExit IProvide<ISessionExit>.Value() => SessionExit;
 
     public override void _Notification(int what) => this.Notify(what);
 
