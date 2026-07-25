@@ -1,9 +1,8 @@
 using Mortz.Core.Admin;
 using Mortz.Core.Chat.Commands;
 using Mortz.Core.Net.Messages;
-using Mortz.Net;
 
-namespace Mortz.Client.Chat;
+namespace Mortz.Client.Chat.Commands;
 
 [ChatCommand("endmatch", Usage = "/endmatch",
     Description = "End the current match and return everyone to the lobby (admin only).")]

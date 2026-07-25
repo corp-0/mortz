@@ -2,7 +2,9 @@ using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
 using Mortz.Client.Admin;
+using Mortz.Client.Chat.Commands;
 using Mortz.Client.Feed;
+using Mortz.Client.Session;
 using Mortz.Core.Chat;
 using Mortz.Core.Chat.Commands;
 using Mortz.Core.Net;
@@ -28,6 +30,9 @@ public partial class ClientChat : Node
 
     [Dependency]
     private IKillFeed KillFeed => this.DependOn<IKillFeed>(() => NoKillFeed.Instance);
+
+    [Dependency]
+    private ISessionExit SessionExit => this.DependOn<ISessionExit>();
 
     public override void _Notification(int what) => this.Notify(what);
 
@@ -61,7 +66,7 @@ public partial class ClientChat : Node
                 State.AddSystem(parseError, isPrivate: true);
                 return false;
             }
-            command!.Execute(new ClientCommandContext(this, Admin));
+            command!.Execute(new ClientCommandContext(this, Admin, SessionExit));
             return true;
         }
 

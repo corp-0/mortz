@@ -13,7 +13,7 @@ namespace Mortz.Client.Session;
 /// <summary>Owns connection, session, lobby, and match-scene transitions for
 /// one client.</summary>
 [Meta(typeof(IAutoNode))]
-public partial class ClientSessionController : Node
+public partial class ClientSessionController : Node, ISessionExit, IProvide<ISessionExit>
 {
     private const int CONNECT_RETRIES = 5;
 
@@ -36,6 +36,8 @@ public partial class ClientSessionController : Node
     [Dependency]
     private NetworkManager Network => this.DependOn<NetworkManager>();
 
+    ISessionExit IProvide<ISessionExit>.Value() => this;
+
     public override void _Notification(int what)
     {
         if (what == NotificationWMCloseRequest)
@@ -45,6 +47,7 @@ public partial class ClientSessionController : Node
 
     public void OnResolved()
     {
+        this.Provide();
         Subscribe();
         CreateMenu(autoStartIntro: false);
         string? autoConnect = CmdArgs.GetValue("--connect");
@@ -77,6 +80,8 @@ public partial class ClientSessionController : Node
         StartConnecting(address, port, playerName);
 
     public void OnReadyToggled(bool ready) => new SetReadyMsg(ready).SendToServer();
+
+    public void LeaveSession(string reason) => ReturnToMenu(reason, stopLocalServer: true);
 
     private void Subscribe()
     {
@@ -135,7 +140,6 @@ public partial class ClientSessionController : Node
         }
 
         GD.Print("[client] connection failed");
-        Network.ResetPeer();
         ReturnToMenu("Connection failed.", stopLocalServer: true);
     }
 
@@ -224,21 +228,21 @@ public partial class ClientSessionController : Node
     private void RejectWelcome(string reason)
     {
         GD.PrintErr($"[client] {reason} Disconnecting.");
-        _connection.Cancel();
-        Network.ResetPeer();
         ReturnToMenu(reason, stopLocalServer: true);
     }
 
     private void OnDisconnected()
     {
         GD.Print("[client] disconnected from server");
-        _connection.Cancel();
-        Network.ResetPeer();
         ReturnToMenu("Disconnected.", stopLocalServer: true);
     }
 
+    // Drops the peer itself: reaching the menu with a live connection would
+    // leave the player in the server's roster with no way back to the session.
     private void ReturnToMenu(string status, bool stopLocalServer)
     {
+        _connection.Cancel();
+        Network.ResetPeer();
         DisposeGameView();
         DisposeLobby();
         DisposeConnectedSession();

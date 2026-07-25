@@ -3,6 +3,7 @@ using Chickensoft.AutoInject;
 using Mortz.Client.Admin;
 using Mortz.Client.Chat;
 using Mortz.Client.Feed;
+using Mortz.Client.Session;
 using Mortz.Core.Admin;
 using Mortz.Core.Chat;
 using Mortz.Core.Net;
@@ -19,6 +20,7 @@ public class ClientChatTests : NodeServiceTest
 
     private readonly ClientChat _chat;
     private readonly ClientAdmin _admin;
+    private readonly FakeSessionExit _sessionExit = new();
 
     public ClientChatTests()
     {
@@ -28,6 +30,7 @@ public class ClientChatTests : NodeServiceTest
         _admin = Host(admin);
         ClientChat chat = new();
         chat.FakeDependency(_admin);
+        chat.FakeDependency<ISessionExit>(_sessionExit);
         _chat = Host(chat);
     }
 
@@ -115,6 +118,7 @@ public class ClientChatTests : NodeServiceTest
         ClientChat chat = new();
         chat.FakeDependency(_admin);
         chat.FakeDependency<IKillFeed>(feed);
+        chat.FakeDependency<ISessionExit>(_sessionExit);
         Host(chat);
 
         feed.Emit("Alice killed Bob");
@@ -122,6 +126,16 @@ public class ClientChatTests : NodeServiceTest
         ChatEntry entry = Assert.Single(chat.State.Entries);
         Assert.Equal(ChatEntryKind.SYSTEM, entry.Kind);
         Assert.Equal("Alice killed Bob", entry.Text);
+    }
+
+    [Fact]
+    public void QuitLeavesTheSessionAndTakesNoArguments()
+    {
+        Assert.False(_chat.Submit("/quit now"));
+        Assert.Empty(_sessionExit.Reasons);
+
+        Assert.True(_chat.Submit("/quit"));
+        Assert.Equal("Left the server.", Assert.Single(_sessionExit.Reasons));
     }
 
     private sealed class FakeKillFeed : IKillFeed

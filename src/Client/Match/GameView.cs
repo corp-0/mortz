@@ -8,6 +8,7 @@ using Mortz.Client.Feed;
 using Mortz.Client.Replay;
 using Mortz.Client.Roster;
 using Mortz.Client.Score;
+using Mortz.Client.Session;
 using Mortz.Client.Setup;
 using Mortz.Client.Views;
 using Mortz.Core.Match;
@@ -36,7 +37,8 @@ public partial class GameView : Node2D,
     IProvide<MatchScore>,
     IProvide<ClientAdmin>,
     IProvide<ClientRoster>,
-    IProvide<INetwork>
+    IProvide<INetwork>,
+    IProvide<ISessionExit>
 {
     [Export] private GameMap _gameMap = null!;
     [Export] private RopeOverlay _ropes = null!;
@@ -63,6 +65,9 @@ public partial class GameView : Node2D,
     [Dependency]
     private INetwork Network => this.DependOn<INetwork>();
 
+    [Dependency]
+    private ISessionExit SessionExit => this.DependOn<ISessionExit>();
+
     IKillFeed IProvide<IKillFeed>.Value() => _killFeed;
     AnnouncementDirector IProvide<AnnouncementDirector>.Value() => _announcements;
     MatchSetup IProvide<MatchSetup>.Value() => Setup;
@@ -70,6 +75,7 @@ public partial class GameView : Node2D,
     ClientAdmin IProvide<ClientAdmin>.Value() => Admin;
     ClientRoster IProvide<ClientRoster>.Value() => Roster;
     INetwork IProvide<INetwork>.Value() => Network;
+    ISessionExit IProvide<ISessionExit>.Value() => SessionExit;
 
     public override void _Notification(int what) => this.Notify(what);
 

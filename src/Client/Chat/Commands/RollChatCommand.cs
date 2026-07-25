@@ -1,7 +1,7 @@
 using Mortz.Core.Chat.Commands;
 using Mortz.Core.Net.Messages;
 
-namespace Mortz.Client.Chat;
+namespace Mortz.Client.Chat.Commands;
 
 [ChatCommand("roll", Usage = "/roll",
     Description = "Roll a number from 1 to 100 for everyone to see.")]

@@ -2,6 +2,7 @@ using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
 using Mortz.Client.Admin;
+using Mortz.Client.Session;
 using Mortz.Client.Setup;
 using Mortz.Client.Stats;
 using Mortz.Net;
@@ -18,7 +19,8 @@ public partial class Lobby : Control,
     IProvide<MatchSetup>,
     IProvide<ClientStats>,
     IProvide<ClientAdmin>,
-    IProvide<INetwork>
+    IProvide<INetwork>,
+    IProvide<ISessionExit>
 {
     [Signal] public delegate void ReadyToggledEventHandler(bool ready);
 
@@ -38,10 +40,14 @@ public partial class Lobby : Control,
     [Dependency]
     private INetwork Network => this.DependOn<INetwork>();
 
+    [Dependency]
+    private ISessionExit SessionExit => this.DependOn<ISessionExit>();
+
     MatchSetup IProvide<MatchSetup>.Value() => Setup;
     ClientStats IProvide<ClientStats>.Value() => Stats;
     ClientAdmin IProvide<ClientAdmin>.Value() => Admin;
     INetwork IProvide<INetwork>.Value() => Network;
+    ISessionExit IProvide<ISessionExit>.Value() => SessionExit;
 
     public override void _Notification(int what) => this.Notify(what);
 

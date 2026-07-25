@@ -19,7 +19,8 @@ public partial class ConnectedSession : Node,
     IProvide<MatchScore>,
     IProvide<ClientRoster>,
     IProvide<ClientAdmin>,
-    IProvide<INetwork>
+    IProvide<INetwork>,
+    IProvide<ISessionExit>
 {
     [Export] private MatchSetup _matchSetup = null!;
     [Export] private ClientStats _clientStats = null!;
@@ -30,12 +31,16 @@ public partial class ConnectedSession : Node,
     [Dependency]
     private INetwork Network => this.DependOn<INetwork>();
 
+    [Dependency]
+    private ISessionExit SessionExit => this.DependOn<ISessionExit>();
+
     MatchSetup IProvide<MatchSetup>.Value() => _matchSetup;
     ClientStats IProvide<ClientStats>.Value() => _clientStats;
     MatchScore IProvide<MatchScore>.Value() => _matchScore;
     ClientRoster IProvide<ClientRoster>.Value() => _clientRoster;
     ClientAdmin IProvide<ClientAdmin>.Value() => _clientAdmin;
     INetwork IProvide<INetwork>.Value() => Network;
+    ISessionExit IProvide<ISessionExit>.Value() => SessionExit;
 
     public override void _Notification(int what) => this.Notify(what);
 

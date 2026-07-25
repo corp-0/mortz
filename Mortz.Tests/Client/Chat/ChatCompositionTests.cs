@@ -5,6 +5,7 @@ using Mortz.Client.Chat;
 using Mortz.Client.Feed;
 using Mortz.Client.Match;
 using Mortz.Client.Menus;
+using Mortz.Client.Session;
 using Mortz.Client.Setup;
 using Mortz.Client.Stats;
 using Mortz.Client.Ui;
@@ -152,6 +153,7 @@ public class ChatCompositionTests : NodeServiceTest
         lobby.FakeDependency(stats);
         lobby.FakeDependency(admin);
         lobby.FakeDependency<INetwork>(network);
+        lobby.FakeDependency<ISessionExit>(new FakeSessionExit());
         return Host(lobby);
     }
 

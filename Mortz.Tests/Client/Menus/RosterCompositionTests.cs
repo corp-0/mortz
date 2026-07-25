@@ -3,6 +3,7 @@ using Godot;
 using Mortz.Client.Admin;
 using Mortz.Client.Match;
 using Mortz.Client.Menus;
+using Mortz.Client.Session;
 using Mortz.Client.Setup;
 using Mortz.Client.Stats;
 using Mortz.Core.Match;
@@ -88,6 +89,7 @@ public class RosterCompositionTests : NodeServiceTest
         lobby.FakeDependency(stats);
         lobby.FakeDependency(admin);
         lobby.FakeDependency<INetwork>(network);
+        lobby.FakeDependency<ISessionExit>(new FakeSessionExit());
         return Host(lobby);
     }
 

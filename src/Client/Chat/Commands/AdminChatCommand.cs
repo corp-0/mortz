@@ -1,6 +1,6 @@
 using Mortz.Core.Chat.Commands;
 
-namespace Mortz.Client.Chat;
+namespace Mortz.Client.Chat.Commands;
 
 [ChatCommand("admin", Usage = "/admin <password>",
     Description = "Authenticate as a lobby admin.", Sensitive = true)]

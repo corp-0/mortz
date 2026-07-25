@@ -1,7 +1,7 @@
 using Mortz.Core.Chat.Commands;
 using Mortz.Core.Text;
 
-namespace Mortz.Client.Chat;
+namespace Mortz.Client.Chat.Commands;
 
 [ChatCommand("help", Usage = "/help", Description = "List chat commands.")]
 internal sealed class HelpChatCommand : ClientChatCommand
