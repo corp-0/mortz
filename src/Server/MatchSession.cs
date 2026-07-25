@@ -209,18 +209,6 @@ internal sealed class MatchSession
                 .Select(pair => pair.Key).ToArray()
             : [winner.Id];
 
-    public ServerExplosion? DebugCarve(int x, int y)
-    {
-        if (Stage != MatchStage.PLAYING)
-            return null;
-        List<(int X, int Y)> removed = World.Terrain.CarveCircle(x, y, SimConfig.DEBUG_CARVE_RADIUS);
-        if (removed.Count == 0)
-            return null;
-        ServerExplosion explosion = new(x, y, SimConfig.DEBUG_CARVE_RADIUS, 0, -1);
-        TerrainHistory.Record(x, y, SimConfig.DEBUG_CARVE_RADIUS);
-        return explosion;
-    }
-
     private static ServerExplosion? FindExplosion(
         ServerDeath death, IReadOnlyList<ServerExplosion> explosions)
     {

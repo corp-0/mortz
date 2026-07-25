@@ -22,7 +22,9 @@ public partial class FinalKillReplay : Node
     [Dependency]
     private INetwork Network => this.DependOn<INetwork>();
 
-    [Export] private GameMap _gameMap = null!;
+    [Dependency]
+    private GameMap Map => this.DependOn<GameMap>();
+
     [Export] private EffectsSpawner _effects = null!;
     [Export] private RopeOverlay _ropes = null!;
     [Export] private LocalPlayerController _localPlayer = null!;
@@ -121,7 +123,7 @@ public partial class FinalKillReplay : Node
         ClientClock.BeginReplay();
         _effects.BeginReplay();
         _mortars.BeginReplay();
-        _gameMap.BeginReplayTerrain(finalKill);
+        Map.BeginReplayTerrain(finalKill);
 
         ReplayFrame first = clip.Sample(clip.StartTick);
         CloneGameplayCamera(first, finalKill);
@@ -153,7 +155,7 @@ public partial class FinalKillReplay : Node
         if (!atImpact || _impactPlayed)
             return;
         _impactPlayed = true;
-        _gameMap.ShowReplayImpact();
+        Map.ShowReplayImpact();
         _effects.PlayReplayImpact(_finalKill);
         _impactHold = IMPACT_HOLD_SECONDS;
     }
@@ -219,7 +221,7 @@ public partial class FinalKillReplay : Node
         _replaying = false;
         _mortars.EndReplay();
         _effects.EndReplay();
-        _gameMap.EndReplayTerrain();
+        Map.EndReplayTerrain();
         _clip = null;
     }
 }

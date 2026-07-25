@@ -33,7 +33,6 @@ public partial class ServerSessionController : Node, IServerSession
     private LobbySession? _lobby = new();
     private MatchSession? _match;
     private ServerProtocol _protocol = null!;
-    private bool _debugCarveEnabled;
     private bool _subscribed;
 
     [Dependency]
@@ -70,8 +69,6 @@ public partial class ServerSessionController : Node, IServerSession
         TeamSwapRequestMsg.Received -= OnTeamSwapRequest;
         EndMatchRequestMsg.Received -= OnEndMatchRequest;
         LobbySettings.RulesChanged -= OnRulesChanged;
-        if (_debugCarveEnabled)
-            DebugCarveMsg.Received -= OnDebugCarve;
         _subscribed = false;
     }
 
@@ -105,12 +102,6 @@ public partial class ServerSessionController : Node, IServerSession
         TeamSwapRequestMsg.Received += OnTeamSwapRequest;
         EndMatchRequestMsg.Received += OnEndMatchRequest;
         LobbySettings.RulesChanged += OnRulesChanged;
-        _debugCarveEnabled = CmdArgs.HasFlag("--enable-debug-carve");
-        if (_debugCarveEnabled)
-        {
-            DebugCarveMsg.Received += OnDebugCarve;
-            GD.Print("[server] debug carve enabled");
-        }
         _subscribed = true;
     }
 
@@ -275,18 +266,5 @@ public partial class ServerSessionController : Node, IServerSession
         {
             match.EnqueueInput((int)peerId, sequence, input);
         }
-    }
-
-    private void OnDebugCarve(long sender, DebugCarveMsg message)
-    {
-        MapPackage map = LobbySettings.Map;
-        if (_match is not { } match || message.X < 0 || message.X >= map.Width ||
-            message.Y < 0 || message.Y >= map.Height)
-            return;
-        ServerExplosion? explosion = match.DebugCarve(message.X, message.Y);
-        if (explosion is not { } carve)
-            return;
-        GD.Print($"[server] carve at ({message.X},{message.Y}) by {sender}");
-        _protocol.BroadcastDebugCarve(carve);
     }
 }

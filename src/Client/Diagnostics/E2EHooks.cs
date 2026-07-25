@@ -5,7 +5,6 @@ using Mortz.Client.Match;
 using Mortz.Core.Net.Messages;
 using Mortz.Core.Replication;
 using Mortz.Core.Sim;
-using Mortz.Core.Terrain;
 using Mortz.Net;
 using Mortz.Shared;
 
@@ -14,18 +13,16 @@ namespace Mortz.Client.Diagnostics;
 /// <summary>
 /// Headless E2E hooks: the always-on once-per-sim-second snapshot heartbeat
 /// and score/match-end echoes, --test-fire (hold fire pointing at the floor:
-/// exercises explosion and self-death), --test-carve (one debug carve request
-/// at the first destructible spot in the map), --test-hunt (seek the nearest
-/// enemy and lob shells at it) and --test-parry (pulse the parry bubble). Hunt
-/// plus parry on both clients drives direct hits and deflections, the two ways
-/// the server ends a shell early: exactly what the shell-retirement path needs.
+/// exercises explosion and self-death), --test-hunt (seek the nearest enemy and
+/// lob shells at it) and --test-parry (pulse the parry bubble). Hunt plus parry
+/// on both clients drives direct hits and deflections, the two ways the server
+/// ends a shell early: exactly what the shell-retirement path needs.
 /// </summary>
 [Meta(typeof(IAutoNode))]
 public partial class E2EHooks : Node
 {
     [Export] private GameView _gameView = null!;
     [Export] private LocalPlayerController _localPlayer = null!;
-    [Export] private GameMap _gameMap = null!;
 
     [Dependency]
     private INetwork Network => this.DependOn<INetwork>();
@@ -33,7 +30,6 @@ public partial class E2EHooks : Node
     public override void _Notification(int what) => this.Notify(what);
 
     private int _lastLoggedSecond = -1;
-    private bool _testCarveSent;
     private Vec2 _targetFeet;
     private bool _hasTarget;
 
@@ -47,8 +43,6 @@ public partial class E2EHooks : Node
             _localPlayer.ButtonFilter = (_, buttons) => buttons | InputButtons.FIRE;
             _localPlayer.AimOverride = 64; // straight down: point-blank floor shots
         }
-        if (CmdArgs.HasFlag("--test-carve"))
-            _localPlayer.Reconciled += SendTestCarveOnce;
 
         bool hunt = CmdArgs.HasFlag("--test-hunt");
         bool parry = CmdArgs.HasFlag("--test-parry");
@@ -149,24 +143,5 @@ public partial class E2EHooks : Node
             return;
         _lastLoggedSecond = second;
         GD.Print($"[client] snapshot tick {snapshot.Tick}, {snapshot.Players.Length} player(s)");
-    }
-
-    private void SendTestCarveOnce(int ack, Vec2 correction)
-    {
-        if (_testCarveSent)
-            return;
-        _testCarveSent = true;
-        for (int y = 0; y < _gameMap.Mask.Height; y++)
-        {
-            for (int x = 0; x < _gameMap.Mask.Width; x++)
-            {
-                if (_gameMap.Mask.Get(x, y) == TerrainMaterial.DESTRUCTIBLE)
-                {
-                    GD.Print($"[client] requesting test carve at ({x},{y})");
-                    new DebugCarveMsg(x, y).SendToServer();
-                    return;
-                }
-            }
-        }
     }
 }

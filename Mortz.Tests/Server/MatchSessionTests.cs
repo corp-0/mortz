@@ -160,7 +160,6 @@ public class MatchSessionTests
 
         match.EnqueueInput(1, 0, new PlayerInput(InputButtons.RIGHT));
         Assert.Equal(0, match.World.PendingInputs(1));
-        Assert.Null(match.DebugCarve(20, 20));
 
         MatchFrame first = match.Step();
         MatchFrame second = match.Step();

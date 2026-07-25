@@ -1,3 +1,5 @@
+using Chickensoft.AutoInject;
+using Chickensoft.Introspection;
 using Godot;
 using Mortz.Client.Audio;
 using Mortz.Client.Match;
@@ -11,32 +13,45 @@ namespace Mortz.Client.Effects;
 /// gibs) as its own children, keeping particles out of the terrain and player
 /// nodes. Listens to GameMap for carve visuals and to the network for deaths.
 /// </summary>
+[Meta(typeof(IAutoNode))]
 public partial class EffectsSpawner : Node2D
 {
-    [Export] private GameMap _gameMap = null!;
-
     private Node2D _liveEffects = null!;
     private Node2D _replayEffects = null!;
     private FinalKillMsg? _finalKill;
+    private bool _subscribedToMap;
     private List<(Vector2 Position, Color Color)> _replayDebris = [];
     private (Vector2 Center, List<(Vector2 Position, Color Color)> Debris)? _recentDebris;
 
-    public override void _Ready()
+    [Dependency]
+    private GameMap Map => this.DependOn<GameMap>();
+
+    public override void _Notification(int what) => this.Notify(what);
+
+    public void OnReady()
     {
         _liveEffects = NewContainer("LiveEffects");
         _replayEffects = NewContainer("ReplayEffects");
-        _gameMap.Exploded += OnExploded;
-        _gameMap.GroundRemoved += OnGroundRemoved;
         DeathMsg.Received += OnDeath;
         FinalKillMsg.Received += OnFinalKill;
     }
 
-    public override void _ExitTree()
+    public void OnResolved()
     {
-        _gameMap.Exploded -= OnExploded;
-        _gameMap.GroundRemoved -= OnGroundRemoved;
+        Map.Exploded += OnExploded;
+        Map.GroundRemoved += OnGroundRemoved;
+        _subscribedToMap = true;
+    }
+
+    public void OnExitTree()
+    {
         DeathMsg.Received -= OnDeath;
         FinalKillMsg.Received -= OnFinalKill;
+        if (!_subscribedToMap)
+            return;
+        Map.Exploded -= OnExploded;
+        Map.GroundRemoved -= OnGroundRemoved;
+        _subscribedToMap = false;
     }
 
     private void OnExploded(Vector2 center, int radius)
@@ -64,7 +79,7 @@ public partial class EffectsSpawner : Node2D
             return;
         Sfx.PlayAt(Sfx.Sounds.DeathScream, new Vector2(msg.X, msg.Y));
         _liveEffects.AddChild(GibBurst.Create(
-            new Vector2(msg.X, msg.Y), _gameMap.Mask, _gameMap.Blood.Paint));
+            new Vector2(msg.X, msg.Y), Map.Mask, Map.Blood.Paint));
     }
 
     private void OnFinalKill(FinalKillMsg msg)
@@ -102,7 +117,7 @@ public partial class EffectsSpawner : Node2D
             }
         }
         Sfx.PlayAt(Sfx.Sounds.DeathScream, death);
-        GibBurst gibs = GibBurst.Create(death, _gameMap.Mask, (_, _, _) => { });
+        GibBurst gibs = GibBurst.Create(death, Map.Mask, (_, _, _) => { });
         gibs.PlaybackSpeed = ClientClock.TimeScale;
         _replayEffects.AddChild(gibs);
     }

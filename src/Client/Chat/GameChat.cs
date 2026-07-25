@@ -1,3 +1,5 @@
+using Chickensoft.AutoInject;
+using Chickensoft.Introspection;
 using Godot;
 using Mortz.Core.Net.Messages;
 
@@ -9,6 +11,7 @@ namespace Mortz.Client.Chat;
 /// opens the full history and input; ENTER sends and closes, ESC closes and
 /// keeps the draft.
 /// </summary>
+[Meta(typeof(IAutoNode))]
 public partial class GameChat : Control
 {
     private const float LINE_LIFETIME = 7f; // s at full alpha after arrival
@@ -17,7 +20,6 @@ public partial class GameChat : Control
 
     private static readonly StringName _bornMeta = "chat_born_msec";
 
-    [Export] private ClientChat _chat = null!;
     [Export] private Panel _background = null!;
     [Export] private ScrollContainer _scroll = null!;
     [Export] private ChatFeed _feed = null!;
@@ -26,7 +28,12 @@ public partial class GameChat : Control
     private ScrollBottomPin _scrollPin = null!;
     private bool _open;
 
-    public override void _Ready()
+    [Dependency]
+    private ClientChat Chat => this.DependOn<ClientChat>();
+
+    public override void _Notification(int what) => this.Notify(what);
+
+    public void OnReady()
     {
         _scrollPin = new ScrollBottomPin(_scroll);
         _input.TextSubmitted += OnTextSubmitted;
@@ -35,11 +42,12 @@ public partial class GameChat : Control
         VisibilityChanged += OnVisibilityChanged;
         _feed.LineAdded += OnLineAdded;
         _feed.Rebuilt += _scrollPin.Arm;
-        _feed.Bind(_chat);
         Close();
     }
 
-    public override void _ExitTree()
+    public void OnResolved() => _feed.Bind(Chat);
+
+    public void OnExitTree()
     {
         if (_open)
             new TypingMsg(false).SendToServer();
@@ -147,7 +155,7 @@ public partial class GameChat : Control
     private void OnTextSubmitted(string text)
     {
         _input.Clear();
-        _chat.Submit(text);
+        Chat.Submit(text);
         Close();
     }
 

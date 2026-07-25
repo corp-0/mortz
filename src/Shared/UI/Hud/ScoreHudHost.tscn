@@ -1,0 +1,17 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" uid="uid://dncfdnttemm61" path="res://src/Client/Match/ScoreHudHost.cs" id="1_host"]
+[ext_resource type="PackedScene" uid="uid://b2yaaatxdf662" path="res://src/Shared/UI/Hud/PlayerKillsHud.tscn" id="2_pkills"]
+[ext_resource type="PackedScene" uid="uid://bi41by236uedx" path="res://src/Shared/UI/Hud/TeamKillsHud.tscn" id="3_tkills"]
+
+[node name="ScoreHudHost" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_host")
+_playerKills = ExtResource("2_pkills")
+_teamKills = ExtResource("3_tkills")

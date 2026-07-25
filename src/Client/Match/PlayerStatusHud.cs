@@ -9,7 +9,7 @@ namespace Mortz.Client.Match;
 /// even while watching the enemy. Health here is the last acked server value,
 /// never the prediction; respawns raise it and therefore never flash.
 /// </summary>
-public partial class Hud : CanvasLayer
+public partial class PlayerStatusHud : Control
 {
     private const float DAMAGE_FLASH_TIME = 0.35f; // s
     private const float DAMAGE_FLASH_ALPHA = 0.3f;

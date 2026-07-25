@@ -1,0 +1,44 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" uid="uid://bgioe7kfejn27" path="res://src/Client/Match/PlayerStatusHud.cs" id="1_status"]
+[ext_resource type="Script" uid="uid://bmyqbmcpf8of4" path="res://src/Client/Match/ShellRow.cs" id="2_shells"]
+
+[node name="PlayerStatusHud" type="Control" node_paths=PackedStringArray("_healthLabel", "_shells", "_damageFlash")]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_status")
+_healthLabel = NodePath("Corner/HealthLabel")
+_shells = NodePath("Corner/Shells")
+_damageFlash = NodePath("DamageFlash")
+
+[node name="DamageFlash" type="ColorRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+color = Color(1, 0, 0, 0)
+
+[node name="Corner" type="HBoxContainer" parent="."]
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = -44.0
+offset_right = 360.0
+offset_bottom = -12.0
+theme_override_constants/separation = 12
+
+[node name="HealthLabel" type="Label" parent="Corner"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "100"
+
+[node name="Shells" type="Control" parent="Corner"]
+layout_mode = 2
+size_flags_vertical = 4
+script = ExtResource("2_shells")

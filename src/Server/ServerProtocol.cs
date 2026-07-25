@@ -163,8 +163,6 @@ internal sealed class ServerProtocol
 
     public void RecordInputPayload(int bytes) => _inputPayloadBytes += bytes;
 
-    public void BroadcastDebugCarve(ServerExplosion explosion) => BroadcastCarve(explosion);
-
     private void BroadcastMortarEvents(int tick, IReadOnlyList<SimWorld.MortarEvent> mortarEvents,
         int playerCount)
     {

@@ -1,15 +1,11 @@
 using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
-using Mortz.Client.Admin;
 using Mortz.Client.Announcements;
 using Mortz.Client.Audio;
+using Mortz.Client.Chat;
 using Mortz.Client.Feed;
 using Mortz.Client.Replay;
-using Mortz.Client.Roster;
-using Mortz.Client.Score;
-using Mortz.Client.Session;
-using Mortz.Client.Setup;
 using Mortz.Client.Views;
 using Mortz.Core.Match;
 using Mortz.Core.Net;
@@ -32,23 +28,28 @@ namespace Mortz.Client.Match;
 [Meta(typeof(IAutoNode))]
 public partial class GameView : Node2D,
     IProvide<IKillFeed>,
-    IProvide<AnnouncementDirector>
+    IProvide<AnnouncementDirector>,
+    IProvide<ClientChat>,
+    IProvide<GameMap>
 {
-    [Export] private GameMap _gameMap = null!;
+    [Export] private PackedScene _gameMapScene = null!;
     [Export] private RopeOverlay _ropes = null!;
     [Export] private LocalPlayerController _localPlayer = null!;
     [Export] private PlayerViewManager _players = null!;
     [Export] private MortarViewManager _mortars = null!;
-    [Export] private Hud _hud = null!;
+    [Export] private PlayerStatusHud _hud = null!;
     [Export] private FinalKillReplay _finalKillReplay = null!;
     [Export] private KillFeed _killFeed = null!;
     [Export] private AnnouncementDirector _announcements = null!;
+    [Export] private ClientChat _chat = null!;
 
     [Dependency]
     private INetwork Network => this.DependOn<INetwork>();
 
     IKillFeed IProvide<IKillFeed>.Value() => _killFeed;
     AnnouncementDirector IProvide<AnnouncementDirector>.Value() => _announcements;
+    ClientChat IProvide<ClientChat>.Value() => _chat;
+    GameMap IProvide<GameMap>.Value() => _gameMap;
 
     public override void _Notification(int what) => this.Notify(what);
 
@@ -63,6 +64,7 @@ public partial class GameView : Node2D,
     private const float PARRY_GAIN_DB_PER_STEP = 1f;
 
     private readonly SnapshotInterpolator _interpolator = new();
+    private GameMap _gameMap = null!;
     private MortarReplicaSet _remoteMortars = null!;
     private MatchConfig _config = null!;
     private readonly Dictionary<byte, int> _peersBySlot = new();
@@ -71,12 +73,18 @@ public partial class GameView : Node2D,
     public int NewestSnapshotTick => _interpolator.NewestTick;
     public float RenderTick => _interpolator.RenderTick;
 
-    /// <summary>Must be called right after instantiating, before entering the tree.</summary>
+    /// <summary>Must be called right after instantiating, before entering the tree:
+    /// it mounts the map the other nodes depend on.</summary>
     public void Initialize(MapPackage map, MatchConfig config,
         TerrainSyncEncoding terrainEncoding, byte[] terrainData)
     {
         _config = config;
+        _gameMap = _gameMapScene.Instantiate<GameMap>();
         _gameMap.Initialize(map, config, terrainEncoding, terrainData);
+        AddChild(_gameMap);
+        // Terrain has to draw under the players, mortars and ropes; AddChild
+        // would leave it on top.
+        MoveChild(_gameMap, 0);
         _localPlayer.Initialize(new Predictor(_gameMap.Mask, config));
         _remoteMortars = new MortarReplicaSet(_gameMap.Mask, config);
         // Base stats to start from; the server's per-player modifier lists

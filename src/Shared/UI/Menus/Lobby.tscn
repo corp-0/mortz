@@ -8,7 +8,7 @@
 [ext_resource type="PackedScene" uid="uid://bcyg5w5ortt37" path="res://src/Shared/UI/Controls/TeamColumnsRoster.tscn" id="6_teams"]
 [ext_resource type="Script" uid="uid://b7xyv1173ixe1" path="res://src/Client/Chat/ClientChat.cs" id="7_chat"]
 
-[node name="Lobby" type="Control" unique_id=163944296 node_paths=PackedStringArray("_readyButton")]
+[node name="Lobby" type="Control" unique_id=163944296 node_paths=PackedStringArray("_readyButton", "_chat")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -17,6 +17,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_lobby")
 _readyButton = NodePath("Content/Main/Sidebar/LobbyCard/Margin/Column/ReadyButton")
+_chat = NodePath("ClientChat")
 
 [node name="ClientChat" type="Node" parent="." unique_id=1745023861]
 script = ExtResource("7_chat")
@@ -97,10 +98,9 @@ custom_minimum_size = Vector2(0, 46)
 layout_mode = 2
 text = "READY UP"
 
-[node name="ChatPanel" parent="Content/Main/Sidebar" unique_id=565259309 node_paths=PackedStringArray("_chat") instance=ExtResource("2_chat")]
+[node name="ChatPanel" parent="Content/Main/Sidebar" unique_id=565259309 instance=ExtResource("2_chat")]
 custom_minimum_size = Vector2(0, 300)
 layout_mode = 2
 size_flags_vertical = 3
-_chat = NodePath("../../../../ClientChat")
 
 [connection signal="pressed" from="Content/Main/Sidebar/LobbyCard/Margin/Column/ReadyButton" to="." method="OnReadyPressed"]

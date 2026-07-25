@@ -101,10 +101,6 @@ public static class SimConfig
     /// <summary>Default first-to-X for the kills win conditions.</summary>
     public const int KILL_TARGET = 5;
 
-    // ---- dev tools ----
-    /// <summary>Radius of the dev click-to-carve.</summary>
-    public const int DEBUG_CARVE_RADIUS = 24;
-
     // ---- derived tick values (edit the seconds above, not these) ----
     public const int DASH_COOLDOWN_TICKS = (int)(DASH_COOLDOWN * TICK_RATE);
     public const int COYOTE_BASE_TICKS = (int)(COYOTE_BASE * TICK_RATE);

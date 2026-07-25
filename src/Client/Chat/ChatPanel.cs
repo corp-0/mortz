@@ -1,19 +1,26 @@
+using Chickensoft.AutoInject;
+using Chickensoft.Introspection;
 using Godot;
 
 namespace Mortz.Client.Chat;
 
 /// <summary>View of <see cref="ClientChat"/>. The owning scene decides
 /// visibility, size, and placement.</summary>
+[Meta(typeof(IAutoNode))]
 public partial class ChatPanel : PanelContainer
 {
-    [Export] private ClientChat _chat = null!;
     [Export] private ScrollContainer _scroll = null!;
     [Export] private ChatFeed _feed = null!;
     [Export] private LineEdit _input = null!;
 
     private ScrollBottomPin _scrollPin = null!;
 
-    public override void _Ready()
+    [Dependency]
+    private ClientChat Chat => this.DependOn<ClientChat>();
+
+    public override void _Notification(int what) => this.Notify(what);
+
+    public void OnReady()
     {
         _scrollPin = new ScrollBottomPin(_scroll);
         _input.TextSubmitted += OnTextSubmitted;
@@ -22,10 +29,11 @@ public partial class ChatPanel : PanelContainer
         VisibilityChanged += OnVisibilityChanged;
         _feed.LineAdded += OnLineAdded;
         _feed.Rebuilt += _scrollPin.Arm;
-        _feed.Bind(_chat);
     }
 
-    public override void _ExitTree() => ChatInputGuard.SetTyping(this, false);
+    public void OnResolved() => _feed.Bind(Chat);
+
+    public void OnExitTree() => ChatInputGuard.SetTyping(this, false);
 
     public override void _UnhandledKeyInput(InputEvent @event)
     {
@@ -47,7 +55,7 @@ public partial class ChatPanel : PanelContainer
     private void OnTextSubmitted(string text)
     {
         _input.Clear();
-        _chat.Submit(text);
+        Chat.Submit(text);
         _input.GrabFocus();
     }
 

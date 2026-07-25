@@ -12,37 +12,32 @@
 [ext_resource type="Script" uid="uid://da7tme6kkv2xu" path="res://src/Client/Diagnostics/NetStatsProbe.cs" id="10_netstats"]
 [ext_resource type="Script" uid="uid://b3jq6f2xj1ct" path="res://src/Client/Diagnostics/LagProbes.cs" id="11_lagprobes"]
 [ext_resource type="Script" uid="uid://c4xs1n8kwl65d" path="res://src/Client/Diagnostics/E2EHooks.cs" id="12_e2e"]
-[ext_resource type="Script" uid="uid://bgioe7kfejn27" path="res://src/Client/Match/Hud.cs" id="13_hud"]
-[ext_resource type="Script" uid="uid://bmyqbmcpf8of4" path="res://src/Client/Match/ShellRow.cs" id="14_shells"]
-[ext_resource type="Script" uid="uid://287ujoa71wsm" path="res://src/Client/Match/WinnerBanner.cs" id="15_score"]
+[ext_resource type="PackedScene" path="res://src/Shared/UI/Hud/PlayerStatusHud.tscn" id="13_status"]
 [ext_resource type="Script" uid="uid://bxev1av5gpki2" path="res://src/Client/Announcements/GameAnnouncer.cs" id="16_announcer"]
 [ext_resource type="Script" uid="uid://cpeja6avfvxqv" path="res://src/Client/Announcements/AnnouncementDirector.cs" id="24_director"]
-[ext_resource type="Script" uid="uid://wj2mcsbosk7g" path="res://src/Client/Announcements/AnnouncementBanner.cs" id="25_banner"]
+[ext_resource type="PackedScene" path="res://src/Shared/UI/Hud/AnnouncementBanner.tscn" id="25_banner"]
 [ext_resource type="Script" uid="uid://6aqxhxbup147" path="res://src/Client/Replay/FinalKillReplay.cs" id="17_replay"]
-[ext_resource type="Script" uid="uid://dncfdnttemm61" path="res://src/Client/Match/ScoreHudHost.cs" id="18_scorehost"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/Hud/PlayerKillsHud.tscn" id="19_pkills"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/Hud/TeamKillsHud.tscn" id="20_tkills"]
+[ext_resource type="PackedScene" path="res://src/Shared/UI/Hud/ScoreHudHost.tscn" id="18_scorehost"]
+[ext_resource type="PackedScene" path="res://src/Shared/UI/Hud/WinnerBanner.tscn" id="15_score"]
 [ext_resource type="Script" uid="uid://d0ub0gbtk36ja" path="res://src/Client/Feed/KillFeed.cs" id="21_feed"]
 [ext_resource type="Script" uid="uid://b7xyv1173ixe1" path="res://src/Client/Chat/ClientChat.cs" id="22_chat"]
 [ext_resource type="PackedScene" path="res://src/Shared/UI/Chat/GameChat.tscn" id="23_gamechat"]
 
-[node name="GameView" type="Node2D" unique_id=1808596722 node_paths=PackedStringArray("_gameMap", "_ropes", "_localPlayer", "_players", "_mortars", "_hud", "_finalKillReplay", "_killFeed", "_announcements")]
+[node name="GameView" type="Node2D" unique_id=1808596722 node_paths=PackedStringArray("_ropes", "_localPlayer", "_players", "_mortars", "_hud", "_finalKillReplay", "_killFeed", "_announcements", "_chat")]
 script = ExtResource("1_gview")
-_gameMap = NodePath("GameMap")
+_gameMapScene = ExtResource("2_gmap")
 _ropes = NodePath("RopeOverlay")
 _localPlayer = NodePath("LocalPlayer")
 _players = NodePath("Players")
 _mortars = NodePath("Mortars")
-_hud = NodePath("Hud")
+_hud = NodePath("Hud/PlayerStatus")
 _finalKillReplay = NodePath("FinalKillReplay")
 _killFeed = NodePath("KillFeed")
 _announcements = NodePath("AnnouncementDirector")
+_chat = NodePath("ClientChat")
 
-[node name="GameMap" parent="." unique_id=1523337900 instance=ExtResource("2_gmap")]
-
-[node name="Effects" type="Node2D" parent="." unique_id=700736968 node_paths=PackedStringArray("_gameMap")]
+[node name="Effects" type="Node2D" parent="." unique_id=700736968]
 script = ExtResource("5_effects")
-_gameMap = NodePath("../GameMap")
 
 [node name="RopeOverlay" type="Node2D" parent="." unique_id=409740464]
 script = ExtResource("3_ropes")
@@ -61,9 +56,8 @@ _mortarScene = ExtResource("9_mortar")
 [node name="ReplayCamera" type="Camera2D" parent="." unique_id=1800253533]
 enabled = false
 
-[node name="FinalKillReplay" type="Node" parent="." unique_id=1859975862 node_paths=PackedStringArray("_gameMap", "_effects", "_ropes", "_localPlayer", "_players", "_mortars", "_replayCamera")]
+[node name="FinalKillReplay" type="Node" parent="." unique_id=1859975862 node_paths=PackedStringArray("_effects", "_ropes", "_localPlayer", "_players", "_mortars", "_replayCamera")]
 script = ExtResource("17_replay")
-_gameMap = NodePath("../GameMap")
 _effects = NodePath("../Effects")
 _ropes = NodePath("../RopeOverlay")
 _localPlayer = NodePath("../LocalPlayer")
@@ -83,85 +77,17 @@ script = ExtResource("21_feed")
 [node name="ClientChat" type="Node" parent="." unique_id=1968473025]
 script = ExtResource("22_chat")
 
-[node name="Hud" type="CanvasLayer" parent="." unique_id=1180743937 node_paths=PackedStringArray("_healthLabel", "_shells", "_damageFlash")]
-script = ExtResource("13_hud")
-_healthLabel = NodePath("Corner/HealthLabel")
-_shells = NodePath("Corner/Shells")
-_damageFlash = NodePath("DamageFlash")
+[node name="Hud" type="CanvasLayer" parent="." unique_id=1180743937]
 
-[node name="DamageFlash" type="ColorRect" parent="Hud" unique_id=1688209399]
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-mouse_filter = 2
-color = Color(1, 0, 0, 0)
+[node name="PlayerStatus" parent="Hud" instance=ExtResource("13_status")]
 
-[node name="Corner" type="HBoxContainer" parent="Hud" unique_id=528481457]
-anchors_preset = 2
-anchor_top = 1.0
-anchor_bottom = 1.0
-offset_left = 12.0
-offset_top = -44.0
-offset_right = 360.0
-offset_bottom = -12.0
-theme_override_constants/separation = 12
+[node name="ScoreHud" parent="Hud" unique_id=1037392052 instance=ExtResource("18_scorehost")]
 
-[node name="HealthLabel" type="Label" parent="Hud/Corner" unique_id=1019751700]
-layout_mode = 2
-theme_override_font_sizes/font_size = 28
-text = "100"
+[node name="WinnerBanner" parent="Hud" unique_id=2120322481 instance=ExtResource("15_score")]
 
-[node name="Shells" type="Control" parent="Hud/Corner" unique_id=1116263738]
-layout_mode = 2
-size_flags_vertical = 4
-script = ExtResource("14_shells")
+[node name="AnnouncementBanner" parent="Hud" unique_id=1206395185 instance=ExtResource("25_banner")]
 
-[node name="ScoreHud" type="Control" parent="Hud" unique_id=1037392052]
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-script = ExtResource("18_scorehost")
-_playerKills = ExtResource("19_pkills")
-_teamKills = ExtResource("20_tkills")
-
-[node name="WinnerBanner" type="Control" parent="Hud" unique_id=2120322481 node_paths=PackedStringArray("_winnerLabel")]
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-script = ExtResource("15_score")
-_winnerLabel = NodePath("Winner")
-
-[node name="Winner" type="Label" parent="Hud/WinnerBanner" unique_id=286652282]
-visible = false
-layout_mode = 0
-anchor_left = 0.5
-anchor_top = 0.35
-anchor_right = 0.5
-anchor_bottom = 0.35
-grow_horizontal = 2
-grow_vertical = 2
-theme_override_font_sizes/font_size = 42
-horizontal_alignment = 1
-
-[node name="AnnouncementBanner" type="Control" parent="Hud" unique_id=1206395185]
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-script = ExtResource("25_banner")
-
-[node name="GameChat" parent="Hud" unique_id=1206395184 node_paths=PackedStringArray("_chat") instance=ExtResource("23_gamechat")]
+[node name="GameChat" parent="Hud" unique_id=1206395184 instance=ExtResource("23_gamechat")]
 anchor_top = 1.0
 anchor_bottom = 1.0
 offset_left = 12.0
@@ -169,7 +95,6 @@ offset_top = -340.0
 offset_right = 392.0
 offset_bottom = -56.0
 grow_vertical = 0
-_chat = NodePath("../../ClientChat")
 
 [node name="Diagnostics" type="Node" parent="." unique_id=576473914]
 
@@ -183,8 +108,7 @@ script = ExtResource("11_lagprobes")
 _localPlayer = NodePath("../../LocalPlayer")
 _players = NodePath("../../Players")
 
-[node name="E2EHooks" type="Node" parent="Diagnostics" unique_id=176005610 node_paths=PackedStringArray("_gameView", "_localPlayer", "_gameMap")]
+[node name="E2EHooks" type="Node" parent="Diagnostics" unique_id=176005610 node_paths=PackedStringArray("_gameView", "_localPlayer")]
 script = ExtResource("12_e2e")
 _gameView = NodePath("../..")
 _localPlayer = NodePath("../../LocalPlayer")
-_gameMap = NodePath("../../GameMap")

@@ -319,28 +319,22 @@ public class NetMessageTests : IDisposable
     {
         UseLoopback(receiverIsServer: true);
         (long Sender, bool Ready) ready = default;
-        (long Sender, int X, int Y) carve = default;
         (long Sender, byte Team) join = default;
         Action<long, SetReadyMsg> readyHandler = (s, m) => ready = (s, m.Ready);
-        Action<long, DebugCarveMsg> carveHandler = (s, m) => carve = (s, m.X, m.Y);
         Action<long, TeamJoinRequestMsg> joinHandler = (s, m) => join = (s, m.Team);
         SetReadyMsg.Received += readyHandler;
-        DebugCarveMsg.Received += carveHandler;
         TeamJoinRequestMsg.Received += joinHandler;
         try
         {
             new SetReadyMsg(true).SendToServer();
-            new DebugCarveMsg(10, 20).SendToServer();
             new TeamJoinRequestMsg(2).SendToServer();
         }
         finally
         {
             SetReadyMsg.Received -= readyHandler;
-            DebugCarveMsg.Received -= carveHandler;
             TeamJoinRequestMsg.Received -= joinHandler;
         }
         Assert.Equal((SENDER, true), ready);
-        Assert.Equal((SENDER, 10, 20), carve);
         Assert.Equal((SENDER, (byte)2), join);
     }
 
@@ -481,7 +475,6 @@ public class NetMessageTests : IDisposable
     {
         (ushort Id, byte[] Payload)[] messages = [
             Capture(NetRegistry.ID_SetReadyMsg, () => new SetReadyMsg(true).SendToServer()),
-            Capture(NetRegistry.ID_DebugCarveMsg, () => new DebugCarveMsg(10, 20).SendToServer()),
             Capture(NetRegistry.ID_ChatSendMsg, () => new ChatSendMsg("hello").SendToServer()),
             Capture(NetRegistry.ID_AdminAuthRequestMsg, () => new AdminAuthRequestMsg().SendToServer()),
             Capture(NetRegistry.ID_AdminProofMsg, () => new AdminProofMsg([1, 2, 3]).SendToServer()),
@@ -499,7 +492,6 @@ public class NetMessageTests : IDisposable
 
         int raised = 0;
         Action<long, SetReadyMsg> ready = (_, _) => raised++;
-        Action<long, DebugCarveMsg> carve = (_, _) => raised++;
         Action<long, ChatSendMsg> chat = (_, _) => raised++;
         Action<long, AdminAuthRequestMsg> request = (_, _) => raised++;
         Action<long, AdminProofMsg> proof = (_, _) => raised++;
@@ -509,7 +501,6 @@ public class NetMessageTests : IDisposable
         Action<long, TeamJoinRequestMsg> teamJoin = (_, _) => raised++;
         Action<long, TeamSwapRequestMsg> teamSwap = (_, _) => raised++;
         SetReadyMsg.Received += ready;
-        DebugCarveMsg.Received += carve;
         ChatSendMsg.Received += chat;
         AdminAuthRequestMsg.Received += request;
         AdminProofMsg.Received += proof;
@@ -532,7 +523,6 @@ public class NetMessageTests : IDisposable
         finally
         {
             SetReadyMsg.Received -= ready;
-            DebugCarveMsg.Received -= carve;
             ChatSendMsg.Received -= chat;
             AdminAuthRequestMsg.Received -= request;
             AdminProofMsg.Received -= proof;
@@ -585,8 +575,8 @@ public class NetMessageTests : IDisposable
     public void Dispatch_RandomPayloadsNeverThrow()
     {
         var random = new Random(781_223);
-        ushort[] ids = [NetRegistry.ID_SetReadyMsg, NetRegistry.ID_DebugCarveMsg,
-            NetRegistry.ID_ChatSendMsg, NetRegistry.ID_AdminAuthRequestMsg,
+        ushort[] ids = [NetRegistry.ID_SetReadyMsg, NetRegistry.ID_ChatSendMsg,
+            NetRegistry.ID_AdminAuthRequestMsg,
             NetRegistry.ID_AdminProofMsg, NetRegistry.ID_LobbyRulesUpdateMsg,
             NetRegistry.ID_LobbyMapUpdateMsg, NetRegistry.ID_LobbySettingsRequestMsg,
             NetRegistry.ID_TeamJoinRequestMsg, NetRegistry.ID_TeamSwapRequestMsg];
