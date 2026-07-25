@@ -2,6 +2,7 @@ using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
 using Mortz.Client.Admin;
+using Mortz.Client.Announcements;
 using Mortz.Client.Audio;
 using Mortz.Client.Feed;
 using Mortz.Client.Replay;
@@ -30,6 +31,7 @@ namespace Mortz.Client.Match;
 [Meta(typeof(IAutoNode))]
 public partial class GameView : Node2D,
     IProvide<IKillFeed>,
+    IProvide<AnnouncementDirector>,
     IProvide<MatchSetup>,
     IProvide<MatchScore>,
     IProvide<ClientAdmin>,
@@ -44,6 +46,7 @@ public partial class GameView : Node2D,
     [Export] private Hud _hud = null!;
     [Export] private FinalKillReplay _finalKillReplay = null!;
     [Export] private KillFeed _killFeed = null!;
+    [Export] private AnnouncementDirector _announcements = null!;
 
     [Dependency]
     private MatchSetup Setup => this.DependOn<MatchSetup>();
@@ -61,6 +64,7 @@ public partial class GameView : Node2D,
     private INetwork Network => this.DependOn<INetwork>();
 
     IKillFeed IProvide<IKillFeed>.Value() => _killFeed;
+    AnnouncementDirector IProvide<AnnouncementDirector>.Value() => _announcements;
     MatchSetup IProvide<MatchSetup>.Value() => Setup;
     MatchScore IProvide<MatchScore>.Value() => Score;
     ClientAdmin IProvide<ClientAdmin>.Value() => Admin;

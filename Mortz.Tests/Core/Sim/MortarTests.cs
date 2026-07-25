@@ -297,7 +297,7 @@ public class MortarTests
         // Point blank into the floor: the blast covers the shooter.
         StepWith(w, ref seq, InputButtons.FIRE, AIM_DOWN);
 
-        (int peerId, Vec2 pos, int killerId, bool owned) = Assert.Single(w.Deaths);
+        (int peerId, Vec2 pos, int killerId, bool owned, _) = Assert.Single(w.Deaths);
         Assert.Equal(1, peerId);
         Assert.Equal(1, killerId); // own shell: killer is the victim
         Assert.False(owned); // suicide, not a parry
@@ -342,7 +342,7 @@ public class MortarTests
             w.EnqueueInput(2, seq, new PlayerInput(InputButtons.NONE));
             seq++;
             w.Step();
-            foreach ((int id, Vec2 _, int killer, bool _) in w.Deaths)
+            foreach ((int id, Vec2 _, int killer, bool _, int _) in w.Deaths)
             {
                 killed.Add(id);
                 Assert.Equal(1, killer); // the shooter gets the credit

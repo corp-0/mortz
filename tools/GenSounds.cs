@@ -32,8 +32,20 @@ internal static class GenSounds
         Write(output, "owned.wav", Finite(0.62, (t, _) =>
             0.43 * Math.Sin(2 * Math.PI * (530 * t - 250 * t * t)) * Math.Exp(-2.8 * t) +
             0.12 * Math.Sin(2 * Math.PI * (265 * t - 125 * t * t)) * Math.Exp(-2.8 * t)));
+        Write(output, "shutdown.wav", Finite(0.5, (t, _) =>
+            0.42 * Math.Sin(2 * Math.PI * (700 * t - 225 * t * t)) * Math.Exp(-3 * t)));
+        Write(output, "holy_shit.wav", Finite(0.8, (t, _) =>
+            0.4 * Math.Sin(2 * Math.PI * (300 * t + 560 * t * t)) *
+            (0.6 + 0.4 * Math.Sin(2 * Math.PI * 9 * t)) * Math.Exp(-1.2 * t)));
+        Write(output, "double_kill.wav", Beeps(0.14, 523, 698));
+        Write(output, "triple_kill.wav", Beeps(0.14, 523, 659, 784));
+        Write(output, "multi_kill.wav", Beeps(0.12, 523, 659, 784, 1046));
+        Write(output, "kill_streak.wav", Finite(0.6, (t, _) =>
+            (0.18 * Math.Sin(2 * Math.PI * 220 * t) +
+             0.15 * Math.Sin(2 * Math.PI * 277 * t) +
+             0.15 * Math.Sin(2 * Math.PI * 330 * t)) * Math.Exp(-2.2 * t)));
 
-        Console.WriteLine($"generated 7 placeholder sounds in {output}");
+        Console.WriteLine($"generated 13 placeholder sounds in {output}");
     }
 
     private static double[] Finite(double seconds, Func<double, int, double> sample)
@@ -72,6 +84,25 @@ internal static class GenSounds
     }
 
     private static double Noise(Random random) => random.NextDouble() * 2 - 1;
+
+    /// <summary>Equal-length tones, phase-continuous so the joins don't click,
+    /// each fading in and out inside its own slot.</summary>
+    private static double[] Beeps(double step, params double[] freqs)
+    {
+        return Finite(step * freqs.Length, (t, _) =>
+        {
+            double phase = 0;
+            for (int i = 0; i < freqs.Length; i++)
+            {
+                double start = i * step;
+                if (t <= start)
+                    break;
+                phase += freqs[i] * Math.Min(step, t - start);
+            }
+            return 0.42 * Math.Sin(2 * Math.PI * phase) *
+                   Math.Sin(Math.PI * (t % step) / step);
+        });
+    }
 
     private static double KillTonePhase(double t) => t switch
     {

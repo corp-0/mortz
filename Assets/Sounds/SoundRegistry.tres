@@ -18,6 +18,12 @@
 [ext_resource type="Resource" uid="uid://bkkkoim76s6me" path="res://Assets/Sounds/owned.tres" id="8"]
 [ext_resource type="AudioStream" uid="uid://ooxbt0ao7tns" path="res://Assets/Sounds/parry_raise1.wav" id="12_ox5b5"]
 [ext_resource type="AudioStream" uid="uid://smgbvo27lpwv" path="res://Assets/Sounds/parry_raise2.wav" id="13_2oxye"]
+[ext_resource type="Resource" path="res://Assets/Sounds/shutdown.tres" id="14_shutdn"]
+[ext_resource type="Resource" path="res://Assets/Sounds/holy_shit.tres" id="15_holysh"]
+[ext_resource type="Resource" path="res://Assets/Sounds/double_kill.tres" id="16_double"]
+[ext_resource type="Resource" path="res://Assets/Sounds/triple_kill.tres" id="17_triple"]
+[ext_resource type="Resource" path="res://Assets/Sounds/multi_kill.tres" id="18_multik"]
+[ext_resource type="Resource" path="res://Assets/Sounds/kill_streak.tres" id="19_streak"]
 
 [sub_resource type="AudioStreamRandomizer" id="AudioStreamRandomizer_vptec"]
 streams_count = 6
@@ -59,3 +65,9 @@ ParrySuccess = ExtResource("6")
 RegularKill = ExtResource("7")
 FirstBlood = ExtResource("1_r7fwr")
 Owned = ExtResource("8")
+Shutdown = ExtResource("14_shutdn")
+HolyShit = ExtResource("15_holysh")
+DoubleKill = ExtResource("16_double")
+TripleKill = ExtResource("17_triple")
+MultiKill = ExtResource("18_multik")
+KillStreak = ExtResource("19_streak")

@@ -45,7 +45,7 @@ public sealed class SimWorld
     private readonly List<(int X, int Y, int Radius, int OwnerId, int SpawnSeq)> _explosions = new();
     private readonly List<(int FiredBy, int SpawnSeq)> _shellRetirements = new();
     private readonly List<MortarEvent> _mortarEvents = new();
-    private readonly List<(int PeerId, Vec2 Position, int KillerId, bool Owned)> _deaths = new();
+    private readonly List<(int PeerId, Vec2 Position, int KillerId, bool Owned, int ShellId)> _deaths = new();
     private ushort _nextMortarId;
 
     // Only drawn from at AddPlayer; a fixed seed keeps tests reproducible.
@@ -69,8 +69,9 @@ public sealed class SimWorld
     /// <summary>Deaths from the last Step, body center at the moment of death.
     /// KillerId is the explosion's owner (the parrier for a parried shell), 0
     /// for a death pit, the victim's own id for suicide. Owned = a parried
-    /// shell killed the very player who fired it.</summary>
-    public IReadOnlyList<(int PeerId, Vec2 Position, int KillerId, bool Owned)> Deaths => _deaths;
+    /// shell killed the very player who fired it. ShellId is the killing
+    /// shell's mortar id, -1 when no shell was involved (death pit).</summary>
+    public IReadOnlyList<(int PeerId, Vec2 Position, int KillerId, bool Owned, int ShellId)> Deaths => _deaths;
 
     public SimWorld(TerrainMask terrain, MatchConfig config, int seed = 0,
         IReadOnlyList<Vec2>? spawnPoints = null)
@@ -255,7 +256,7 @@ public sealed class SimWorld
                 state.Aim = queue.RawAppliedInput.Aim;
                 if (FellOutOfTheMap(state))
                 {
-                    _deaths.Add((id, BodyCenter(state), 0, false)); // death pit: no killer
+                    _deaths.Add((id, BodyCenter(state), 0, false, -1)); // death pit: no killer, no shell
                     state = Corpse(state);
                 }
             }
@@ -376,7 +377,7 @@ public sealed class SimWorld
             if (damage >= p.Health)
             {
                 // OWNED: the parried shell came back for its own shooter.
-                _deaths.Add((id, BodyCenter(p), m.OwnerId, m.Deflected && id == m.FiredBy));
+                _deaths.Add((id, BodyCenter(p), m.OwnerId, m.Deflected && id == m.FiredBy, m.Id));
                 _players[id] = Corpse(p);
                 continue;
             }

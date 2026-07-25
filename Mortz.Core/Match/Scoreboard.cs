@@ -134,4 +134,26 @@ public sealed class Scoreboard
         }
         return null;
     }
+
+    /// <summary>Kills still needed by whoever is closest to winning;
+    /// KillTarget when nobody has scored.</summary>
+    public int RemainingToWin()
+    {
+        int best = 0;
+        if (_config.Teams && _config.WinCondition == WinCondition.TEAM_KILLS)
+        {
+            for (byte team = 1; team < _teamKills.Length; team++)
+            {
+                best = Math.Max(best, _teamKills[team]);
+            }
+        }
+        else
+        {
+            foreach (Row row in _rows.Values)
+            {
+                best = Math.Max(best, row.Kills);
+            }
+        }
+        return Math.Max(0, _config.KillTarget - best);
+    }
 }

@@ -21,7 +21,8 @@ internal readonly record struct ServerDeath(
     int PeerId,
     Vec2 Position,
     int KillerId,
-    bool Owned);
+    bool Owned,
+    int ShellId = -1);
 
 internal readonly record struct ScoredElimination(
     Scoreboard.DeathResult Score,
@@ -34,6 +35,9 @@ internal readonly record struct FinalKillEvent(
     ServerDeath Death,
     ServerExplosion? Explosion);
 
+/// <summary>Someone is now one kill from winning, or no longer is.</summary>
+internal readonly record struct MatchPointChange(bool Active, int Remaining);
+
 internal readonly record struct MatchFrame(
     int Tick,
     SimWorld.MortarEvent[] MortarEvents,
@@ -41,6 +45,8 @@ internal readonly record struct MatchFrame(
     (int FiredBy, int SpawnSeq)[] ShellRetirements,
     ServerDeath[] Deaths,
     ScoredElimination[] Eliminations,
+    GameEventJudge.Judgment[] GameEvents,
+    MatchPointChange? MatchPoint,
     Scoreboard.MatchWinner? MatchEnded,
     FinalKillEvent? FinalKill,
     bool ReturnToLobby);
@@ -52,7 +58,9 @@ internal sealed class MatchSession
 {
     private readonly int _victoryLapTicks;
     private readonly FirstBloodTracker _firstBlood = new();
+    private readonly GameEventJudge _judge = new();
     private int _ticksUntilLobby;
+    private bool _matchPointActive;
 
     public SimWorld World { get; }
     public Scoreboard Scores { get; }
@@ -86,7 +94,11 @@ internal sealed class MatchSession
     {
         World.RemovePlayer(peerId);
         Scores.RemovePlayer(peerId);
+        _judge.RemovePlayer(peerId);
     }
+
+    /// <summary>For catching up late joiners; live changes ride MatchFrame.</summary>
+    public bool MatchPointActive => _matchPointActive;
 
     public void EnqueueInput(int peerId, int seq, PlayerInput input)
     {
@@ -100,7 +112,7 @@ internal sealed class MatchSession
         {
             bool returnToLobby = --_ticksUntilLobby <= 0;
             return new MatchFrame(
-                World.Tick, [], [], [], [], [], null, null, returnToLobby);
+                World.Tick, [], [], [], [], [], [], null, null, null, returnToLobby);
         }
 
         World.Step();
@@ -114,9 +126,10 @@ internal sealed class MatchSession
         }
 
         ServerDeath[] deaths = World.Deaths
-            .Select(d => new ServerDeath(d.PeerId, d.Position, d.KillerId, d.Owned))
+            .Select(d => new ServerDeath(d.PeerId, d.Position, d.KillerId, d.Owned, d.ShellId))
             .ToArray();
         List<ScoredElimination> eliminations = new();
+        List<GameEventJudge.Kill> kills = new();
         Scoreboard.MatchWinner? matchEnded = null;
         FinalKillEvent? finalKill = null;
         foreach (ServerDeath death in deaths)
@@ -125,6 +138,13 @@ internal sealed class MatchSession
             if (scored is not { } elimination)
                 continue;
             eliminations.Add(elimination);
+            kills.Add(new GameEventJudge.Kill(
+                elimination.Score.KillerId,
+                elimination.Score.VictimId,
+                elimination.Score.CreditedKill,
+                elimination.Owned,
+                elimination.FirstBlood,
+                death.ShellId));
             if (matchEnded == null && elimination.Score.Winner is { } winner)
             {
                 matchEnded = winner;
@@ -141,6 +161,8 @@ internal sealed class MatchSession
             World.ShellRetirements.ToArray(),
             deaths,
             eliminations.ToArray(),
+            _judge.JudgeFrame(kills, World.Tick).ToArray(),
+            CheckMatchPoint(),
             matchEnded,
             finalKill,
             false);
@@ -165,6 +187,18 @@ internal sealed class MatchSession
         }
 
         return elimination;
+    }
+
+    /// <summary>Recomputed every frame so suicide penalties and leavers move
+    /// the state too, not just kills.</summary>
+    private MatchPointChange? CheckMatchPoint()
+    {
+        int remaining = Scores.RemainingToWin();
+        bool active = Stage == MatchStage.PLAYING && remaining == 1;
+        if (active == _matchPointActive)
+            return null;
+        _matchPointActive = active;
+        return new MatchPointChange(active, remaining);
     }
 
     /// <summary>Peers credited with the win: the winner itself, or everyone

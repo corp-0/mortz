@@ -10,11 +10,24 @@ namespace Mortz.Core.Input;
 /// but not its actions: movement buttons merge into the applied input, while
 /// weapon buttons ride <see cref="Consumed"/> so the sim runs the weapon per
 /// input and an overtaken fire keeps its own aim.
+///
+/// Admission takes one new sequence per tick, <see cref="BURST_SEQS"/> at once
+/// after a stall. Sequence numbers are client-chosen, so novelty is judged
+/// against what this queue actually holds, not a high-water mark the client
+/// can move. A refused sequence is never queued and never acked, so the client
+/// re-sends it and nothing the server acked went unsimulated.
 /// </summary>
 public sealed class InputQueue
 {
-    /// <summary>Max pending inputs kept; older ones are skipped past.</summary>
-    public const int MAX_PENDING = 4;
+    /// <summary>Max inputs one <see cref="Next"/> consumes: the catch-up skip
+    /// plus the apply. The sim runs the weapon per consumed input, so this also
+    /// caps the weapon time one tick can buy.</summary>
+    public const int MAX_CONSUMED = 2;
+
+    /// <summary>New sequences admissible at once. Refills one per tick, so a
+    /// bunch covering up to this many ticks (200 ms) lands whole however late
+    /// it arrives.</summary>
+    public const int BURST_SEQS = 12;
 
     /// <summary>Overtaken buttons that merge into the applied input; weapon edges
     /// are excluded and ride the per-input <see cref="Consumed"/> list instead.</summary>
@@ -23,6 +36,7 @@ public sealed class InputQueue
         InputButtons.ROPE | InputButtons.UP | InputButtons.DOWN | InputButtons.PARRY;
 
     private readonly SortedDictionary<int, PlayerInput> _pending = new();
+    private int _tokens = BURST_SEQS;
     private PlayerInput _lastInput;
     private PlayerInput _rawLastInput;
     /// <summary>Movement buttons of overtaken inputs, merged into the next applied one.</summary>
@@ -58,28 +72,33 @@ public sealed class InputQueue
     /// merged. This is the authoritative edge/aim anchor for the next tick.</summary>
     public PlayerInput RawAppliedInput => _rawLastInput;
 
+    /// <summary>Re-sends of a pending or acked sequence are free; only a new
+    /// one spends a token.</summary>
     public void Enqueue(int seq, PlayerInput input)
     {
-        if (seq > LastAppliedSeq)
-            _pending[seq] = input;
+        if (seq <= LastAppliedSeq)
+            return;
+        if (!_pending.ContainsKey(seq))
+        {
+            if (_tokens == 0)
+                return;
+            _tokens--;
+        }
+        _pending[seq] = input;
     }
 
     /// <summary>The input to simulate this tick (movement + LastAppliedSeq).
     /// Weapon actions come from <see cref="Consumed"/>, populated alongside.</summary>
     public PlayerInput Next()
     {
+        _tokens = Math.Min(BURST_SEQS, _tokens + 1);
         _consumed.Clear();
         _pressedButtons = InputButtons.NONE;
         _carriedRopeAim = null;
 
-        while (_pending.Count > MAX_PENDING)
-        {
-            SkipNext();
-        }
-
         // A backlog consumes one extra input per tick until a single buffered
         // input (jitter headroom) remains after the apply.
-        if (_pending.Count > 2)
+        if (_pending.Count > MAX_CONSUMED)
             SkipNext();
         ApplyNext();
         return _lastInput;
@@ -101,10 +120,9 @@ public sealed class InputQueue
     {
         if (_pending.Count == 0)
         {
-            // Starvation: repeat the last input. It still counts as consumed so
-            // reload keeps ticking; held buttons produce no new edge.
+            // Starvation: repeat the last input for movement only. Counting it
+            // as consumed would hand out free weapon time.
             _lastInput = _rawLastInput;
-            _consumed.Add((LastAppliedSeq, _lastInput));
             return;
         }
         int seq = FirstPendingSeq();

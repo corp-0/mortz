@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using Godot;
 
 namespace Mortz.Shared.Rendering;
@@ -79,7 +78,7 @@ public partial class PsxMaterializer : Node
                 continue;
             }
 
-            material.SetShaderParameter("albedo_texture", CurrentSpriteTexture(sprite));
+            material.SetShaderParameter("albedo_texture", CurrentSpriteTexture(sprite) ?? throw new InvalidOperationException());
         }
     }
 
@@ -221,7 +220,7 @@ public partial class PsxMaterializer : Node
             return;
 
         ShaderMaterial material = new() { Shader = _spriteShader };
-        material.SetShaderParameter("albedo_texture", CurrentSpriteTexture(instance));
+        material.SetShaderParameter("albedo_texture", CurrentSpriteTexture(instance) ?? throw new InvalidOperationException());
         material.SetShaderParameter("billboard_mode", (int)instance.Billboard);
         instance.MaterialOverride = material;
 
@@ -259,7 +258,7 @@ public partial class PsxMaterializer : Node
     private bool IsRetro(Material? material) =>
         material is ShaderMaterial shader &&
         (shader.Shader == _texturedShader ||
-            shader.Shader == _untexturedShader ||
-            shader.Shader == _transparentShader ||
-            shader.Shader == _spriteShader);
+         shader.Shader == _untexturedShader ||
+         shader.Shader == _transparentShader ||
+         shader.Shader == _spriteShader);
 }

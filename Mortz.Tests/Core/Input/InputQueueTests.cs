@@ -65,9 +65,17 @@ public class InputQueueTests
             q.Enqueue(seq, In((InputButtons)(seq % 8)));
         }
 
-        q.Next();
-        // The oldest surviving pending input is at most MAX_PENDING behind the newest.
-        Assert.True(q.LastAppliedSeq >= 19 - InputQueue.MAX_PENDING);
+        // Admission takes the burst allowance and refuses the rest. What got
+        // in drains at two per tick instead of settling in as latency.
+        Assert.Equal(InputQueue.BURST_SEQS, q.PendingCount);
+
+        for (int tick = 0; tick < 20; tick++)
+        {
+            q.Next();
+        }
+
+        Assert.Equal(InputQueue.BURST_SEQS - 1, q.LastAppliedSeq);
+        Assert.Equal(0, q.PendingCount);
     }
 
     [Fact]

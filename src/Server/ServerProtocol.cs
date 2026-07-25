@@ -90,6 +90,8 @@ internal sealed class ServerProtocol
         SendWelcome(peerId, match);
         SendScores(peerId, match);
         SendLiveMortars(peerId, match);
+        if (match.MatchPointActive)
+            MatchPointMessage(active: true, remaining: 1, match.Config).SendTo(peerId);
         if (match.Winner is { } winner)
             new MatchEndMsg(winner.ByTeam, winner.Id).SendTo(peerId);
         if (match.FinalKill is { } finalKill)
@@ -130,6 +132,18 @@ internal sealed class ServerProtocol
         foreach (ScoredElimination elimination in frame.Eliminations)
         {
             BroadcastElimination(elimination, match.Config);
+        }
+        foreach (GameEventJudge.Judgment judgment in frame.GameEvents)
+        {
+            GD.Print($"[server] game event {judgment.Kind} by {_players.Name(judgment.ActorId)}" +
+                     (judgment.Magnitude > 0 ? $" x{judgment.Magnitude}" : ""));
+            new GameEventMsg(judgment.Kind, judgment.ActorId, judgment.VictimId,
+                judgment.Magnitude).Broadcast();
+        }
+        if (frame.MatchPoint is { } matchPoint)
+        {
+            GD.Print($"[server] match point {(matchPoint.Active ? "on" : "off")}");
+            MatchPointMessage(matchPoint.Active, matchPoint.Remaining, match.Config).Broadcast();
         }
 
         if (frame.Tick % NetConfig.TICKS_PER_SNAPSHOT == 0 && match.World.Players.Count > 0)
@@ -206,6 +220,15 @@ internal sealed class ServerProtocol
               $"({score.Victim.Kills} kills, {score.Victim.Deaths} deaths{teams})"
             : $"[server] {_players.Name(score.KillerId)} killed {_players.Name(score.VictimId)} " +
               $"({killerKills} kills{teams})");
+    }
+
+    /// <summary>TEAM_KILLS with teams off plays as PLAYER_KILLS everywhere.</summary>
+    private static MatchPointMsg MatchPointMessage(bool active, int remaining, MatchConfig config)
+    {
+        WinCondition kind = config.Teams && config.WinCondition == WinCondition.TEAM_KILLS
+            ? WinCondition.TEAM_KILLS
+            : WinCondition.PLAYER_KILLS;
+        return new MatchPointMsg(active, kind, (byte)Math.Clamp(remaining, 0, byte.MaxValue));
     }
 
     private void SendWelcome(long peerId, MatchSession match)

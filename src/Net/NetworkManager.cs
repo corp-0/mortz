@@ -69,6 +69,9 @@ public partial class NetworkManager : Node, INetwork
         if (err != Error.Ok)
             return err;
         peer.Host.Compress(ENetConnection.CompressionMode.RangeCoder); // must match the client
+        // Without this the server forwards peer-to-peer RPCs, so a client could
+        // deliver forged server messages to another client.
+        ((SceneMultiplayer)Multiplayer).ServerRelay = false;
         Multiplayer.MultiplayerPeer = peer;
         return Error.Ok;
     }
@@ -186,6 +189,10 @@ public partial class NetworkManager : Node, INetwork
             if (!_admission.IsValidated(sender) ||
                 !_messageLimiter.Allow(sender, Time.GetTicksMsec(), NetAbusePolicy.EnvelopeCost(payload.Length)))
                 return;
+        }
+        else if (sender != NetTransport.TO_SERVER)
+        {
+            return;
         }
         if (_fakeLagMs > 0)
         {

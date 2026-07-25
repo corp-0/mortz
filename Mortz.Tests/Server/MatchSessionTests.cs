@@ -9,13 +9,15 @@ namespace Mortz.Tests.Server;
 public class MatchSessionTests
 {
     private static MatchSession Session(bool teams = false, int killTarget = 20,
-        int victoryLapTicks = 10, IReadOnlyList<Vec2>? spawnPoints = null)
+        int victoryLapTicks = 10, IReadOnlyList<Vec2>? spawnPoints = null,
+        bool suicidePenalty = false)
     {
         TerrainMask terrain = new(128, 128, (_, _) => false, (_, _) => false);
         return new MatchSession(terrain, new MatchConfig
         {
             Teams = teams,
             KillTarget = killTarget,
+            SuicidePenalty = suicidePenalty,
         }, seed: 1, victoryLapTicks, spawnPoints);
     }
 
@@ -124,6 +126,24 @@ public class MatchSessionTests
 
         Assert.Equal([1], winners);
         Assert.Equal([2, 4], match.WinnerPeers(new Scoreboard.MatchWinner(true, 2)).Order());
+    }
+
+    [Fact]
+    public void MatchPointEntersAtOneRemaining_LeavesWhenTheLeadDrops_AnnouncesOnce()
+    {
+        MatchSession match = Session(killTarget: 2, suicidePenalty: true);
+        match.AddPlayer(1);
+        match.AddPlayer(2);
+
+        match.ScoreDeath(new ServerDeath(2, default, 1, false));
+        MatchFrame enter = match.Step();
+        MatchFrame steady = match.Step();
+        match.ScoreDeath(new ServerDeath(1, default, 1, false)); // suicide penalty
+        MatchFrame leave = match.Step();
+
+        Assert.Equal(new MatchPointChange(true, 1), enter.MatchPoint);
+        Assert.Null(steady.MatchPoint);
+        Assert.Equal(new MatchPointChange(false, 2), leave.MatchPoint);
     }
 
     [Fact]

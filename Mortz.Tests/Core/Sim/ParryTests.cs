@@ -59,7 +59,7 @@ public class ParryTests
 
         // Dying to your own parried shell is the OWNED case, and the kill
         // belongs to the parrier.
-        (int peerId, _, int killerId, bool owned) = Assert.Single(w.Deaths);
+        (int peerId, _, int killerId, bool owned, _) = Assert.Single(w.Deaths);
         Assert.Equal(2, peerId);
         Assert.Equal(1, killerId);
         Assert.True(owned);

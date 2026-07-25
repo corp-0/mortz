@@ -20,4 +20,10 @@ public partial class SoundRegistry : Resource
     [Export] public SoundEffect? RegularKill { get; private set; }
     [Export] public SoundEffect? FirstBlood { get; private set; }
     [Export] public SoundEffect? Owned { get; private set; }
+    [Export] public SoundEffect? Shutdown { get; private set; }
+    [Export] public SoundEffect? HolyShit { get; private set; }
+    [Export] public SoundEffect? DoubleKill { get; private set; }
+    [Export] public SoundEffect? TripleKill { get; private set; }
+    [Export] public SoundEffect? MultiKill { get; private set; }
+    [Export] public SoundEffect? KillStreak { get; private set; }
 }
