@@ -5,6 +5,7 @@ namespace Mortz.Client.Ui;
 
 /// <summary>Renders a [UiProperty]-decorated object as category blocks with
 /// a control row per property.</summary>
+[Tool]
 public partial class UiPropertySheet : VBoxContainer
 {
     private const int CATEGORY_GAP = 22;
@@ -18,6 +19,12 @@ public partial class UiPropertySheet : VBoxContainer
 
     internal int ControlCount => _controls.Count;
     internal int CategoryBlockCount { get; private set; }
+
+    public override void _Ready()
+    {
+        if (Engine.IsEditorHint())
+            Build(SheetPreviewModelUiMetadata.Categories, new SheetPreviewModel(), static () => { });
+    }
 
     public void Build(IReadOnlyList<UiCategoryDescriptor> categories, object model,
         Action changed)

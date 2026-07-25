@@ -3,6 +3,7 @@ using Mortz.Core.Ui;
 
 namespace Mortz.Client.Ui;
 
+[Tool]
 public partial class FloatPropertyControl : HBoxContainer, IUiPropertyControl
 {
     [Export] private Label _label = null!;
