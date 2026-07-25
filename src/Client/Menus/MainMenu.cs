@@ -41,11 +41,20 @@ public partial class MainMenu : Control
     public override void _Input(InputEvent @event)
     {
         if (@event.IsPressed())
-        {
-            _player.Play("start_sequence");
-            _backdrop.StartSequence();
-            SetProcessInput(false);
-        }
+            StartIntro();
+    }
+
+    public void AutoStartIntro()
+    {
+        if (_backdrop.HasAnimatedBackground)
+            StartIntro();
+    }
+
+    private void StartIntro()
+    {
+        _player.Play("start_sequence");
+        _backdrop.StartSequence();
+        SetProcessInput(false);
     }
 
     public void SetStatus(string text) => _status.Text = text;

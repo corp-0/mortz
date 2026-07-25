@@ -16,14 +16,9 @@ script = ExtResource("1_cmain")
 script = ExtResource("5_sfx")
 _sounds = ExtResource("6_sounds")
 
-[node name="MainMenu" parent="." unique_id=1401714884 instance=ExtResource("3_menu")]
-
-[node name="Session" type="Node" parent="." unique_id=1978618533 node_paths=PackedStringArray("_menu")]
+[node name="Session" type="Node" parent="." unique_id=1978618533]
 script = ExtResource("8_session")
 _gameViewScene = ExtResource("2_gview")
 _lobbyScene = ExtResource("4_lobby")
 _sessionScene = ExtResource("7_csession")
-_menu = NodePath("../MainMenu")
-
-[connection signal="HostRequested" from="MainMenu" to="Session" method="OnHostRequested"]
-[connection signal="JoinRequested" from="MainMenu" to="Session" method="OnJoinRequested"]
+_menuScene = ExtResource("3_menu")

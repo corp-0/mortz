@@ -20,7 +20,7 @@ public partial class ClientSessionController : Node
     [Export] private PackedScene _gameViewScene = null!;
     [Export] private PackedScene _lobbyScene = null!;
     [Export] private PackedScene _sessionScene = null!;
-    [Export] private MainMenu _menu = null!;
+    [Export] private PackedScene _menuScene = null!;
 
     private readonly ClientConnectionAttempt _connection = new(CONNECT_RETRIES);
     private readonly ClientSession _session = new();
@@ -28,6 +28,7 @@ public partial class ClientSessionController : Node
     private ConnectedSession? _connectedSession;
     private GameView? _gameView;
     private Lobby? _lobby;
+    private MainMenu? _menu;
     private bool _spawnedLocalServer;
     private bool _autoReady;
     private bool _subscribed;
@@ -45,6 +46,7 @@ public partial class ClientSessionController : Node
     public void OnResolved()
     {
         Subscribe();
+        CreateMenu(autoStartIntro: false);
         string? autoConnect = CmdArgs.GetValue("--connect");
         if (autoConnect == null)
             return;
@@ -64,7 +66,7 @@ public partial class ClientSessionController : Node
     {
         if (!ServerLauncher.Spawn(port, adminPassword))
         {
-            _menu.SetStatus("Failed to start local server.");
+            _menu?.SetStatus("Failed to start local server.");
             return;
         }
         _spawnedLocalServer = true;
@@ -105,7 +107,7 @@ public partial class ClientSessionController : Node
         _connection.Start(address, port, playerName);
         _session.BeginConnecting();
         _pendingMatch = null;
-        _menu.SetStatus($"Connecting to {address}:{port}...");
+        _menu?.SetStatus($"Connecting to {address}:{port}...");
         GD.Print($"[client] connecting to {address}:{port}");
         TryConnect();
     }
@@ -125,7 +127,7 @@ public partial class ClientSessionController : Node
             return;
         if (failure.Action == ConnectionFailureAction.RETRY)
         {
-            _menu.SetStatus($"Retrying... ({failure.RetryNumber}/{failure.MaxRetries})");
+            _menu?.SetStatus($"Retrying... ({failure.RetryNumber}/{failure.MaxRetries})");
             await ToSignal(GetTree().CreateTimer(1.0), SceneTreeTimer.SignalName.Timeout);
             if (_connection.BeginScheduledRetry(failure.Generation))
                 TryConnect();
@@ -143,7 +145,7 @@ public partial class ClientSessionController : Node
         GD.Print($"[client] connected, peer id {Network.LocalPeerId}");
         CreateConnectedSession();
         Network.SendHello(_connection.PlayerName);
-        _menu.SetStatus("Entering lobby...");
+        _menu?.SetStatus("Entering lobby...");
         if (_autoReady)
             new SetReadyMsg(true).SendToServer();
     }
@@ -161,7 +163,7 @@ public partial class ClientSessionController : Node
             if (_autoReady)
                 new SetReadyMsg(true).SendToServer();
         }
-        _menu.Visible = false;
+        DisposeMenu();
         CreateLobby();
     }
 
@@ -213,7 +215,6 @@ public partial class ClientSessionController : Node
             return;
         }
 
-        _menu.Visible = false;
         DisposeLobby();
         _gameView = gameView;
         _connectedSession.AddChild(gameView);
@@ -243,14 +244,32 @@ public partial class ClientSessionController : Node
         DisposeConnectedSession();
         _pendingMatch = null;
         _session.ReturnToMenu();
-        _menu.Visible = true;
-        _menu.ShowHome();
+        CreateMenu(autoStartIntro: true);
+        _menu!.ShowHome();
         _menu.SetStatus(status);
         if (stopLocalServer && _spawnedLocalServer)
         {
             ServerLauncher.Kill();
             _spawnedLocalServer = false;
         }
+    }
+
+    private void CreateMenu(bool autoStartIntro)
+    {
+        if (_menu != null)
+            return;
+        _menu = _menuScene.Instantiate<MainMenu>();
+        _menu.HostRequested += OnHostRequested;
+        _menu.JoinRequested += OnJoinRequested;
+        AddChild(_menu);
+        if (autoStartIntro)
+            _menu.AutoStartIntro();
+    }
+
+    private void DisposeMenu()
+    {
+        _menu?.QueueFree();
+        _menu = null;
     }
 
     private void CreateConnectedSession()
