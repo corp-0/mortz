@@ -12,7 +12,6 @@ internal static class Program
                 case "export": Export.Run(args[1..]); return 0;
                 case "official": OfficialOverlay.Run(args[1..]); return 0;
                 case "publish-playtest": PublishPlaytest.Run(args[1..]); return 0;
-                case "gen-sounds": GenSounds.Run(); return 0;
                 default:
                     Console.Error.WriteLine("usage:");
                     Console.Error.WriteLine("  dotnet run --project tools -- convert-lxl <path.lxl> <mapId> [--scale N] [--players N] [--out DIR]");
@@ -20,7 +19,6 @@ internal static class Program
                     Console.Error.WriteLine("  dotnet run --project tools -- official check");
                     Console.Error.WriteLine("  dotnet run --project tools -- official import-3d [--blender PATH] [--rebuild]");
                     Console.Error.WriteLine("  dotnet run --project tools -- publish-playtest");
-                    Console.Error.WriteLine("  dotnet run --project tools -- gen-sounds");
                     return 1;
             }
         }

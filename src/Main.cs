@@ -16,6 +16,16 @@ public partial class Main : Node
     public override void _Ready()
     {
         bool serverMode = OS.HasFeature("dedicated_server") || CmdArgs.HasFlag("--server");
+        if (!serverMode && CmdArgs.HasFlag("--windowed"))
+            ForceWindowed();
         AddChild((serverMode ? _serverScene : _clientScene).Instantiate());
+    }
+
+    private static void ForceWindowed()
+    {
+        DisplayServer.WindowSetMode(DisplayServer.WindowMode.Windowed);
+        DisplayServer.WindowSetSize(new Vector2I(
+            (int)ProjectSettings.GetSetting("display/window/size/viewport_width"),
+            (int)ProjectSettings.GetSetting("display/window/size/viewport_height")));
     }
 }
