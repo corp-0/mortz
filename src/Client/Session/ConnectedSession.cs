@@ -6,7 +6,6 @@ using Mortz.Client.Roster;
 using Mortz.Client.Score;
 using Mortz.Client.Setup;
 using Mortz.Client.Stats;
-using Mortz.Net;
 
 namespace Mortz.Client.Session;
 
@@ -18,9 +17,7 @@ public partial class ConnectedSession : Node,
     IProvide<ClientStats>,
     IProvide<MatchScore>,
     IProvide<ClientRoster>,
-    IProvide<ClientAdmin>,
-    IProvide<INetwork>,
-    IProvide<ISessionExit>
+    IProvide<ClientAdmin>
 {
     [Export] private MatchSetup _matchSetup = null!;
     [Export] private ClientStats _clientStats = null!;
@@ -28,19 +25,11 @@ public partial class ConnectedSession : Node,
     [Export] private ClientRoster _clientRoster = null!;
     [Export] private ClientAdmin _clientAdmin = null!;
 
-    [Dependency]
-    private INetwork Network => this.DependOn<INetwork>();
-
-    [Dependency]
-    private ISessionExit SessionExit => this.DependOn<ISessionExit>();
-
     MatchSetup IProvide<MatchSetup>.Value() => _matchSetup;
     ClientStats IProvide<ClientStats>.Value() => _clientStats;
     MatchScore IProvide<MatchScore>.Value() => _matchScore;
     ClientRoster IProvide<ClientRoster>.Value() => _clientRoster;
     ClientAdmin IProvide<ClientAdmin>.Value() => _clientAdmin;
-    INetwork IProvide<INetwork>.Value() => Network;
-    ISessionExit IProvide<ISessionExit>.Value() => SessionExit;
 
     public override void _Notification(int what) => this.Notify(what);
 
