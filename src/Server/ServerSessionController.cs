@@ -1,11 +1,13 @@
 using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
+using Mortz.Core.Admin;
 using Mortz.Core.Input;
 using Mortz.Core.Match;
 using Mortz.Core.Net.Messages;
 using Mortz.Core.Sim;
 using Mortz.Net;
+using Mortz.Server.Chat;
 using Mortz.Shared;
 
 namespace Mortz.Server;
@@ -40,6 +42,9 @@ public partial class ServerSessionController : Node, IServerSession
     [Dependency]
     private NetworkManager Network => this.DependOn<NetworkManager>();
 
+    [Dependency]
+    private IServerAdminAuthorizer Admin => this.DependOn<IServerAdminAuthorizer>();
+
     public bool IsLobby => _lobby != null;
     public bool ContainsPlayer(long peerId) => _players.Contains(peerId);
     public string PlayerName(long peerId) => _players.Name(peerId);
@@ -63,6 +68,7 @@ public partial class ServerSessionController : Node, IServerSession
         SetReadyMsg.Received -= OnSetReady;
         TeamJoinRequestMsg.Received -= OnTeamJoinRequest;
         TeamSwapRequestMsg.Received -= OnTeamSwapRequest;
+        EndMatchRequestMsg.Received -= OnEndMatchRequest;
         LobbySettings.RulesChanged -= OnRulesChanged;
         if (_debugCarveEnabled)
             DebugCarveMsg.Received -= OnDebugCarve;
@@ -97,6 +103,7 @@ public partial class ServerSessionController : Node, IServerSession
         SetReadyMsg.Received += OnSetReady;
         TeamJoinRequestMsg.Received += OnTeamJoinRequest;
         TeamSwapRequestMsg.Received += OnTeamSwapRequest;
+        EndMatchRequestMsg.Received += OnEndMatchRequest;
         LobbySettings.RulesChanged += OnRulesChanged;
         _debugCarveEnabled = CmdArgs.HasFlag("--enable-debug-carve");
         if (_debugCarveEnabled)
@@ -186,6 +193,25 @@ public partial class ServerSessionController : Node, IServerSession
         GD.Print($"[server] player {sender} is {(message.Ready ? "ready" : "not ready")}");
         _protocol.BroadcastLobby(lobby);
         TryStartMatch();
+    }
+
+    private void OnEndMatchRequest(long sender, EndMatchRequestMsg message)
+    {
+        if (!Admin.TryAuthorize(sender, message.Sequence, AdminAction.END_MATCH,
+                [], message.Tag))
+            return;
+        if (_match is not { } match)
+        {
+            new ChatLineMsg(ChatLineKind.SYSTEM, 0, "Server", "No match is running.")
+                .SendTo(sender);
+            return;
+        }
+
+        GD.Print($"[server] admin {sender} '{_players.Name(sender)}' force-ended the match");
+        ReturnToLobby(match);
+        // After the lobby broadcast so it lands in the fresh lobby chats.
+        new ChatLineMsg(ChatLineKind.SYSTEM, 0, "Server",
+            $"{_players.Name(sender)} ended the match.").Broadcast();
     }
 
     private void TryStartMatch()
