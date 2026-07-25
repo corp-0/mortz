@@ -42,7 +42,7 @@ public class ChatCompositionTests : NodeServiceTest
             "Content/Main/Sidebar/LobbyCard/Margin/Column/Roster/" +
             "SingleColumnRoster/Players");
         Assert.Equal(2, players.GetChildCount());
-        Assert.IsType<ChatPanel>(lobby.GetNode("Content/Main/Sidebar/ChatPanel"));
+        Assert.IsType<LobbyChat>(lobby.GetNode("Content/Main/Sidebar/ChatPanel"));
     }
 
     [Fact]
@@ -95,7 +95,7 @@ public class ChatCompositionTests : NodeServiceTest
         try
         {
             Assert.IsType<ClientChat>(lobby.GetNode("ClientChat"));
-            Assert.IsType<ChatPanel>(lobby.GetNode("Content/Main/Sidebar/ChatPanel"));
+            Assert.IsType<LobbyChat>(lobby.GetNode("Content/Main/Sidebar/ChatPanel"));
         }
         finally
         {

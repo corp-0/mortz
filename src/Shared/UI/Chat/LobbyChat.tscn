@@ -1,12 +1,12 @@
 [gd_scene format=3 uid="uid://ciqycdoqosx85"]
 
-[ext_resource type="Script" uid="uid://dfrjixf7towk0" path="res://src/Client/Chat/ChatPanel.cs" id="1_chat"]
-[ext_resource type="Script" path="res://src/Client/Chat/ChatFeed.cs" id="2_feed"]
+[ext_resource type="Script" uid="uid://dfrjixf7towk0" path="res://src/Client/Chat/ChatPanel.cs" id="1_bawat"]
+[ext_resource type="Script" uid="uid://dgbj7v1nbhv77" path="res://src/Client/Chat/ChatFeed.cs" id="2_hu15t"]
 
-[node name="ChatPanel" type="PanelContainer" unique_id=2023193911 node_paths=PackedStringArray("_scroll", "_feed", "_input")]
+[node name="LobbyChat" type="PanelContainer" unique_id=2023193911 node_paths=PackedStringArray("_scroll", "_feed", "_input")]
 offset_right = 520.0
 offset_bottom = 258.0
-script = ExtResource("1_chat")
+script = ExtResource("1_bawat")
 _scroll = NodePath("Margin/Column/Scroll")
 _feed = NodePath("Margin/Column/Scroll/Feed")
 _input = NodePath("Margin/Column/Input")
@@ -30,7 +30,7 @@ horizontal_scroll_mode = 0
 [node name="Feed" type="VBoxContainer" parent="Margin/Column/Scroll" unique_id=1603471409]
 layout_mode = 2
 size_flags_horizontal = 3
-script = ExtResource("2_feed")
+script = ExtResource("2_hu15t")
 
 [node name="Input" type="LineEdit" parent="Margin/Column" unique_id=700069443]
 layout_mode = 2

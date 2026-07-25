@@ -7,7 +7,7 @@ namespace Mortz.Client.Chat;
 /// <summary>View of <see cref="ClientChat"/>. The owning scene decides
 /// visibility, size, and placement.</summary>
 [Meta(typeof(IAutoNode))]
-public partial class ChatPanel : PanelContainer
+public partial class LobbyChat : PanelContainer
 {
     [Export] private ScrollContainer _scroll = null!;
     [Export] private ChatFeed _feed = null!;
