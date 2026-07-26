@@ -31,19 +31,22 @@ public class GameEventJudgeTests
 
         Assert.Empty(judge.JudgeFrame([Kill(99, VICTIM, credited: false)], tick: 5000));
 
-        // The 4-streak is gone: four more kills reach 4 again, not 8.
-        List<GameEventJudge.Judgment> events = RunStreak(judge, VICTIM, kills: 4, startTick: 9000);
-        Assert.DoesNotContain(events, e => e.Kind == GameEventKind.KILL_STREAK);
+        // The 4-streak is gone: five more kills announce the entry tier again,
+        // not a continuation at 9.
+        List<GameEventJudge.Judgment> events = RunStreak(judge, VICTIM, kills: 5, startTick: 9000);
+        Assert.Equal([5], events
+            .Where(e => e.Kind == GameEventKind.KILL_STREAK)
+            .Select(e => (int)e.Magnitude));
     }
 
     [Fact]
-    public void KillStreakAnnouncesAtEveryTierOnly()
+    public void KillStreakAnnouncesAtEntryThenEveryOddStreak()
     {
         GameEventJudge judge = new();
 
-        List<GameEventJudge.Judgment> events = RunStreak(judge, KILLER, kills: 11, startTick: 0);
+        List<GameEventJudge.Judgment> events = RunStreak(judge, KILLER, kills: 13, startTick: 0);
 
-        Assert.Equal([5, 10], events
+        Assert.Equal([5, 7, 9, 11, 13], events
             .Where(e => e.Kind == GameEventKind.KILL_STREAK)
             .Select(e => (int)e.Magnitude));
     }
@@ -152,6 +155,128 @@ public class GameEventJudgeTests
 
         Assert.DoesNotContain(events, e => e.Kind == GameEventKind.SHUTDOWN);
     }
+
+    [Fact]
+    public void RevengeFiresWhenTheGrudgeIsSettledAndOnlyThen()
+    {
+        GameEventJudge judge = new();
+        judge.JudgeFrame([Kill(KILLER, VICTIM)], tick: 0);
+
+        List<GameEventJudge.Judgment> revenge = judge.JudgeFrame(
+            [Kill(VICTIM, KILLER)], tick: 50_000);
+        // The grudge was cleared by the revenge; killing them again is not one.
+        List<GameEventJudge.Judgment> again = judge.JudgeFrame(
+            [Kill(VICTIM, KILLER)], tick: 100_000);
+
+        Assert.Contains(new GameEventJudge.Judgment(
+            GameEventKind.REVENGE, VICTIM, KILLER, 0), revenge);
+        Assert.DoesNotContain(again, e => e.Kind == GameEventKind.REVENGE);
+    }
+
+    [Fact]
+    public void TheGrudgeIsOverwrittenByANewerKiller()
+    {
+        GameEventJudge judge = new();
+        judge.JudgeFrame([Kill(KILLER, VICTIM)], tick: 0);
+        judge.JudgeFrame([Kill(OTHER, VICTIM)], tick: 20_000);
+
+        // Only the most recent killer counts as a grudge.
+        List<GameEventJudge.Judgment> stale = judge.JudgeFrame(
+            [Kill(VICTIM, KILLER)], tick: 50_000);
+        List<GameEventJudge.Judgment> fresh = judge.JudgeFrame(
+            [Kill(VICTIM, OTHER)], tick: 100_000);
+
+        Assert.DoesNotContain(stale, e => e.Kind == GameEventKind.REVENGE);
+        Assert.Contains(fresh, e => e.Kind == GameEventKind.REVENGE);
+    }
+
+    [Fact]
+    public void KillingTheWholeEnemyRosterIsATeamWipe()
+    {
+        GameEventJudge judge = new();
+        Dictionary<int, byte> teams = new() { [KILLER] = 1, [VICTIM] = 2, [OTHER] = 2 };
+
+        List<GameEventJudge.Judgment> first = judge.JudgeFrame(
+            [Kill(KILLER, VICTIM)], tick: 0, teams);
+        List<GameEventJudge.Judgment> wipe = judge.JudgeFrame(
+            [Kill(KILLER, OTHER)], tick: TeamWipeTracker.WINDOW_TICKS, teams);
+
+        Assert.DoesNotContain(first, e => e.Kind == GameEventKind.TEAM_WIPE);
+        Assert.Contains(new GameEventJudge.Judgment(
+            GameEventKind.TEAM_WIPE, KILLER, 0, 0), wipe);
+    }
+
+    [Fact]
+    public void StaleKillsDropOutOfTheWipeWindow()
+    {
+        GameEventJudge judge = new();
+        Dictionary<int, byte> teams = new() { [KILLER] = 1, [VICTIM] = 2, [OTHER] = 2 };
+        judge.JudgeFrame([Kill(KILLER, VICTIM)], tick: 0, teams);
+
+        // The first kill went stale, so this one starts the run over.
+        List<GameEventJudge.Judgment> late = judge.JudgeFrame(
+            [Kill(KILLER, OTHER)], tick: TeamWipeTracker.WINDOW_TICKS * 2, teams);
+        List<GameEventJudge.Judgment> wipe = judge.JudgeFrame(
+            [Kill(KILLER, VICTIM)], tick: TeamWipeTracker.WINDOW_TICKS * 2 + 100, teams);
+
+        Assert.DoesNotContain(late, e => e.Kind == GameEventKind.TEAM_WIPE);
+        Assert.Contains(new GameEventJudge.Judgment(
+            GameEventKind.TEAM_WIPE, KILLER, 0, 0), wipe);
+    }
+
+    [Fact]
+    public void DyingResetsTheWipeProgress()
+    {
+        GameEventJudge judge = new();
+        Dictionary<int, byte> teams = new() { [KILLER] = 1, [VICTIM] = 2, [OTHER] = 2 };
+        judge.JudgeFrame([Kill(KILLER, VICTIM)], tick: 0, teams);
+        judge.JudgeFrame([Kill(VICTIM, KILLER)], tick: 100, teams);
+
+        // Both kills sit inside the window, so only the death explains the miss.
+        List<GameEventJudge.Judgment> events = judge.JudgeFrame(
+            [Kill(KILLER, OTHER)], tick: 200, teams);
+
+        Assert.DoesNotContain(events, e => e.Kind == GameEventKind.TEAM_WIPE);
+    }
+
+    [Fact]
+    public void SuicidesChainInsideTheWindowAndCarryTheirCause()
+    {
+        GameEventJudge judge = new();
+
+        List<GameEventJudge.Judgment> first = judge.JudgeFrame(
+            [Suicide(KILLER, SuicideCause.BLAST)], tick: 0);
+        List<GameEventJudge.Judgment> second = judge.JudgeFrame(
+            [Suicide(KILLER, SuicideCause.FALL)], tick: SuicideTracker.WINDOW_TICKS);
+        List<GameEventJudge.Judgment> expired = judge.JudgeFrame(
+            [Suicide(KILLER, SuicideCause.BLAST)], tick: SuicideTracker.WINDOW_TICKS * 3);
+
+        Assert.Equal([new GameEventJudge.Judgment(
+            GameEventKind.SUICIDE, KILLER, 0, 1, (byte)SuicideCause.BLAST)], first);
+        // The count aggregates across causes; each event still names its own.
+        Assert.Equal([new GameEventJudge.Judgment(
+            GameEventKind.SUICIDE, KILLER, 0, 2, (byte)SuicideCause.FALL)], second);
+        Assert.Equal([new GameEventJudge.Judgment(
+            GameEventKind.SUICIDE, KILLER, 0, 1, (byte)SuicideCause.BLAST)], expired);
+    }
+
+    [Fact]
+    public void ACreditedKillRedeemsTheSuicideCount()
+    {
+        GameEventJudge judge = new();
+        judge.JudgeFrame([Suicide(KILLER, SuicideCause.BLAST)], tick: 0);
+        judge.JudgeFrame([Kill(KILLER, VICTIM)], tick: 100);
+
+        List<GameEventJudge.Judgment> events = judge.JudgeFrame(
+            [Suicide(KILLER, SuicideCause.BLAST)], tick: 200);
+
+        Assert.Contains(new GameEventJudge.Judgment(
+            GameEventKind.SUICIDE, KILLER, 0, 1, (byte)SuicideCause.BLAST), events);
+    }
+
+    private static GameEventJudge.Kill Suicide(int victim, SuicideCause cause) =>
+        new(victim, victim, Credited: false, Owned: false, FirstBlood: false,
+            ShellId: -1, Suicide: cause);
 
     private static GameEventJudge.Kill Kill(int killer, int victim, bool credited = true,
         bool owned = false, bool firstBlood = false, int shellId = -1) =>

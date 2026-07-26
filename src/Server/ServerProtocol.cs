@@ -90,8 +90,8 @@ internal sealed class ServerProtocol
         SendWelcome(peerId, match);
         SendScores(peerId, match);
         SendLiveMortars(peerId, match);
-        if (match.MatchPointActive)
-            MatchPointMessage(active: true, remaining: 1, match.Config).SendTo(peerId);
+        if (match.ActiveMatchPoint is { } matchPoint)
+            MatchPointMessage(matchPoint, match.Config).SendTo(peerId);
         if (match.Winner is { } winner)
             new MatchEndMsg(winner.ByTeam, winner.Id).SendTo(peerId);
         if (match.FinalKill is { } finalKill)
@@ -138,12 +138,12 @@ internal sealed class ServerProtocol
             GD.Print($"[server] game event {judgment.Kind} by {_players.Name(judgment.ActorId)}" +
                      (judgment.Magnitude > 0 ? $" x{judgment.Magnitude}" : ""));
             new GameEventMsg(judgment.Kind, judgment.ActorId, judgment.VictimId,
-                judgment.Magnitude).Broadcast();
+                judgment.Magnitude, judgment.Detail).Broadcast();
         }
         if (frame.MatchPoint is { } matchPoint)
         {
             GD.Print($"[server] match point {(matchPoint.Active ? "on" : "off")}");
-            MatchPointMessage(matchPoint.Active, matchPoint.Remaining, match.Config).Broadcast();
+            MatchPointMessage(matchPoint, match.Config).Broadcast();
         }
 
         if (frame.Tick % NetConfig.TICKS_PER_SNAPSHOT == 0 && match.World.Players.Count > 0)
@@ -221,12 +221,14 @@ internal sealed class ServerProtocol
     }
 
     /// <summary>TEAM_KILLS with teams off plays as PLAYER_KILLS everywhere.</summary>
-    private static MatchPointMsg MatchPointMessage(bool active, int remaining, MatchConfig config)
+    private static MatchPointMsg MatchPointMessage(MatchPointChange change, MatchConfig config)
     {
         WinCondition kind = config.Teams && config.WinCondition == WinCondition.TEAM_KILLS
             ? WinCondition.TEAM_KILLS
             : WinCondition.PLAYER_KILLS;
-        return new MatchPointMsg(active, kind, (byte)Math.Clamp(remaining, 0, byte.MaxValue));
+        return new MatchPointMsg(change.Active, kind,
+            (byte)Math.Clamp(change.Remaining, 0, byte.MaxValue),
+            change.LeaderId, change.LeaderIsTeam);
     }
 
     private void SendWelcome(long peerId, MatchSession match)

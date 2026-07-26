@@ -35,8 +35,14 @@ internal readonly record struct FinalKillEvent(
     ServerDeath Death,
     ServerExplosion? Explosion);
 
-/// <summary>Someone is now one kill from winning, or no longer is.</summary>
-internal readonly record struct MatchPointChange(bool Active, int Remaining);
+/// <summary>Someone is now one kill from winning, or no longer is. LeaderId
+/// names who: a peer id, or a team id when LeaderIsTeam.</summary>
+internal readonly record struct MatchPointChange(
+    bool Active,
+    int Remaining,
+    int LeaderId,
+    bool LeaderIsTeam
+);
 
 internal readonly record struct MatchFrame(
     int Tick,
@@ -61,6 +67,7 @@ internal sealed class MatchSession
     private readonly GameEventJudge _judge = new();
     private int _ticksUntilLobby;
     private bool _matchPointActive;
+    private MatchPointChange _matchPoint;
 
     public SimWorld World { get; }
     public Scoreboard Scores { get; }
@@ -98,7 +105,8 @@ internal sealed class MatchSession
     }
 
     /// <summary>For catching up late joiners; live changes ride MatchFrame.</summary>
-    public bool MatchPointActive => _matchPointActive;
+    public MatchPointChange? ActiveMatchPoint =>
+        _matchPointActive ? _matchPoint : null;
 
     public void EnqueueInput(int peerId, int seq, PlayerInput input)
     {
@@ -144,14 +152,13 @@ internal sealed class MatchSession
                 elimination.Score.CreditedKill,
                 elimination.Owned,
                 elimination.FirstBlood,
-                death.ShellId));
-            if (matchEnded == null && elimination.Score.Winner is { } winner)
-            {
-                matchEnded = winner;
-                ServerExplosion? explosion = FindExplosion(death, explosions);
-                finalKill = new FinalKillEvent(World.Tick, elimination, death, explosion);
-                FinalKill = finalKill;
-            }
+                death.ShellId,
+                SuicideCauseOf(elimination.Score.Kind)));
+            if (matchEnded != null || elimination.Score.Winner is not { } winner) continue;
+            matchEnded = winner;
+            ServerExplosion? explosion = FindExplosion(death, explosions);
+            finalKill = new FinalKillEvent(World.Tick, elimination, death, explosion);
+            FinalKill = finalKill;
         }
 
         return new MatchFrame(
@@ -161,7 +168,7 @@ internal sealed class MatchSession
             World.ShellRetirements.ToArray(),
             deaths,
             eliminations.ToArray(),
-            _judge.JudgeFrame(kills, World.Tick).ToArray(),
+            _judge.JudgeFrame(kills, World.Tick, JudgeTeams(kills)).ToArray(),
             CheckMatchPoint(),
             matchEnded,
             finalKill,
@@ -190,15 +197,34 @@ internal sealed class MatchSession
     }
 
     /// <summary>Recomputed every frame so suicide penalties and leavers move
-    /// the state too, not just kills.</summary>
+    /// the state too, not just kills. The leader can change while the state
+    /// holds; only entering and leaving the state is announced.</summary>
     private MatchPointChange? CheckMatchPoint()
     {
-        int remaining = Scores.RemainingToWin();
-        bool active = Stage == MatchStage.PLAYING && remaining == 1;
+        Scoreboard.MatchStanding standing = Scores.Standing();
+        bool active = Stage == MatchStage.PLAYING && standing.Remaining == 1;
         if (active == _matchPointActive)
             return null;
         _matchPointActive = active;
-        return new MatchPointChange(active, remaining);
+        _matchPoint = new MatchPointChange(
+            active, standing.Remaining, standing.LeaderId, standing.LeaderIsTeam);
+        return _matchPoint;
+    }
+
+    private static SuicideCause? SuicideCauseOf(Scoreboard.DeathKind kind) => kind switch
+    {
+        Scoreboard.DeathKind.FALL => SuicideCause.FALL,
+        Scoreboard.DeathKind.SUICIDE => SuicideCause.BLAST,
+        _ => null,
+    };
+
+    /// <summary>Skipped on quiet frames; the judge only reads teams when there
+    /// are kills.</summary>
+    private Dictionary<int, byte>? JudgeTeams(List<GameEventJudge.Kill> kills)
+    {
+        if (!Config.Teams || kills.Count == 0)
+            return null;
+        return World.Players.ToDictionary(pair => pair.Key, pair => pair.Value.TeamId);
     }
 
     /// <summary>Peers credited with the win: the winner itself, or everyone

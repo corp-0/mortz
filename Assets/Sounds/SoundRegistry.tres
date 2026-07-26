@@ -1,29 +1,29 @@
 [gd_resource type="Resource" script_class="SoundRegistry" format=3 uid="uid://0gok5648oexn"]
 
 [ext_resource type="Script" uid="uid://d104v7xlmkhkc" path="res://src/Client/Audio/SoundRegistry.cs" id="1"]
-[ext_resource type="AudioStream" uid="uid://djdyqhvlj48wg" path="res://Assets/Sounds/malescream_1.ogg" id="1_pk3n4"]
-[ext_resource type="Resource" uid="uid://cosmsb2e0cyha" path="res://Assets/Sounds/first_blood.tres" id="1_r7fwr"]
-[ext_resource type="Resource" uid="uid://d17a5lgo8pidb" path="res://Assets/Sounds/mortar_fire.tres" id="2"]
-[ext_resource type="AudioStream" uid="uid://b1wcunuxu5ls1" path="res://Assets/Sounds/malescream_2.ogg" id="2_ox5b5"]
-[ext_resource type="Resource" uid="uid://d2acl0cobw5cv" path="res://Assets/Sounds/shell_whoosh.tres" id="3"]
-[ext_resource type="AudioStream" uid="uid://cv2ulxnatgwrm" path="res://Assets/Sounds/malescream_3.ogg" id="3_2oxye"]
-[ext_resource type="Resource" uid="uid://n40shrfn7i7a" path="res://Assets/Sounds/mortar_reload.tres" id="3_k3oql"]
-[ext_resource type="Resource" uid="uid://cgcvt4sox23hg" path="res://Assets/Sounds/shell_impact.tres" id="4"]
-[ext_resource type="AudioStream" uid="uid://b7hyrv23ifscb" path="res://Assets/Sounds/malescream_4.ogg" id="4_g5vpd"]
-[ext_resource type="AudioStream" uid="uid://b4gcm0u56xn6x" path="res://Assets/Sounds/malescream_5.ogg" id="5_haxh4"]
-[ext_resource type="Resource" uid="uid://0vvoxt3nv7bd" path="res://Assets/Sounds/parry_success.tres" id="6"]
-[ext_resource type="AudioStream" uid="uid://di7ap87rwqh1h" path="res://Assets/Sounds/malescream_6.ogg" id="6_p6q71"]
-[ext_resource type="Resource" uid="uid://c5a1f31x2e1dw" path="res://Assets/Sounds/regular_kill.tres" id="7"]
+[ext_resource type="AudioStream" uid="uid://djdyqhvlj48wg" path="res://Assets/Sounds/Screams/malescream_1.ogg" id="1_pk3n4"]
+[ext_resource type="Resource" uid="uid://cosmsb2e0cyha" path="res://Assets/Sounds/Announcer/first_blood.tres" id="1_r7fwr"]
+[ext_resource type="Resource" uid="uid://d17a5lgo8pidb" path="res://Assets/Sounds/Weapons/mortar_fire.tres" id="2"]
+[ext_resource type="AudioStream" uid="uid://b1wcunuxu5ls1" path="res://Assets/Sounds/Screams/malescream_2.ogg" id="2_ox5b5"]
+[ext_resource type="Resource" uid="uid://d2acl0cobw5cv" path="res://Assets/Sounds/Weapons/shell_whoosh.tres" id="3"]
+[ext_resource type="AudioStream" uid="uid://cv2ulxnatgwrm" path="res://Assets/Sounds/Screams/malescream_3.ogg" id="3_2oxye"]
+[ext_resource type="Resource" uid="uid://n40shrfn7i7a" path="res://Assets/Sounds/Weapons/mortar_reload.tres" id="3_k3oql"]
+[ext_resource type="Resource" uid="uid://cgcvt4sox23hg" path="res://Assets/Sounds/Weapons/shell_impact.tres" id="4"]
+[ext_resource type="AudioStream" uid="uid://b7hyrv23ifscb" path="res://Assets/Sounds/Screams/malescream_4.ogg" id="4_g5vpd"]
+[ext_resource type="AudioStream" uid="uid://b4gcm0u56xn6x" path="res://Assets/Sounds/Screams/malescream_5.ogg" id="5_haxh4"]
+[ext_resource type="Resource" uid="uid://0vvoxt3nv7bd" path="res://Assets/Sounds/Parry/parry_success.tres" id="6"]
+[ext_resource type="AudioStream" uid="uid://di7ap87rwqh1h" path="res://Assets/Sounds/Screams/malescream_6.ogg" id="6_p6q71"]
+[ext_resource type="Resource" uid="uid://c5a1f31x2e1dw" path="res://Assets/Sounds/Announcer/regular_kill.tres" id="7"]
 [ext_resource type="Script" uid="uid://ds47gmtfre85k" path="res://src/Client/Audio/SoundEffect.cs" id="7_graqg"]
-[ext_resource type="Resource" uid="uid://bkkkoim76s6me" path="res://Assets/Sounds/owned.tres" id="8"]
-[ext_resource type="AudioStream" uid="uid://ooxbt0ao7tns" path="res://Assets/Sounds/parry_raise1.wav" id="12_ox5b5"]
-[ext_resource type="AudioStream" uid="uid://smgbvo27lpwv" path="res://Assets/Sounds/parry_raise2.wav" id="13_2oxye"]
-[ext_resource type="Resource" path="res://Assets/Sounds/shutdown.tres" id="14_shutdn"]
-[ext_resource type="Resource" path="res://Assets/Sounds/holy_shit.tres" id="15_holysh"]
-[ext_resource type="Resource" path="res://Assets/Sounds/double_kill.tres" id="16_double"]
-[ext_resource type="Resource" path="res://Assets/Sounds/triple_kill.tres" id="17_triple"]
-[ext_resource type="Resource" path="res://Assets/Sounds/multi_kill.tres" id="18_multik"]
-[ext_resource type="Resource" path="res://Assets/Sounds/kill_streak.tres" id="19_streak"]
+[ext_resource type="Resource" uid="uid://bkkkoim76s6me" path="res://Assets/Sounds/Announcer/owned.tres" id="8"]
+[ext_resource type="AudioStream" uid="uid://ooxbt0ao7tns" path="res://Assets/Sounds/Parry/parry_raise1.wav" id="12_ox5b5"]
+[ext_resource type="AudioStream" uid="uid://smgbvo27lpwv" path="res://Assets/Sounds/Parry/parry_raise2.wav" id="13_2oxye"]
+[ext_resource type="Resource" path="res://Assets/Sounds/Announcer/shutdown.tres" id="14_shutdn"]
+[ext_resource type="Resource" path="res://Assets/Sounds/Announcer/holy_shit.tres" id="15_holysh"]
+[ext_resource type="Resource" path="res://Assets/Sounds/Announcer/double_kill.tres" id="16_double"]
+[ext_resource type="Resource" path="res://Assets/Sounds/Announcer/triple_kill.tres" id="17_triple"]
+[ext_resource type="Resource" path="res://Assets/Sounds/Announcer/multi_kill.tres" id="18_multik"]
+[ext_resource type="Resource" path="res://Assets/Sounds/Announcer/kill_streak.tres" id="19_streak"]
 
 [sub_resource type="AudioStreamRandomizer" id="AudioStreamRandomizer_vptec"]
 streams_count = 6
@@ -69,5 +69,12 @@ Shutdown = ExtResource("14_shutdn")
 HolyShit = ExtResource("15_holysh")
 DoubleKill = ExtResource("16_double")
 TripleKill = ExtResource("17_triple")
-MultiKill = ExtResource("18_multik")
-KillStreak = ExtResource("19_streak")
+Overkill = ExtResource("18_multik")
+UltraKill = ExtResource("18_multik")
+Massacre = ExtResource("18_multik")
+Carnage = ExtResource("18_multik")
+Bloodlust = ExtResource("19_streak")
+Punishment = ExtResource("19_streak")
+Dominating = ExtResource("19_streak")
+MachineGod = ExtResource("19_streak")
+Psycho = ExtResource("19_streak")

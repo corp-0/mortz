@@ -11,13 +11,18 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("1_hud")
-_scoreLabel = NodePath("Score")
+_scoreLabel = NodePath("MarginContainer/Score")
 
-[node name="Score" type="Label" parent="." unique_id=1593906561]
+[node name="MarginContainer" type="MarginContainer" parent="." unique_id=346521597]
 layout_mode = 0
-offset_left = 12.0
-offset_top = 12.0
-offset_right = 160.0
+offset_right = 40.0
 offset_bottom = 40.0
+theme_override_constants/margin_left = 50
+theme_override_constants/margin_top = 25
+theme_override_constants/margin_right = 50
+theme_override_constants/margin_bottom = 25
+
+[node name="Score" type="Label" parent="MarginContainer" unique_id=1593906561]
+layout_mode = 2
 theme_override_font_sizes/font_size = 20
 text = "K 0 / D 0"

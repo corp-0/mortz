@@ -9,9 +9,13 @@ namespace Mortz.Client.Roster;
 public partial class ClientRoster : Node
 {
     private readonly Dictionary<long, string> _names = [];
+    private readonly Dictionary<long, byte> _teams = [];
 
     public string NameOf(long peerId) =>
         _names.TryGetValue(peerId, out string? name) ? name : $"Player {peerId}";
+
+    /// <summary>0 when the player is unknown or teams are off.</summary>
+    public byte TeamOf(long peerId) => _teams.GetValueOrDefault(peerId);
 
     public override void _Ready()
     {
@@ -26,17 +30,21 @@ public partial class ClientRoster : Node
     }
 
     private void OnLobbyState(LobbyStateMsg message) =>
-        Update(message.PeerIds, message.Names);
+        Update(message.PeerIds, message.Names, message.Teams);
 
-    private void OnRoster(RosterMsg message) => Update(message.PeerIds, message.Names);
+    private void OnRoster(RosterMsg message) =>
+        Update(message.PeerIds, message.Names, message.Teams);
 
-    private void Update(long[] peerIds, string[] names)
+    private void Update(long[] peerIds, string[] names, byte[] teams)
     {
         _names.Clear();
+        _teams.Clear();
         int count = Math.Min(peerIds.Length, names.Length);
         for (int i = 0; i < count; i++)
         {
             _names[peerIds[i]] = names[i];
+            if (i < teams.Length)
+                _teams[peerIds[i]] = teams[i];
         }
     }
 }

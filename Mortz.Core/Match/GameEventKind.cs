@@ -14,4 +14,11 @@ public enum GameEventKind : byte
     MULTI_KILL = 4,
     /// <summary>Kills since last death crossed a tier. Magnitude is the streak.</summary>
     KILL_STREAK = 5,
+    /// <summary>The actor killed the player who last killed them.</summary>
+    REVENGE = 6,
+    /// <summary>The actor personally killed every member of the enemy roster.</summary>
+    TEAM_WIPE = 7,
+    /// <summary>Death by own hand. Magnitude is the consecutive count within
+    /// the judge's window; Detail carries the <see cref="SuicideCause"/>.</summary>
+    SUICIDE = 8,
 }

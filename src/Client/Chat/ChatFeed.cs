@@ -84,9 +84,9 @@ public partial class ChatFeed : VBoxContainer
         RichText content = entry.Render();
         RichText text = entry.Kind switch
         {
-            ChatEntryKind.PLAYER => new RichText().Bold().ApplyTo(entry.SenderName)
+            ChatEntryKind.PLAYER => new RichText().Add(entry.SenderName, new Style().Bold())
                 .Add(": ").Add(content),
-            ChatEntryKind.PRIVATE => new RichText().Italic().ApplyTo("* ").Add(content),
+            ChatEntryKind.PRIVATE => new RichText().Add("* ", new Style().Italic()).Add(content),
             _ => content,
         };
         return new RichTextLabel

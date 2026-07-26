@@ -92,7 +92,7 @@ public partial class RollLine : HBoxContainer
         string prefix = $"{_senderName} rolls";
         return new RichTextLabel
         {
-            Text = new RichText().Bold().ApplyTo(_senderName).Add(" rolls"),
+            Text = new RichText().Add(_senderName, new Style().Bold()).Add(" rolls"),
             BbcodeEnabled = true,
             FitContent = true,
             AutowrapMode = TextServer.AutowrapMode.Off,
@@ -115,9 +115,9 @@ public partial class RollLine : HBoxContainer
 
     private RichTextLabel BuildSettledLabel() => new()
     {
-        Text = new RichText().Bold().ApplyTo(_senderName)
+        Text = new RichText().Add(_senderName, new Style().Bold())
             .Add(" rolled ")
-            .Bold().ApplyTo(_value.ToString())
+            .Add(_value.ToString(), new Style().Bold())
             .Add($" ({DiceRoll.MIN}-{DiceRoll.MAX})"),
         AutowrapMode = TextServer.AutowrapMode.WordSmart,
         BbcodeEnabled = true,

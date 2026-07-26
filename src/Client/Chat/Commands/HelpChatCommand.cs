@@ -17,7 +17,7 @@ internal sealed class HelpChatCommand : ClientChatCommand
         foreach (ChatCommandMetadata metadata in context.Chat.CommandCatalog)
         {
             RichText line = new RichText()
-                .Bold().ApplyTo(metadata.Usage)
+                .Add(metadata.Usage, new Style().Bold())
                 .Add(" - ").Add(metadata.Description);
             context.Chat.State.AddSystem(line, isPrivate: true);
         }

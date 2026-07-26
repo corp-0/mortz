@@ -28,7 +28,7 @@ namespace Mortz.Client.Match;
 [Meta(typeof(IAutoNode))]
 public partial class GameView : Node2D,
     IProvide<IKillFeed>,
-    IProvide<AnnouncementDirector>,
+    IProvide<IAnnouncementDirector>,
     IProvide<ClientChat>,
     IProvide<GameMap>
 {
@@ -47,7 +47,7 @@ public partial class GameView : Node2D,
     private INetwork Network => this.DependOn<INetwork>();
 
     IKillFeed IProvide<IKillFeed>.Value() => _killFeed;
-    AnnouncementDirector IProvide<AnnouncementDirector>.Value() => _announcements;
+    IAnnouncementDirector IProvide<IAnnouncementDirector>.Value() => _announcements;
     ClientChat IProvide<ClientChat>.Value() => _chat;
     GameMap IProvide<GameMap>.Value() => _gameMap;
 

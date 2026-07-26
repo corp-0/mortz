@@ -1,8 +1,15 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://bkx20bfq77ejk"]
 
 [ext_resource type="Script" uid="uid://wj2mcsbosk7g" path="res://src/Client/Announcements/AnnouncementBanner.cs" id="1_banner"]
 
-[node name="AnnouncementBanner" type="Control"]
+[sub_resource type="Theme" id="Theme_lines"]
+RichTextLabel/colors/font_outline_color = Color(0.08, 0.06, 0.1, 1)
+RichTextLabel/colors/font_shadow_color = Color(0, 0, 0, 0.45)
+RichTextLabel/constants/outline_size = 8
+RichTextLabel/constants/shadow_offset_x = 0
+RichTextLabel/constants/shadow_offset_y = 4
+
+[node name="AnnouncementBanner" type="Control" unique_id=1379281400 node_paths=PackedStringArray("_matchPoint", "_lines")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -11,3 +18,26 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("1_banner")
+_matchPoint = NodePath("MatchPoint")
+_lines = NodePath("Lines")
+
+[node name="MatchPoint" type="RichTextLabel" parent="." unique_id=351443301]
+visible = false
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_top = 36.0
+grow_horizontal = 2
+mouse_filter = 2
+theme_override_font_sizes/normal_font_size = 26
+bbcode_enabled = true
+fit_content = true
+scroll_active = false
+
+[node name="Lines" type="VBoxContainer" parent="." unique_id=189780994]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_top = 76.0
+grow_horizontal = 2
+theme = SubResource("Theme_lines")

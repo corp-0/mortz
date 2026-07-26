@@ -32,9 +32,9 @@ public class AnnouncementQueueTests
     {
         AnnouncementQueue queue = new();
         queue.Push(GameAnnouncer.Cue.DOUBLE_KILL, now: 0);
-        queue.Push(GameAnnouncer.Cue.KILL_STREAK, now: AnnouncementQueue.TTL_SECONDS + 1);
+        queue.Push(GameAnnouncer.Cue.BLOODLUST, now: AnnouncementQueue.TTL_SECONDS + 1);
 
-        Assert.Equal(GameAnnouncer.Cue.KILL_STREAK,
+        Assert.Equal(GameAnnouncer.Cue.BLOODLUST,
             queue.Next(AnnouncementQueue.TTL_SECONDS + 1));
     }
 

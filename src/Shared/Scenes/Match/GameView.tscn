@@ -21,6 +21,7 @@
 [ext_resource type="PackedScene" path="res://src/Shared/UI/Hud/WinnerBanner.tscn" id="15_score"]
 [ext_resource type="Script" uid="uid://d0ub0gbtk36ja" path="res://src/Client/Feed/KillFeed.cs" id="21_feed"]
 [ext_resource type="Script" uid="uid://b7xyv1173ixe1" path="res://src/Client/Chat/ClientChat.cs" id="22_chat"]
+[ext_resource type="Script" path="res://src/Client/Announcements/AnnouncementChat.cs" id="26_annchat"]
 [ext_resource type="PackedScene" path="res://src/Shared/UI/Chat/GameChat.tscn" id="23_gamechat"]
 
 [node name="GameView" type="Node2D" unique_id=1808596722 node_paths=PackedStringArray("_ropes", "_localPlayer", "_players", "_mortars", "_hud", "_finalKillReplay", "_killFeed", "_announcements", "_chat")]
@@ -76,6 +77,9 @@ script = ExtResource("21_feed")
 
 [node name="ClientChat" type="Node" parent="." unique_id=1968473025]
 script = ExtResource("22_chat")
+
+[node name="AnnouncementChat" type="Node" parent="." unique_id=1968473026]
+script = ExtResource("26_annchat")
 
 [node name="Hud" type="CanvasLayer" parent="." unique_id=1180743937]
 

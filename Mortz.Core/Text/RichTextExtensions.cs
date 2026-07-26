@@ -4,23 +4,23 @@ namespace Mortz.Core.Text;
 public static class RichTextExtensions
 {
     public static string Bold(this string text) =>
-        new RichText().Bold().ApplyTo(text).ToString();
+        new RichText().Add(text, new Style().Bold()).ToString();
 
     public static string Italic(this string text) =>
-        new RichText().Italic().ApplyTo(text).ToString();
+        new RichText().Add(text, new Style().Italic()).ToString();
 
     public static string Underline(this string text) =>
-        new RichText().Underline().ApplyTo(text).ToString();
+        new RichText().Add(text, new Style().Underline()).ToString();
 
     public static string Strikethrough(this string text) =>
-        new RichText().Strikethrough().ApplyTo(text).ToString();
+        new RichText().Add(text, new Style().Strikethrough()).ToString();
 
     public static string Code(this string text) =>
-        new RichText().Code().ApplyTo(text).ToString();
+        new RichText().Add(text, new Style().Code()).ToString();
 
     public static string Color(this string text, RichTextColor color) =>
-        new RichText().Color(color).ApplyTo(text).ToString();
+        new RichText().Add(text, new Style().Color(color)).ToString();
 
     public static string Color(this string text, string hexColor) =>
-        new RichText().Color(hexColor).ApplyTo(text).ToString();
+        new RichText().Add(text, new Style().Color(hexColor)).ToString();
 }

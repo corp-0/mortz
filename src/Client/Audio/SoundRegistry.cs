@@ -24,6 +24,15 @@ public partial class SoundRegistry : Resource
     [Export] public SoundEffect? HolyShit { get; private set; }
     [Export] public SoundEffect? DoubleKill { get; private set; }
     [Export] public SoundEffect? TripleKill { get; private set; }
-    [Export] public SoundEffect? MultiKill { get; private set; }
-    [Export] public SoundEffect? KillStreak { get; private set; }
+    [Export] public SoundEffect? Overkill { get; private set; }
+    [Export] public SoundEffect? UltraKill { get; private set; }
+    [Export] public SoundEffect? Massacre { get; private set; }
+    [Export] public SoundEffect? Carnage { get; private set; }
+    [Export] public SoundEffect? Bloodlust { get; private set; }
+    [Export] public SoundEffect? Punishment { get; private set; }
+    [Export] public SoundEffect? Dominating { get; private set; }
+    [Export] public SoundEffect? MachineGod { get; private set; }
+    [Export] public SoundEffect? Psycho { get; private set; }
+    [Export] public SoundEffect? TeamWipe { get; private set; }
+    [Export] public SoundEffect? SuicideMock { get; private set; }
 }

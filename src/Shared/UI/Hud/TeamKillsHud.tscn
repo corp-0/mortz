@@ -11,32 +11,33 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("1_hud")
-_team1Label = NodePath("Row/Team1")
-_team2Label = NodePath("Row/Team2")
+_team1Label = NodePath("MarginContainer/Row/Team1")
+_team2Label = NodePath("MarginContainer/Row/Team2")
 
-[node name="Row" type="HBoxContainer" parent="." unique_id=71403688]
+[node name="MarginContainer" type="MarginContainer" parent="." unique_id=2059252447]
 layout_mode = 0
-anchor_left = 0.5
-anchor_right = 0.5
-offset_left = -80.0
-offset_top = 10.0
-offset_right = 80.0
-offset_bottom = 44.0
-grow_horizontal = 2
-theme_override_constants/separation = 14
-alignment = 1
+offset_right = 40.0
+offset_bottom = 40.0
+theme_override_constants/margin_left = 50
+theme_override_constants/margin_top = 25
+theme_override_constants/margin_right = 50
+theme_override_constants/margin_bottom = 25
 
-[node name="Team1" type="Label" parent="Row" unique_id=2058643517]
+[node name="Row" type="HBoxContainer" parent="MarginContainer" unique_id=71403688]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="Team1" type="Label" parent="MarginContainer/Row" unique_id=2058643517]
 layout_mode = 2
 theme_override_font_sizes/font_size = 26
 text = "0"
 
-[node name="Dash" type="Label" parent="Row" unique_id=1722409235]
+[node name="Dash" type="Label" parent="MarginContainer/Row" unique_id=1722409235]
 layout_mode = 2
 theme_override_font_sizes/font_size = 26
 text = "-"
 
-[node name="Team2" type="Label" parent="Row" unique_id=1460055302]
+[node name="Team2" type="Label" parent="MarginContainer/Row" unique_id=1460055302]
 layout_mode = 2
 theme_override_font_sizes/font_size = 26
 text = "0"

@@ -26,7 +26,7 @@ public class ChatStateTests
             ChatTextFormat.MARKDOWN);
         ChatEntry plain = new(ChatEntryKind.SYSTEM, 0, "Server", "[b]plain[/b]");
         ChatState state = new();
-        state.AddSystem(new RichText().Bold().ApplyTo("trusted"));
+        state.AddSystem(new RichText().Add("trusted", new Style().Bold()));
 
         Assert.Equal("[b]hello[/b] bad", player.Render().ToString());
         Assert.Equal("[lb]b[rb]plain[lb]/b[rb]", plain.Render().ToString());

@@ -6,56 +6,28 @@ namespace Mortz.Core.Text;
 public sealed class RichText
 {
     private readonly StringBuilder _builder = new();
-    private readonly List<IRichTextStyle> _styles = [];
 
     public RichText()
     {
     }
 
-    /// <summary>Creates rich text containing unstyled, escaped text.</summary>
     public RichText(string? text) => Add(text);
 
     public static implicit operator string(RichText richText) => richText.ToString();
 
     public override string ToString() => _builder.ToString();
 
-    public RichText Bold() => Style(new BoldStyle());
-    public RichText Italic() => Style(new ItalicStyle());
-    public RichText Underline() => Style(new UnderlineStyle());
-    public RichText Strikethrough() => Style(new StrikethroughStyle());
-    public RichText Code() => Style(new CodeStyle());
-    public RichText Color(RichTextColor color) => Style(new ColorStyle(color));
-    public RichText Color(string hexColor) => Style(new ColorStyle(hexColor));
-    public RichText FontSize(int size) => Style(new FontSizeStyle(size));
-
-    /// <summary>Adds a style to be applied by the next <see cref="ApplyTo"/> call.</summary>
-    public RichText Style(IRichTextStyle style)
-    {
-        ArgumentNullException.ThrowIfNull(style);
-        _styles.Add(style);
-        return this;
-    }
-
-    /// <summary>
-    /// Escapes <paramref name="text"/>, applies the accumulated styles, appends it,
-    /// and clears the style stack.
-    /// </summary>
-    public RichText ApplyTo(string? text)
-    {
-        string styled = Escape(text);
-        foreach (IRichTextStyle style in _styles)
-        {
-            styled = style.Apply(styled);
-        }
-        _builder.Append(styled);
-        _styles.Clear();
-        return this;
-    }
-
-    /// <summary>Appends unstyled text. BBCode delimiters are always escaped.</summary>
+    /// <summary>Appends text; BBCode delimiters are escaped.</summary>
     public RichText Add(string? text)
     {
         _builder.Append(Escape(text));
+        return this;
+    }
+
+    public RichText Add(string? text, Style style)
+    {
+        ArgumentNullException.ThrowIfNull(style);
+        _builder.Append(style.Apply(Escape(text)));
         return this;
     }
 
@@ -64,6 +36,24 @@ public sealed class RichText
     {
         ArgumentNullException.ThrowIfNull(richText);
         _builder.Append(richText._builder);
+        return this;
+    }
+
+    public RichText Add(RichText fragment, Style style)
+    {
+        ArgumentNullException.ThrowIfNull(fragment);
+        ArgumentNullException.ThrowIfNull(style);
+        _builder.Append(style.Apply(fragment.ToString()));
+        return this;
+    }
+
+    /// <summary>Wraps everything added so far in the style.</summary>
+    public RichText Wrap(Style style)
+    {
+        ArgumentNullException.ThrowIfNull(style);
+        string wrapped = style.Apply(_builder.ToString());
+        _builder.Clear();
+        _builder.Append(wrapped);
         return this;
     }
 

@@ -137,23 +137,40 @@ public sealed class Scoreboard
 
     /// <summary>Kills still needed by whoever is closest to winning;
     /// KillTarget when nobody has scored.</summary>
-    public int RemainingToWin()
+    public int RemainingToWin() => Standing().Remaining;
+
+    /// <summary>LeaderId is a peer id, or a team id when LeaderIsTeam; 0 while
+    /// nobody has scored. Ties go to the first scorer in table order.</summary>
+    public readonly record struct MatchStanding(int LeaderId, bool LeaderIsTeam, int Remaining);
+
+    /// <summary>Who is closest to winning and the kills they still need.</summary>
+    public MatchStanding Standing()
     {
         int best = 0;
-        if (_config.Teams && _config.WinCondition == WinCondition.TEAM_KILLS)
+        int leader = 0;
+        bool byTeam = _config.Teams && _config.WinCondition == WinCondition.TEAM_KILLS;
+        if (byTeam)
         {
             for (byte team = 1; team < _teamKills.Length; team++)
             {
-                best = Math.Max(best, _teamKills[team]);
+                if (_teamKills[team] > best)
+                {
+                    best = _teamKills[team];
+                    leader = team;
+                }
             }
         }
         else
         {
-            foreach (Row row in _rows.Values)
+            foreach ((int peerId, Row row) in _rows)
             {
-                best = Math.Max(best, row.Kills);
+                if (row.Kills > best)
+                {
+                    best = row.Kills;
+                    leader = peerId;
+                }
             }
         }
-        return Math.Max(0, _config.KillTarget - best);
+        return new MatchStanding(leader, byTeam, Math.Max(0, _config.KillTarget - best));
     }
 }

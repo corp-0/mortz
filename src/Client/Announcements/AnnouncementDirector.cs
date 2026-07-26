@@ -1,24 +1,26 @@
 using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
+using Mortz.Client.Roster;
 using Mortz.Core.Match;
 using Mortz.Core.Net.Messages;
 
 namespace Mortz.Client.Announcements;
 
-/// <summary>Collects the game events of one render frame into a
-/// priority-ordered batch; the voice and the banner do their own suppression
-/// and pacing on top. Also holds the match-point state for late
-/// subscribers.</summary>
+/// <summary>Turns one render frame's game events into announcements. Keeps the
+/// match-point state for late subscribers.</summary>
 [Meta(typeof(IAutoNode))]
-public partial class AnnouncementDirector : Node
+public partial class AnnouncementDirector : Node, IAnnouncementDirector
 {
+    [Dependency]
+    private ClientRoster Roster => this.DependOn<ClientRoster>();
+
     private readonly List<GameEventMsg> _pending = new();
 
-    public event Action<IReadOnlyList<GameEventMsg>>? BatchReady;
-    public event Action<MatchPointMsg>? MatchPointChanged;
+    public event Action<IReadOnlyList<Announcement>>? BatchReady;
+    public event Action<MatchPointState>? MatchPointChanged;
 
-    public MatchPointMsg? MatchPoint { get; private set; }
+    public MatchPointState? MatchPoint { get; private set; }
 
     public override void _Notification(int what) => this.Notify(what);
 
@@ -38,7 +40,7 @@ public partial class AnnouncementDirector : Node
     {
         if (_pending.Count == 0)
             return;
-        GameEventMsg[] batch = Order(_pending);
+        Announcement[] batch = Describe(_pending, Roster.NameOf, Roster.TeamOf);
         _pending.Clear();
         BatchReady?.Invoke(batch);
     }
@@ -47,22 +49,77 @@ public partial class AnnouncementDirector : Node
 
     private void OnMatchPoint(MatchPointMsg msg)
     {
-        MatchPoint = msg.Active ? msg : null;
-        MatchPointChanged?.Invoke(msg);
+        MatchPointState state = Describe(msg, Roster.NameOf);
+        MatchPoint = state.Active ? state : null;
+        MatchPointChanged?.Invoke(state);
     }
 
-    /// <summary>Ties keep arrival order, so a kind's magnitudes stay in the
-    /// order the server sent.</summary>
-    internal static GameEventMsg[] Order(IEnumerable<GameEventMsg> events) =>
-        events.OrderBy(e => Priority(e.Kind)).ToArray();
+    /// <summary>Folded, priority ordered (ties keep arrival order), names
+    /// resolved.</summary>
+    internal static Announcement[] Describe(
+        IReadOnlyList<GameEventMsg> events, Func<long, string> name, Func<long, byte> team) =>
+        FoldHolyShit(events)
+            .OrderBy(e => Priority(e.Kind))
+            .Select(e => new Announcement(
+                e.Kind,
+                Who(e.ActorId, name, team),
+                Who(e.VictimId, name, team),
+                e.Magnitude,
+                (SuicideCause)e.Detail))
+            .ToArray();
+
+    internal static MatchPointState Describe(MatchPointMsg msg, Func<long, string> name)
+    {
+        if (msg.LeaderId == 0)
+            return new(msg.Active, msg.Remaining, null);
+        string leader = msg.LeaderIsTeam ? $"Team {msg.LeaderId}" : name(msg.LeaderId);
+        return new(msg.Active, msg.Remaining, leader);
+    }
+
+    private static Combatant Who(long id, Func<long, string> name, Func<long, byte> team) =>
+        new(id, name(id), team(id));
+
+    /// <summary>Drops an actor's MULTI_KILL into their HOLY_SHIT, which then
+    /// speaks the longer of the two magnitudes.</summary>
+    private static IReadOnlyList<GameEventMsg> FoldHolyShit(IReadOnlyList<GameEventMsg> batch)
+    {
+        if (!batch.Any(e => e.Kind == GameEventKind.HOLY_SHIT))
+            return batch;
+        List<GameEventMsg> folded = new(batch.Count);
+        foreach (GameEventMsg e in batch)
+        {
+            switch (e.Kind)
+            {
+                case GameEventKind.HOLY_SHIT:
+                    byte chain = batch
+                        .Where(other => other.Kind == GameEventKind.MULTI_KILL &&
+                                        other.ActorId == e.ActorId)
+                        .Select(other => other.Magnitude)
+                        .DefaultIfEmpty(e.Magnitude)
+                        .Max();
+                    folded.Add(e with { Magnitude = Math.Max(chain, e.Magnitude) });
+                    break;
+                case GameEventKind.MULTI_KILL when batch.Any(other =>
+                    other.Kind == GameEventKind.HOLY_SHIT && other.ActorId == e.ActorId):
+                    break;
+                default:
+                    folded.Add(e);
+                    break;
+            }
+        }
+        return folded;
+    }
 
     private static int Priority(GameEventKind kind) => kind switch
     {
         GameEventKind.HOLY_SHIT => 0,
         GameEventKind.FIRST_BLOOD => 1,
-        GameEventKind.SHUTDOWN => 2,
-        GameEventKind.MULTI_KILL => 3,
-        GameEventKind.KILL_STREAK => 4,
-        _ => 5, // HUMILIATION: whoever plays it at all plays it last
+        GameEventKind.TEAM_WIPE => 2,
+        GameEventKind.SHUTDOWN => 3,
+        GameEventKind.MULTI_KILL => 4,
+        GameEventKind.KILL_STREAK => 5,
+        GameEventKind.REVENGE => 6,
+        GameEventKind.SUICIDE => 7,
+        _ => 8, // HUMILIATION: whoever plays it at all plays it last
     };
 }

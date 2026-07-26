@@ -141,9 +141,12 @@ public class MatchSessionTests
         match.ScoreDeath(new ServerDeath(1, default, 1, false)); // suicide penalty
         MatchFrame leave = match.Step();
 
-        Assert.Equal(new MatchPointChange(true, 1), enter.MatchPoint);
+        Assert.Equal(new MatchPointChange(true, 1, LeaderId: 1, LeaderIsTeam: false),
+            enter.MatchPoint);
         Assert.Null(steady.MatchPoint);
-        Assert.Equal(new MatchPointChange(false, 2), leave.MatchPoint);
+        // The penalty wiped the lead: nobody has scored, so there is no leader.
+        Assert.Equal(new MatchPointChange(false, 2, LeaderId: 0, LeaderIsTeam: false),
+            leave.MatchPoint);
     }
 
     [Fact]

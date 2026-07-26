@@ -1,0 +1,203 @@
+[gd_scene format=3 uid="uid://oagrjsoi773j"]
+
+[ext_resource type="Script" uid="uid://d2mvuyqfyv0a7" path="res://src/Client/Debug/AnnouncementsDebug.cs" id="1_host"]
+[ext_resource type="Script" uid="uid://ooyj4qa2sesu" path="res://src/Client/Roster/ClientRoster.cs" id="2_roster"]
+[ext_resource type="Script" uid="uid://d2se7ahca8huk" path="res://src/Client/Admin/ClientAdmin.cs" id="3_admin"]
+[ext_resource type="Script" uid="uid://b7xyv1173ixe1" path="res://src/Client/Chat/ClientChat.cs" id="4_chat"]
+[ext_resource type="Script" uid="uid://b46f55d4mmx7l" path="res://src/Client/Audio/Sfx.cs" id="5_sfx"]
+[ext_resource type="Resource" uid="uid://0gok5648oexn" path="res://Assets/Sounds/SoundRegistry.tres" id="6_sounds"]
+[ext_resource type="Script" uid="uid://bxev1av5gpki2" path="res://src/Client/Announcements/GameAnnouncer.cs" id="7_announcer"]
+[ext_resource type="Script" uid="uid://cukwng3fiyn6t" path="res://src/Client/Announcements/AnnouncementChat.cs" id="8_annchat"]
+[ext_resource type="PackedScene" path="res://src/Shared/UI/Hud/AnnouncementBanner.tscn" id="9_banner"]
+[ext_resource type="PackedScene" path="res://src/Shared/UI/Chat/GameChat.tscn" id="10_gamechat"]
+
+[node name="AnnouncementsDebug" type="Control" unique_id=133924536 node_paths=PackedStringArray("_roster", "_admin", "_chat")]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_host")
+_roster = NodePath("ClientRoster")
+_admin = NodePath("ClientAdmin")
+_chat = NodePath("ClientChat")
+
+[node name="ClientRoster" type="Node" parent="." unique_id=674686940]
+script = ExtResource("2_roster")
+
+[node name="ClientAdmin" type="Node" parent="." unique_id=2097850461]
+script = ExtResource("3_admin")
+
+[node name="ClientChat" type="Node" parent="." unique_id=1806269011]
+script = ExtResource("4_chat")
+
+[node name="Sfx" type="Node" parent="." unique_id=1646805444]
+script = ExtResource("5_sfx")
+_sounds = ExtResource("6_sounds")
+
+[node name="GameAnnouncer" type="Node" parent="." unique_id=757676348]
+script = ExtResource("7_announcer")
+
+[node name="AnnouncementChat" type="Node" parent="." unique_id=751948957]
+script = ExtResource("8_annchat")
+
+[node name="AnnouncementBanner" parent="." unique_id=822673924 instance=ExtResource("9_banner")]
+layout_mode = 1
+
+[node name="GameChat" parent="." unique_id=1064531581 instance=ExtResource("10_gamechat")]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -392.0
+offset_top = -340.0
+offset_right = -12.0
+offset_bottom = -56.0
+grow_horizontal = 0
+grow_vertical = 0
+
+[node name="Buttons" type="HBoxContainer" parent="." unique_id=2026528336]
+layout_mode = 1
+anchors_preset = 9
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = 253.0
+offset_right = 347.0
+offset_bottom = -16.0
+grow_vertical = 2
+theme_override_constants/separation = 12
+alignment = 2
+
+[node name="Events" type="VBoxContainer" parent="Buttons" unique_id=2012471613]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 0
+
+[node name="FirstBlood" type="Button" parent="Buttons/Events" unique_id=1057333649]
+layout_mode = 2
+text = "First blood"
+
+[node name="Humiliation" type="Button" parent="Buttons/Events" unique_id=953998960]
+layout_mode = 2
+text = "Owned"
+
+[node name="Shutdown" type="Button" parent="Buttons/Events" unique_id=916126681]
+layout_mode = 2
+text = "Shutdown"
+
+[node name="Revenge" type="Button" parent="Buttons/Events" unique_id=868050996]
+layout_mode = 2
+text = "Revenge"
+
+[node name="TeamWipe" type="Button" parent="Buttons/Events" unique_id=260024552]
+layout_mode = 2
+text = "Team wipe"
+
+[node name="SuicideBlast" type="Button" parent="Buttons/Events" unique_id=1112248119]
+layout_mode = 2
+text = "Suicide: blast"
+
+[node name="SuicideFall" type="Button" parent="Buttons/Events" unique_id=1309416583]
+layout_mode = 2
+text = "Suicide: fall"
+
+[node name="SuicideMocked" type="Button" parent="Buttons/Events" unique_id=877602278]
+layout_mode = 2
+text = "Suicide x3"
+
+[node name="HolyShitCombo" type="Button" parent="Buttons/Events" unique_id=1957312220]
+layout_mode = 2
+text = "Holy shit combo"
+
+[node name="LineOverflow" type="Button" parent="Buttons/Events" unique_id=1262468752]
+layout_mode = 2
+text = "Line overflow"
+
+[node name="MatchPoint3" type="Button" parent="Buttons/Events" unique_id=1716580737]
+layout_mode = 2
+text = "Match point: 3"
+
+[node name="MatchPoint1" type="Button" parent="Buttons/Events" unique_id=285360620]
+layout_mode = 2
+text = "Match point: 1"
+
+[node name="MatchPointOff" type="Button" parent="Buttons/Events" unique_id=1024722681]
+layout_mode = 2
+text = "Match point off"
+
+[node name="Tiers" type="VBoxContainer" parent="Buttons" unique_id=820320890]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 0
+
+[node name="DoubleKill" type="Button" parent="Buttons/Tiers" unique_id=78436004]
+layout_mode = 2
+text = "x2 Double kill"
+
+[node name="TripleKill" type="Button" parent="Buttons/Tiers" unique_id=2015378253]
+layout_mode = 2
+text = "x3 Triple kill"
+
+[node name="Overkill" type="Button" parent="Buttons/Tiers" unique_id=1584143036]
+layout_mode = 2
+text = "x4 Overkill"
+
+[node name="UltraKill" type="Button" parent="Buttons/Tiers" unique_id=505504232]
+layout_mode = 2
+text = "x5 Ultra kill"
+
+[node name="Massacre" type="Button" parent="Buttons/Tiers" unique_id=523965402]
+layout_mode = 2
+text = "x6 Massacre"
+
+[node name="Carnage" type="Button" parent="Buttons/Tiers" unique_id=1885788327]
+layout_mode = 2
+text = "x7 Carnage"
+
+[node name="Bloodlust" type="Button" parent="Buttons/Tiers" unique_id=2129887528]
+layout_mode = 2
+text = "3 Bloodlust"
+
+[node name="Punishment" type="Button" parent="Buttons/Tiers" unique_id=1836029562]
+layout_mode = 2
+text = "5 Punishment"
+
+[node name="Dominating" type="Button" parent="Buttons/Tiers" unique_id=585255032]
+layout_mode = 2
+text = "7 Dominating"
+
+[node name="MachineGod" type="Button" parent="Buttons/Tiers" unique_id=1729669028]
+layout_mode = 2
+text = "9 Machine god"
+
+[node name="Psycho" type="Button" parent="Buttons/Tiers" unique_id=589540639]
+layout_mode = 2
+text = "11 Psycho"
+
+[connection signal="pressed" from="Buttons/Events/FirstBlood" to="." method="OnFirstBlood"]
+[connection signal="pressed" from="Buttons/Events/Humiliation" to="." method="OnHumiliation"]
+[connection signal="pressed" from="Buttons/Events/Shutdown" to="." method="OnShutdown"]
+[connection signal="pressed" from="Buttons/Events/Revenge" to="." method="OnRevenge"]
+[connection signal="pressed" from="Buttons/Events/TeamWipe" to="." method="OnTeamWipe"]
+[connection signal="pressed" from="Buttons/Events/SuicideBlast" to="." method="OnSuicideBlast"]
+[connection signal="pressed" from="Buttons/Events/SuicideFall" to="." method="OnSuicideFall"]
+[connection signal="pressed" from="Buttons/Events/SuicideMocked" to="." method="OnSuicideMocked"]
+[connection signal="pressed" from="Buttons/Events/HolyShitCombo" to="." method="OnHolyShitCombo"]
+[connection signal="pressed" from="Buttons/Events/LineOverflow" to="." method="OnLineOverflow"]
+[connection signal="pressed" from="Buttons/Events/MatchPoint3" to="." method="OnMatchPoint3"]
+[connection signal="pressed" from="Buttons/Events/MatchPoint1" to="." method="OnMatchPoint1"]
+[connection signal="pressed" from="Buttons/Events/MatchPointOff" to="." method="OnMatchPointOff"]
+[connection signal="pressed" from="Buttons/Tiers/DoubleKill" to="." method="OnDoubleKill"]
+[connection signal="pressed" from="Buttons/Tiers/TripleKill" to="." method="OnTripleKill"]
+[connection signal="pressed" from="Buttons/Tiers/Overkill" to="." method="OnOverkill"]
+[connection signal="pressed" from="Buttons/Tiers/UltraKill" to="." method="OnUltraKill"]
+[connection signal="pressed" from="Buttons/Tiers/Massacre" to="." method="OnMassacre"]
+[connection signal="pressed" from="Buttons/Tiers/Carnage" to="." method="OnCarnage"]
+[connection signal="pressed" from="Buttons/Tiers/Bloodlust" to="." method="OnBloodlust"]
+[connection signal="pressed" from="Buttons/Tiers/Punishment" to="." method="OnPunishment"]
+[connection signal="pressed" from="Buttons/Tiers/Dominating" to="." method="OnDominating"]
+[connection signal="pressed" from="Buttons/Tiers/MachineGod" to="." method="OnMachineGod"]
+[connection signal="pressed" from="Buttons/Tiers/Psycho" to="." method="OnPsycho"]
