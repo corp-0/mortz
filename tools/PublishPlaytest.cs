@@ -10,17 +10,37 @@ internal static class PublishPlaytest
 
     public static void Run(string[] args)
     {
-        if (args.Length != 0)
-            throw new Exception("usage: dotnet run --project tools -- publish-playtest");
+        bool itch = true;
+        bool steam = true;
+        foreach (string arg in args)
+        {
+            switch (arg)
+            {
+                case "--itch-only": steam = false; break;
+                case "--steam-only": itch = false; break;
+                default:
+                    throw new Exception(
+                    "usage: dotnet run --project tools -- publish-playtest [--itch-only|--steam-only]");
+            }
+        }
 
         string root = Program.RepoRoot();
-        string butler = ResolveButler();
+        // Resolve up front so a missing tool fails before the long export.
+        string butler = itch ? ToolPath.Resolve("BUTLER_PATH", "butler") : "";
+        string steamcmd = steam ? PublishSteam.ResolveSteamCmd() : "";
 
         Export.Run(["all", "--require-official"]);
 
         string buildDirectory = Path.Combine(root, "build");
         string windowsDirectory = Path.Combine(buildDirectory, "Mortz-win");
         string linuxDirectory = Path.Combine(buildDirectory, "Mortz-lin");
+
+        // Steam first: the itch manifests written below must not land in the depots.
+        if (steam)
+            PublishSteam.Push(steamcmd, root);
+
+        if (!itch)
+            return;
 
         WriteManifest(windowsDirectory, "Mortz.exe");
         WriteManifest(linuxDirectory, "Mortz.x86_64");
@@ -30,31 +50,6 @@ internal static class PublishPlaytest
         RunButler(butler, ["validate", linuxDirectory]);
         RunButler(butler, ["push", windowsDirectory, $"{ITCH_TARGET}:windows"]);
         RunButler(butler, ["push", linuxDirectory, $"{ITCH_TARGET}:linux"]);
-    }
-
-    private static string ResolveButler()
-    {
-        string? configured = Environment.GetEnvironmentVariable("BUTLER_PATH");
-        if (configured is not null)
-        {
-            if (!File.Exists(configured))
-                throw new Exception($"Butler not found at {configured}");
-            return configured;
-        }
-
-        string executable = OperatingSystem.IsWindows() ? "butler.exe" : "butler";
-        string? path = Environment.GetEnvironmentVariable("PATH");
-        if (path is not null)
-        {
-            foreach (string directory in path.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
-            {
-                string candidate = Path.Combine(directory.Trim('"'), executable);
-                if (File.Exists(candidate))
-                    return candidate;
-            }
-        }
-
-        throw new Exception("Butler not found. Install it or set BUTLER_PATH");
     }
 
     internal static void WriteManifest(string directory, string executable)
@@ -110,6 +105,6 @@ internal static class PublishPlaytest
         using Process process = Process.Start(startInfo)!;
         process.WaitForExit();
         if (process.ExitCode != 0)
-            throw new Exception($"Butler failed (exit {process.ExitCode})");
+            throw new Exception($"butler failed (exit {process.ExitCode})");
     }
 }

@@ -18,7 +18,7 @@ internal static class Program
                     Console.Error.WriteLine("  dotnet run --project tools -- export [client|server|all] [--debug] [--require-official]");
                     Console.Error.WriteLine("  dotnet run --project tools -- official check");
                     Console.Error.WriteLine("  dotnet run --project tools -- official import-3d [--blender PATH] [--rebuild]");
-                    Console.Error.WriteLine("  dotnet run --project tools -- publish-playtest");
+                    Console.Error.WriteLine("  dotnet run --project tools -- publish-playtest [--itch-only|--steam-only]");
                     return 1;
             }
         }
@@ -29,7 +29,6 @@ internal static class Program
         }
     }
 
-    // An old script resolved this path to a drive root.
     internal static string RepoRoot()
     {
         if (!File.Exists("project.godot"))

@@ -1,3 +1,5 @@
+.env
+
 # Godot
 .godot/
 # local server settings (holds the admin password)
