@@ -1,0 +1,14 @@
+# docker compose up -d
+# Game args go under command:, they get appended to the entrypoint.
+services:
+  mortz-server:
+    image: ghcr.io/corp-0/mortz-server:latest
+    container_name: mortz-server
+    restart: unless-stopped
+    ports:
+      - "7777:7777/udp"
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+    # command: ["--ruleset", "/home/mortz/ruleset.json"]
+    # volumes:
+    #   - ./ruleset.json:/home/mortz/ruleset.json:ro

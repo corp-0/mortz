@@ -10,24 +10,16 @@ internal static class PublishPlaytest
 
     public static void Run(string[] args)
     {
-        bool itch = true;
-        bool steam = true;
-        foreach (string arg in args)
-        {
-            switch (arg)
-            {
-                case "--itch-only": steam = false; break;
-                case "--steam-only": itch = false; break;
-                default:
-                    throw new Exception(
-                    "usage: dotnet run --project tools -- publish-playtest [--itch-only|--steam-only]");
-            }
-        }
+        HashSet<string> targets = ParseTargets(args);
+        bool itch = targets.Contains("itch");
+        bool steam = targets.Contains("steam");
+        bool docker = targets.Contains("docker");
 
         string root = Program.RepoRoot();
         // Resolve up front so a missing tool fails before the long export.
         string butler = itch ? ToolPath.Resolve("BUTLER_PATH", "butler") : "";
         string steamcmd = steam ? PublishSteam.ResolveSteamCmd() : "";
+        string dockerCli = docker ? PublishDocker.ResolveDocker() : "";
 
         Export.Run(["all", "--require-official"]);
 
@@ -38,6 +30,8 @@ internal static class PublishPlaytest
         // Steam first: the itch manifests written below must not land in the depots.
         if (steam)
             PublishSteam.Push(steamcmd, root);
+        if (docker)
+            PublishDocker.Push(dockerCli, root);
 
         if (!itch)
             return;
@@ -50,6 +44,22 @@ internal static class PublishPlaytest
         RunButler(butler, ["validate", linuxDirectory]);
         RunButler(butler, ["push", windowsDirectory, $"{ITCH_TARGET}:windows"]);
         RunButler(butler, ["push", linuxDirectory, $"{ITCH_TARGET}:linux"]);
+    }
+
+    private static HashSet<string> ParseTargets(string[] args)
+    {
+        HashSet<string> all = ["itch", "steam", "docker"];
+        if (args.Length == 0)
+            return all;
+
+        const string USAGE = "usage: dotnet run --project tools -- publish-playtest [--only itch,steam,docker]";
+        if (args.Length != 2 || args[0] != "--only")
+            throw new Exception(USAGE);
+
+        HashSet<string> targets = args[1].Split(',', StringSplitOptions.RemoveEmptyEntries).ToHashSet();
+        if (targets.Count == 0 || !targets.IsSubsetOf(all))
+            throw new Exception(USAGE);
+        return targets;
     }
 
     internal static void WriteManifest(string directory, string executable)

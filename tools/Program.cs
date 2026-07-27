@@ -18,7 +18,7 @@ internal static class Program
                     Console.Error.WriteLine("  dotnet run --project tools -- export [client|server|all] [--debug] [--require-official]");
                     Console.Error.WriteLine("  dotnet run --project tools -- official check");
                     Console.Error.WriteLine("  dotnet run --project tools -- official import-3d [--blender PATH] [--rebuild]");
-                    Console.Error.WriteLine("  dotnet run --project tools -- publish-playtest [--itch-only|--steam-only]");
+                    Console.Error.WriteLine("  dotnet run --project tools -- publish-playtest [--only itch,steam,docker]");
                     return 1;
             }
         }
