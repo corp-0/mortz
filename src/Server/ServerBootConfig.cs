@@ -12,6 +12,8 @@ namespace Mortz.Server;
 /// else reads from, so the options can never disagree.</summary>
 public sealed class ServerBootConfig : IServerIdentity
 {
+    private const string DEFAULT_MODE_ID = "deathmatch";
+
     public required GameContent Content { get; init; }
     public required MapPackage Map { get; init; }
     public required MatchConfig Rules { get; init; }
@@ -73,7 +75,7 @@ public sealed class ServerBootConfig : IServerIdentity
         if (modeId != null)
             return LoadModeRules(modeId, content);
         if (path == null)
-            return new MatchConfig();
+            return LoadModeRules(DEFAULT_MODE_ID, content);
 
         ContentReadResult<MatchConfig> result = ContentManifestReader.ReadRulesetFile(path);
         PrintDiagnostics(result.Diagnostics);

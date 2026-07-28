@@ -6,3 +6,4 @@ description = "Two teams. First team to the kill target wins."
 teams = true
 win_condition = "team_kills"
 kill_target = 15
+suicide_penalty = "reward_closest_enemy"

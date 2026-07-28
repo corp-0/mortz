@@ -6,3 +6,4 @@ description = "Free for all. First to the kill target wins."
 teams = false
 win_condition = "player_kills"
 kill_target = 5
+suicide_penalty = "kill_no_negative"
