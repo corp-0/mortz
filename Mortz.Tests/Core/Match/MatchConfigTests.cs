@@ -55,8 +55,9 @@ public class MatchConfigTests
         IUiPropertyDescriptor winCondition = ModeRulesUiMetadata.Categories
             .SelectMany(category => category.Properties)
             .Single(property => property.Name == nameof(ModeRules.WinCondition));
-        winCondition.SetValue(rules, WinCondition.TEAM_KILLS);
-        Assert.Equal(WinCondition.TEAM_KILLS, rules.WinCondition);
+        rules.WinCondition = (WinCondition)99;
+        winCondition.SetValue(rules, WinCondition.KILLS);
+        Assert.Equal(WinCondition.KILLS, rules.WinCondition);
     }
 
     [Fact]
@@ -88,6 +89,27 @@ public class MatchConfigTests
     }
 
     [Fact]
+    public void GeneratedMetadata_EvaluatesConditionalVisibility()
+    {
+        IUiPropertyDescriptor killTarget = ModeRulesUiMetadata.Categories
+            .SelectMany(category => category.Properties)
+            .Single(property => property.Name == nameof(ModeRules.KillTarget));
+        IUiPropertyDescriptor friendlyFire = ModeRulesUiMetadata.Categories
+            .SelectMany(category => category.Properties)
+            .Single(property => property.Name == nameof(ModeRules.FriendlyFire));
+        ModeRules rules = new();
+
+        Assert.True(killTarget.IsVisible(rules));
+        Assert.False(friendlyFire.IsVisible(rules));
+
+        rules.WinCondition = (WinCondition)99;
+        rules.Teams = true;
+
+        Assert.False(killTarget.IsVisible(rules));
+        Assert.True(friendlyFire.IsVisible(rules));
+    }
+
+    [Fact]
     public void WireBlob_CarriesEveryConfigProperty()
     {
         MatchConfig expected = new();
@@ -114,7 +136,7 @@ public class MatchConfigTests
                 float value => value + 0.01f,
                 int value => value + 1,
                 bool value => !value,
-                WinCondition => WinCondition.TEAM_KILLS,
+                WinCondition => (WinCondition)99,
                 SuicidePenalty => SuicidePenalty.REWARD_CLOSEST_ENEMY,
                 _ => throw new InvalidOperationException(
                     $"Unhandled config type {property.PropertyType}"),
@@ -190,7 +212,7 @@ public class MatchConfigTests
             Rules = new ModeRules
             {
                 Teams = true,
-                WinCondition = WinCondition.TEAM_KILLS,
+                WinCondition = WinCondition.KILLS,
                 KillTarget = 5,
                 FriendlyFire = false,
                 SuicidePenalty = SuicidePenalty.REWARD_CLOSEST_ENEMY,
@@ -199,7 +221,7 @@ public class MatchConfigTests
         MatchConfig got = MatchConfig.FromBytes(sent.ToBytes());
 
         Assert.True(got.Rules.Teams);
-        Assert.Equal(WinCondition.TEAM_KILLS, got.Rules.WinCondition);
+        Assert.Equal(WinCondition.KILLS, got.Rules.WinCondition);
         Assert.Equal(5, got.Rules.KillTarget);
         Assert.False(got.Rules.FriendlyFire);
         Assert.Equal(SuicidePenalty.REWARD_CLOSEST_ENEMY, got.Rules.SuicidePenalty);
@@ -209,7 +231,7 @@ public class MatchConfigTests
             Rules = new ModeRules { WinCondition = (WinCondition)99, KillTarget = 0 },
         };
         got = MatchConfig.FromBytes(hostile.ToBytes());
-        Assert.Equal(WinCondition.PLAYER_KILLS, got.Rules.WinCondition);
+        Assert.Equal(WinCondition.KILLS, got.Rules.WinCondition);
         Assert.Equal(1, got.Rules.KillTarget);
     }
 
@@ -220,13 +242,13 @@ public class MatchConfigTests
         Physics physics = new();
 
         Assert.Equal(ConfigKeyResult.APPLIED, rules.TryApplyKey("teams", true, out _));
-        Assert.Equal(ConfigKeyResult.APPLIED, rules.TryApplyKey("win_condition", "team_kills", out _));
+        Assert.Equal(ConfigKeyResult.APPLIED, rules.TryApplyKey("win_condition", "kills", out _));
         Assert.Equal(ConfigKeyResult.APPLIED, rules.TryApplyKey("kill_target", 30L, out _));
         Assert.Equal(ConfigKeyResult.APPLIED, physics.TryApplyKey("gravity", 600L, out _));
         Assert.Equal(ConfigKeyResult.APPLIED, physics.TryApplyKey("spawn_immunity", 2.5, out _));
 
         Assert.True(rules.Teams);
-        Assert.Equal(WinCondition.TEAM_KILLS, rules.WinCondition);
+        Assert.Equal(WinCondition.KILLS, rules.WinCondition);
         Assert.Equal(30, rules.KillTarget);
         Assert.Equal(600, physics.Gravity);
         Assert.Equal(2.5f, physics.SpawnImmunity);
@@ -243,7 +265,7 @@ public class MatchConfigTests
         Assert.Contains("lives", error);
         Assert.Equal(ConfigKeyResult.INVALID_VALUE, rules.TryApplyKey("teams", "yes", out _));
         Assert.Equal(ConfigKeyResult.INVALID_VALUE, rules.TryApplyKey("win_condition", "most_flags", out error));
-        Assert.Contains("player_kills", error); // the error lists the legal values
+        Assert.Contains("kills", error); // the error lists the legal values
         Assert.Equal(ConfigKeyResult.INVALID_VALUE, rules.TryApplyKey("kill_target", 1.5, out _));
 
         Assert.Equal(ConfigKeyResult.UNKNOWN_KEY, rules.TryApplyKey("gravity", 600L, out _));

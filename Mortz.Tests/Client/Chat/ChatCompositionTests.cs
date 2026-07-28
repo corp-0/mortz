@@ -44,6 +44,14 @@ public class ChatCompositionTests : NodeServiceTest
             PhysicsUiMetadata.Categories.Sum(category => category.Properties.Count),
             physicsSheet.ControlCount);
         Assert.Equal(PhysicsUiMetadata.Categories.Count, physicsSheet.CategoryBlockCount);
+        Assert.True(rulesSheet.Visible);
+        BoolPropertyControl friendlyFire = rulesSheet.GetDescendantByType<BoolPropertyControl>(
+            control => control.GetDescendantByType<Label>().Text == "Friendly Fire");
+        Assert.False(friendlyFire.Visible);
+
+        rulesSheet.UpdateModel(new ModeRules { Teams = true });
+
+        Assert.True(friendlyFire.Visible);
 
         SingleColumnRoster roster = lobby.GetDescendantByType<SingleColumnRoster>();
         VBoxContainer players = roster.GetDescendantByType<VBoxContainer>();

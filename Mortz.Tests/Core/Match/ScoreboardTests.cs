@@ -5,12 +5,11 @@ namespace Mortz.Tests.Core.Match;
 
 public class ScoreboardTests
 {
-    private static ModeRules Cfg(bool teams = false,
-        WinCondition win = WinCondition.PLAYER_KILLS, int target = 3,
+    private static ModeRules Cfg(bool teams = false, int target = 3,
         SuicidePenalty suicidePenalty = SuicidePenalty.NONE) => new()
         {
             Teams = teams,
-            WinCondition = win,
+            WinCondition = WinCondition.KILLS,
             KillTarget = target,
             SuicidePenalty = suicidePenalty,
         };
@@ -132,7 +131,7 @@ public class ScoreboardTests
     [Fact]
     public void TeamTotals_AccumulateAtKillTime_AndSurviveLeavers()
     {
-        Scoreboard s = new Scoreboard(Cfg(teams: true, win: WinCondition.TEAM_KILLS, target: 10));
+        Scoreboard s = new Scoreboard(Cfg(teams: true, target: 10));
         s.AddPlayer(1, 1);
         s.AddPlayer(2, 1);
         s.AddPlayer(3, 2);
@@ -162,7 +161,7 @@ public class ScoreboardTests
     }
 
     [Fact]
-    public void PlayerKills_FirstToTargetWins()
+    public void KillsWithoutTeams_FirstPlayerToTargetWins()
     {
         Scoreboard s = new Scoreboard(Cfg(target: 2));
         s.AddPlayer(1, 0);
@@ -176,9 +175,9 @@ public class ScoreboardTests
     }
 
     [Fact]
-    public void TeamKills_TeammatesCombineToTheTarget()
+    public void KillsWithTeams_TeammatesCombineToTheTarget()
     {
-        Scoreboard s = new Scoreboard(Cfg(teams: true, win: WinCondition.TEAM_KILLS, target: 2));
+        Scoreboard s = new Scoreboard(Cfg(teams: true, target: 2));
         s.AddPlayer(1, 1);
         s.AddPlayer(2, 1);
         s.AddPlayer(3, 2);
@@ -191,33 +190,18 @@ public class ScoreboardTests
     }
 
     [Fact]
-    public void TeamKillsWithoutTeams_PlaysAsPlayerKills()
+    public void KillsStandingWithTeams_UsesTheCombinedTeamTotal()
     {
-        Scoreboard s = new Scoreboard(Cfg(teams: false, win: WinCondition.TEAM_KILLS, target: 1));
-        s.AddPlayer(1, 0);
-        s.AddPlayer(2, 0);
-
-        Scoreboard.MatchWinner? winner =
-            s.ScoreDeath(new Scoreboard.Death(VictimId: 2, KillerId: 1))?.Winner;
-
-        Assert.Equal(new Scoreboard.MatchWinner(ByTeam: false, Id: 1), winner);
-    }
-
-    [Fact]
-    public void PlayerKillsWithTeams_AnIndividualCrossingWins()
-    {
-        Scoreboard s = new Scoreboard(Cfg(teams: true, win: WinCondition.PLAYER_KILLS, target: 2));
+        Scoreboard s = new Scoreboard(Cfg(teams: true, target: 3));
         s.AddPlayer(1, 1);
         s.AddPlayer(2, 1);
         s.AddPlayer(3, 2);
 
-        // Team 1 has 2 kills split between its players: nobody won yet.
-        Assert.Null(s.ScoreDeath(new Scoreboard.Death(VictimId: 3, KillerId: 1))?.Winner);
-        Assert.Null(s.ScoreDeath(new Scoreboard.Death(VictimId: 3, KillerId: 2))?.Winner);
+        s.ScoreDeath(new Scoreboard.Death(VictimId: 3, KillerId: 1));
+        s.ScoreDeath(new Scoreboard.Death(VictimId: 3, KillerId: 2));
 
-        Scoreboard.MatchWinner? winner =
-            s.ScoreDeath(new Scoreboard.Death(VictimId: 3, KillerId: 1))?.Winner;
-        Assert.Equal(new Scoreboard.MatchWinner(ByTeam: false, Id: 1), winner);
+        Assert.Equal(new Scoreboard.MatchStanding(
+            LeaderId: 1, LeaderIsTeam: true, Remaining: 1), s.Standing());
     }
 
     [Fact]
@@ -265,7 +249,7 @@ public class ScoreboardTests
     [Fact]
     public void ScoreDeath_ReturnsFinalRowsTalliesAndWinner()
     {
-        Scoreboard s = new Scoreboard(Cfg(teams: true, win: WinCondition.TEAM_KILLS, target: 1));
+        Scoreboard s = new Scoreboard(Cfg(teams: true, target: 1));
         s.AddPlayer(1, 1);
         s.AddPlayer(2, 2);
 

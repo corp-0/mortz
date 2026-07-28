@@ -16,7 +16,7 @@ public class ManifestTests
 
             [rules]
             teams = true
-            win_condition = "team_kills"
+            win_condition = "kills"
             kill_target = 15
             """);
 
@@ -25,9 +25,58 @@ public class ManifestTests
         Assert.Equal("Team Deathmatch", manifest.Name);
         Assert.Equal("Two teams.", manifest.Description);
         Assert.True(manifest.Config.Rules.Teams);
-        Assert.Equal(WinCondition.TEAM_KILLS, manifest.Config.Rules.WinCondition);
+        Assert.Equal(WinCondition.KILLS, manifest.Config.Rules.WinCondition);
         Assert.Equal(15, manifest.Config.Rules.KillTarget);
         Assert.True(manifest.Config.Rules.FriendlyFire);
+    }
+
+    [Fact]
+    public void ModeIdentityMatchesOnlyItsAuthoredIdentityKeys()
+    {
+        ContentReadResult<GameModeManifest> result = ContentManifestReader.ReadMode("""
+            format_version = 1
+            name = "Heavy Teams"
+            identity = ["rules.teams", "physics.gravity"]
+
+            [rules]
+            teams = true
+            kill_target = 15
+
+            [physics]
+            gravity = 900
+            """);
+
+        GameModeManifest manifest = Assert.IsType<GameModeManifest>(result.Value);
+        Assert.Empty(result.Diagnostics);
+        ModeIdentity identity = Assert.IsType<ModeIdentity>(manifest.Identity);
+        Assert.Single(identity.Rules);
+        Assert.Single(identity.Physics);
+
+        MatchConfig current = MatchConfig.FromBytes(manifest.Config.ToBytes());
+        current.Rules.KillTarget = 50;
+        Assert.True(manifest.MatchesIdentity(current));
+
+        current.Physics.Gravity = 600;
+        Assert.False(manifest.MatchesIdentity(current));
+    }
+
+    [Fact]
+    public void ModeIdentityRejectsKeysNotAuthoredByThePreset()
+    {
+        ContentReadResult<GameModeManifest> result = ContentManifestReader.ReadMode("""
+            format_version = 1
+            name = "Broken"
+            identity = ["rules.win_condition"]
+
+            [rules]
+            teams = false
+            """);
+
+        Assert.Null(result.Value);
+        Assert.Contains(result.Diagnostics,
+            diagnostic => diagnostic.Severity == ContentDiagnosticSeverity.ERROR &&
+                          diagnostic.Message.Contains(
+                              "rules.win_condition", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -38,6 +87,7 @@ public class ManifestTests
 
         GameModeManifest manifest = Assert.IsType<GameModeManifest>(result.Value);
         Assert.Equal(new MatchConfig().ToBytes(), manifest.Config.ToBytes());
+        Assert.Null(manifest.Identity);
     }
 
     [Fact]

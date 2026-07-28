@@ -145,12 +145,18 @@ public sealed class Scoreboard
             _teamKills[row.TeamId] += delta;
     }
 
-    /// <summary>TEAM_KILLS with teams off silently plays as PLAYER_KILLS (a
-    /// team of one is the same thing), keeping the stored condition intact
-    /// for when teams come back on.</summary>
     private MatchWinner? CheckWinner()
     {
-        if (_config.Teams && _config.WinCondition == WinCondition.TEAM_KILLS)
+        return _config.WinCondition switch
+        {
+            WinCondition.KILLS => CheckKillsWinner(),
+            _ => null,
+        };
+    }
+
+    private MatchWinner? CheckKillsWinner()
+    {
+        if (_config.Teams)
         {
             for (byte team = 1; team < _teamKills.Length; team++)
             {
@@ -176,11 +182,18 @@ public sealed class Scoreboard
     public readonly record struct MatchStanding(int LeaderId, bool LeaderIsTeam, int Remaining);
 
     /// <summary>Who is closest to winning and the kills they still need.</summary>
-    public MatchStanding Standing()
+    public MatchStanding Standing() =>
+        _config.WinCondition switch
+        {
+            WinCondition.KILLS => KillsStanding(),
+            _ => new MatchStanding(0, _config.Teams, 0),
+        };
+
+    private MatchStanding KillsStanding()
     {
         int best = 0;
         int leader = 0;
-        bool byTeam = _config.Teams && _config.WinCondition == WinCondition.TEAM_KILLS;
+        bool byTeam = _config.Teams;
         if (byTeam)
         {
             for (byte team = 1; team < _teamKills.Length; team++)

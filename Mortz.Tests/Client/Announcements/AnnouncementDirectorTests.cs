@@ -71,13 +71,13 @@ public class AnnouncementDirectorTests
     public void MatchPointNamesTheLeader()
     {
         Assert.Equal("p1", AnnouncementDirector.Describe(
-            new MatchPointMsg(true, WinCondition.PLAYER_KILLS, 1, KILLER), NameOf).Leader);
+            new MatchPointMsg(true, WinCondition.KILLS, 1, KILLER), NameOf).Leader);
         Assert.Equal("Team 2", AnnouncementDirector.Describe(
-            new MatchPointMsg(true, WinCondition.TEAM_KILLS, 1, 2, LeaderIsTeam: true),
+            new MatchPointMsg(true, WinCondition.KILLS, 1, 2, LeaderIsTeam: true),
             NameOf).Leader);
         // A kill target of 1: match point holds with nobody on the board.
         Assert.Null(AnnouncementDirector.Describe(
-            new MatchPointMsg(true, WinCondition.PLAYER_KILLS, 1, 0), NameOf).Leader);
+            new MatchPointMsg(true, WinCondition.KILLS, 1, 0), NameOf).Leader);
     }
 
     private static GameEventMsg Msg(GameEventKind kind) =>

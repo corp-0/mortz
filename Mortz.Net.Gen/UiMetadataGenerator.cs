@@ -16,6 +16,7 @@ public sealed class UiMetadataGenerator : IIncrementalGenerator
 {
     private const string CATEGORY_ATTRIBUTE = "Mortz.Core.Ui.UiCategoryAttribute";
     private const string PROPERTY_ATTRIBUTE = "Mortz.Core.Ui.UiPropertyAttribute";
+    private const string VISIBILITY_ATTRIBUTE = "Mortz.Core.Ui.UiVisibleWhenAttribute";
 
     private static readonly DiagnosticDescriptor _duplicateCategory = new(
         "MZ1001", "Duplicate UI category",
@@ -37,6 +38,11 @@ public sealed class UiMetadataGenerator : IIncrementalGenerator
         "Property '{0}' must be a public, non-static property with public get and set accessors",
         "Mortz.UI", DiagnosticSeverity.Error, isEnabledByDefault: true);
 
+    private static readonly DiagnosticDescriptor _invalidVisibilityPredicate = new(
+        "MZ1005", "Invalid UI visibility predicate",
+        "Visibility predicate '{0}' for property '{1}' must be an accessible instance bool property",
+        "Mortz.UI", DiagnosticSeverity.Error, isEnabledByDefault: true);
+
     private sealed record CategoryModel(int Order, string DisplayName);
 
     private sealed record PropertyModel(
@@ -46,7 +52,8 @@ public sealed class UiMetadataGenerator : IIncrementalGenerator
         string Type,
         float Min,
         float Max,
-        float Step);
+        float Step,
+        string? VisibilityPredicate);
 
     private sealed record ConfigModel(
         string Namespace,
@@ -96,6 +103,7 @@ public sealed class UiMetadataGenerator : IIncrementalGenerator
 
             AttributeData? categoryAttribute = FindAttribute(property, CATEGORY_ATTRIBUTE);
             AttributeData? propertyAttribute = FindAttribute(property, PROPERTY_ATTRIBUTE);
+            AttributeData? visibilityAttribute = FindAttribute(property, VISIBILITY_ATTRIBUTE);
             if (categoryAttribute != null)
             {
                 string displayName = StringArgument(categoryAttribute, 0);
@@ -129,6 +137,31 @@ public sealed class UiMetadataGenerator : IIncrementalGenerator
                 continue;
             }
 
+            string? visibilityPredicate = null;
+            if (visibilityAttribute != null)
+            {
+                visibilityPredicate = StringArgument(visibilityAttribute, 0);
+                IPropertySymbol? predicate = type.GetMembers(visibilityPredicate)
+                    .OfType<IPropertySymbol>()
+                    .FirstOrDefault();
+                if (predicate == null
+                    || predicate.IsStatic
+                    || predicate.Type.SpecialType != SpecialType.System_Boolean
+                    || predicate.GetMethod == null
+                    || predicate.GetMethod.DeclaredAccessibility is not Accessibility.Public
+                        and not Accessibility.Internal
+                    || predicate.DeclaredAccessibility is not Accessibility.Public
+                        and not Accessibility.Internal)
+                {
+                    diagnostics.Add(Diagnostic.Create(
+                        _invalidVisibilityPredicate,
+                        AttributeLocation(visibilityAttribute, propertyLocation),
+                        visibilityPredicate,
+                        property.Name));
+                    visibilityPredicate = null;
+                }
+            }
+
             properties.Add(new PropertyModel(
                 property.Name,
                 StringArgument(propertyAttribute, 0),
@@ -136,7 +169,8 @@ public sealed class UiMetadataGenerator : IIncrementalGenerator
                 property.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
                 FloatArgument(propertyAttribute, 1),
                 FloatArgument(propertyAttribute, 2),
-                FloatArgument(propertyAttribute, 3)));
+                FloatArgument(propertyAttribute, 3),
+                visibilityPredicate));
         }
 
         return new ConfigModel(
@@ -197,7 +231,10 @@ public sealed class UiMetadataGenerator : IIncrementalGenerator
                 sb.AppendLine($"                        static (model, value) => model.{property.Name} = value,");
                 sb.AppendLine($"                        min: {HintLiteral(property.Min)},");
                 sb.AppendLine($"                        max: {HintLiteral(property.Max)},");
-                sb.AppendLine($"                        step: {HintLiteral(property.Step)}),");
+                sb.AppendLine($"                        step: {HintLiteral(property.Step)},");
+                sb.AppendLine(property.VisibilityPredicate == null
+                    ? "                        visible: null),"
+                    : $"                        visible: static model => model.{property.VisibilityPredicate}),");
             }
             sb.AppendLine("                })),");
         }

@@ -11,6 +11,7 @@ public interface IUiPropertyDescriptor
     float? Min { get; }
     float? Max { get; }
     float? Step { get; }
+    bool IsVisible(object model);
     object? GetValue(object model);
     void SetValue(object model, object? value);
 }

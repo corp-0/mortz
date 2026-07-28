@@ -110,12 +110,12 @@ public partial class AnnouncementsDebug : Control,
     private void OnMatchPoint1() => MatchPoint(1);
 
     private void OnMatchPointOff() => _director.SetMatchPoint(
-        new MatchPointMsg(false, WinCondition.PLAYER_KILLS, 0));
+        new MatchPointMsg(false, WinCondition.KILLS, 0));
 
     private void Fire(params GameEventMsg[] events) => _director.Fire(events);
 
     private void MatchPoint(byte remaining) => _director.SetMatchPoint(
-        new MatchPointMsg(true, WinCondition.PLAYER_KILLS, remaining, KILLER));
+        new MatchPointMsg(true, WinCondition.KILLS, remaining, KILLER));
 
     private static GameEventMsg Event(GameEventKind kind, byte magnitude = 0) =>
         new(kind, KILLER, VICTIM, magnitude);

@@ -1,9 +1,10 @@
 format_version = 1
 name = "Deathmatch"
 description = "Free for all. First to the kill target wins."
+identity = ["rules.teams", "rules.win_condition"]
 
 [rules]
 teams = false
-win_condition = "player_kills"
+win_condition = "kills"
 kill_target = 5
 suicide_penalty = "kill_no_negative"

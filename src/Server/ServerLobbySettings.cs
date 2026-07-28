@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using System.Text;
 using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
@@ -31,8 +30,10 @@ public partial class ServerLobbySettings : Node, IServerLobbySettings
 {
     private sealed record MapOption(string Id, string Name);
 
-    private sealed record ModeOption(string Id, string Name, byte[] RulesBytes,
-        ImmutableArray<AuthoredKey> PhysicsOverrides);
+    private sealed record ModeOption(string Id, GameModeManifest Manifest)
+    {
+        public string Name => Manifest.Name;
+    }
 
     private readonly Dictionary<string, MapOption> _maps = new(StringComparer.Ordinal);
     private readonly List<ModeOption> _modes = [];
@@ -111,35 +112,26 @@ public partial class ServerLobbySettings : Node, IServerLobbySettings
                      .Take(NetConfig.MAX_LOBBY_MODES))
         {
             GameModeManifest manifest = resolved.Winner.Manifest;
-            _modes.Add(new ModeOption(id, manifest.Name,
-                manifest.Config.Rules.ToBytes(), manifest.PhysicsOverrides));
+            _modes.Add(new ModeOption(id, manifest));
         }
         if (!_maps.ContainsKey(Map.MapId))
             _maps[Map.MapId] = new MapOption(Map.MapId, Map.DisplayName);
     }
 
-    // Prefer the mode with more authored physics overrides.
     private ModeOption? CurrentMode()
     {
-        byte[] rules = Config.Rules.ToBytes();
-        return _modes
-            .Where(mode => rules.AsSpan().SequenceEqual(mode.RulesBytes) && PhysicsMatches(mode))
-            .OrderByDescending(mode => mode.PhysicsOverrides.Length)
-            .FirstOrDefault();
-    }
-
-    private bool PhysicsMatches(ModeOption mode)
-    {
-        if (mode.PhysicsOverrides.IsEmpty)
-            return true;
-        byte[] current = Config.Physics.ToBytes();
-        Physics overlaid = Physics.FromBytes(current);
-        foreach (AuthoredKey authored in mode.PhysicsOverrides)
+        ModeOption[] matches = _modes
+            .Where(mode => mode.Manifest.MatchesIdentity(Config))
+            .OrderByDescending(mode => mode.Manifest.IdentitySpecificity)
+            .ToArray();
+        if (matches.Length == 0)
+            return null;
+        if (matches.Length > 1 &&
+            matches[0].Manifest.IdentitySpecificity == matches[1].Manifest.IdentitySpecificity)
         {
-            overlaid.TryApplyKey(authored.Key, authored.Value, out _);
+            return null;
         }
-        overlaid.Clamp();
-        return current.AsSpan().SequenceEqual(overlaid.ToBytes());
+        return matches[0];
     }
 
     private void OnRulesUpdate(long sender, LobbyRulesUpdateMsg message)
@@ -181,14 +173,14 @@ public partial class ServerLobbySettings : Node, IServerLobbySettings
         }
 
         Physics physics = Physics.FromBytes(Config.Physics.ToBytes());
-        foreach (AuthoredKey authored in mode.PhysicsOverrides)
+        foreach (AuthoredKey authored in mode.Manifest.PhysicsOverrides)
         {
             physics.TryApplyKey(authored.Key, authored.Value, out _);
         }
         physics.Clamp();
         Config = new MatchConfig
         {
-            Rules = ModeRules.FromBytes(mode.RulesBytes),
+            Rules = ModeRules.FromBytes(mode.Manifest.Config.Rules.ToBytes()),
             Physics = physics,
         };
         GD.Print($"[server] lobby mode set to '{mode.Id}' by admin {sender}");

@@ -28,8 +28,6 @@ public partial class LobbySettingsPanel : PanelContainer
     private bool _applyingState;
     // UpdateEditing also runs before Setup resolves.
     private bool _hasServerState;
-    private bool _customSelected;
-    private string _lastModeId = "";
     private bool _subscribed;
     private string _previewMapId = "";
     private string _previewMapHash = "";
@@ -47,7 +45,6 @@ public partial class LobbySettingsPanel : PanelContainer
         _rulesSheet.Build(ModeRulesUiMetadata.Categories, _config.Rules, OnConfigEdited);
         _physicsSheet.Build(PhysicsUiMetadata.Categories, _config.Physics, OnConfigEdited);
         UpdateEditing(isAdmin: false);
-        UpdateRulesVisibility();
     }
 
     public void OnResolved()
@@ -83,18 +80,12 @@ public partial class LobbySettingsPanel : PanelContainer
             return;
         }
 
-        if (Setup.ModeId != _lastModeId)
-        {
-            _customSelected = false;
-            _lastModeId = Setup.ModeId;
-        }
         _config = Setup.CopyConfig();
         ApplyMapOptions(Setup.MapId, Setup.MapOptions);
         ApplyModeOptions(Setup.ModeId, Setup.ModeOptions);
         _rulesSheet.UpdateModel(_config.Rules);
         _physicsSheet.UpdateModel(_config.Physics);
         UpdateEditing(Admin.IsAdmin);
-        UpdateRulesVisibility();
         UpdatePreview(Setup.MapId, Setup.MapHash);
     }
 
@@ -133,8 +124,13 @@ public partial class LobbySettingsPanel : PanelContainer
             _modeIds.Add(option.Id);
             _modePicker.AddItem(string.IsNullOrWhiteSpace(option.Name) ? option.Id : option.Name);
         }
-        _modePicker.AddItem("Custom");
-        _modePicker.Select(selected >= 0 && !_customSelected ? selected : _modeIds.Count);
+        if (selected < 0)
+        {
+            selected = _modePicker.ItemCount;
+            _modePicker.AddItem("Custom");
+            _modePicker.SetItemDisabled(selected, true);
+        }
+        _modePicker.Select(selected);
         _applyingState = false;
     }
 
@@ -143,13 +139,7 @@ public partial class LobbySettingsPanel : PanelContainer
         if (_applyingState || !Admin.IsAdmin || index < 0)
             return;
         if (index >= _modeIds.Count)
-        {
-            _customSelected = true;
-            UpdateRulesVisibility();
             return;
-        }
-        _customSelected = false;
-        UpdateRulesVisibility();
         string modeId = _modeIds[(int)index];
         byte[] payload = Encoding.UTF8.GetBytes(modeId);
         if (Admin.TrySignAdminAction(AdminAction.SET_LOBBY_MODE, payload,
@@ -170,9 +160,6 @@ public partial class LobbySettingsPanel : PanelContainer
             new LobbyRulesUpdateMsg(payload, sequence, tag).SendToServer();
         }
     }
-
-    private void UpdateRulesVisibility() =>
-        _rulesSheet.Visible = _lastModeId == "" || _customSelected;
 
     private void OnMapSelected(long index)
     {

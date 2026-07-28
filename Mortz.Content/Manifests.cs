@@ -40,9 +40,50 @@ public sealed record GameModeManifest(
     string Name,
     string Description,
     MatchConfig Config,
+    ModeIdentity? Identity,
     ImmutableArray<AuthoredKey> PhysicsOverrides)
 {
     public const int CURRENT_FORMAT_VERSION = 1;
+
+    public int IdentitySpecificity => Identity?.KeyCount ?? int.MaxValue;
+
+    public bool MatchesIdentity(MatchConfig current)
+    {
+        if (Identity == null)
+        {
+            return current.Rules.ToBytes().AsSpan().SequenceEqual(Config.Rules.ToBytes()) &&
+                   Matches(current.Physics, PhysicsOverrides);
+        }
+        return Matches(current.Rules, Identity.Rules) &&
+               Matches(current.Physics, Identity.Physics);
+    }
+
+    private static bool Matches(ModeRules current, ImmutableArray<AuthoredKey> expected)
+    {
+        byte[] currentBytes = current.ToBytes();
+        ModeRules overlaid = ModeRules.FromBytes(currentBytes);
+        foreach (AuthoredKey authored in expected)
+            overlaid.TryApplyKey(authored.Key, authored.Value, out _);
+        overlaid.Clamp();
+        return currentBytes.AsSpan().SequenceEqual(overlaid.ToBytes());
+    }
+
+    private static bool Matches(Physics current, ImmutableArray<AuthoredKey> expected)
+    {
+        byte[] currentBytes = current.ToBytes();
+        Physics overlaid = Physics.FromBytes(currentBytes);
+        foreach (AuthoredKey authored in expected)
+            overlaid.TryApplyKey(authored.Key, authored.Value, out _);
+        overlaid.Clamp();
+        return currentBytes.AsSpan().SequenceEqual(overlaid.ToBytes());
+    }
+}
+
+public sealed record ModeIdentity(
+    ImmutableArray<AuthoredKey> Rules,
+    ImmutableArray<AuthoredKey> Physics)
+{
+    public int KeyCount => Rules.Length + Physics.Length;
 }
 
 public static partial class ContentManifestReader
@@ -59,7 +100,7 @@ public static partial class ContentManifestReader
 
     private static readonly HashSet<string> _modeKeys =
     [
-        "format_version", "name", "description", "rules", "physics",
+        "format_version", "name", "description", "identity", "rules", "physics",
     ];
 
     private static readonly HashSet<string> _rulesetKeys =
@@ -138,9 +179,12 @@ public static partial class ContentManifestReader
         int? formatVersion = RequiredInt(table, "format_version", source, diagnostics);
         string? name = RequiredString(table, "name", source, diagnostics);
         string description = OptionalString(table, "description", source, diagnostics) ?? "";
-        ModeRules rules = ReadRulesTable(table, source, diagnostics);
+        ModeRules rules = ReadRulesTable(table, source, diagnostics,
+            out ImmutableArray<AuthoredKey> authoredRules);
         Physics physics = ReadPhysicsTable(table, source, diagnostics,
-            out ImmutableArray<AuthoredKey> authored);
+            out ImmutableArray<AuthoredKey> authoredPhysics);
+        ModeIdentity? identity = ReadModeIdentity(
+            table, authoredRules, authoredPhysics, source, diagnostics);
 
         if (formatVersion is not null && formatVersion != GameModeManifest.CURRENT_FORMAT_VERSION)
             Error(diagnostics, source, $"unsupported format_version {formatVersion}; expected {GameModeManifest.CURRENT_FORMAT_VERSION}");
@@ -148,7 +192,8 @@ public static partial class ContentManifestReader
         GameModeManifest? manifest = diagnostics.Any(IsError) || formatVersion == null || name == null
             ? null
             : new GameModeManifest(formatVersion.Value, name, description,
-                new MatchConfig { Rules = rules, Physics = physics }, authored);
+                new MatchConfig { Rules = rules, Physics = physics },
+                identity, authoredPhysics);
         return new ContentReadResult<GameModeManifest>(manifest, diagnostics);
     }
 
@@ -160,7 +205,7 @@ public static partial class ContentManifestReader
             return new ContentReadResult<MatchConfig>(null, diagnostics);
 
         WarnUnknownKeys(table, _rulesetKeys, source, diagnostics);
-        ModeRules rules = ReadRulesTable(table, source, diagnostics);
+        ModeRules rules = ReadRulesTable(table, source, diagnostics, out _);
         Physics physics = ReadPhysicsTable(table, source, diagnostics, out _);
         MatchConfig config = new() { Rules = rules, Physics = physics };
         return new ContentReadResult<MatchConfig>(diagnostics.Any(IsError) ? null : config, diagnostics);
@@ -170,12 +215,77 @@ public static partial class ContentManifestReader
 
     /// <summary>A missing [rules] table is legal and means all defaults.</summary>
     private static ModeRules ReadRulesTable(TomlTable table, string source,
-        List<ContentDiagnostic> diagnostics)
+        List<ContentDiagnostic> diagnostics, out ImmutableArray<AuthoredKey> authored)
     {
         ModeRules rules = new();
-        ApplySection(table, "rules", rules.TryApplyKey, source, diagnostics);
+        authored = ApplySection(table, "rules", rules.TryApplyKey, source, diagnostics);
         rules.Clamp();
         return rules;
+    }
+
+    private static ModeIdentity? ReadModeIdentity(
+        TomlTable table,
+        ImmutableArray<AuthoredKey> authoredRules,
+        ImmutableArray<AuthoredKey> authoredPhysics,
+        string source,
+        List<ContentDiagnostic> diagnostics)
+    {
+        const string RULES_PREFIX = "rules.";
+        const string PHYSICS_PREFIX = "physics.";
+
+        if (!table.TryGetValue("identity", out object value))
+            return null;
+        if (value is not TomlArray paths)
+        {
+            Error(diagnostics, source, "'identity' must be an array of strings");
+            return null;
+        }
+        if (paths.Count == 0)
+        {
+            Error(diagnostics, source, "'identity' must contain at least one key");
+            return null;
+        }
+
+        Dictionary<string, AuthoredKey> rules = authoredRules
+            .ToDictionary(authored => authored.Key, StringComparer.Ordinal);
+        Dictionary<string, AuthoredKey> physics = authoredPhysics
+            .ToDictionary(authored => authored.Key, StringComparer.Ordinal);
+        ImmutableArray<AuthoredKey>.Builder identityRules =
+            ImmutableArray.CreateBuilder<AuthoredKey>();
+        ImmutableArray<AuthoredKey>.Builder identityPhysics =
+            ImmutableArray.CreateBuilder<AuthoredKey>();
+        HashSet<string> seen = new(StringComparer.Ordinal);
+
+        foreach (object? item in paths)
+        {
+            if (item is not string path)
+            {
+                Error(diagnostics, source, "'identity' must contain only strings");
+                continue;
+            }
+            if (!seen.Add(path))
+            {
+                Error(diagnostics, source, $"'identity' contains duplicate key '{path}'");
+                continue;
+            }
+
+            if (path.StartsWith(RULES_PREFIX, StringComparison.Ordinal) &&
+                rules.TryGetValue(path[RULES_PREFIX.Length..], out AuthoredKey rule))
+            {
+                identityRules.Add(rule);
+                continue;
+            }
+            if (path.StartsWith(PHYSICS_PREFIX, StringComparison.Ordinal) &&
+                physics.TryGetValue(path[PHYSICS_PREFIX.Length..], out AuthoredKey property))
+            {
+                identityPhysics.Add(property);
+                continue;
+            }
+            Error(diagnostics, source,
+                $"identity key '{path}' must name a value authored under [rules] or [physics]");
+        }
+
+        return new ModeIdentity(identityRules.ToImmutable(), identityPhysics.ToImmutable());
     }
 
     private static Physics ReadPhysicsTable(TomlTable table, string source,

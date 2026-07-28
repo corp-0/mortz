@@ -221,13 +221,9 @@ internal sealed class ServerProtocol
               $"({killerKills} kills{teams})");
     }
 
-    /// <summary>TEAM_KILLS with teams off plays as PLAYER_KILLS everywhere.</summary>
     private static MatchPointMsg MatchPointMessage(MatchPointChange change, ModeRules config)
     {
-        WinCondition kind = config.Teams && config.WinCondition == WinCondition.TEAM_KILLS
-            ? WinCondition.TEAM_KILLS
-            : WinCondition.PLAYER_KILLS;
-        return new MatchPointMsg(change.Active, kind,
+        return new MatchPointMsg(change.Active, config.WinCondition,
             (byte)Math.Clamp(change.Remaining, 0, byte.MaxValue),
             change.LeaderId, change.LeaderIsTeam);
     }

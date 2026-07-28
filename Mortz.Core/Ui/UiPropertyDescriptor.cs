@@ -7,7 +7,8 @@ public sealed class UiPropertyDescriptor<TModel, TValue>(
     Action<TModel, TValue> setter,
     float? min = null,
     float? max = null,
-    float? step = null) : IUiPropertyDescriptor
+    float? step = null,
+    Func<TModel, bool>? visible = null) : IUiPropertyDescriptor
 {
     public string Name { get; } = name;
     public string DisplayName { get; } = displayName;
@@ -19,6 +20,10 @@ public sealed class UiPropertyDescriptor<TModel, TValue>(
     public TValue Get(TModel model) => getter(model);
 
     public void Set(TModel model, TValue value) => setter(model, value);
+
+    public bool IsVisible(TModel model) => visible?.Invoke(model) ?? true;
+
+    bool IUiPropertyDescriptor.IsVisible(object model) => IsVisible(TypedModel(model));
 
     object? IUiPropertyDescriptor.GetValue(object model) => Get(TypedModel(model));
 

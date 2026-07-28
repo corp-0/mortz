@@ -44,7 +44,7 @@ public partial class MatchSetup : Node
     public string MapHash { get; private set; } = "";
     public IReadOnlyList<ContentOption> MapOptions => _mapOptions;
 
-    /// <summary>The mode the rules currently match, "" when they match none.</summary>
+    /// <summary>The mode whose identity keys currently match, "" when none do.</summary>
     public string ModeId { get; private set; } = "";
 
     public IReadOnlyList<ContentOption> ModeOptions => _modeOptions;
