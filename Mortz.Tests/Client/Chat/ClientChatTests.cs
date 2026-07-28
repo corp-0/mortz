@@ -2,7 +2,6 @@ using System.Text;
 using Chickensoft.AutoInject;
 using Mortz.Client.Admin;
 using Mortz.Client.Chat;
-using Mortz.Client.Feed;
 using Mortz.Client.Session;
 using Mortz.Core.Admin;
 using Mortz.Core.Chat;
@@ -112,23 +111,6 @@ public class ClientChatTests : NodeServiceTest
     }
 
     [Fact]
-    public void KillFeedLinesLandInChatAsSystemEntries()
-    {
-        FakeKillFeed feed = new();
-        ClientChat chat = new();
-        chat.FakeDependency(_admin);
-        chat.FakeDependency<IKillFeed>(feed);
-        chat.FakeDependency<ISessionExit>(_sessionExit);
-        Host(chat);
-
-        feed.Emit("Alice killed Bob");
-
-        ChatEntry entry = Assert.Single(chat.State.Entries);
-        Assert.Equal(ChatEntryKind.SYSTEM, entry.Kind);
-        Assert.Equal("Alice killed Bob", entry.Text);
-    }
-
-    [Fact]
     public void QuitLeavesTheSessionAndTakesNoArguments()
     {
         Assert.False(_chat.Submit("/quit now"));
@@ -136,13 +118,6 @@ public class ClientChatTests : NodeServiceTest
 
         Assert.True(_chat.Submit("/quit"));
         Assert.Equal("Left the server.", Assert.Single(_sessionExit.Reasons));
-    }
-
-    private sealed class FakeKillFeed : IKillFeed
-    {
-        public event Action<string>? LineAdded;
-
-        public void Emit(string line) => LineAdded?.Invoke(line);
     }
 
     private static byte[] Capture(Action send)

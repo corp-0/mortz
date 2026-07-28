@@ -3,7 +3,6 @@ using Chickensoft.Introspection;
 using Godot;
 using Mortz.Client.Announcements;
 using Mortz.Client.Chat;
-using Mortz.Client.Feed;
 using Mortz.Client.Replay;
 using Mortz.Client.Views;
 using Mortz.Core.Match;
@@ -21,7 +20,6 @@ namespace Mortz.Client.Match;
 /// <summary>Composition root of the in-game screen, wired in GameView.tscn.</summary>
 [Meta(typeof(IAutoNode))]
 public partial class GameView : Node2D,
-    IProvide<IKillFeed>,
     IProvide<IAnnouncementDirector>,
     IProvide<ClientChat>,
     IProvide<GameMap>
@@ -33,14 +31,12 @@ public partial class GameView : Node2D,
     [Export] private MortarClient _mortarClient = null!;
     [Export] private PlayerStatusHud _hud = null!;
     [Export] private FinalKillReplay _finalKillReplay = null!;
-    [Export] private KillFeed _killFeed = null!;
     [Export] private AnnouncementDirector _announcements = null!;
     [Export] private ClientChat _chat = null!;
 
     [Dependency]
     private INetwork Network => this.DependOn<INetwork>();
 
-    IKillFeed IProvide<IKillFeed>.Value() => _killFeed;
     IAnnouncementDirector IProvide<IAnnouncementDirector>.Value() => _announcements;
     ClientChat IProvide<ClientChat>.Value() => _chat;
     GameMap IProvide<GameMap>.Value() => _gameMap;

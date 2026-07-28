@@ -21,4 +21,8 @@ public enum GameEventKind : byte
     /// <summary>Death by own hand. Magnitude is the consecutive count within
     /// the judge's window; Detail carries the <see cref="SuicideCause"/>.</summary>
     SUICIDE = 8,
+    /// <summary>A credited kill with no higher-priority presentation.</summary>
+    REGULAR_KILL = 9,
+    /// <summary>The actor killed a teammate.</summary>
+    TEAM_KILL = 10,
 }

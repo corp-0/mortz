@@ -29,7 +29,8 @@ public class GameEventJudgeTests
         GameEventJudge judge = new();
         RunStreak(judge, VICTIM, kills: 4, startTick: 0);
 
-        Assert.Empty(judge.JudgeFrame([Kill(99, VICTIM, credited: false)], tick: 5000));
+        Assert.Empty(judge.JudgeFrame(
+            [Kill(99, VICTIM, kind: Scoreboard.DeathKind.UNCREDITED)], tick: 5000));
 
         // The 4-streak is gone: five more kills announce the entry tier again,
         // not a continuation at 9.
@@ -81,7 +82,9 @@ public class GameEventJudgeTests
     {
         GameEventJudge judge = new();
 
-        Assert.Empty(judge.JudgeFrame([Kill(KILLER, VICTIM)], tick: 0));
+        Assert.Contains(new GameEventJudge.Judgment(
+            GameEventKind.REGULAR_KILL, KILLER, VICTIM, 0),
+            judge.JudgeFrame([Kill(KILLER, VICTIM)], tick: 0));
         List<GameEventJudge.Judgment> second = judge.JudgeFrame(
             [Kill(KILLER, OTHER)], tick: MultiKillTracker.WINDOW_TICKS);
         List<GameEventJudge.Judgment> expired = judge.JudgeFrame(
@@ -138,7 +141,8 @@ public class GameEventJudgeTests
         // Shell 7 kills two enemies and its shooter: two credited kills only.
         List<GameEventJudge.Judgment> events = judge.JudgeFrame(
             [Kill(KILLER, VICTIM, shellId: 7), Kill(KILLER, OTHER, shellId: 7),
-             Kill(KILLER, KILLER, credited: false, shellId: 7)], tick: 0);
+             Kill(KILLER, KILLER, shellId: 7,
+                 kind: Scoreboard.DeathKind.SUICIDE)], tick: 0);
 
         Assert.DoesNotContain(events, e => e.Kind == GameEventKind.HOLY_SHIT);
     }
@@ -274,13 +278,32 @@ public class GameEventJudgeTests
             GameEventKind.SUICIDE, KILLER, 0, 1, (byte)SuicideCause.BLAST), events);
     }
 
-    private static GameEventJudge.Kill Suicide(int victim, SuicideCause cause) =>
-        new(victim, victim, Credited: false, Owned: false, FirstBlood: false,
-            ShellId: -1, Suicide: cause);
+    [Fact]
+    public void RegularAndTeamKillsBecomePresentationEvents()
+    {
+        GameEventJudge judge = new();
 
-    private static GameEventJudge.Kill Kill(int killer, int victim, bool credited = true,
-        bool owned = false, bool firstBlood = false, int shellId = -1) =>
-        new(killer, victim, credited, owned, firstBlood, shellId);
+        List<GameEventJudge.Judgment> events = judge.JudgeFrame(
+            [Kill(KILLER, VICTIM),
+             Kill(KILLER, OTHER, kind: Scoreboard.DeathKind.TEAM_KILL)], tick: 0);
+
+        Assert.Contains(new GameEventJudge.Judgment(
+            GameEventKind.REGULAR_KILL, KILLER, VICTIM, 0), events);
+        Assert.Contains(new GameEventJudge.Judgment(
+            GameEventKind.TEAM_KILL, KILLER, OTHER, 0), events);
+    }
+
+    private static GameEventJudge.Kill Suicide(int victim, SuicideCause cause) =>
+        new(victim, victim,
+            cause == SuicideCause.FALL
+                ? Scoreboard.DeathKind.FALL
+                : Scoreboard.DeathKind.SUICIDE,
+            Owned: false, FirstBlood: false, ShellId: -1);
+
+    private static GameEventJudge.Kill Kill(int killer, int victim,
+        bool owned = false, bool firstBlood = false, int shellId = -1,
+        Scoreboard.DeathKind kind = Scoreboard.DeathKind.KILL) =>
+        new(killer, victim, kind, owned, firstBlood, shellId);
 
     /// <summary>One kill per frame, spaced far apart so no chains form.</summary>
     private static List<GameEventJudge.Judgment> RunStreak(

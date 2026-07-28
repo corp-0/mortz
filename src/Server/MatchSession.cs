@@ -149,11 +149,10 @@ internal sealed class MatchSession
             kills.Add(new GameEventJudge.Kill(
                 elimination.Score.KillerId,
                 elimination.Score.VictimId,
-                elimination.Score.CreditedKill,
+                elimination.Score.Kind,
                 elimination.Owned,
                 elimination.FirstBlood,
-                death.ShellId,
-                SuicideCauseOf(elimination.Score.Kind)));
+                death.ShellId));
             if (matchEnded != null || elimination.Score.Winner is not { } winner) continue;
             matchEnded = winner;
             ServerExplosion? explosion = FindExplosion(death, explosions);
@@ -236,13 +235,6 @@ internal sealed class MatchSession
             active, standing.Remaining, standing.LeaderId, standing.LeaderIsTeam);
         return _matchPoint;
     }
-
-    private static SuicideCause? SuicideCauseOf(Scoreboard.DeathKind kind) => kind switch
-    {
-        Scoreboard.DeathKind.FALL => SuicideCause.FALL,
-        Scoreboard.DeathKind.SUICIDE => SuicideCause.BLAST,
-        _ => null,
-    };
 
     /// <summary>Skipped on quiet frames; the judge only reads teams when there
     /// are kills.</summary>

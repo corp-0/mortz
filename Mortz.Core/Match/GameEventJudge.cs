@@ -4,16 +4,14 @@ namespace Mortz.Core.Match;
 /// arrives pre-judged; the rest come from state kept for one match.</summary>
 public sealed class GameEventJudge
 {
-    /// <summary>ShellId is -1 when no shell was involved; Suicide carries the
-    /// cause for uncredited self-deaths and is null for everything else.</summary>
+    /// <summary>ShellId is -1 when no shell was involved.</summary>
     public readonly record struct Kill(
         int KillerId,
         int VictimId,
-        bool Credited,
+        Scoreboard.DeathKind Kind,
         bool Owned,
         bool FirstBlood,
-        int ShellId,
-        SuicideCause? Suicide = null);
+        int ShellId);
 
     /// <summary>VictimId is 0 when the event has no meaningful victim; Detail
     /// is 0 unless the kind has a use for it (SUICIDE stores the cause).</summary>
@@ -65,15 +63,27 @@ public sealed class GameEventJudge
                 events.Add(new Judgment(GameEventKind.FIRST_BLOOD, kill.KillerId, kill.VictimId, 0));
             }
 
-            if (kill.Suicide is { } cause)
+            if (kill.Kind is Scoreboard.DeathKind.FALL or Scoreboard.DeathKind.SUICIDE)
             {
                 int count = _suicides.OnSuicide(kill.VictimId, tick);
+                SuicideCause cause = kill.Kind == Scoreboard.DeathKind.FALL
+                    ? SuicideCause.FALL
+                    : SuicideCause.BLAST;
                 events.Add(new Judgment(GameEventKind.SUICIDE, kill.VictimId, 0,
                     ClampToByte(count), (byte)cause));
                 continue;
             }
-            if (!kill.Credited) continue;
+            if (kill.Kind == Scoreboard.DeathKind.TEAM_KILL)
+            {
+                events.Add(new Judgment(
+                    GameEventKind.TEAM_KILL, kill.KillerId, kill.VictimId, 0));
+                continue;
+            }
+            if (kill.Kind != Scoreboard.DeathKind.KILL)
+                continue;
 
+            events.Add(new Judgment(
+                GameEventKind.REGULAR_KILL, kill.KillerId, kill.VictimId, 0));
             _suicides.OnCreditedKill(kill.KillerId);
             if (kill.Owned)
                 events.Add(new Judgment(GameEventKind.HUMILIATION, kill.KillerId, kill.VictimId, 0));

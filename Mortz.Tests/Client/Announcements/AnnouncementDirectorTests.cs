@@ -68,6 +68,22 @@ public class AnnouncementDirectorTests
     }
 
     [Fact]
+    public void SpecialEventsReplaceRegularKillsForTheSameActor()
+    {
+        Announcement[] resolved = AnnouncementDirector.Describe(
+            [new GameEventMsg(GameEventKind.REGULAR_KILL, KILLER, VICTIM, 0),
+             new GameEventMsg(GameEventKind.KILL_STREAK, KILLER, 0, 5),
+             new GameEventMsg(GameEventKind.REGULAR_KILL, VICTIM, KILLER, 0),
+             new GameEventMsg(GameEventKind.TEAM_KILL, KILLER, VICTIM, 0)],
+            NameOf, TeamOf);
+
+        Assert.Equal(
+            [GameEventKind.KILL_STREAK, GameEventKind.REGULAR_KILL, GameEventKind.TEAM_KILL],
+            resolved.Select(a => a.Kind));
+        Assert.Equal(VICTIM, resolved[1].Actor.Id);
+    }
+
+    [Fact]
     public void MatchPointNamesTheLeader()
     {
         Assert.Equal("p1", AnnouncementDirector.Describe(

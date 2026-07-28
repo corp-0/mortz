@@ -1,8 +1,8 @@
 using Chickensoft.AutoInject;
 using Godot;
 using Mortz.Client.Admin;
+using Mortz.Client.Announcements;
 using Mortz.Client.Chat;
-using Mortz.Client.Feed;
 using Mortz.Client.Match;
 using Mortz.Client.Menus;
 using Mortz.Client.Session;
@@ -124,7 +124,7 @@ public class ChatCompositionTests : NodeServiceTest
         GameView game = gameScene.Instantiate<GameView>();
         try
         {
-            Assert.IsType<KillFeed>(game.GetDescendantByType<KillFeed>());
+            Assert.IsType<AnnouncementChat>(game.GetDescendantByType<AnnouncementChat>());
             Assert.IsType<ClientChat>(game.GetDescendantByType<ClientChat>());
             Assert.IsType<GameChat>(game.GetDescendantByType<GameChat>());
         }

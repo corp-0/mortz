@@ -58,7 +58,7 @@ public partial class AnnouncementDirector : Node, IAnnouncementDirector
     /// resolved.</summary>
     internal static Announcement[] Describe(
         IReadOnlyList<GameEventMsg> events, Func<long, string> name, Func<long, byte> team) =>
-        FoldHolyShit(events)
+        DropCoveredRegularKills(FoldHolyShit(events))
             .OrderBy(e => Priority(e.Kind))
             .Select(e => new Announcement(
                 e.Kind,
@@ -67,6 +67,21 @@ public partial class AnnouncementDirector : Node, IAnnouncementDirector
                 e.Magnitude,
                 (SuicideCause)e.Detail))
             .ToArray();
+
+    private static IReadOnlyList<GameEventMsg> DropCoveredRegularKills(
+        IReadOnlyList<GameEventMsg> batch)
+    {
+        HashSet<long> actorsWithSpecials = batch
+            .Where(e => ReplacesRegularKill(e.Kind))
+            .Select(e => e.ActorId)
+            .ToHashSet();
+        if (actorsWithSpecials.Count == 0)
+            return batch;
+        return batch
+            .Where(e => e.Kind != GameEventKind.REGULAR_KILL ||
+                        !actorsWithSpecials.Contains(e.ActorId))
+            .ToArray();
+    }
 
     internal static MatchPointState Describe(MatchPointMsg msg, Func<long, string> name)
     {
@@ -120,6 +135,18 @@ public partial class AnnouncementDirector : Node, IAnnouncementDirector
         GameEventKind.KILL_STREAK => 5,
         GameEventKind.REVENGE => 6,
         GameEventKind.SUICIDE => 7,
-        _ => 8, // HUMILIATION: whoever plays it at all plays it last
+        GameEventKind.HUMILIATION => 8,
+        GameEventKind.REGULAR_KILL or GameEventKind.TEAM_KILL => 9,
+        _ => 10,
     };
+
+    private static bool ReplacesRegularKill(GameEventKind kind) => kind is
+        GameEventKind.FIRST_BLOOD or
+        GameEventKind.HUMILIATION or
+        GameEventKind.SHUTDOWN or
+        GameEventKind.HOLY_SHIT or
+        GameEventKind.MULTI_KILL or
+        GameEventKind.KILL_STREAK or
+        GameEventKind.REVENGE or
+        GameEventKind.TEAM_WIPE;
 }

@@ -58,51 +58,78 @@ public partial class AnnouncementChat : Node
 
     private RichText? Compose(Announcement a) => a.Kind switch
     {
-        GameEventKind.FIRST_BLOOD => new RichText()
-            .Add(Player(a.Actor)).Add(" spilled ")
+        GameEventKind.REGULAR_KILL =>
+            Player(a.Actor)
+            .Add(" killed ")
+            .Add(Player(a.Victim)),
+
+        GameEventKind.TEAM_KILL => Player(a.Actor)
+            .Add(" team-killed ").Add(Player(a.Victim)),
+
+        GameEventKind.FIRST_BLOOD =>
+            Player(a.Actor)
+            .Add(" spilled ")
             .Add("first blood", new Style().Bold().Color(RichTextColor.BLOOD_RED))
             .Add("!"),
 
-        GameEventKind.HUMILIATION => new RichText()
-            .Add(Player(a.Actor))
-            .Add(" ").Add("OWNED", new Style().Bold())
+        GameEventKind.HUMILIATION =>
+            Player(a.Actor)
+            .Add(" ")
+            .Add("OWNED", new Style().Bold())
             .Add(" ")
             .Add(Player(a.Victim)),
 
-        GameEventKind.SHUTDOWN => new RichText()
-            .Add(Player(a.Actor)).Add(" ended ").Add(Player(a.Victim)).Add("'s killstreak!"),
+        GameEventKind.SHUTDOWN =>
+            Player(a.Actor)
+            .Add(" ended ")
+            .Add(Player(a.Victim))
+            .Add("'s killstreak!"),
 
         GameEventKind.HOLY_SHIT => new RichText()
-            .Add("Holy shit!", new Style().Bold()).Add(" ").Add(MultiKill(a)),
+            .Add("Holy shit!", new Style().Bold())
+            .Add(" ")
+            .Add(MultiKill(a)),
 
         GameEventKind.MULTI_KILL => MultiKill(a),
 
         GameEventKind.KILL_STREAK => Streak(a),
 
-        GameEventKind.TEAM_WIPE => new RichText()
-            .Add(Player(a.Actor)).Add(" ").Add("RAMPAGED", new Style().Bold())
+        GameEventKind.TEAM_WIPE =>
+            Player(a.Actor)
+            .Add(" ")
+            .Add("RAMPAGED", new Style().Bold())
             .Add(" the enemy team!"),
 
-        GameEventKind.REVENGE => new RichText()
-            .Add(Player(a.Actor)).Add(" got revenge on ").Add(Player(a.Victim)),
+        GameEventKind.REVENGE =>
+            Player(a.Actor)
+            .Add(" got revenge on ")
+            .Add(Player(a.Victim)),
 
-        GameEventKind.SUICIDE => new RichText()
-            .Add(Player(a.Actor)).Add(" " + Vocab.SuicideQuip(a.Cause, _picker)),
+        GameEventKind.SUICIDE =>
+            Player(a.Actor)
+            .Add(" " + Vocab.SuicideQuip(a.Cause, _picker)),
+
         _ => null,
     };
 
     private static RichText MultiKill(Announcement a)
     {
         MultiKillWording tier = Vocab.MultiKillTier(a.Magnitude);
-        return new RichText()
-            .Add(Player(a.Actor)).Add($" {tier.Link} ").Add(tier.Loud, new Style().Bold()).Add("!");
+        return
+            Player(a.Actor)
+            .Add($" {tier.Link} ")
+            .Add(tier.Loud, new Style().Bold())
+            .Add("!");
     }
 
     private static RichText Streak(Announcement a)
     {
         StreakWording tier = Vocab.StreakTier(a.Magnitude);
-        return new RichText()
-            .Add(Player(a.Actor)).Add($" {tier.Weak} ").Add(tier.Strong, new Style().Bold()).Add("!");
+        return
+            Player(a.Actor)
+            .Add($" {tier.Weak} ")
+            .Add(tier.Strong, new Style().Bold())
+            .Add("!");
     }
 
     private static RichText Player(Combatant p) => new RichText().Add(p.Name, NameStyle(p));
