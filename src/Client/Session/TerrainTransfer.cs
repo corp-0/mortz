@@ -40,7 +40,7 @@ internal sealed class TerrainTransfer
             error = "";
             return true;
         }
-        catch (IOException exception)
+        catch (Exception exception) when (exception is IOException or InvalidDataException)
         {
             error = $"Invalid match config: {exception.Message}";
             return false;

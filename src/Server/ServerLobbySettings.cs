@@ -148,7 +148,7 @@ public partial class ServerLobbySettings : Node, IServerLobbySettings
         {
             Config = MatchConfig.FromBytes(message.Config);
         }
-        catch (IOException)
+        catch (Exception exception) when (exception is IOException or InvalidDataException)
         {
             SendTo(sender);
             return;

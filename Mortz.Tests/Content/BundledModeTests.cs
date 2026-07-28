@@ -32,6 +32,23 @@ public class BundledModeTests
         Assert.Equal(SuicidePenalty.REWARD_CLOSEST_ENEMY, rules.SuicidePenalty);
         Assert.Equal(2, teams.Winner.Manifest.Identity?.KeyCount);
 
+        Assert.True(catalog.TryGetMode("killlead", out ResolvedContent<GameModeManifest>? killLead));
+        ModeRules killLeadRules = killLead!.Winner.Manifest.Config.Rules;
+        Assert.False(killLeadRules.Teams);
+        Assert.Equal(WinCondition.KILL_LEAD, killLeadRules.WinCondition);
+        Assert.Equal(3, killLeadRules.KillLeadTarget);
+        Assert.Equal(SuicidePenalty.KILL_NO_NEGATIVE, killLeadRules.SuicidePenalty);
+        Assert.Equal(2, killLead.Winner.Manifest.Identity?.KeyCount);
+
+        Assert.True(catalog.TryGetMode(
+            "teamkilllead", out ResolvedContent<GameModeManifest>? teamKillLead));
+        ModeRules teamKillLeadRules = teamKillLead!.Winner.Manifest.Config.Rules;
+        Assert.True(teamKillLeadRules.Teams);
+        Assert.Equal(WinCondition.KILL_LEAD, teamKillLeadRules.WinCondition);
+        Assert.Equal(5, teamKillLeadRules.KillLeadTarget);
+        Assert.Equal(SuicidePenalty.REWARD_CLOSEST_ENEMY, teamKillLeadRules.SuicidePenalty);
+        Assert.Equal(2, teamKillLead.Winner.Manifest.Identity?.KeyCount);
+
         MatchConfig customizedDeathmatch =
             MatchConfig.FromBytes(deathmatch.Winner.Manifest.Config.ToBytes());
         customizedDeathmatch.Rules.KillTarget = 100;

@@ -1,3 +1,5 @@
+using Mortz.Core.Match.WinConditions;
+
 namespace Mortz.Core.Match;
 
 /// <summary>
@@ -46,6 +48,7 @@ public sealed class Scoreboard
     }
 
     private readonly ModeRules _config;
+    private readonly WinConditionStrategy _winCondition;
     // 1-based by TeamId ([0] never read); two teams in v1, sized here only.
     private readonly int[] _teamKills = new int[3];
     // Sorted so scoreboard sync and winner scans are deterministic.
@@ -54,7 +57,11 @@ public sealed class Scoreboard
     public IReadOnlyDictionary<int, Row> Rows => _rows;
     public int TeamKills(byte teamId) => _teamKills[teamId];
 
-    public Scoreboard(ModeRules config) => _config = config;
+    public Scoreboard(ModeRules config)
+    {
+        _config = config;
+        _winCondition = WinConditionStrategy.Create(config.WinCondition);
+    }
 
     public void AddPlayer(int peerId, byte teamId) => _rows[peerId] = new Row(teamId, 0, 0);
 
@@ -108,7 +115,7 @@ public sealed class Scoreboard
             reward,
             TeamKills(1),
             TeamKills(2),
-            CheckWinner());
+            _winCondition.Resolve(Context()));
     }
 
     /// <summary>Non-null when the kill went to an enemy instead. At zero
@@ -145,77 +152,14 @@ public sealed class Scoreboard
             _teamKills[row.TeamId] += delta;
     }
 
-    private MatchWinner? CheckWinner()
-    {
-        return _config.WinCondition switch
-        {
-            WinCondition.KILLS => CheckKillsWinner(),
-            _ => null,
-        };
-    }
-
-    private MatchWinner? CheckKillsWinner()
-    {
-        if (_config.Teams)
-        {
-            for (byte team = 1; team < _teamKills.Length; team++)
-            {
-                if (_teamKills[team] >= _config.KillTarget)
-                    return new MatchWinner(true, team);
-            }
-            return null;
-        }
-        foreach ((int peerId, Row row) in _rows)
-        {
-            if (row.Kills >= _config.KillTarget)
-                return new MatchWinner(false, peerId);
-        }
-        return null;
-    }
-
-    /// <summary>Kills still needed by whoever is closest to winning;
-    /// KillTarget when nobody has scored.</summary>
+    /// <summary>Progress still needed by whoever is closest to winning.</summary>
     public int RemainingToWin() => Standing().Remaining;
 
     /// <summary>LeaderId is a peer id, or a team id when LeaderIsTeam; 0 while
-    /// nobody has scored. Ties go to the first scorer in table order.</summary>
+    /// nobody has a meaningful lead.</summary>
     public readonly record struct MatchStanding(int LeaderId, bool LeaderIsTeam, int Remaining);
 
-    /// <summary>Who is closest to winning and the kills they still need.</summary>
-    public MatchStanding Standing() =>
-        _config.WinCondition switch
-        {
-            WinCondition.KILLS => KillsStanding(),
-            _ => new MatchStanding(0, _config.Teams, 0),
-        };
+    public MatchStanding Standing() => _winCondition.Standing(Context());
 
-    private MatchStanding KillsStanding()
-    {
-        int best = 0;
-        int leader = 0;
-        bool byTeam = _config.Teams;
-        if (byTeam)
-        {
-            for (byte team = 1; team < _teamKills.Length; team++)
-            {
-                if (_teamKills[team] > best)
-                {
-                    best = _teamKills[team];
-                    leader = team;
-                }
-            }
-        }
-        else
-        {
-            foreach ((int peerId, Row row) in _rows)
-            {
-                if (row.Kills > best)
-                {
-                    best = row.Kills;
-                    leader = peerId;
-                }
-            }
-        }
-        return new MatchStanding(leader, byTeam, Math.Max(0, _config.KillTarget - best));
-    }
+    private WinConditionContext Context() => new(_config, _rows, _teamKills);
 }

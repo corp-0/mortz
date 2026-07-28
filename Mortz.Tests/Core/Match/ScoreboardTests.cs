@@ -1,4 +1,5 @@
 using Mortz.Core.Match;
+using Mortz.Core.Match.WinConditions;
 using Xunit;
 
 namespace Mortz.Tests.Core.Match;
@@ -6,11 +7,14 @@ namespace Mortz.Tests.Core.Match;
 public class ScoreboardTests
 {
     private static ModeRules Cfg(bool teams = false, int target = 3,
-        SuicidePenalty suicidePenalty = SuicidePenalty.NONE) => new()
+        SuicidePenalty suicidePenalty = SuicidePenalty.NONE,
+        WinCondition winCondition = WinCondition.KILLS,
+        int leadTarget = 3) => new()
         {
             Teams = teams,
-            WinCondition = WinCondition.KILLS,
+            WinCondition = winCondition,
             KillTarget = target,
+            KillLeadTarget = leadTarget,
             SuicidePenalty = suicidePenalty,
         };
 
@@ -202,6 +206,83 @@ public class ScoreboardTests
 
         Assert.Equal(new Scoreboard.MatchStanding(
             LeaderId: 1, LeaderIsTeam: true, Remaining: 1), s.Standing());
+    }
+
+    [Fact]
+    public void StrategyFactory_MapsEachAuthoredWinCondition()
+    {
+        Assert.IsType<KillsWinConditionStrategy>(
+            WinConditionStrategy.Create(WinCondition.KILLS));
+        Assert.IsType<KillLeadWinConditionStrategy>(
+            WinConditionStrategy.Create(WinCondition.KILL_LEAD));
+    }
+
+    [Fact]
+    public void KillLeadWithoutTeams_RequiresALeadOverTheRunnerUp()
+    {
+        Scoreboard s = new Scoreboard(Cfg(
+            winCondition: WinCondition.KILL_LEAD, leadTarget: 2));
+        s.AddPlayer(1, 0);
+        s.AddPlayer(2, 0);
+        s.AddPlayer(3, 0);
+
+        Assert.Null(s.ScoreDeath(new Scoreboard.Death(VictimId: 2, KillerId: 1))?.Winner);
+        Assert.Equal(new Scoreboard.MatchStanding(1, false, 1), s.Standing());
+
+        Assert.Null(s.ScoreDeath(new Scoreboard.Death(VictimId: 3, KillerId: 2))?.Winner);
+        Assert.Equal(new Scoreboard.MatchStanding(0, false, 2), s.Standing());
+
+        Assert.Null(s.ScoreDeath(new Scoreboard.Death(VictimId: 3, KillerId: 1))?.Winner);
+        Assert.Equal(new Scoreboard.MatchStanding(1, false, 1), s.Standing());
+
+        Scoreboard.MatchWinner? winner =
+            s.ScoreDeath(new Scoreboard.Death(VictimId: 2, KillerId: 1))?.Winner;
+
+        Assert.Equal(new Scoreboard.MatchWinner(false, 1), winner);
+    }
+
+    [Fact]
+    public void KillLeadWithTeams_CombinesTeammateKills()
+    {
+        Scoreboard s = new Scoreboard(Cfg(
+            teams: true, winCondition: WinCondition.KILL_LEAD, leadTarget: 2));
+        s.AddPlayer(1, 1);
+        s.AddPlayer(2, 1);
+        s.AddPlayer(3, 2);
+
+        Assert.Null(s.ScoreDeath(new Scoreboard.Death(VictimId: 3, KillerId: 1))?.Winner);
+        Scoreboard.MatchWinner? winner =
+            s.ScoreDeath(new Scoreboard.Death(VictimId: 3, KillerId: 2))?.Winner;
+
+        Assert.Equal(new Scoreboard.MatchWinner(true, 1), winner);
+    }
+
+    [Fact]
+    public void KillLeadCanBeDecidedByASuicidePenalty()
+    {
+        Scoreboard s = new Scoreboard(Cfg(
+            suicidePenalty: SuicidePenalty.KILL,
+            winCondition: WinCondition.KILL_LEAD,
+            leadTarget: 2));
+        s.AddPlayer(1, 0);
+        s.AddPlayer(2, 0);
+
+        Assert.Null(s.ScoreDeath(new Scoreboard.Death(VictimId: 2, KillerId: 1))?.Winner);
+        Scoreboard.MatchWinner? winner =
+            s.ScoreDeath(new Scoreboard.Death(VictimId: 2, KillerId: 2))?.Winner;
+
+        Assert.Equal(new Scoreboard.MatchWinner(false, 1), winner);
+    }
+
+    [Fact]
+    public void KillLeadNeedsAtLeastTwoCompetitors()
+    {
+        Scoreboard s = new Scoreboard(Cfg(
+            winCondition: WinCondition.KILL_LEAD, leadTarget: 1));
+        s.AddPlayer(1, 0);
+
+        Assert.Null(s.ScoreDeath(new Scoreboard.Death(VictimId: 1, KillerId: 1))?.Winner);
+        Assert.Equal(new Scoreboard.MatchStanding(0, false, 1), s.Standing());
     }
 
     [Fact]

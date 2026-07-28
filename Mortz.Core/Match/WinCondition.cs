@@ -1,9 +1,10 @@
 namespace Mortz.Core.Match;
 
-/// <summary>Which predicate decides the winner. Teams controls whether score
-/// predicates aggregate player rows into team totals. In authoring TOML:
-/// "kills" (case-insensitive).</summary>
+/// <summary>Selects the strategy that decides the winner. Teams controls
+/// whether score strategies evaluate player rows or team totals. Authoring
+/// values are case-insensitive snake case.</summary>
 public enum WinCondition : byte
 {
     KILLS = 0,
+    KILL_LEAD = 1,
 }

@@ -99,7 +99,7 @@ public partial class MatchSetup : Node
         {
             config = MatchConfig.FromBytes(message.Config);
         }
-        catch (IOException)
+        catch (Exception exception) when (exception is IOException or InvalidDataException)
         {
             SetError("Server sent invalid match settings.");
             return;
@@ -168,7 +168,7 @@ public partial class MatchSetup : Node
         {
             config = MatchConfig.FromBytes(message.Config);
         }
-        catch (IOException)
+        catch (Exception exception) when (exception is IOException or InvalidDataException)
         {
             return; // the session controller rejects the welcome itself
         }

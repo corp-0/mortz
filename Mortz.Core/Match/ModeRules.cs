@@ -19,6 +19,11 @@ public sealed partial class ModeRules
     [MatchRule(min: 1, max: 999)]
     public int KillTarget { get; set; } = SimConfig.KILL_TARGET;
 
+    [UiProperty("Kill Lead Target", min: 1, max: 999)]
+    [UiVisibleWhen(nameof(KillLeadTargetIsRelevant))]
+    [MatchRule(min: 1, max: 999)]
+    public int KillLeadTarget { get; set; } = SimConfig.KILL_LEAD_TARGET;
+
     // Self-damage always applies.
     [UiProperty("Friendly Fire")]
     [UiVisibleWhen(nameof(FriendlyFireIsRelevant))]
@@ -30,6 +35,8 @@ public sealed partial class ModeRules
     public SuicidePenalty SuicidePenalty { get; set; } = SuicidePenalty.NONE;
 
     internal bool KillTargetIsRelevant => WinCondition == WinCondition.KILLS;
+
+    internal bool KillLeadTargetIsRelevant => WinCondition == WinCondition.KILL_LEAD;
 
     internal bool FriendlyFireIsRelevant => Teams;
 

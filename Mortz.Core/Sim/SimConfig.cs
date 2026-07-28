@@ -100,6 +100,7 @@ public static class SimConfig
     // ---- mode ----
     /// <summary>Default first-to-X for the kills win conditions.</summary>
     public const int KILL_TARGET = 5;
+    public const int KILL_LEAD_TARGET = 3;
 
     // ---- derived tick values (edit the seconds above, not these) ----
     public const int DASH_COOLDOWN_TICKS = (int)(DASH_COOLDOWN * TICK_RATE);
