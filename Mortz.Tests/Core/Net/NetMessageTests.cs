@@ -1,3 +1,4 @@
+using Mortz.Core.Chat;
 using Mortz.Core.Match;
 using Mortz.Core.Net;
 using Mortz.Core.Net.Messages;
@@ -281,7 +282,8 @@ public class NetMessageTests : IDisposable
         AdminStateMsg.Received += stateHandler;
         try
         {
-            new ChatLineMsg(ChatLineKind.PLAYER, 42, "Alice", "hello 🐛").Broadcast();
+            new ChatLineMsg(ChatLineKind.PLAYER, 42, "Alice", "hello 🐛",
+                ChatTextFormat.MARKDOWN).Broadcast();
             new AdminChallengeMsg([1, 2, 3]).SendTo(42);
             new AdminStateMsg(true, "granted").SendTo(42);
         }
@@ -291,7 +293,8 @@ public class NetMessageTests : IDisposable
             AdminChallengeMsg.Received -= challengeHandler;
             AdminStateMsg.Received -= stateHandler;
         }
-        Assert.Equal(new ChatLineMsg(ChatLineKind.PLAYER, 42, "Alice", "hello 🐛"), line);
+        Assert.Equal(new ChatLineMsg(ChatLineKind.PLAYER, 42, "Alice", "hello 🐛",
+            ChatTextFormat.MARKDOWN), line);
         Assert.Equal([1, 2, 3], challenge.Challenge);
         Assert.Equal(new AdminStateMsg(true, "granted"), state);
     }

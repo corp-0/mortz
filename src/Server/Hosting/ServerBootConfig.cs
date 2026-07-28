@@ -5,7 +5,7 @@ using Mortz.Core.Net;
 using Mortz.Core.Net.Query;
 using Mortz.Shared;
 
-namespace Mortz.Server;
+namespace Mortz.Server.Hosting;
 
 /// <summary>Everything the server resolved at boot: CLI flags over
 /// server.toml over defaults. Content is the catalog snapshot everything

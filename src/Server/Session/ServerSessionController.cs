@@ -2,15 +2,18 @@ using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
 using Mortz.Core.Admin;
+using Mortz.Core.Chat;
 using Mortz.Core.Input;
 using Mortz.Core.Match;
 using Mortz.Core.Net.Messages;
 using Mortz.Core.Sim;
 using Mortz.Net;
 using Mortz.Server.Chat;
+using Mortz.Server.Lobby;
+using Mortz.Server.Match;
 using Mortz.Shared;
 
-namespace Mortz.Server;
+namespace Mortz.Server.Session;
 
 /// <summary>Read-only session information exposed to sibling server features.</summary>
 public interface IServerSession
@@ -37,13 +40,13 @@ public partial class ServerSessionController : Node, IServerSession
     private bool _subscribed;
 
     [Dependency]
-    public IServerLobbySettings LobbySettings => this.DependOn<IServerLobbySettings>();
+    public IServerLobbySettings LobbySettings => DependentExtensions.DependOn<IServerLobbySettings>(this);
 
     [Dependency]
-    private NetworkManager Network => this.DependOn<NetworkManager>();
+    private NetworkManager Network => DependentExtensions.DependOn<NetworkManager>(this);
 
     [Dependency]
-    private IServerAdminAuthorizer Admin => this.DependOn<IServerAdminAuthorizer>();
+    private IServerAdminAuthorizer Admin => DependentExtensions.DependOn<IServerAdminAuthorizer>(this);
 
     public bool IsLobby => _lobby != null;
     public int PlayerCount => _players.Count;
@@ -70,7 +73,7 @@ public partial class ServerSessionController : Node, IServerSession
         TeamJoinRequestMsg.Received -= OnTeamJoinRequest;
         TeamSwapRequestMsg.Received -= OnTeamSwapRequest;
         EndMatchRequestMsg.Received -= OnEndMatchRequest;
-        LobbySettings.ConfigChanged -= OnConfigChanged;
+        LobbySettings.Changed -= OnConfigChanged;
         _subscribed = false;
     }
 
@@ -103,7 +106,7 @@ public partial class ServerSessionController : Node, IServerSession
         TeamJoinRequestMsg.Received += OnTeamJoinRequest;
         TeamSwapRequestMsg.Received += OnTeamSwapRequest;
         EndMatchRequestMsg.Received += OnEndMatchRequest;
-        LobbySettings.ConfigChanged += OnConfigChanged;
+        LobbySettings.Changed += OnConfigChanged;
         _subscribed = true;
     }
 
@@ -171,8 +174,9 @@ public partial class ServerSessionController : Node, IServerSession
         _protocol.BroadcastLobby(lobby);
     }
 
-    private void OnConfigChanged()
+    private void OnConfigChanged(LobbySettingsChange change)
     {
+        if (!change.AffectsConfig) return;
         if (_lobby is not { } lobby || !lobby.SetTeamsEnabled(LobbySettings.Config.Rules.Teams))
             return;
         GD.Print($"[server] lobby teams {(LobbySettings.Config.Rules.Teams ? "assigned" : "cleared")}");
@@ -195,7 +199,8 @@ public partial class ServerSessionController : Node, IServerSession
             return;
         if (_match is not { } match)
         {
-            new ChatLineMsg(ChatLineKind.SYSTEM, 0, "Server", "No match is running.")
+            new ChatLineMsg(ChatLineKind.SYSTEM, 0, "Server", "No match is running.",
+                    ChatTextFormat.PLAIN)
                 .SendTo(sender);
             return;
         }
@@ -204,7 +209,7 @@ public partial class ServerSessionController : Node, IServerSession
         ReturnToLobby(match);
         // After the lobby broadcast so it lands in the fresh lobby chats.
         new ChatLineMsg(ChatLineKind.SYSTEM, 0, "Server",
-            $"{_players.Name(sender)} ended the match.").Broadcast();
+            $"{_players.Name(sender)} ended the match.", ChatTextFormat.PLAIN).Broadcast();
     }
 
     private void TryStartMatch()

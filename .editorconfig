@@ -68,3 +68,9 @@ csharp_style_var_elsewhere = false:warning
 
 # Prefer target-typed new: Type x = new(); not Type x = new Type();
 csharp_style_implicit_object_creation_when_type_is_apparent = true:warning
+
+# The Godot csproj sits at the repo root, so Roslyn expects Mortz.src.* here and
+# IDE0130 fires on every file. Rider still checks namespaces against folders,
+# minus the src part.
+[src/**.cs]
+dotnet_style_namespace_match_folder = false

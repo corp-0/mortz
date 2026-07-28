@@ -1,6 +1,6 @@
 using Mortz.Core.Net;
 
-namespace Mortz.Server;
+namespace Mortz.Server.Session;
 
 /// <summary>Process-lifetime identity state. Lobby and match sessions can be
 /// replaced without losing the names of connected players.</summary>

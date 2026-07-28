@@ -1,4 +1,5 @@
 using Mortz.Server;
+using Mortz.Server.Session;
 using Xunit;
 
 namespace Mortz.Tests.Server;

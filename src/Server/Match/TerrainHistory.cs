@@ -1,6 +1,6 @@
 using Mortz.Core.Terrain;
 
-namespace Mortz.Server;
+namespace Mortz.Server.Match;
 
 /// <summary>Late-join terrain state for one match. Once the bounded carve log
 /// fills, the authoritative bitmap remains the exact fallback.</summary>

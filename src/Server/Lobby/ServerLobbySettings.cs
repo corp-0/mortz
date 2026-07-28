@@ -8,13 +8,15 @@ using Mortz.Core.Match;
 using Mortz.Core.Net;
 using Mortz.Core.Net.Messages;
 using Mortz.Server.Chat;
+using Mortz.Server.Hosting;
+using Mortz.Server.Session;
 using Mortz.Shared;
 
-namespace Mortz.Server;
+namespace Mortz.Server.Lobby;
 
 public interface IServerLobbySettings
 {
-    event Action? ConfigChanged;
+    event Action<LobbySettingsChange>? Changed;
 
     MapPackage Map { get; }
     MatchConfig Config { get; }
@@ -48,7 +50,7 @@ public partial class ServerLobbySettings : Node, IServerLobbySettings
     [Dependency]
     public IServerAdminAuthorizer Admin => this.DependOn<IServerAdminAuthorizer>();
 
-    public event Action? ConfigChanged;
+    public event Action<LobbySettingsChange>? Changed;
 
     public MapPackage Map { get; private set; } = null!;
     public MatchConfig Config { get; private set; } = null!;
@@ -136,6 +138,9 @@ public partial class ServerLobbySettings : Node, IServerLobbySettings
 
     private void OnRulesUpdate(long sender, LobbyRulesUpdateMsg message)
     {
+        MatchConfig previous = Config;
+        MatchConfig next;
+
         if (!CanMutate(sender) ||
             !Admin.TryAuthorize(sender, message.Sequence, AdminAction.SET_LOBBY_RULES,
                 message.Config, message.Tag))
@@ -146,20 +151,31 @@ public partial class ServerLobbySettings : Node, IServerLobbySettings
 
         try
         {
-            Config = MatchConfig.FromBytes(message.Config);
+            next = MatchConfig.FromBytes(message.Config);
         }
         catch (Exception exception) when (exception is IOException or InvalidDataException)
         {
             SendTo(sender);
             return;
         }
-        GD.Print($"[server] lobby rules updated by admin {sender}");
-        ConfigChanged?.Invoke();
+
+        LobbySettingDelta[] deltas =
+            LobbySettingsDiff.Between(previous, next);
+        Config = next;
         Broadcast();
+        GD.Print($"[server] lobby rules updated by admin {sender}");
+        if (deltas.Length > 0)
+        {
+            Changed?.Invoke(new LobbySettingsChange(
+                sender,
+                LobbySettingsChangeKind.RULES,
+                deltas));
+        }
     }
 
     private void OnModeUpdate(long sender, LobbyModeUpdateMsg message)
     {
+        string previousMode = ModeName;
         byte[] payload = Encoding.UTF8.GetBytes(message.ModeId);
         ModeOption? mode = _modes.Find(option =>
             StringComparer.Ordinal.Equals(option.Id, message.ModeId));
@@ -183,13 +199,21 @@ public partial class ServerLobbySettings : Node, IServerLobbySettings
             Rules = ModeRules.FromBytes(mode.Manifest.Config.Rules.ToBytes()),
             Physics = physics,
         };
-        GD.Print($"[server] lobby mode set to '{mode.Id}' by admin {sender}");
-        ConfigChanged?.Invoke();
+        string nextMode = ModeName;
         Broadcast();
+        GD.Print($"[server] lobby mode set to '{mode.Id}' by admin {sender}");
+        if (previousMode != nextMode)
+        {
+            Changed?.Invoke(new LobbySettingsChange(
+                sender,
+                LobbySettingsChangeKind.MODE,
+                [new LobbySettingDelta("Mode", previousMode, nextMode)]));
+        }
     }
 
     private void OnMapUpdate(long sender, LobbyMapUpdateMsg message)
     {
+        string previousMap = Map.DisplayName;
         byte[] payload = Encoding.UTF8.GetBytes(message.MapId);
         if (!CanMutate(sender) ||
             !Admin.TryAuthorize(sender, message.Sequence, AdminAction.SET_LOBBY_MAP,
@@ -207,8 +231,13 @@ public partial class ServerLobbySettings : Node, IServerLobbySettings
             return;
         }
         Map = selected;
-        GD.Print($"[server] lobby map changed to '{Map.MapId}' by admin {sender}");
         Broadcast();
+        Changed?.Invoke(new LobbySettingsChange(
+            sender,
+            LobbySettingsChangeKind.MAP,
+            [new LobbySettingDelta("Map", previousMap, Map.DisplayName)]
+        ));
+        GD.Print($"[server] lobby map changed to '{Map.MapId}' by admin {sender}");
     }
 
     private bool CanMutate(long sender) =>

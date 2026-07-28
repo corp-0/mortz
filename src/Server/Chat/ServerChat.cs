@@ -5,7 +5,11 @@ using Mortz.Core.Admin;
 using Mortz.Core.Chat;
 using Mortz.Core.Net;
 using Mortz.Core.Net.Messages;
+using Mortz.Core.Text;
 using Mortz.Net;
+using Mortz.Server.Hosting;
+using Mortz.Server.Lobby;
+using Mortz.Server.Session;
 using CryptoRandom = System.Security.Cryptography.RandomNumberGenerator;
 
 namespace Mortz.Server.Chat;
@@ -21,10 +25,13 @@ public partial class ServerChat : Node, IServerAdminAuthorizer
     private bool _subscribed;
 
     [Dependency]
-    public ServerBootConfig Config => this.DependOn<ServerBootConfig>();
+    private ServerBootConfig Config => this.DependOn<ServerBootConfig>();
 
     [Dependency]
-    public IServerSession Session => this.DependOn<IServerSession>();
+    private IServerSession Session => this.DependOn<IServerSession>();
+
+    [Dependency]
+    private IServerLobbySettings LobbySettings => this.DependOn<IServerLobbySettings>();
 
     [Dependency]
     private NetworkManager Network => this.DependOn<NetworkManager>();
@@ -51,6 +58,7 @@ public partial class ServerChat : Node, IServerAdminAuthorizer
         TypingMsg.Received += OnTyping;
         AdminAuthRequestMsg.Received += OnAdminAuthRequest;
         AdminProofMsg.Received += OnAdminProof;
+        LobbySettings.Changed += OnLobbySettingsChanged;
         _subscribed = true;
     }
 
@@ -65,6 +73,7 @@ public partial class ServerChat : Node, IServerAdminAuthorizer
         TypingMsg.Received -= OnTyping;
         AdminAuthRequestMsg.Received -= OnAdminAuthRequest;
         AdminProofMsg.Received -= OnAdminProof;
+        LobbySettings.Changed -= OnLobbySettingsChanged;
         _typing.Clear();
         _chatPolicy.Reset();
         _admin.Dispose();
@@ -102,7 +111,8 @@ public partial class ServerChat : Node, IServerAdminAuthorizer
         if (_chatPolicy.TryAccept(sender, Time.GetTicksMsec(), message.Text,
                 out string text, out ChatRejectReason reason))
         {
-            new ChatLineMsg(ChatLineKind.PLAYER, sender, Session.PlayerName(sender), text)
+            new ChatLineMsg(ChatLineKind.PLAYER, sender, Session.PlayerName(sender), text,
+                    ChatTextFormat.MARKDOWN)
                 .Broadcast();
             return;
         }
@@ -128,7 +138,7 @@ public partial class ServerChat : Node, IServerAdminAuthorizer
             return;
         int value = Random.Shared.Next(DiceRoll.MIN, DiceRoll.MAX + 1);
         new ChatLineMsg(ChatLineKind.ROLL, sender, Session.PlayerName(sender),
-            value.ToString()).Broadcast();
+            value.ToString(), ChatTextFormat.PLAIN).Broadcast();
     }
 
     private void OnAdminAuthRequest(long sender, AdminAuthRequestMsg message)
@@ -184,6 +194,26 @@ public partial class ServerChat : Node, IServerAdminAuthorizer
             GD.Print($"[server] player {sender} authenticated as admin");
     }
 
+    private void OnLobbySettingsChanged(LobbySettingsChange change)
+    {
+        string adminName = Session.PlayerName(change.AdminId);
+
+        foreach (LobbySettingDelta delta in change.Deltas)
+        {
+            RichText text = new RichText()
+                .Add(adminName, new Style().Color(RichTextColor.ACID))
+                .Add(" changed ")
+                .Add(delta.Name, new Style().Bold())
+                .Add($" {delta.Before}")
+                .Add(" > ")
+                .Add(delta.After);
+
+            new ChatLineMsg(ChatLineKind.SYSTEM, 0, "Server", text,
+                ChatTextFormat.RICH_TEXT).Broadcast();
+        }
+    }
+
     private static void SendPrivateSystem(long peerId, string text) =>
-        new ChatLineMsg(ChatLineKind.SYSTEM, 0, "Server", text).SendTo(peerId);
+        new ChatLineMsg(ChatLineKind.SYSTEM, 0, "Server", text, ChatTextFormat.PLAIN)
+            .SendTo(peerId);
 }

@@ -3,7 +3,7 @@ using Mortz.Core.Net;
 using Mortz.Core.Sim;
 using Mortz.Net;
 
-namespace Mortz.Server;
+namespace Mortz.Server.Hosting;
 
 /// <summary>Owns the listening transport. Loads ServerBootConfig here so the
 /// port is settled before any sibling binds a socket.</summary>

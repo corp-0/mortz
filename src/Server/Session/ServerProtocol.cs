@@ -7,9 +7,11 @@ using Mortz.Core.Sim;
 using Mortz.Core.Sim.Modifiers;
 using Mortz.Core.Terrain;
 using Mortz.Net;
+using Mortz.Server.Lobby;
+using Mortz.Server.Match;
 using Mortz.Shared;
 
-namespace Mortz.Server;
+namespace Mortz.Server.Session;
 
 /// <summary>Translates server session state into the wire protocol. Transfer
 /// ids, replication cadence, payload accounting and late-join synchronization

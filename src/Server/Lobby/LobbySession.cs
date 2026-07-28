@@ -1,6 +1,6 @@
 using Mortz.Core.Match;
 
-namespace Mortz.Server;
+namespace Mortz.Server.Lobby;
 
 internal readonly record struct LobbyPlayer(long PeerId, bool Ready, byte Team);
 

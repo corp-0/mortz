@@ -15,6 +15,9 @@ using Mortz.Extensions;
 using Mortz.Net;
 using Mortz.Server;
 using Mortz.Server.Chat;
+using Mortz.Server.Hosting;
+using Mortz.Server.Lobby;
+using Mortz.Server.Session;
 using Mortz.Shared;
 using Xunit;
 

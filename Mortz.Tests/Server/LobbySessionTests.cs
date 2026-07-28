@@ -1,4 +1,4 @@
-using Mortz.Server;
+using Mortz.Server.Lobby;
 using Xunit;
 
 namespace Mortz.Tests.Server;

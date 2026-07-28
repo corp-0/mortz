@@ -1,4 +1,4 @@
-namespace Mortz.Server;
+namespace Mortz.Server.Hosting;
 
 /// <summary>What a server tells browsers about itself.</summary>
 public interface IServerIdentity

@@ -1,7 +1,7 @@
 using Mortz.Core.Match;
 using Mortz.Core.Sim;
 using Mortz.Core.Terrain;
-using Mortz.Server;
+using Mortz.Server.Match;
 using Xunit;
 
 namespace Mortz.Tests.Server;

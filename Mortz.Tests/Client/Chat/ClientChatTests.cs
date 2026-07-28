@@ -83,7 +83,8 @@ public class ClientChatTests : NodeServiceTest
     public void RollLinesBecomeRollEntriesAndOutOfRangeValuesAreDropped()
     {
         byte[] payload = Capture(
-            () => new ChatLineMsg(ChatLineKind.ROLL, SENDER, "Alice", "73").Broadcast());
+            () => new ChatLineMsg(ChatLineKind.ROLL, SENDER, "Alice", "73",
+                ChatTextFormat.PLAIN).Broadcast());
         Assert.True(NetRegistry.Dispatch(NetRegistry.ID_ChatLineMsg, SENDER,
             payload, isServer: false));
         ChatEntry entry = Assert.Single(_chat.State.Entries);
@@ -92,7 +93,8 @@ public class ClientChatTests : NodeServiceTest
         Assert.Equal("Alice", entry.SenderName);
 
         byte[] bogus = Capture(
-            () => new ChatLineMsg(ChatLineKind.ROLL, SENDER, "Alice", "999").Broadcast());
+            () => new ChatLineMsg(ChatLineKind.ROLL, SENDER, "Alice", "999",
+                ChatTextFormat.PLAIN).Broadcast());
         Assert.True(NetRegistry.Dispatch(NetRegistry.ID_ChatLineMsg, SENDER,
             bogus, isServer: false));
         Assert.Single(_chat.State.Entries);
@@ -102,11 +104,50 @@ public class ClientChatTests : NodeServiceTest
     public void DropsUnknownServerLineKinds()
     {
         byte[] payload = Capture(
-            () => new ChatLineMsg(ChatLineKind.PLAYER, SENDER, "Alice", "hello").Broadcast());
+            () => new ChatLineMsg(ChatLineKind.PLAYER, SENDER, "Alice", "hello",
+                ChatTextFormat.MARKDOWN).Broadcast());
         payload[0] = byte.MaxValue;
 
         Assert.True(NetRegistry.Dispatch(NetRegistry.ID_ChatLineMsg, SENDER,
             payload, isServer: false));
+        Assert.Empty(_chat.State.Entries);
+    }
+
+    [Fact]
+    public void RichSystemLinesKeepTrustedServerFormatting()
+    {
+        byte[] payload = Capture(
+            () => new ChatLineMsg(ChatLineKind.SYSTEM, 0, "Server",
+                "[b]changed[/b]", ChatTextFormat.RICH_TEXT).Broadcast());
+
+        Assert.True(NetRegistry.Dispatch(NetRegistry.ID_ChatLineMsg, SENDER,
+            payload, isServer: false));
+
+        ChatEntry entry = Assert.Single(_chat.State.Entries);
+        Assert.Equal(ChatEntryKind.SYSTEM, entry.Kind);
+        Assert.Equal(ChatTextFormat.RICH_TEXT, entry.TextFormat);
+        Assert.Equal("[b]changed[/b]", entry.Render().ToString());
+    }
+
+    [Fact]
+    public void DropsUnsupportedKindAndFormatCombinations()
+    {
+        byte[] playerPlain = Capture(
+            () => new ChatLineMsg(ChatLineKind.PLAYER, SENDER, "Alice", "hello",
+                ChatTextFormat.PLAIN).Broadcast());
+        byte[] systemMarkdown = Capture(
+            () => new ChatLineMsg(ChatLineKind.SYSTEM, 0, "Server", "**hello**",
+                ChatTextFormat.MARKDOWN).Broadcast());
+        byte[] unknownFormat = Capture(
+            () => new ChatLineMsg(ChatLineKind.SYSTEM, 0, "Server", "hello",
+                (ChatTextFormat)byte.MaxValue).Broadcast());
+
+        Assert.True(NetRegistry.Dispatch(NetRegistry.ID_ChatLineMsg, SENDER,
+            playerPlain, isServer: false));
+        Assert.True(NetRegistry.Dispatch(NetRegistry.ID_ChatLineMsg, SENDER,
+            systemMarkdown, isServer: false));
+        Assert.True(NetRegistry.Dispatch(NetRegistry.ID_ChatLineMsg, SENDER,
+            unknownFormat, isServer: false));
         Assert.Empty(_chat.State.Entries);
     }
 

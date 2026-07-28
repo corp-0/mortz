@@ -78,22 +78,30 @@ public partial class ClientChat : Node
 
     private void OnChatLine(ChatLineMsg message)
     {
-        if (!Enum.IsDefined(message.Kind) || string.IsNullOrWhiteSpace(message.Text))
+        if (!Enum.IsDefined(message.Kind) ||
+            !Enum.IsDefined(message.TextFormat) ||
+            string.IsNullOrWhiteSpace(message.Text))
+        {
             return;
+        }
         switch (message.Kind)
         {
-            case ChatLineKind.PLAYER:
+            case ChatLineKind.PLAYER when message.TextFormat == ChatTextFormat.MARKDOWN:
                 State.Add(new ChatEntry(ChatEntryKind.PLAYER, message.SenderId,
-                    message.SenderName, message.Text, ChatTextFormat.MARKDOWN));
+                    message.SenderName, message.Text, message.TextFormat));
                 break;
-            case ChatLineKind.ROLL when DiceRoll.TryParse(message.Text, out _):
+            case ChatLineKind.SYSTEM
+                when message.TextFormat is ChatTextFormat.PLAIN or ChatTextFormat.RICH_TEXT:
+                State.Add(new ChatEntry(ChatEntryKind.SYSTEM, message.SenderId,
+                    message.SenderName, message.Text, message.TextFormat));
+                break;
+            case ChatLineKind.ROLL
+                when message.TextFormat == ChatTextFormat.PLAIN &&
+                     DiceRoll.TryParse(message.Text, out _):
                 State.Add(new ChatEntry(ChatEntryKind.ROLL, message.SenderId,
                     message.SenderName, message.Text));
                 break;
-            case ChatLineKind.ROLL:
-                break; // out-of-range roll value: drop like unknown kinds
             default:
-                State.AddSystem(message.Text);
                 break;
         }
     }

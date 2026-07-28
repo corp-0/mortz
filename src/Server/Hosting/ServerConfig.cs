@@ -4,7 +4,7 @@ using Tomlyn;
 using Tomlyn.Model;
 using Tomlyn.Syntax;
 
-namespace Mortz.Server;
+namespace Mortz.Server.Hosting;
 
 /// <summary>
 /// Dedicated-box settings, read from server.toml in the working directory so

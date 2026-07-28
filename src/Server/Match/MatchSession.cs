@@ -2,7 +2,7 @@ using Mortz.Core.Match;
 using Mortz.Core.Sim;
 using Mortz.Core.Terrain;
 
-namespace Mortz.Server;
+namespace Mortz.Server.Match;
 
 internal enum MatchStage
 {
