@@ -12,4 +12,6 @@ COPY --chown=mortz:mortz data_Mortz_linuxbsd_x86_64 ./data_Mortz_linuxbsd_x86_64
 COPY --chown=mortz:mortz content ./content
 USER mortz
 EXPOSE 7777/udp
+# Server-browser queries (game port + 1).
+EXPOSE 7778/udp
 ENTRYPOINT ["./MortzServer.x86_64", "--headless", "++"]

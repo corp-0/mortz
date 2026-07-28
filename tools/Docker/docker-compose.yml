@@ -7,6 +7,8 @@ services:
     restart: unless-stopped
     ports:
       - "7777:7777/udp"
+      # Server-browser queries; without it the server never shows up alive.
+      - "7778:7778/udp"
     labels:
       com.centurylinklabs.watchtower.enable: "true"
     # command: ["--ruleset", "/home/mortz/ruleset.json"]
