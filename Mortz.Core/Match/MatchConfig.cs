@@ -38,10 +38,9 @@ public sealed partial class MatchConfig
     [MatchRule]
     public bool FriendlyFire { get; set; } = true;
 
-    /// <summary>On, a suicide costs a kill (scores can go negative).</summary>
     [UiProperty("Suicide Penalty")]
     [MatchRule]
-    public bool SuicidePenalty { get; set; }
+    public SuicidePenalty SuicidePenalty { get; set; } = SuicidePenalty.NONE;
 
     [UiCategory("Running / Falling")]
     [UiProperty("Max Run Speed", min: 40, max: 2000, step: 10)]

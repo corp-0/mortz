@@ -234,7 +234,7 @@ public class NetMessageTests : IDisposable
         {
             new EliminationMsg(123456789012, 42,
                 EliminationFlags.FIRST_BLOOD | EliminationFlags.OWNED,
-                -2, 7, 5, 3).Broadcast();
+                -2, 7, 9, 4, 5, 3).Broadcast();
         }
         finally
         {
@@ -242,7 +242,7 @@ public class NetMessageTests : IDisposable
         }
         Assert.Equal(new EliminationMsg(123456789012, 42,
             EliminationFlags.FIRST_BLOOD | EliminationFlags.OWNED,
-            -2, 7, 5, 3), received);
+            -2, 7, 9, 4, 5, 3), received);
     }
 
     [Fact]

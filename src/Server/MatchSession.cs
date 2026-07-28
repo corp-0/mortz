@@ -179,7 +179,8 @@ internal sealed class MatchSession
     {
         if (Stage != MatchStage.PLAYING)
             return null;
-        Scoreboard.DeathResult? score = Scores.ScoreDeath(death.PeerId, death.KillerId);
+        Scoreboard.DeathResult? score = Scores.ScoreDeath(new Scoreboard.Death(
+            death.PeerId, death.KillerId, NearestEnemy(death)));
         if (score is not { } result)
             return null;
         ScoredElimination elimination = new(
@@ -194,6 +195,31 @@ internal sealed class MatchSession
         }
 
         return elimination;
+    }
+
+    /// <summary>The living enemy nearest the death spot, 0 when there is
+    /// none. Teammates never count.</summary>
+    private int NearestEnemy(ServerDeath death)
+    {
+        byte victimTeam = World.Players.TryGetValue(death.PeerId, out PlayerState victim)
+            ? victim.TeamId
+            : (byte)0;
+        int closest = 0;
+        float best = float.MaxValue;
+        foreach ((int peerId, PlayerState player) in World.Players)
+        {
+            if (peerId == death.PeerId || player.RespawnTicks > 0)
+                continue;
+            if (Config.Teams && victimTeam != 0 && player.TeamId == victimTeam)
+                continue;
+            float distance = (player.Position - death.Position).LengthSquared();
+            if (distance < best)
+            {
+                best = distance;
+                closest = peerId;
+            }
+        }
+        return closest;
     }
 
     /// <summary>Recomputed every frame so suicide penalties and leavers move

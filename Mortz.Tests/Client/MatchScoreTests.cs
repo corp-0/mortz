@@ -30,7 +30,7 @@ public class MatchScoreTests : NodeServiceTest
         MatchScore score = Host(new MatchScore());
         new ScoreSyncMsg([7, 8], [3, 1], [0, 2], 4, 2).SendTo(1);
 
-        new EliminationMsg(7, 8, EliminationFlags.NONE, 4, 3, 5, 2).Broadcast();
+        new EliminationMsg(7, 8, EliminationFlags.NONE, 4, 3, 0, 0, 5, 2).Broadcast();
 
         Assert.Equal(4, score.Kills(7));
         Assert.Equal(3, score.Deaths(8));
@@ -46,10 +46,24 @@ public class MatchScoreTests : NodeServiceTest
         new ScoreSyncMsg([8], [2], [0], 2, 0).SendTo(1);
 
         new EliminationMsg(0, 8, EliminationFlags.SUICIDE | EliminationFlags.FALL,
-            1, 1, 1, 0).Broadcast();
+            1, 1, 0, 0, 1, 0).Broadcast();
 
         Assert.Equal(1, score.Kills(8));
         Assert.Equal(1, score.Deaths(8));
         Assert.Equal(1, score.TeamKills(1));
+    }
+
+    [Fact]
+    public void RewardedSuicideKillLandsOnTheEnemy()
+    {
+        MatchScore score = Host(new MatchScore());
+        new ScoreSyncMsg([7, 8], [2, 0], [0, 0], 0, 0).SendTo(1);
+
+        new EliminationMsg(8, 8, EliminationFlags.SUICIDE,
+            0, 1, 7, 3, 0, 0).Broadcast();
+
+        Assert.Equal(3, score.Kills(7));
+        Assert.Equal(0, score.Kills(8));
+        Assert.Equal(1, score.Deaths(8));
     }
 }

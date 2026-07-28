@@ -33,5 +33,5 @@ public class EliminationTextTests
             Message(EliminationFlags.TEAM_KILL), Name));
 
     private static EliminationMsg Message(EliminationFlags flags, long killer = 1) =>
-        new(killer, 2, flags, 3, 4, 5, 6);
+        new(killer, 2, flags, 3, 4, 0, 0, 5, 6);
 }

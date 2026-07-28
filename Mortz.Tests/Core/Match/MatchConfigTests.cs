@@ -93,6 +93,7 @@ public class MatchConfigTests
                 int i => i + 1,
                 bool b => !b,
                 WinCondition => WinCondition.TEAM_KILLS,
+                SuicidePenalty => SuicidePenalty.REWARD_CLOSEST_ENEMY,
                 _ => throw new InvalidOperationException($"Unhandled rule type {property.PropertyType}"),
             };
             property.SetValue(expected, changed);
@@ -166,7 +167,7 @@ public class MatchConfigTests
             WinCondition = WinCondition.TEAM_KILLS,
             KillTarget = 5,
             FriendlyFire = false,
-            SuicidePenalty = true,
+            SuicidePenalty = SuicidePenalty.REWARD_CLOSEST_ENEMY,
         };
         MatchConfig got = MatchConfig.FromBytes(sent.ToBytes());
 
@@ -174,7 +175,7 @@ public class MatchConfigTests
         Assert.Equal(WinCondition.TEAM_KILLS, got.WinCondition);
         Assert.Equal(5, got.KillTarget);
         Assert.False(got.FriendlyFire);
-        Assert.True(got.SuicidePenalty);
+        Assert.Equal(SuicidePenalty.REWARD_CLOSEST_ENEMY, got.SuicidePenalty);
 
         MatchConfig hostile = new() { WinCondition = (WinCondition)99, KillTarget = 0 };
         got = MatchConfig.FromBytes(hostile.ToBytes());

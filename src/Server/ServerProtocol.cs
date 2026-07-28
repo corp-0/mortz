@@ -210,7 +210,8 @@ internal sealed class ServerProtocol
         bool suicide = score.Kind is Scoreboard.DeathKind.FALL or Scoreboard.DeathKind.SUICIDE;
         int killerKills = suicide ? score.Victim.Kills : score.Killer?.Kills ?? 0;
         new EliminationMsg(score.KillerId, score.VictimId, flags, killerKills,
-            score.Victim.Deaths, score.Team1Kills, score.Team2Kills).Broadcast();
+            score.Victim.Deaths, score.Reward?.PeerId ?? 0, score.Reward?.Kills ?? 0,
+            score.Team1Kills, score.Team2Kills).Broadcast();
 
         string teams = config.Teams ? $", teams {score.Team1Kills}-{score.Team2Kills}" : "";
         GD.Print(suicide

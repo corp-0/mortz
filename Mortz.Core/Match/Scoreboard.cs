@@ -22,6 +22,13 @@ public sealed class Scoreboard
     /// <summary>Id is a team id when ByTeam, a peer id otherwise.</summary>
     public readonly record struct MatchWinner(bool ByTeam, int Id);
 
+    /// <summary>A suicide's kill handed to an enemy; Kills is their tally after.</summary>
+    public readonly record struct KillReward(int PeerId, int Kills);
+
+    /// <summary>KillerId 0 is a death pit, the victim's own id a suicide.
+    /// NearestEnemyId is 0 when nobody qualifies.</summary>
+    public readonly record struct Death(int VictimId, int KillerId, int NearestEnemyId = 0);
+
     /// <summary>The complete result of applying one death; the single source of
     /// truth for attribution, nothing may re-classify the same death.</summary>
     public readonly record struct DeathResult(
@@ -30,6 +37,7 @@ public sealed class Scoreboard
         DeathKind Kind,
         Row? Killer,
         Row Victim,
+        KillReward? Reward,
         int Team1Kills,
         int Team2Kills,
         MatchWinner? Winner)
@@ -55,30 +63,29 @@ public sealed class Scoreboard
 
     /// <summary>
     /// Scores one death and returns the winner if it decided the match.
-    /// KillerId 0 (death pit) or the victim themselves is a suicide: a death,
-    /// never a kill, minus one kill when the penalty is on. A killer who
-    /// already left credits nobody. A teamkill awards nothing.
+    /// A death pit or the victim's own shell is a suicide: a death, never a
+    /// kill, then whatever SuicidePenalty says. A killer who already left
+    /// credits nobody. A teamkill awards nothing.
     /// </summary>
-    public DeathResult? ScoreDeath(int victimId, int killerId)
+    public DeathResult? ScoreDeath(Death death)
     {
-        if (!_rows.TryGetValue(victimId, out Row victim))
+        if (!_rows.TryGetValue(death.VictimId, out Row victim))
             return null;
-        _rows[victimId] = victim with { Deaths = victim.Deaths + 1 };
+        _rows[death.VictimId] = victim with { Deaths = victim.Deaths + 1 };
 
         DeathKind kind;
-        if (killerId == 0)
+        KillReward? reward = null;
+        if (death.KillerId == 0)
         {
             kind = DeathKind.FALL;
-            if (_config.SuicidePenalty)
-                AddKills(victimId, -1);
+            reward = SettleSuicide(death);
         }
-        else if (killerId == victimId)
+        else if (death.KillerId == death.VictimId)
         {
             kind = DeathKind.SUICIDE;
-            if (_config.SuicidePenalty)
-                AddKills(victimId, -1);
+            reward = SettleSuicide(death);
         }
-        else if (!_rows.TryGetValue(killerId, out Row killer))
+        else if (!_rows.TryGetValue(death.KillerId, out Row killer))
         {
             kind = DeathKind.UNCREDITED;
         }
@@ -89,18 +96,43 @@ public sealed class Scoreboard
         else
         {
             kind = DeathKind.KILL;
-            AddKills(killerId, +1);
+            AddKills(death.KillerId, +1);
         }
 
         return new DeathResult(
-            killerId,
-            victimId,
+            death.KillerId,
+            death.VictimId,
             kind,
-            _rows.TryGetValue(killerId, out Row killerAfter) ? killerAfter : null,
-            _rows[victimId],
+            _rows.TryGetValue(death.KillerId, out Row killerAfter) ? killerAfter : null,
+            _rows[death.VictimId],
+            reward,
             TeamKills(1),
             TeamKills(2),
             CheckWinner());
+    }
+
+    /// <summary>Non-null when the kill went to an enemy instead. At zero
+    /// KILL_NO_NEGATIVE skips the subtraction entirely, so the team total
+    /// stays the sum of its members.</summary>
+    private KillReward? SettleSuicide(Death death)
+    {
+        switch (_config.SuicidePenalty)
+        {
+            case SuicidePenalty.KILL:
+                AddKills(death.VictimId, -1);
+                return null;
+            case SuicidePenalty.KILL_NO_NEGATIVE:
+                if (_rows[death.VictimId].Kills > 0)
+                    AddKills(death.VictimId, -1);
+                return null;
+            case SuicidePenalty.REWARD_CLOSEST_ENEMY:
+                if (!_rows.ContainsKey(death.NearestEnemyId))
+                    return null;
+                AddKills(death.NearestEnemyId, +1);
+                return new KillReward(death.NearestEnemyId, _rows[death.NearestEnemyId].Kills);
+            default:
+                return null;
+        }
     }
 
     /// <summary>Suicide penalties subtract from the team total too: the team

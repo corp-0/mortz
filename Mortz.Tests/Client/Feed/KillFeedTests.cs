@@ -20,7 +20,7 @@ public class KillFeedTests : NodeServiceTest
         feed.LineAdded += lines.Add;
 
         new RosterMsg([1, 2], ["Alice", "Bob"], [0, 0], [0, 0], [0, 1]).Broadcast();
-        new EliminationMsg(1, 2, EliminationFlags.NONE, 1, 1, 0, 0).Broadcast();
+        new EliminationMsg(1, 2, EliminationFlags.NONE, 1, 1, 0, 0, 0, 0).Broadcast();
         new MatchEndMsg(false, 1).Broadcast();
         new MatchEndMsg(true, 2).Broadcast();
 

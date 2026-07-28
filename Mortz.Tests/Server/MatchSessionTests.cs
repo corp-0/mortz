@@ -10,7 +10,7 @@ public class MatchSessionTests
 {
     private static MatchSession Session(bool teams = false, int killTarget = 20,
         int victoryLapTicks = 10, IReadOnlyList<Vec2>? spawnPoints = null,
-        bool suicidePenalty = false)
+        SuicidePenalty suicidePenalty = SuicidePenalty.NONE)
     {
         TerrainMask terrain = new(128, 128, (_, _) => false, (_, _) => false);
         return new MatchSession(terrain, new MatchConfig
@@ -131,7 +131,7 @@ public class MatchSessionTests
     [Fact]
     public void MatchPointEntersAtOneRemaining_LeavesWhenTheLeadDrops_AnnouncesOnce()
     {
-        MatchSession match = Session(killTarget: 2, suicidePenalty: true);
+        MatchSession match = Session(killTarget: 2, suicidePenalty: SuicidePenalty.KILL);
         match.AddPlayer(1);
         match.AddPlayer(2);
 
@@ -147,6 +147,41 @@ public class MatchSessionTests
         // The penalty wiped the lead: nobody has scored, so there is no leader.
         Assert.Equal(new MatchPointChange(false, 2, LeaderId: 0, LeaderIsTeam: false),
             leave.MatchPoint);
+    }
+
+    [Fact]
+    public void RewardedSuicide_GrantsTheKillToTheNearestLivingEnemy()
+    {
+        MatchSession match = Session(
+            spawnPoints: [new Vec2(10, 64), new Vec2(40, 64), new Vec2(120, 64)],
+            suicidePenalty: SuicidePenalty.REWARD_CLOSEST_ENEMY);
+        match.AddPlayer(1);
+        match.AddPlayer(2);
+        match.AddPlayer(3);
+
+        ScoredElimination scored =
+            match.ScoreDeath(new ServerDeath(1, new Vec2(10, 64), 1, false))!.Value;
+
+        Assert.Equal(new Scoreboard.KillReward(2, 1), scored.Score.Reward);
+        Assert.Equal(0, match.Scores.Rows[1].Kills);
+        Assert.Equal(1, match.Scores.Rows[2].Kills);
+    }
+
+    [Fact]
+    public void RewardedSuicide_NeverPaysATeammate()
+    {
+        MatchSession match = Session(teams: true,
+            spawnPoints: [new Vec2(10, 64), new Vec2(40, 64), new Vec2(120, 64)],
+            suicidePenalty: SuicidePenalty.REWARD_CLOSEST_ENEMY);
+        match.AddPlayer(1, 1);
+        match.AddPlayer(2, 1); // closest, but on the victim's team
+        match.AddPlayer(3, 2);
+
+        ScoredElimination scored =
+            match.ScoreDeath(new ServerDeath(1, new Vec2(10, 64), 0, false))!.Value;
+
+        Assert.Equal(new Scoreboard.KillReward(3, 1), scored.Score.Reward);
+        Assert.Equal(0, match.Scores.Rows[2].Kills);
     }
 
     [Fact]

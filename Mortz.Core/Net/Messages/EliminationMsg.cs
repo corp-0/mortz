@@ -13,7 +13,8 @@ public enum EliminationFlags : byte
 
 /// <summary>One scored death with the authoritative tallies after it; the
 /// stream doubles as the kill feed. On a suicide KillerKills carries the
-/// victim's own (possibly penalized) kill count.</summary>
+/// victim's own (possibly penalized) kill count. RewardedId is the enemy a
+/// suicide handed the kill to, 0 when nobody got it.</summary>
 [NetMessage(NetChannel.RELIABLE, NetDirection.SERVER_TO_CLIENT)]
 public readonly partial record struct EliminationMsg(
     long KillerId,
@@ -21,5 +22,7 @@ public readonly partial record struct EliminationMsg(
     EliminationFlags Flags,
     int KillerKills,
     int VictimDeaths,
+    long RewardedId,
+    int RewardedKills,
     int Team1Kills,
     int Team2Kills);

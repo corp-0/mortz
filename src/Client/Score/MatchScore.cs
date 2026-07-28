@@ -58,6 +58,8 @@ public partial class MatchScore : Node
             _kills[message.VictimId] = message.KillerKills;
         else if (message.KillerId != 0)
             _kills[message.KillerId] = message.KillerKills;
+        if (message.RewardedId != 0)
+            _kills[message.RewardedId] = message.RewardedKills;
         _team1Kills = message.Team1Kills;
         _team2Kills = message.Team2Kills;
         Changed?.Invoke();
