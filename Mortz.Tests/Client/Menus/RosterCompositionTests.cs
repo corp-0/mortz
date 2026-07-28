@@ -104,7 +104,7 @@ public class RosterCompositionTests : NodeServiceTest
     {
         MatchConfig config = new() { Teams = teams, KillTarget = killTarget };
         return new LobbySettingsMsg("castlewars", "hash", ["castlewars"], ["Castle Wars"],
-            config.ToBytes());
+            [], [], "", config.ToBytes());
     }
 
     private static void AssertSceneType<T>(string name) where T : Node

@@ -27,7 +27,7 @@ public sealed class ConvertLxlTests : IDisposable
         Assert.True(File.Exists(Path.Combine(mapDirectory, "map.toml")));
         Assert.False(File.Exists(Path.Combine(mapDirectory, "map.json")));
         ContentCatalog catalog = Assert.IsType<ContentCatalog>(ContentCatalog.Load(_root).Catalog);
-        Assert.True(catalog.TryGetMap("converted", out ResolvedMapDefinition? resolved));
+        Assert.True(catalog.TryGetMap("converted", out ResolvedContent<MapManifest>? resolved));
         Assert.Equal("Fixture", resolved!.Winner.Manifest.Name);
         Assert.Equal(2, resolved.Winner.Manifest.SuggestedPlayers);
         Assert.Equal(4, Assert.IsType<MapSourceSnapshot>(

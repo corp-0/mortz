@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 using JetBrains.Annotations;
+using Mortz.Core.Match;
 using Tomlyn;
 using Tomlyn.Model;
 using Tomlyn.Syntax;
@@ -34,6 +35,17 @@ public sealed record MapManifest(
     }
 }
 
+/// <summary>Rules is a default MatchConfig with the [rules] overlay applied
+/// and clamped, so a mode's identity is exactly its config bytes.</summary>
+public sealed record GameModeManifest(
+    int FormatVersion,
+    string Name,
+    string Description,
+    MatchConfig Rules)
+{
+    public const int CURRENT_FORMAT_VERSION = 1;
+}
+
 public static partial class ContentManifestReader
 {
     private static readonly HashSet<string> _packKeys =
@@ -46,11 +58,27 @@ public static partial class ContentManifestReader
         "format_version", "name", "suggested_players", "spawn_points",
     ];
 
+    private static readonly HashSet<string> _modeKeys =
+    [
+        "format_version", "name", "description", "rules",
+    ];
+
+    private static readonly HashSet<string> _rulesetKeys =
+    [
+        "rules",
+    ];
+
     public static ContentReadResult<ContentPackManifest> ReadPackFile(string path) =>
         ReadFile(path, ReadPack);
 
     public static ContentReadResult<MapManifest> ReadMapFile(string path) =>
         ReadFile(path, ReadMap);
+
+    public static ContentReadResult<GameModeManifest> ReadModeFile(string path) =>
+        ReadFile(path, ReadMode);
+
+    public static ContentReadResult<MatchConfig> ReadRulesetFile(string path) =>
+        ReadFile(path, ReadRuleset);
 
     public static ContentReadResult<ContentPackManifest> ReadPack(string text, string source = "content_pack.toml")
     {
@@ -98,6 +126,71 @@ public static partial class ContentManifestReader
             ? null
             : new MapManifest(formatVersion.Value, name, suggestedPlayers.Value, spawnPoints);
         return new ContentReadResult<MapManifest>(manifest, diagnostics);
+    }
+
+    public static ContentReadResult<GameModeManifest> ReadMode(string text, string source = "mode.toml")
+    {
+        List<ContentDiagnostic> diagnostics = [];
+        TomlTable? table = Parse(text, source, diagnostics);
+        if (table == null)
+            return new ContentReadResult<GameModeManifest>(null, diagnostics);
+
+        WarnUnknownKeys(table, _modeKeys, source, diagnostics);
+        int? formatVersion = RequiredInt(table, "format_version", source, diagnostics);
+        string? name = RequiredString(table, "name", source, diagnostics);
+        string description = OptionalString(table, "description", source, diagnostics) ?? "";
+        MatchConfig rules = ReadRulesTable(table, source, diagnostics);
+
+        if (formatVersion is not null && formatVersion != GameModeManifest.CURRENT_FORMAT_VERSION)
+            Error(diagnostics, source, $"unsupported format_version {formatVersion}; expected {GameModeManifest.CURRENT_FORMAT_VERSION}");
+
+        GameModeManifest? manifest = diagnostics.Any(IsError) || formatVersion == null || name == null
+            ? null
+            : new GameModeManifest(formatVersion.Value, name, description, rules);
+        return new ContentReadResult<GameModeManifest>(manifest, diagnostics);
+    }
+
+    /// <summary>A --ruleset file: just the [rules] table, same shape as a mode's.</summary>
+    public static ContentReadResult<MatchConfig> ReadRuleset(string text, string source = "ruleset.toml")
+    {
+        List<ContentDiagnostic> diagnostics = [];
+        TomlTable? table = Parse(text, source, diagnostics);
+        if (table == null)
+            return new ContentReadResult<MatchConfig>(null, diagnostics);
+
+        WarnUnknownKeys(table, _rulesetKeys, source, diagnostics);
+        MatchConfig rules = ReadRulesTable(table, source, diagnostics);
+        return new ContentReadResult<MatchConfig>(diagnostics.Any(IsError) ? null : rules, diagnostics);
+    }
+
+    /// <summary>A missing [rules] table is legal and means all defaults.</summary>
+    private static MatchConfig ReadRulesTable(TomlTable table, string source,
+        List<ContentDiagnostic> diagnostics)
+    {
+        MatchConfig config = new();
+        if (!table.TryGetValue("rules", out object value))
+            return config;
+        if (value is not TomlTable rules)
+        {
+            Error(diagnostics, source, "'rules' must be a table");
+            return config;
+        }
+
+        foreach (string key in rules.Keys)
+        {
+            switch (config.TryApplyKey(key, rules[key], out string error))
+            {
+                case ConfigKeyResult.UNKNOWN_KEY:
+                    diagnostics.Add(new ContentDiagnostic(ContentDiagnosticSeverity.WARNING, source,
+                        $"unknown key 'rules.{key}'"));
+                    break;
+                case ConfigKeyResult.INVALID_VALUE:
+                    Error(diagnostics, source, $"rules.{key}: {error}");
+                    break;
+            }
+        }
+        config.Clamp();
+        return config;
     }
 
     public static string WriteMap(MapManifest manifest)

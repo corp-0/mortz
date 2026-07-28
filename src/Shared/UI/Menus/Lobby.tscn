@@ -58,7 +58,6 @@ size_flags_horizontal = 3
 theme_override_constants/separation = 14
 
 [node name="LobbyCard" type="PanelContainer" parent="Content/Main/Sidebar" unique_id=1101206318]
-custom_minimum_size = Vector2(0, 360)
 layout_mode = 2
 size_flags_vertical = 3
 size_flags_stretch_ratio = 1.1
@@ -86,7 +85,7 @@ theme_override_colors/font_color = Color(0.45, 0.51, 0.6, 1)
 text = "The match starts when everyone is ready"
 
 [node name="Roster" type="Control" parent="Content/Main/Sidebar/LobbyCard/Margin/Column" unique_id=1598982680]
-custom_minimum_size = Vector2(0, 220)
+custom_minimum_size = Vector2(0, 140)
 layout_mode = 2
 size_flags_vertical = 3
 script = ExtResource("4_roster")
@@ -99,7 +98,7 @@ layout_mode = 2
 text = "READY UP"
 
 [node name="ChatPanel" parent="Content/Main/Sidebar" unique_id=565259309 instance=ExtResource("2_chat")]
-custom_minimum_size = Vector2(0, 300)
+custom_minimum_size = Vector2(0, 180)
 layout_mode = 2
 size_flags_vertical = 3
 

@@ -73,10 +73,9 @@ public partial class ServerQueryResponder : Node
 
     private ServerInfo Describe()
     {
-        MatchConfig rules = LobbySettings.Rules;
         return new ServerInfo(
             Identity.Name,
-            ModeLabel.For(rules),
+            LobbySettings.ModeName,
             LobbySettings.Map.DisplayName,
             Session.PlayerCount,
             NetConfig.MAX_PLAYERS,

@@ -20,6 +20,10 @@ public interface IServerLobbySettings
 
     MapPackage Map { get; }
     MatchConfig Rules { get; }
+
+    /// <summary>Name of the mode the rules currently match, or "Custom".</summary>
+    string ModeName { get; }
+
     void SendTo(long peerId);
     void Broadcast();
 }
@@ -33,7 +37,12 @@ public partial class ServerLobbySettings : Node, IServerLobbySettings
 {
     private sealed record MapOption(string Id, string Name);
 
+    /// <summary>PresetBytes matching Rules.ToBytes() is what puts the lobby
+    /// in this mode.</summary>
+    private sealed record ModeOption(string Id, string Name, byte[] PresetBytes);
+
     private readonly Dictionary<string, MapOption> _maps = new(StringComparer.Ordinal);
+    private readonly List<ModeOption> _modes = [];
     private bool _subscribed;
 
     [Dependency]
@@ -50,6 +59,15 @@ public partial class ServerLobbySettings : Node, IServerLobbySettings
     public MapPackage Map { get; private set; } = null!;
     public MatchConfig Rules { get; private set; } = null!;
 
+    public string ModeName
+    {
+        get
+        {
+            ModeOption? current = CurrentMode();
+            return current?.Name ?? "Custom";
+        }
+    }
+
     public override void _Notification(int what) => this.Notify(what);
 
     public void OnResolved()
@@ -60,6 +78,7 @@ public partial class ServerLobbySettings : Node, IServerLobbySettings
         LobbySettingsRequestMsg.Received += OnSettingsRequest;
         LobbyRulesUpdateMsg.Received += OnRulesUpdate;
         LobbyMapUpdateMsg.Received += OnMapUpdate;
+        LobbyModeUpdateMsg.Received += OnModeUpdate;
         _subscribed = true;
     }
 
@@ -70,6 +89,7 @@ public partial class ServerLobbySettings : Node, IServerLobbySettings
         LobbySettingsRequestMsg.Received -= OnSettingsRequest;
         LobbyRulesUpdateMsg.Received -= OnRulesUpdate;
         LobbyMapUpdateMsg.Received -= OnMapUpdate;
+        LobbyModeUpdateMsg.Received -= OnModeUpdate;
         _subscribed = false;
     }
 
@@ -85,25 +105,29 @@ public partial class ServerLobbySettings : Node, IServerLobbySettings
 
     private void LoadCatalog()
     {
-        ContentCatalogResult result = ContentCatalog.Load(Config.ContentRootPath);
-        foreach (ContentDiagnostic diagnostic in result.Diagnostics)
+        ContentCatalog catalog = Config.Content.Catalog;
+        foreach ((string id, ResolvedContent<MapManifest> resolved) in catalog.Maps
+                     .OrderBy(pair => pair.Value.Winner.Manifest.Name, StringComparer.Ordinal)
+                     .ThenBy(pair => pair.Key, StringComparer.Ordinal))
         {
-            if (diagnostic.Severity == ContentDiagnosticSeverity.ERROR)
-                GD.PrintErr($"[content] {diagnostic}");
-            else
-                GD.PushWarning($"[content] {diagnostic}");
+            _maps[id] = new MapOption(id, resolved.Winner.Manifest.Name);
         }
-        if (result.Catalog != null)
+        foreach ((string id, ResolvedContent<GameModeManifest> resolved) in catalog.Modes
+                     .OrderBy(pair => pair.Value.Winner.Manifest.Name, StringComparer.Ordinal)
+                     .ThenBy(pair => pair.Key, StringComparer.Ordinal)
+                     .Take(NetConfig.MAX_LOBBY_MODES))
         {
-            foreach ((string id, ResolvedMapDefinition resolved) in result.Catalog.Maps
-                         .OrderBy(pair => pair.Value.Winner.Manifest.Name, StringComparer.Ordinal)
-                         .ThenBy(pair => pair.Key, StringComparer.Ordinal))
-            {
-                _maps[id] = new MapOption(id, resolved.Winner.Manifest.Name);
-            }
+            GameModeManifest manifest = resolved.Winner.Manifest;
+            _modes.Add(new ModeOption(id, manifest.Name, manifest.Rules.ToBytes()));
         }
         if (!_maps.ContainsKey(Map.MapId))
             _maps[Map.MapId] = new MapOption(Map.MapId, Map.DisplayName);
+    }
+
+    private ModeOption? CurrentMode()
+    {
+        byte[] rules = Rules.ToBytes();
+        return _modes.Find(mode => rules.AsSpan().SequenceEqual(mode.PresetBytes));
     }
 
     private void OnRulesUpdate(long sender, LobbyRulesUpdateMsg message)
@@ -130,6 +154,26 @@ public partial class ServerLobbySettings : Node, IServerLobbySettings
         Broadcast();
     }
 
+    private void OnModeUpdate(long sender, LobbyModeUpdateMsg message)
+    {
+        byte[] payload = Encoding.UTF8.GetBytes(message.ModeId);
+        ModeOption? mode = _modes.Find(option =>
+            StringComparer.Ordinal.Equals(option.Id, message.ModeId));
+        if (!CanMutate(sender) ||
+            !Admin.TryAuthorize(sender, message.Sequence, AdminAction.SET_LOBBY_MODE,
+                payload, message.Tag) ||
+            mode == null)
+        {
+            SendTo(sender);
+            return;
+        }
+
+        Rules = MatchConfig.FromBytes(mode.PresetBytes);
+        GD.Print($"[server] lobby mode set to '{mode.Id}' by admin {sender}");
+        RulesChanged?.Invoke();
+        Broadcast();
+    }
+
     private void OnMapUpdate(long sender, LobbyMapUpdateMsg message)
     {
         byte[] payload = Encoding.UTF8.GetBytes(message.MapId);
@@ -142,7 +186,7 @@ public partial class ServerLobbySettings : Node, IServerLobbySettings
             return;
         }
 
-        MapPackage? selected = MapPackage.Load(message.MapId, Config.ContentRootPath);
+        MapPackage? selected = Config.Content.LoadMap(message.MapId);
         if (selected == null)
         {
             SendTo(sender);
@@ -177,6 +221,9 @@ public partial class ServerLobbySettings : Node, IServerLobbySettings
             Map.Hash,
             options.Select(option => option.Id).ToArray(),
             options.Select(option => option.Name).ToArray(),
+            _modes.Select(mode => mode.Id).ToArray(),
+            _modes.Select(mode => mode.Name).ToArray(),
+            CurrentMode()?.Id ?? "",
             Rules.ToBytes());
     }
 }

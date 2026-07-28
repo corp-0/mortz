@@ -5,7 +5,7 @@ public static class NetConfig
 {
     /// <summary>Bumped on semantic wire changes. Message shape changes are caught
     /// automatically by NetRegistry.SCHEMA_HASH; both ride in Hello.</summary>
-    public const int PROTOCOL_VERSION = 32;
+    public const int PROTOCOL_VERSION = 33;
 
     public const int DEFAULT_PORT = 7777;
     public const int MAX_PLAYERS = 8;
@@ -17,6 +17,7 @@ public static class NetConfig
     public const int MAX_CHAT_HISTORY = 100;
     public const int MAX_CHAT_COMMAND_ARGS = 16;
     public const int MAX_LOBBY_MAPS = 256;
+    public const int MAX_LOBBY_MODES = 64;
 
     /// <summary>Hard protocol limits applied before generated payloads allocate.</summary>
     // Large terrain state is chunked separately; ordinary envelopes stay small.

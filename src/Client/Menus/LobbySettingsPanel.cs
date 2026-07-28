@@ -20,13 +20,14 @@ namespace Mortz.Client.Menus;
 [Meta(typeof(IAutoNode))]
 public partial class LobbySettingsPanel : PanelContainer
 {
-    [Export] private Label _adminStatus = null!;
+    [Export] private OptionButton _modePicker = null!;
     [Export] private OptionButton _mapPicker = null!;
     [Export] private TextureRect _mapPreview = null!;
     [Export] private Label _mapStatus = null!;
     [Export] private UiPropertySheet _sheet = null!;
 
     private readonly List<string> _mapIds = [];
+    private readonly List<string> _modeIds = [];
     private MatchConfig _config = new();
     private bool _applyingState;
     // Snapshot of Setup.HasServerState; UpdateEditing also runs before the
@@ -45,6 +46,7 @@ public partial class LobbySettingsPanel : PanelContainer
     public void OnReady()
     {
         _mapPicker.ItemSelected += OnMapSelected;
+        _modePicker.ItemSelected += OnModeSelected;
         _sheet.Build(MatchConfigUiMetadata.Categories, _config, OnRuleChanged);
         UpdateEditing(isAdmin: false);
     }
@@ -60,6 +62,7 @@ public partial class LobbySettingsPanel : PanelContainer
     public void OnExitTree()
     {
         _mapPicker.ItemSelected -= OnMapSelected;
+        _modePicker.ItemSelected -= OnModeSelected;
         if (!_subscribed)
             return;
         Setup.SettingsChanged -= OnSetupChanged;
@@ -83,18 +86,19 @@ public partial class LobbySettingsPanel : PanelContainer
 
         _config = Setup.CopyRules();
         ApplyMapOptions(Setup.MapId, Setup.MapOptions);
+        ApplyModeOptions(Setup.ModeId, Setup.ModeOptions);
         _sheet.UpdateModel(_config);
         UpdateEditing(Admin.IsAdmin);
         UpdatePreview(Setup.MapId, Setup.MapHash);
     }
 
-    private void ApplyMapOptions(string selectedMap, IReadOnlyList<MapOption> options)
+    private void ApplyMapOptions(string selectedMap, IReadOnlyList<ContentOption> options)
     {
         _applyingState = true;
         _mapPicker.Clear();
         _mapIds.Clear();
         int selected = -1;
-        foreach (MapOption option in options)
+        foreach (ContentOption option in options)
         {
             if (string.IsNullOrWhiteSpace(option.Id))
                 continue;
@@ -106,6 +110,46 @@ public partial class LobbySettingsPanel : PanelContainer
         if (selected >= 0)
             _mapPicker.Select(selected);
         _applyingState = false;
+    }
+
+    /// <summary>Adds a trailing "Custom" entry, picked when the rules match no mode.</summary>
+    private void ApplyModeOptions(string selectedMode, IReadOnlyList<ContentOption> options)
+    {
+        _applyingState = true;
+        _modePicker.Clear();
+        _modeIds.Clear();
+        int selected = -1;
+        foreach (ContentOption option in options)
+        {
+            if (string.IsNullOrWhiteSpace(option.Id))
+                continue;
+            if (option.Id == selectedMode)
+                selected = _modeIds.Count;
+            _modeIds.Add(option.Id);
+            _modePicker.AddItem(string.IsNullOrWhiteSpace(option.Name) ? option.Id : option.Name);
+        }
+        _modePicker.AddItem("Custom");
+        _modePicker.Select(selected >= 0 ? selected : _modeIds.Count);
+        _applyingState = false;
+    }
+
+    private void OnModeSelected(long index)
+    {
+        if (_applyingState || !Admin.IsAdmin || index < 0)
+            return;
+        if (index >= _modeIds.Count)
+        {
+            // Nothing to apply for "Custom", snap back to the real state.
+            ApplyModeOptions(Setup.ModeId, Setup.ModeOptions);
+            return;
+        }
+        string modeId = _modeIds[(int)index];
+        byte[] payload = Encoding.UTF8.GetBytes(modeId);
+        if (Admin.TrySignAdminAction(AdminAction.SET_LOBBY_MODE, payload,
+                out ulong sequence, out byte[] tag))
+        {
+            new LobbyModeUpdateMsg(modeId, sequence, tag).SendToServer();
+        }
     }
 
     private void OnRuleChanged()
@@ -139,7 +183,7 @@ public partial class LobbySettingsPanel : PanelContainer
             return;
         _previewMapId = mapId;
         _previewMapHash = mapHash;
-        MapPackage? map = MapPackage.Load(mapId);
+        MapPackage? map = GameContent.Load()?.LoadMap(mapId);
         if (map == null)
         {
             _mapPreview.Texture = null;
@@ -161,15 +205,7 @@ public partial class LobbySettingsPanel : PanelContainer
     private void UpdateEditing(bool isAdmin)
     {
         bool canEdit = isAdmin && _hasServerState;
-        if (!_hasServerState)
-            _adminStatus.Text = "Loading server setup...";
-        else if (isAdmin)
-            _adminStatus.Text = "Admin controls enabled";
-        else
-            _adminStatus.Text = "Read-only, use /admin <password> in chat to edit";
-        _adminStatus.Modulate = canEdit
-            ? new Color("86efac")
-            : new Color("94a3b8");
+        _modePicker.Disabled = !canEdit;
         _mapPicker.Disabled = !canEdit;
         _sheet.SetEditable(canEdit);
     }

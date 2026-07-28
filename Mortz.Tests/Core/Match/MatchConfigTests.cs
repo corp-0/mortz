@@ -183,49 +183,36 @@ public class MatchConfigTests
     }
 
     [Fact]
-    public void FromJson_ParsesWinConditionByName()
+    public void TryApplyKey_SetsTypedValuesFromRawTomlTypes()
     {
-        MatchConfig got = MatchConfig.FromJson("""
-            {
-                "teams": true,
-                "winCondition": "team_kills",
-                "killTarget": 30,
-            }
-            """);
+        MatchConfig config = new();
 
-        Assert.True(got.Teams);
-        Assert.Equal(WinCondition.TEAM_KILLS, got.WinCondition);
-        Assert.Equal(30, got.KillTarget);
-        Assert.True(got.FriendlyFire); // untouched fields keep defaults
-    }
+        Assert.Equal(ConfigKeyResult.APPLIED, config.TryApplyKey("teams", true, out _));
+        Assert.Equal(ConfigKeyResult.APPLIED, config.TryApplyKey("win_condition", "team_kills", out _));
+        Assert.Equal(ConfigKeyResult.APPLIED, config.TryApplyKey("kill_target", 30L, out _));
+        Assert.Equal(ConfigKeyResult.APPLIED, config.TryApplyKey("gravity", 600L, out _));
+        Assert.Equal(ConfigKeyResult.APPLIED, config.TryApplyKey("spawn_immunity", 2.5, out _));
 
-    [Fact]
-    public void FromJson_PartialPreset_OverridesOnlyNamedFields()
-    {
-        MatchConfig got = MatchConfig.FromJson("""
-            {
-                // low-grav rope match
-                "gravity": 600,
-                "RopePullAccel": 4000,
-            }
-            """);
-
-        Assert.Equal(600, got.Gravity);
-        Assert.Equal(4000, got.RopePullAccel);
-        Assert.Equal(SimConfig.DASH_SPEED, got.DashSpeed);
-    }
-
-    [Fact]
-    public void FromJson_AllowsRulesetsToTuneSpawnImmunity()
-    {
-        MatchConfig config = MatchConfig.FromJson("""
-            {
-                "spawnImmunity": 2.5,
-            }
-            """);
-
+        Assert.True(config.Teams);
+        Assert.Equal(WinCondition.TEAM_KILLS, config.WinCondition);
+        Assert.Equal(30, config.KillTarget);
+        Assert.Equal(600, config.Gravity); // integers feed float rules
         Assert.Equal(2.5f, config.SpawnImmunity);
         Assert.Equal(150, config.SpawnImmunityTicks);
+        Assert.True(config.FriendlyFire); // untouched fields keep defaults
+    }
+
+    [Fact]
+    public void TryApplyKey_RejectsUnknownKeysAndWrongTypes()
+    {
+        MatchConfig config = new();
+
+        Assert.Equal(ConfigKeyResult.UNKNOWN_KEY, config.TryApplyKey("lives", 3L, out string error));
+        Assert.Contains("lives", error);
+        Assert.Equal(ConfigKeyResult.INVALID_VALUE, config.TryApplyKey("teams", "yes", out _));
+        Assert.Equal(ConfigKeyResult.INVALID_VALUE, config.TryApplyKey("win_condition", "most_flags", out error));
+        Assert.Contains("player_kills", error); // the error lists the legal values
+        Assert.Equal(ConfigKeyResult.INVALID_VALUE, config.TryApplyKey("kill_target", 1.5, out _));
     }
 
     [Fact]

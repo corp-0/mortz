@@ -19,7 +19,8 @@ internal sealed class ClientMatchBootstrap
         out string error)
     {
         bootstrap = null;
-        MapPackage? map = MapPackage.Load(welcome.MapId);
+        // Fresh catalog per join: a map installed since app start must count.
+        MapPackage? map = GameContent.Load()?.LoadMap(welcome.MapId);
         if (map == null || map.Hash != welcome.MapHash)
         {
             error = $"Map mismatch: {welcome.MapId}";

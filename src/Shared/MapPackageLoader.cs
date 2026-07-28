@@ -19,19 +19,10 @@ public sealed record MapPackageLoadResult(
 /// client, server and tools each want to say it their own way.</summary>
 public static class MapPackageLoader
 {
-    public static MapPackageLoadResult Load(string mapId, string contentRoot)
+    public static MapPackageLoadResult Load(ContentDefinition<MapManifest> definition)
     {
         List<ContentDiagnostic> diagnostics = [];
-        ContentCatalogResult catalogResult = ContentCatalog.Load(contentRoot);
-        diagnostics.AddRange(catalogResult.Diagnostics);
-        if (catalogResult.Catalog == null ||
-            !catalogResult.Catalog.TryGetMap(mapId, out ResolvedMapDefinition? resolved))
-        {
-            Error(diagnostics, contentRoot, $"logical map '{mapId}' was not found");
-            return new MapPackageLoadResult(null, diagnostics);
-        }
-
-        ContentReadResult<MapSourceSnapshot> sourceResult = MapSourceSnapshot.Read(resolved!.Winner);
+        ContentReadResult<MapSourceSnapshot> sourceResult = MapSourceSnapshot.Read(definition);
         diagnostics.AddRange(sourceResult.Diagnostics);
         if (sourceResult.Value is not { } source)
             return new MapPackageLoadResult(null, diagnostics);
@@ -64,7 +55,7 @@ public static class MapPackageLoader
 
         return new MapPackageLoadResult(new MapPackage
         {
-            MapId = mapId,
+            MapId = definition.Id,
             DisplayName = source.Manifest.Name,
             SuggestedPlayers = source.Manifest.SuggestedPlayers,
             Hash = source.CompatibilityHash,

@@ -128,7 +128,8 @@ public class NetMessageTests : IDisposable
         try
         {
             new LobbySettingsMsg("castlewars", "hash", ["arena", "castlewars"],
-                ["Arena", "Castle Wars"], config).Broadcast();
+                ["Arena", "Castle Wars"], ["deathmatch"], ["Deathmatch"], "deathmatch",
+                config).Broadcast();
         }
         finally
         {

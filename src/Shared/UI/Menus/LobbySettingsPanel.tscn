@@ -3,16 +3,18 @@
 [ext_resource type="Script" uid="uid://ccv87mfb0uwoq" path="res://src/Client/Menus/LobbySettingsPanel.cs" id="1"]
 [ext_resource type="PackedScene" uid="uid://pbne52ymu80j" path="res://src/Shared/UI/Controls/UiPropertySheet.tscn" id="2"]
 
-[node name="LobbySettingsPanel" type="PanelContainer" unique_id=289524066 node_paths=PackedStringArray("_adminStatus", "_mapPicker", "_mapPreview", "_mapStatus", "_sheet")]
+[node name="LobbySettingsPanel" type="PanelContainer" unique_id=289524066 node_paths=PackedStringArray("_modePicker", "_mapPicker", "_mapPreview", "_mapStatus", "_sheet")]
 custom_minimum_size = Vector2(440, 0)
+offset_right = 440.0
+offset_bottom = 720.0
 size_flags_horizontal = 0
 size_flags_vertical = 3
 script = ExtResource("1")
-_adminStatus = NodePath("Margin/Column/Header/MapInfo/AdminStatus")
+_modePicker = NodePath("Margin/Column/Header/MapInfo/ModePicker")
 _mapPicker = NodePath("Margin/Column/Header/MapInfo/MapPicker")
 _mapPreview = NodePath("Margin/Column/Header/PreviewFrame/MapPreview")
 _mapStatus = NodePath("Margin/Column/Header/MapInfo/MapStatus")
-_sheet = NodePath("Margin/Column/RulesScroll/Rules")
+_sheet = NodePath("Margin/Column/RulesScroll/RulesColumn/Rules")
 
 [node name="Margin" type="MarginContainer" parent="." unique_id=531731578]
 layout_mode = 2
@@ -27,6 +29,8 @@ theme_override_constants/separation = 12
 
 [node name="Header" type="VBoxContainer" parent="Margin/Column" unique_id=1108635475]
 layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.5
 theme_override_constants/separation = 10
 
 [node name="MapInfo" type="VBoxContainer" parent="Margin/Column/Header" unique_id=1208982596]
@@ -40,9 +44,15 @@ theme_override_colors/font_color = Color(0.886, 0.925, 0.973, 1)
 theme_override_font_sizes/font_size = 27
 text = "MATCH SETUP"
 
-[node name="AdminStatus" type="Label" parent="Margin/Column/Header/MapInfo" unique_id=250540152]
+[node name="ModeTitle" type="Label" parent="Margin/Column/Header/MapInfo" unique_id=1734920581]
 layout_mode = 2
-text = "Loading server setup..."
+theme_override_colors/font_color = Color(0.58, 0.639, 0.722, 1)
+text = "GAME MODE"
+
+[node name="ModePicker" type="OptionButton" parent="Margin/Column/Header/MapInfo" unique_id=871306454]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+disabled = true
 
 [node name="MapLabel" type="Label" parent="Margin/Column/Header/MapInfo" unique_id=2111748412]
 layout_mode = 2
@@ -62,33 +72,39 @@ vertical_alignment = 2
 autowrap_mode = 2
 
 [node name="PreviewFrame" type="PanelContainer" parent="Margin/Column/Header" unique_id=1381558402]
-custom_minimum_size = Vector2(0, 150)
+custom_minimum_size = Vector2(0, 90)
 layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 2.0
 
 [node name="MapPreview" type="TextureRect" parent="Margin/Column/Header/PreviewFrame" unique_id=434190129]
 layout_mode = 2
+size_flags_stretch_ratio = 2.0
 expand_mode = 1
 stretch_mode = 5
 
 [node name="Divider" type="HSeparator" parent="Margin/Column" unique_id=1098664077]
 layout_mode = 2
 
-[node name="RulesHeader" type="HBoxContainer" parent="Margin/Column" unique_id=994957328]
+[node name="RulesScroll" type="ScrollContainer" parent="Margin/Column" unique_id=354916062]
+custom_minimum_size = Vector2(0, 100)
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="RulesColumn" type="VBoxContainer" parent="Margin/Column/RulesScroll" unique_id=2055186421]
 layout_mode = 2
 
-[node name="RulesTitle" type="Label" parent="Margin/Column/RulesHeader" unique_id=1452904282]
+[node name="RulesHeader" type="HBoxContainer" parent="Margin/Column/RulesScroll/RulesColumn" unique_id=994957328]
+layout_mode = 2
+
+[node name="RulesTitle" type="Label" parent="Margin/Column/RulesScroll/RulesColumn/RulesHeader" unique_id=1452904282]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.886, 0.925, 0.973, 1)
 theme_override_font_sizes/font_size = 22
 text = "MATCH RULES"
 
-[node name="RulesScroll" type="ScrollContainer" parent="Margin/Column" unique_id=354916062]
-custom_minimum_size = Vector2(0, 260)
-layout_mode = 2
-size_flags_vertical = 3
-horizontal_scroll_mode = 0
-
-[node name="Rules" parent="Margin/Column/RulesScroll" unique_id=995309611 instance=ExtResource("2")]
+[node name="Rules" parent="Margin/Column/RulesScroll/RulesColumn" unique_id=995309611 instance=ExtResource("2")]
 layout_mode = 2
 size_flags_horizontal = 3

@@ -20,9 +20,12 @@ public class BundledMapTests
             diagnostic => diagnostic.Severity == ContentDiagnosticSeverity.ERROR);
         Assert.NotEmpty(catalog.Maps);
 
-        foreach (string mapId in catalog.Maps.Keys.Order(StringComparer.Ordinal))
+        foreach ((string mapId, ResolvedContent<MapManifest> resolved) in catalog.Maps
+                     .OrderBy(pair => pair.Key, StringComparer.Ordinal))
         {
-            MapPackage package = Assert.IsType<MapPackage>(MapPackage.Load(mapId, contentRoot));
+            MapPackageLoadResult load = MapPackageLoader.Load(resolved.Winner);
+            Assert.False(load.HasErrors);
+            MapPackage package = Assert.IsType<MapPackage>(load.Package);
             Assert.Equal(mapId, package.MapId);
             Assert.True(package.Width > 0);
             Assert.True(package.Height > 0);

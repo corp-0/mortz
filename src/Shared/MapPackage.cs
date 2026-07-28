@@ -1,6 +1,5 @@
 using System.Collections.Immutable;
 using Godot;
-using Mortz.Content;
 using Mortz.Core.Sim;
 using Mortz.Core.Terrain;
 
@@ -24,21 +23,6 @@ public sealed class MapPackage
     public required Image Solid { get; init; }
     public required Image Destructible { get; init; }
     internal TerrainMask InitialTerrain { get; init; } = null!;
-
-    public static MapPackage? Load(string mapId) => Load(mapId, ContentRoot.Resolve());
-
-    public static MapPackage? Load(string mapId, string contentRoot)
-    {
-        MapPackageLoadResult result = MapPackageLoader.Load(mapId, contentRoot);
-        foreach (ContentDiagnostic diagnostic in result.Diagnostics)
-        {
-            if (diagnostic.Severity == ContentDiagnosticSeverity.ERROR)
-                GD.PrintErr($"[content] {diagnostic}");
-            else
-                GD.PushWarning($"[content] {diagnostic}");
-        }
-        return result.Package;
-    }
 
     public TerrainMask BuildMask() => InitialTerrain.Copy();
 }

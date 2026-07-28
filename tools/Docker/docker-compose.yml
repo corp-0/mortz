@@ -11,6 +11,7 @@ services:
       - "7778:7778/udp"
     labels:
       com.centurylinklabs.watchtower.enable: "true"
-    # command: ["--ruleset", "/home/mortz/ruleset.json"]
+    # command: ["--mode", "teamdeathmatch"]
+    # command: ["--ruleset", "/home/mortz/ruleset.toml"]
     # volumes:
-    #   - ./ruleset.json:/home/mortz/ruleset.json:ro
+    #   - ./ruleset.toml:/home/mortz/ruleset.toml:ro

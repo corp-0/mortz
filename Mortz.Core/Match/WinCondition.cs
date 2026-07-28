@@ -1,7 +1,7 @@
 namespace Mortz.Core.Match;
 
 /// <summary>What the score predicate reads: individual rows or team totals.
-/// In ruleset JSON: "PLAYER_KILLS" / "TEAM_KILLS" (case-insensitive).</summary>
+/// In authoring TOML: "player_kills" / "team_kills" (case-insensitive).</summary>
 public enum WinCondition : byte
 {
     PLAYER_KILLS = 0,

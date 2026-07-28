@@ -1,0 +1,8 @@
+format_version = 1
+name = "Team Deathmatch"
+description = "Two teams. First team to the kill target wins."
+
+[rules]
+teams = true
+win_condition = "team_kills"
+kill_target = 15

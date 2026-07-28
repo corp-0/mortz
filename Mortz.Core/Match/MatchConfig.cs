@@ -1,5 +1,3 @@
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using Mortz.Core.Sim;
 using Mortz.Core.Ui;
 
@@ -230,22 +228,4 @@ public sealed partial class MatchConfig
     public byte[] ToBytes() => Serialize(this);
 
     public static MatchConfig FromBytes(byte[] data) => Deserialize(data);
-
-    private static readonly JsonSerializerOptions _jsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true,
-        ReadCommentHandling = JsonCommentHandling.Skip,
-        AllowTrailingCommas = true,
-        Converters = { new JsonStringEnumConverter() },
-    };
-
-    /// <summary>Ruleset preset: JSON with any subset of the properties;
-    /// everything omitted keeps its default. Throws JsonException on garbage.</summary>
-    public static MatchConfig FromJson(string json)
-    {
-        MatchConfig cfg = JsonSerializer.Deserialize<MatchConfig>(json, _jsonOptions)
-                          ?? throw new JsonException("ruleset is empty");
-        cfg.Clamp();
-        return cfg;
-    }
 }

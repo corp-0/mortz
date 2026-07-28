@@ -6,22 +6,20 @@ namespace Mortz.Content;
 
 public sealed record ContentPackDefinition(ContentPackManifest Manifest, string DirectoryPath);
 
-public sealed record MapDefinition(
-    [property: UsedImplicitly] string Id,
-    MapManifest Manifest,
+public sealed record ContentDefinition<TManifest>(
+    string Id,
+    TManifest Manifest,
     string DirectoryPath,
-    ContentPackDefinition SourcePack)
-{
-    public string ManifestPath => Path.Combine(DirectoryPath, "map.toml");
-}
+    string ManifestPath,
+    ContentPackDefinition SourcePack);
 
-public sealed class ResolvedMapDefinition
+public sealed class ResolvedContent<TManifest>
 {
-    internal ResolvedMapDefinition(ImmutableArray<MapDefinition> overrideChain) =>
+    internal ResolvedContent(ImmutableArray<ContentDefinition<TManifest>> overrideChain) =>
         OverrideChain = overrideChain;
 
-    public ImmutableArray<MapDefinition> OverrideChain { get; }
-    public MapDefinition Winner => OverrideChain[^1];
+    public ImmutableArray<ContentDefinition<TManifest>> OverrideChain { get; }
+    public ContentDefinition<TManifest> Winner => OverrideChain[^1];
 }
 
 public sealed class ContentCatalogResult
@@ -39,22 +37,29 @@ public sealed class ContentCatalogResult
 
 public sealed class ContentCatalog
 {
-    private readonly FrozenDictionary<string, ResolvedMapDefinition> _maps;
+    private readonly FrozenDictionary<string, ResolvedContent<MapManifest>> _maps;
+    private readonly FrozenDictionary<string, ResolvedContent<GameModeManifest>> _modes;
 
     private ContentCatalog(string rootPath, IReadOnlyList<ContentPackDefinition> packs,
-        Dictionary<string, ResolvedMapDefinition> maps)
+        Dictionary<string, ResolvedContent<MapManifest>> maps,
+        Dictionary<string, ResolvedContent<GameModeManifest>> modes)
     {
         RootPath = rootPath;
         Packs = packs.ToImmutableArray();
         _maps = maps.ToFrozenDictionary(StringComparer.Ordinal);
+        _modes = modes.ToFrozenDictionary(StringComparer.Ordinal);
     }
 
     [UsedImplicitly] public string RootPath { get; }
     public ImmutableArray<ContentPackDefinition> Packs { get; }
-    public IReadOnlyDictionary<string, ResolvedMapDefinition> Maps => _maps;
+    public IReadOnlyDictionary<string, ResolvedContent<MapManifest>> Maps => _maps;
+    public IReadOnlyDictionary<string, ResolvedContent<GameModeManifest>> Modes => _modes;
 
-    public bool TryGetMap(string id, out ResolvedMapDefinition? definition) =>
+    public bool TryGetMap(string id, out ResolvedContent<MapManifest>? definition) =>
         _maps.TryGetValue(id, out definition);
+
+    public bool TryGetMode(string id, out ResolvedContent<GameModeManifest>? definition) =>
+        _modes.TryGetValue(id, out definition);
 
     public static ContentCatalogResult Load(string contentRoot)
     {
@@ -111,59 +116,65 @@ public sealed class ContentCatalog
         if (packIds.Count != packs.Count)
             return new ContentCatalogResult(null, diagnostics);
 
-        Dictionary<string, ResolvedMapDefinition> maps = new(StringComparer.Ordinal);
+        Dictionary<string, ResolvedContent<MapManifest>> maps = new(StringComparer.Ordinal);
+        Dictionary<string, ResolvedContent<GameModeManifest>> modes = new(StringComparer.Ordinal);
         foreach (ContentPackDefinition pack in packs)
         {
-            DiscoverMaps(pack, maps, diagnostics);
+            Discover(pack, "map", ContentManifestReader.ReadMapFile, maps, diagnostics);
+            Discover(pack, "mode", ContentManifestReader.ReadModeFile, modes, diagnostics);
         }
 
-        return new ContentCatalogResult(new ContentCatalog(root, packs, maps), diagnostics);
+        return new ContentCatalogResult(new ContentCatalog(root, packs, maps, modes), diagnostics);
     }
 
-    private static void DiscoverMaps(ContentPackDefinition pack,
-        Dictionary<string, ResolvedMapDefinition> maps, List<ContentDiagnostic> diagnostics)
+    /// <summary>Content kinds live at &lt;pack&gt;/&lt;kind&gt;s/&lt;id&gt;/&lt;kind&gt;.toml.</summary>
+    private static void Discover<TManifest>(ContentPackDefinition pack, string kind,
+        Func<string, ContentReadResult<TManifest>> readManifest,
+        Dictionary<string, ResolvedContent<TManifest>> definitions,
+        List<ContentDiagnostic> diagnostics) where TManifest : class
     {
-        string mapsDirectory = Path.Combine(pack.DirectoryPath, "maps");
-        if (!Directory.Exists(mapsDirectory))
+        string kindDirectory = Path.Combine(pack.DirectoryPath, kind + "s");
+        if (!Directory.Exists(kindDirectory))
             return;
 
-        IEnumerable<string> mapDirectories;
+        IEnumerable<string> directories;
         try
         {
-            mapDirectories = Directory.EnumerateDirectories(mapsDirectory)
+            directories = Directory.EnumerateDirectories(kindDirectory)
                 .OrderBy(Path.GetFileName, StringComparer.Ordinal)
                 .ToArray();
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
-            Error(diagnostics, mapsDirectory, $"cannot enumerate maps: {exception.Message}");
+            Error(diagnostics, kindDirectory, $"cannot enumerate {kind}s: {exception.Message}");
             return;
         }
 
-        foreach (string directory in mapDirectories)
+        foreach (string directory in directories)
         {
             string id = Path.GetFileName(directory);
             if (!ContentManifestReader.IsLogicalId(id))
             {
                 Error(diagnostics, directory,
-                    $"map directory '{id}' is not a valid logical ID (use lowercase letters, digits, '_' or '-')");
+                    $"{kind} directory '{id}' is not a valid logical ID (use lowercase letters, digits, '_' or '-')");
                 continue;
             }
 
-            string manifestPath = Path.Combine(directory, "map.toml");
+            string directoryPath = Path.GetFullPath(directory);
+            string manifestPath = Path.Combine(directoryPath, kind + ".toml");
             if (!File.Exists(manifestPath))
                 continue;
 
-            ContentReadResult<MapManifest> read = ContentManifestReader.ReadMapFile(manifestPath);
+            ContentReadResult<TManifest> read = readManifest(manifestPath);
             diagnostics.AddRange(read.Diagnostics);
             if (read.Value is not { } manifest)
                 continue;
 
-            MapDefinition definition = new(id, manifest, Path.GetFullPath(directory), pack);
-            if (maps.TryGetValue(id, out ResolvedMapDefinition? previous))
-                maps[id] = new ResolvedMapDefinition([.. previous.OverrideChain, definition]);
+            ContentDefinition<TManifest> definition = new(id, manifest, directoryPath, manifestPath, pack);
+            if (definitions.TryGetValue(id, out ResolvedContent<TManifest>? previous))
+                definitions[id] = new ResolvedContent<TManifest>([.. previous.OverrideChain, definition]);
             else
-                maps.Add(id, new ResolvedMapDefinition([definition]));
+                definitions.Add(id, new ResolvedContent<TManifest>([definition]));
         }
     }
 

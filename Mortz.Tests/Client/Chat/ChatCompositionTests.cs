@@ -29,10 +29,10 @@ public class ChatCompositionTests : NodeServiceTest
 
         new LobbyStateMsg([1, 2], ["Host", "Guest"], [1, 0], [0, 0], [], []).Broadcast();
         new LobbySettingsMsg("castlewars", "hash", ["castlewars"], ["Castle Wars"],
-            new MatchConfig().ToBytes()).Broadcast();
+            [], [], "", new MatchConfig().ToBytes()).Broadcast();
 
         UiPropertySheet sheet = lobby.GetNode<UiPropertySheet>(
-            "Content/Main/Settings/Margin/Column/RulesScroll/Rules");
+            "Content/Main/Settings/Margin/Column/RulesScroll/RulesColumn/Rules");
         Assert.Equal(
             MatchConfigUiMetadata.Categories.Sum(category => category.Properties.Count),
             sheet.ControlCount);
@@ -65,7 +65,8 @@ public class ChatCompositionTests : NodeServiceTest
         AssertSceneType<UiPropertySheet>("UiPropertySheet");
 
         string contentRoot = ProjectSettings.GlobalizePath("res://content");
-        MapPackage map = Assert.IsType<MapPackage>(MapPackage.Load("castlewars", contentRoot));
+        GameContent content = Assert.IsType<GameContent>(GameContent.Load(contentRoot));
+        MapPackage map = Assert.IsType<MapPackage>(content.LoadMap("castlewars"));
         Image preview = LobbySettingsPanel.ComposePreview(map);
         Assert.Equal(map.Width, preview.GetWidth());
         Assert.Equal(map.Height, preview.GetHeight());
@@ -76,7 +77,8 @@ public class ChatCompositionTests : NodeServiceTest
     {
         // BlendRect skips layers when their formats differ.
         string contentRoot = ProjectSettings.GlobalizePath("res://content");
-        MapPackage map = Assert.IsType<MapPackage>(MapPackage.Load("fightbox", contentRoot));
+        GameContent content = Assert.IsType<GameContent>(GameContent.Load(contentRoot));
+        MapPackage map = Assert.IsType<MapPackage>(content.LoadMap("fightbox"));
         Assert.NotEqual(Image.Format.Rgba8, map.Background.GetFormat());
 
         Image preview = LobbySettingsPanel.ComposePreview(map);

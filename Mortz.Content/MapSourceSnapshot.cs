@@ -13,7 +13,7 @@ public sealed class MapSourceSnapshot
 {
     private static readonly UTF8Encoding _strictUtf8 = new(false, true);
 
-    private MapSourceSnapshot(MapDefinition definition, MapManifest manifest,
+    private MapSourceSnapshot(ContentDefinition<MapManifest> definition, MapManifest manifest,
         byte[] background, byte[] solid, byte[] destructible, byte[] manifestBytes)
     {
         Definition = definition;
@@ -26,7 +26,7 @@ public sealed class MapSourceSnapshot
             Hash(background), Hash(solid), Hash(destructible), Hash(manifestBytes));
     }
 
-    public MapDefinition Definition { get; }
+    public ContentDefinition<MapManifest> Definition { get; }
     public MapManifest Manifest { get; }
     public ReadOnlyMemory<byte> BackgroundPng { get; }
     public ReadOnlyMemory<byte> SolidPng { get; }
@@ -34,7 +34,7 @@ public sealed class MapSourceSnapshot
     [UsedImplicitly] public ReadOnlyMemory<byte> ManifestBytes { get; }
     public string CompatibilityHash { get; }
 
-    public static ContentReadResult<MapSourceSnapshot> Read(MapDefinition definition)
+    public static ContentReadResult<MapSourceSnapshot> Read(ContentDefinition<MapManifest> definition)
     {
         ArgumentNullException.ThrowIfNull(definition);
         List<ContentDiagnostic> diagnostics = [];

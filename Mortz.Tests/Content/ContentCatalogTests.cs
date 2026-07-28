@@ -34,11 +34,11 @@ public sealed class ContentCatalogTests : IDisposable
         ContentCatalogResult result = ContentCatalog.Load(_root);
 
         ContentCatalog catalog = Assert.IsType<ContentCatalog>(result.Catalog);
-        Assert.True(catalog.TryGetMap("arena", out ResolvedMapDefinition? arena));
+        Assert.True(catalog.TryGetMap("arena", out ResolvedContent<MapManifest>? arena));
         Assert.Equal("Mod Arena", arena!.Winner.Manifest.Name);
         Assert.Equal(["base", "mod"],
             arena.OverrideChain.Select(m => m.SourcePack.Manifest.Id).ToArray());
-        Assert.True(catalog.TryGetMap("duel", out ResolvedMapDefinition? duel));
+        Assert.True(catalog.TryGetMap("duel", out ResolvedContent<MapManifest>? duel));
         Assert.Equal("base", duel!.Winner.SourcePack.Manifest.Id);
         Assert.Single(duel.OverrideChain);
     }
@@ -53,7 +53,7 @@ public sealed class ContentCatalogTests : IDisposable
 
         ContentCatalog catalog = Assert.IsType<ContentCatalog>(ContentCatalog.Load(_root).Catalog);
 
-        Assert.True(catalog.TryGetMap("arena", out ResolvedMapDefinition? arena));
+        Assert.True(catalog.TryGetMap("arena", out ResolvedContent<MapManifest>? arena));
         Assert.Equal("Zulu Arena", arena!.Winner.Manifest.Name);
         Assert.Equal(["alpha", "zulu"],
             arena.OverrideChain.Select(m => m.SourcePack.Manifest.Id).ToArray());
@@ -78,7 +78,7 @@ public sealed class ContentCatalogTests : IDisposable
         string pack = AddPack("Base", "base", 0);
         string mapDirectory = AddMap(pack, "arena", "Arena");
         ContentCatalog catalog = Assert.IsType<ContentCatalog>(ContentCatalog.Load(_root).Catalog);
-        Assert.True(catalog.TryGetMap("arena", out ResolvedMapDefinition? arena));
+        Assert.True(catalog.TryGetMap("arena", out ResolvedContent<MapManifest>? arena));
         string original = Assert.IsType<MapSourceSnapshot>(
             MapSourceSnapshot.Read(arena!.Winner).Value).CompatibilityHash;
 
@@ -102,7 +102,7 @@ public sealed class ContentCatalogTests : IDisposable
         string pack = AddPack("Base", "base", 0);
         string mapDirectory = AddMap(pack, "arena", "Original");
         ContentCatalog catalog = Assert.IsType<ContentCatalog>(ContentCatalog.Load(_root).Catalog);
-        Assert.True(catalog.TryGetMap("arena", out ResolvedMapDefinition? arena));
+        Assert.True(catalog.TryGetMap("arena", out ResolvedContent<MapManifest>? arena));
 
         MapSourceSnapshot original = Assert.IsType<MapSourceSnapshot>(
             MapSourceSnapshot.Read(arena!.Winner).Value);
@@ -162,7 +162,7 @@ public sealed class ContentCatalogTests : IDisposable
         string pack = AddPack("Base", "base", 0);
         string mapDirectory = AddMap(pack, "arena", "Arena");
         ContentCatalog catalog = Assert.IsType<ContentCatalog>(ContentCatalog.Load(_root).Catalog);
-        Assert.True(catalog.TryGetMap("arena", out ResolvedMapDefinition? arena));
+        Assert.True(catalog.TryGetMap("arena", out ResolvedContent<MapManifest>? arena));
         File.Delete(Path.Combine(mapDirectory, "background.png"));
 
         ContentReadResult<MapSourceSnapshot> snapshot = MapSourceSnapshot.Read(arena!.Winner);
@@ -170,6 +170,40 @@ public sealed class ContentCatalogTests : IDisposable
         Assert.Null(snapshot.Value);
         Assert.Contains(snapshot.Diagnostics,
             diagnostic => diagnostic.Message.Contains("background.png", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ModesDiscoverAndOverrideLikeMaps()
+    {
+        string basePack = AddPack("Base", "base", 0);
+        string modPack = AddPack("Mod", "mod", 100);
+        AddMode(basePack, "deathmatch", "Deathmatch", "kill_target = 5");
+        AddMode(basePack, "teamdeathmatch", "Team Deathmatch", "teams = true");
+        AddMode(modPack, "deathmatch", "Hyper Deathmatch", "kill_target = 50");
+
+        ContentCatalog catalog = Assert.IsType<ContentCatalog>(ContentCatalog.Load(_root).Catalog);
+
+        Assert.True(catalog.TryGetMode("deathmatch", out ResolvedContent<GameModeManifest>? deathmatch));
+        Assert.Equal("Hyper Deathmatch", deathmatch!.Winner.Manifest.Name);
+        Assert.Equal(50, deathmatch.Winner.Manifest.Rules.KillTarget);
+        Assert.Equal(["base", "mod"],
+            deathmatch.OverrideChain.Select(m => m.SourcePack.Manifest.Id).ToArray());
+        Assert.True(catalog.TryGetMode("teamdeathmatch", out ResolvedContent<GameModeManifest>? teams));
+        Assert.True(teams!.Winner.Manifest.Rules.Teams);
+    }
+
+    [Fact]
+    public void InvalidModeDirectoryNameIsRejected()
+    {
+        string pack = AddPack("Base", "base", 0);
+        AddMode(pack, "Bad Mode", "Bad", "teams = true");
+
+        ContentCatalogResult result = ContentCatalog.Load(_root);
+
+        Assert.NotNull(result.Catalog);
+        Assert.Empty(result.Catalog!.Modes);
+        Assert.Contains(result.Diagnostics,
+            diagnostic => diagnostic.Message.Contains("mode directory 'Bad Mode'", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -195,6 +229,14 @@ public sealed class ContentCatalogTests : IDisposable
         File.WriteAllText(Path.Combine(directory, "content_pack.toml"),
             $"id = \"{id}\"\nname = \"{id}\"\nversion = \"1.0.0\"\nload_order = {loadOrder}\n");
         return directory;
+    }
+
+    private static void AddMode(string packDirectory, string id, string name, string rule)
+    {
+        string directory = Path.Combine(packDirectory, "modes", id);
+        Directory.CreateDirectory(directory);
+        File.WriteAllText(Path.Combine(directory, "mode.toml"),
+            $"format_version = 1\nname = \"{name}\"\n\n[rules]\n{rule}\n");
     }
 
     private static string AddMap(string packDirectory, string id, string name)

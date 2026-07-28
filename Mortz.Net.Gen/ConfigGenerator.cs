@@ -78,6 +78,7 @@ public sealed class ConfigGenerator : IIncrementalGenerator
         string Name,
         string Type,
         bool IsEnum,
+        ImmutableArray<string> EnumMembers,
         string StatName,
         float Min,
         float Max,
@@ -142,6 +143,12 @@ public sealed class ConfigGenerator : IIncrementalGenerator
             : null;
 
         bool isEnum = symbol.Type.TypeKind == TypeKind.Enum;
+        ImmutableArray<string> enumMembers = isEnum
+            ? symbol.Type.GetMembers().OfType<IFieldSymbol>()
+                .Where(f => f.HasConstantValue)
+                .Select(f => f.Name)
+                .ToImmutableArray()
+            : ImmutableArray<string>.Empty;
         ValidateType(kind, name, type, isEnum, conv, min, max, location, diagnostics);
 
         if (!float.IsNaN(min) && !float.IsNaN(max) && min > max)
@@ -161,7 +168,7 @@ public sealed class ConfigGenerator : IIncrementalGenerator
                     conv == Convert.TICKS_BYTE ? "byte" : "ushort"));
         }
 
-        return new FieldModel(kind, name, type, isEnum, statsName ?? name, min, max,
+        return new FieldModel(kind, name, type, isEnum, enumMembers, statsName ?? name, min, max,
             conv, defaultValue, node.SyntaxTree.FilePath, node.SpanStart, diagnostics.ToImmutable());
     }
 
@@ -461,8 +468,78 @@ public sealed class ConfigGenerator : IIncrementalGenerator
         sb.AppendLine("        config.Clamp();");
         sb.AppendLine("        return config;");
         sb.AppendLine("    }");
+        sb.AppendLine();
+        EmitApplier(sb, fields);
         sb.AppendLine("}");
         return sb.ToString();
+    }
+
+    private static void EmitApplier(StringBuilder sb, FieldModel[] fields)
+    {
+        sb.AppendLine("    /// <summary>Applies one authoring key (snake_case of the property name).");
+        sb.AppendLine("    /// Takes the raw parsed value: bool, long, double, or string for enums.");
+        sb.AppendLine("    /// Call Clamp() after the last key.</summary>");
+        sb.AppendLine("    public ConfigKeyResult TryApplyKey(string key, object? value, out string error)");
+        sb.AppendLine("    {");
+        sb.AppendLine("        error = \"\";");
+        sb.AppendLine("        switch (key)");
+        sb.AppendLine("        {");
+        foreach (FieldModel m in fields)
+        {
+            string key = ToScreamingSnake(m.Name).ToLowerInvariant();
+            sb.AppendLine($"            case \"{key}\":");
+            if (m.IsEnum)
+            {
+                string values = string.Join(", ",
+                    m.EnumMembers.Select(v => v.ToLowerInvariant()));
+                sb.AppendLine($"                if (value is string s{m.Name} &&");
+                sb.AppendLine($"                    global::System.Enum.TryParse(s{m.Name}, ignoreCase: true, out global::{m.Type} e{m.Name}) &&");
+                sb.AppendLine($"                    global::System.Enum.IsDefined(e{m.Name}))");
+                sb.AppendLine("                {");
+                sb.AppendLine($"                    {m.Name} = e{m.Name};");
+                sb.AppendLine("                    return ConfigKeyResult.APPLIED;");
+                sb.AppendLine("                }");
+                sb.AppendLine($"                error = \"'{key}' must be one of: {values}\";");
+            }
+            else if (m.Type == "bool")
+            {
+                sb.AppendLine($"                if (value is bool b{m.Name})");
+                sb.AppendLine("                {");
+                sb.AppendLine($"                    {m.Name} = b{m.Name};");
+                sb.AppendLine("                    return ConfigKeyResult.APPLIED;");
+                sb.AppendLine("                }");
+                sb.AppendLine($"                error = \"'{key}' must be a boolean\";");
+            }
+            else if (m.Type == "int")
+            {
+                sb.AppendLine($"                if (value is long l{m.Name} && l{m.Name} is >= int.MinValue and <= int.MaxValue)");
+                sb.AppendLine("                {");
+                sb.AppendLine($"                    {m.Name} = (int)l{m.Name};");
+                sb.AppendLine("                    return ConfigKeyResult.APPLIED;");
+                sb.AppendLine("                }");
+                sb.AppendLine($"                error = \"'{key}' must be a 32-bit integer\";");
+            }
+            else
+            {
+                sb.AppendLine($"                if (value is double d{m.Name})");
+                sb.AppendLine("                {");
+                sb.AppendLine($"                    {m.Name} = (float)d{m.Name};");
+                sb.AppendLine("                    return ConfigKeyResult.APPLIED;");
+                sb.AppendLine("                }");
+                sb.AppendLine($"                if (value is long i{m.Name})");
+                sb.AppendLine("                {");
+                sb.AppendLine($"                    {m.Name} = i{m.Name};");
+                sb.AppendLine("                    return ConfigKeyResult.APPLIED;");
+                sb.AppendLine("                }");
+                sb.AppendLine($"                error = \"'{key}' must be a number\";");
+            }
+            sb.AppendLine("                return ConfigKeyResult.INVALID_VALUE;");
+        }
+        sb.AppendLine("            default:");
+        sb.AppendLine("                error = $\"unknown key '{key}'\";");
+        sb.AppendLine("                return ConfigKeyResult.UNKNOWN_KEY;");
+        sb.AppendLine("        }");
+        sb.AppendLine("    }");
     }
 
     private static string ReadExpr(FieldModel m) => m.Type switch

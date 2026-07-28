@@ -15,7 +15,8 @@ namespace Mortz.Client.Setup;
 /// </summary>
 public partial class MatchSetup : Node
 {
-    private readonly List<MapOption> _mapOptions = [];
+    private readonly List<ContentOption> _mapOptions = [];
+    private readonly List<ContentOption> _modeOptions = [];
     private readonly List<LobbyMember> _members = [];
     private readonly List<SwapOffer> _swapOffers = [];
     private byte[] _rulesBytes;
@@ -43,7 +44,12 @@ public partial class MatchSetup : Node
 
     public string MapId { get; private set; } = "";
     public string MapHash { get; private set; } = "";
-    public IReadOnlyList<MapOption> MapOptions => _mapOptions;
+    public IReadOnlyList<ContentOption> MapOptions => _mapOptions;
+
+    /// <summary>The mode the rules currently match, "" when they match none.</summary>
+    public string ModeId { get; private set; } = "";
+
+    public IReadOnlyList<ContentOption> ModeOptions => _modeOptions;
 
     /// <summary>Empty while the last received server settings were valid.</summary>
     public string SettingsError { get; private set; } = "";
@@ -83,6 +89,12 @@ public partial class MatchSetup : Node
             SetError("Server sent an invalid map catalog.");
             return;
         }
+        if (message.ModeIds.Length != message.ModeNames.Length ||
+            message.ModeIds.Length > NetConfig.MAX_LOBBY_MODES)
+        {
+            SetError("Server sent an invalid mode catalog.");
+            return;
+        }
 
         MatchConfig rules;
         try
@@ -97,15 +109,23 @@ public partial class MatchSetup : Node
 
         bool settingsChanged = !HasServerState || SettingsError != "" ||
                                MapId != message.MapId || MapHash != message.MapHash ||
-                               CatalogChanged(message.MapIds, message.MapNames);
+                               ModeId != message.ModeId ||
+                               CatalogChanged(_mapOptions, message.MapIds, message.MapNames) ||
+                               CatalogChanged(_modeOptions, message.ModeIds, message.ModeNames);
         HasServerState = true;
         SettingsError = "";
         MapId = message.MapId;
         MapHash = message.MapHash;
+        ModeId = message.ModeId;
         _mapOptions.Clear();
         for (int i = 0; i < message.MapIds.Length; i++)
         {
-            _mapOptions.Add(new MapOption(message.MapIds[i], message.MapNames[i]));
+            _mapOptions.Add(new ContentOption(message.MapIds[i], message.MapNames[i]));
+        }
+        _modeOptions.Clear();
+        for (int i = 0; i < message.ModeIds.Length; i++)
+        {
+            _modeOptions.Add(new ContentOption(message.ModeIds[i], message.ModeNames[i]));
         }
         ApplyRules(rules, settingsChanged);
     }
@@ -202,13 +222,13 @@ public partial class MatchSetup : Node
         members.Where(member => member.Team != 0)
             .Select(member => (member.PeerId, member.Team));
 
-    private bool CatalogChanged(string[] mapIds, string[] mapNames)
+    private static bool CatalogChanged(List<ContentOption> options, string[] ids, string[] names)
     {
-        if (_mapOptions.Count != mapIds.Length)
+        if (options.Count != ids.Length)
             return true;
-        for (int i = 0; i < mapIds.Length; i++)
+        for (int i = 0; i < ids.Length; i++)
         {
-            if (_mapOptions[i].Id != mapIds[i] || _mapOptions[i].Name != mapNames[i])
+            if (options[i].Id != ids[i] || options[i].Name != names[i])
                 return true;
         }
         return false;

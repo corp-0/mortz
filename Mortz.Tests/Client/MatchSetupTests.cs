@@ -13,7 +13,8 @@ public class MatchSetupTests : NodeServiceTest
 {
     private static LobbySettingsMsg Settings(MatchConfig config,
         string mapId = "castlewars", string hash = "hash") =>
-        new(mapId, hash, [mapId], ["Castle Wars"], config.ToBytes());
+        new(mapId, hash, [mapId], ["Castle Wars"],
+            ["deathmatch"], ["Deathmatch"], "", config.ToBytes());
 
     [Fact]
     public void SettingsApplyAndEventsFireOnTransitionsOnly()
@@ -30,7 +31,7 @@ public class MatchSetupTests : NodeServiceTest
         Assert.True(setup.Rules.Teams);
         Assert.Equal(5, setup.Rules.KillTarget);
         Assert.Equal("castlewars", setup.MapId);
-        Assert.Equal([new MapOption("castlewars", "Castle Wars")], setup.MapOptions);
+        Assert.Equal([new ContentOption("castlewars", "Castle Wars")], setup.MapOptions);
         Assert.Equal((1, 1, 1), (rules, teams, settings));
 
         Settings(new MatchConfig { Teams = true, KillTarget = 5 }).Broadcast();
@@ -38,6 +39,33 @@ public class MatchSetupTests : NodeServiceTest
 
         Settings(new MatchConfig { Teams = true, KillTarget = 6 }).Broadcast();
         Assert.Equal((2, 1, 2), (rules, teams, settings));
+    }
+
+    [Fact]
+    public void ModeCatalogAppliesAndDerivedModeFlipRaisesSettings()
+    {
+        MatchSetup setup = Host(new MatchSetup());
+        MatchConfig config = new();
+
+        new LobbySettingsMsg("castlewars", "hash", ["castlewars"], ["Castle Wars"],
+            ["deathmatch", "teamdeathmatch"], ["Deathmatch", "Team Deathmatch"],
+            "deathmatch", config.ToBytes()).Broadcast();
+        int settings = 0;
+        setup.SettingsChanged += () => settings++;
+
+        Assert.Equal("deathmatch", setup.ModeId);
+        Assert.Equal([
+            new ContentOption("deathmatch", "Deathmatch"),
+            new ContentOption("teamdeathmatch", "Team Deathmatch"),
+        ], setup.ModeOptions);
+
+        // same rules, no longer matching a preset server-side
+        new LobbySettingsMsg("castlewars", "hash", ["castlewars"], ["Castle Wars"],
+            ["deathmatch", "teamdeathmatch"], ["Deathmatch", "Team Deathmatch"],
+            "", config.ToBytes()).Broadcast();
+
+        Assert.Equal("", setup.ModeId);
+        Assert.Equal(1, settings);
     }
 
     [Fact]
@@ -60,7 +88,7 @@ public class MatchSetupTests : NodeServiceTest
         int settings = 0;
         setup.SettingsChanged += () => settings++;
 
-        new LobbySettingsMsg("x", "h", ["a"], ["A", "B"], new MatchConfig().ToBytes())
+        new LobbySettingsMsg("x", "h", ["a"], ["A", "B"], [], [], "", new MatchConfig().ToBytes())
             .Broadcast();
 
         Assert.Equal("Server sent an invalid map catalog.", setup.SettingsError);
@@ -68,7 +96,7 @@ public class MatchSetupTests : NodeServiceTest
         Assert.True(setup.HasServerState);
         Assert.Equal(1, settings);
 
-        new LobbySettingsMsg("x", "h", ["a"], ["A"], [1, 2, 3]).Broadcast();
+        new LobbySettingsMsg("x", "h", ["a"], ["A"], [], [], "", [1, 2, 3]).Broadcast();
         Assert.Equal("Server sent invalid match settings.", setup.SettingsError);
         Assert.Equal(2, settings);
 

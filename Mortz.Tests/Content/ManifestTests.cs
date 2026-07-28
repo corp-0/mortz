@@ -1,10 +1,121 @@
 using Mortz.Content;
+using Mortz.Core.Match;
 using Xunit;
 
 namespace Mortz.Tests.Content;
 
 public class ManifestTests
 {
+    [Fact]
+    public void ModeParsesRulesOverlayOverDefaults()
+    {
+        ContentReadResult<GameModeManifest> result = ContentManifestReader.ReadMode("""
+            format_version = 1
+            name = "Team Deathmatch"
+            description = "Two teams."
+
+            [rules]
+            teams = true
+            win_condition = "team_kills"
+            kill_target = 15
+            """);
+
+        GameModeManifest manifest = Assert.IsType<GameModeManifest>(result.Value);
+        Assert.Empty(result.Diagnostics);
+        Assert.Equal("Team Deathmatch", manifest.Name);
+        Assert.Equal("Two teams.", manifest.Description);
+        Assert.True(manifest.Rules.Teams);
+        Assert.Equal(WinCondition.TEAM_KILLS, manifest.Rules.WinCondition);
+        Assert.Equal(15, manifest.Rules.KillTarget);
+        Assert.True(manifest.Rules.FriendlyFire); // untouched fields keep defaults
+    }
+
+    [Fact]
+    public void ModeWithoutRulesIsTheDefaultConfig()
+    {
+        ContentReadResult<GameModeManifest> result = ContentManifestReader.ReadMode(
+            "format_version = 1\nname = \"Vanilla\"\n");
+
+        GameModeManifest manifest = Assert.IsType<GameModeManifest>(result.Value);
+        Assert.Equal(new MatchConfig().ToBytes(), manifest.Rules.ToBytes());
+    }
+
+    [Fact]
+    public void UnknownRuleKeyWarnsButModeLoads()
+    {
+        ContentReadResult<GameModeManifest> result = ContentManifestReader.ReadMode("""
+            format_version = 1
+            name = "Typo"
+
+            [rules]
+            kil_target = 15
+            """);
+
+        Assert.NotNull(result.Value);
+        ContentDiagnostic warning = Assert.Single(result.Diagnostics);
+        Assert.Equal(ContentDiagnosticSeverity.WARNING, warning.Severity);
+        Assert.Contains("rules.kil_target", warning.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void InvalidRuleValueRejectsTheMode()
+    {
+        ContentReadResult<GameModeManifest> result = ContentManifestReader.ReadMode("""
+            format_version = 1
+            name = "Broken"
+
+            [rules]
+            win_condition = "most_flags"
+            """);
+
+        Assert.Null(result.Value);
+        Assert.Contains(result.Diagnostics,
+            diagnostic => diagnostic.Severity == ContentDiagnosticSeverity.ERROR &&
+                          diagnostic.Message.Contains("rules.win_condition", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void OutOfRangeRuleValuesAreClamped()
+    {
+        ContentReadResult<GameModeManifest> result = ContentManifestReader.ReadMode("""
+            format_version = 1
+            name = "Greedy"
+
+            [rules]
+            kill_target = 5000
+            """);
+
+        GameModeManifest manifest = Assert.IsType<GameModeManifest>(result.Value);
+        Assert.Equal(999, manifest.Rules.KillTarget);
+    }
+
+    [Fact]
+    public void RulesetFileIsJustTheRulesTable()
+    {
+        ContentReadResult<MatchConfig> result = ContentManifestReader.ReadRuleset("""
+            [rules]
+            gravity = 600
+            rope_pull_accel = 4000
+            """);
+
+        MatchConfig config = Assert.IsType<MatchConfig>(result.Value);
+        Assert.Empty(result.Diagnostics);
+        Assert.Equal(600, config.Gravity);
+        Assert.Equal(4000, config.RopePullAccel);
+    }
+
+    [Fact]
+    public void RulesetWarnsOnUnknownTopLevelKeys()
+    {
+        ContentReadResult<MatchConfig> result = ContentManifestReader.ReadRuleset(
+            "name = \"stray\"\n\n[rules]\nteams = true\n");
+
+        Assert.NotNull(result.Value);
+        ContentDiagnostic warning = Assert.Single(result.Diagnostics);
+        Assert.Equal(ContentDiagnosticSeverity.WARNING, warning.Severity);
+        Assert.Contains("name", warning.Message, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void MapManifestRequiresVersionNameAndSuggestedPlayers()
     {
