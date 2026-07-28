@@ -5,6 +5,7 @@
 [ext_resource type="Script" uid="uid://co0rsoejny0ud" path="res://src/Server/ServerHost.cs" id="3_host"]
 [ext_resource type="Script" uid="uid://cx8tip4e2hdek" path="res://src/Server/ServerSessionController.cs" id="4_session"]
 [ext_resource type="Script" uid="uid://ba4y2j3vh3tmu" path="res://src/Server/ServerLobbySettings.cs" id="5_settings"]
+[ext_resource type="Script" path="res://src/Server/Query/ServerQueryResponder.cs" id="6_query"]
 
 [node name="ServerMain" type="Node" unique_id=1699106039 node_paths=PackedStringArray("_host", "_session", "_chat", "_lobbySettings")]
 script = ExtResource("1_smain")
@@ -24,3 +25,6 @@ script = ExtResource("2_chat")
 
 [node name="LobbySettings" type="Node" parent="." unique_id=952775275]
 script = ExtResource("5_settings")
+
+[node name="Query" type="Node" parent="." unique_id=1408552391]
+script = ExtResource("6_query")

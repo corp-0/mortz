@@ -21,7 +21,7 @@ public partial class ServerChat : Node, IServerAdminAuthorizer
     private bool _subscribed;
 
     [Dependency]
-    public ServerHost Host => this.DependOn<ServerHost>();
+    public ServerBootConfig Config => this.DependOn<ServerBootConfig>();
 
     [Dependency]
     public IServerSession Session => this.DependOn<IServerSession>();
@@ -43,7 +43,7 @@ public partial class ServerChat : Node, IServerAdminAuthorizer
     {
         if (_subscribed)
             return;
-        _admin = new AdminAuthenticator(Host.AdminPassword);
+        _admin = new AdminAuthenticator(Config.AdminPassword);
         Network.PeerJoined += OnPeerJoined;
         Network.PeerLeft += OnPeerLeft;
         ChatSendMsg.Received += OnChatSend;

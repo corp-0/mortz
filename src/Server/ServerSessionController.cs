@@ -16,6 +16,7 @@ namespace Mortz.Server;
 public interface IServerSession
 {
     bool IsLobby { get; }
+    int PlayerCount { get; }
     bool ContainsPlayer(long peerId);
     string PlayerName(long peerId);
 }
@@ -45,6 +46,7 @@ public partial class ServerSessionController : Node, IServerSession
     private IServerAdminAuthorizer Admin => this.DependOn<IServerAdminAuthorizer>();
 
     public bool IsLobby => _lobby != null;
+    public int PlayerCount => _players.Count;
     public bool ContainsPlayer(long peerId) => _players.Contains(peerId);
     public string PlayerName(long peerId) => _players.Name(peerId);
 

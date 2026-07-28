@@ -16,7 +16,7 @@ public static class ServerLauncher
 
     private static int _pid = -1;
 
-    public static bool Spawn(int port, string adminPassword)
+    public static bool Spawn(int port, string adminPassword, string serverName)
     {
         string[] gameArgs =
         [
@@ -25,6 +25,8 @@ public static class ServerLauncher
         ];
         if (adminPassword.Length > 0)
             gameArgs = [.. gameArgs, "--admin-password", adminPassword];
+        if (serverName.Length > 0)
+            gameArgs = [.. gameArgs, "--server-name", serverName];
 
         string exe;
         string[] args;

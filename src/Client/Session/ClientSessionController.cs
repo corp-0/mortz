@@ -3,6 +3,7 @@ using Chickensoft.Introspection;
 using Godot;
 using Mortz.Client.Match;
 using Mortz.Client.Menus;
+using Mortz.Client.Settings;
 using Mortz.Core.Net;
 using Mortz.Core.Net.Messages;
 using Mortz.Net;
@@ -13,7 +14,8 @@ namespace Mortz.Client.Session;
 /// <summary>Owns connection, session, lobby, and match-scene transitions for
 /// one client.</summary>
 [Meta(typeof(IAutoNode))]
-public partial class ClientSessionController : Node, ISessionExit, IProvide<ISessionExit>
+public partial class ClientSessionController : Node, ISessionExit,
+    IProvide<ISessionExit>, IProvide<ClientSettings>
 {
     private const int CONNECT_RETRIES = 5;
 
@@ -24,6 +26,7 @@ public partial class ClientSessionController : Node, ISessionExit, IProvide<ISes
 
     private readonly ClientConnectionAttempt _connection = new(CONNECT_RETRIES);
     private readonly ClientSession _session = new();
+    private ClientSettings _settings = new();
     private ClientMatchBootstrap? _pendingMatch;
     private ConnectedSession? _connectedSession;
     private GameView? _gameView;
@@ -37,6 +40,7 @@ public partial class ClientSessionController : Node, ISessionExit, IProvide<ISes
     private NetworkManager Network => this.DependOn<NetworkManager>();
 
     ISessionExit IProvide<ISessionExit>.Value() => this;
+    ClientSettings IProvide<ClientSettings>.Value() => _settings;
 
     public override void _Notification(int what)
     {
@@ -47,6 +51,7 @@ public partial class ClientSessionController : Node, ISessionExit, IProvide<ISes
 
     public void OnResolved()
     {
+        _settings = ClientSettings.Load();
         this.Provide();
         Subscribe();
         CreateMenu(autoStartIntro: false);
@@ -54,7 +59,7 @@ public partial class ClientSessionController : Node, ISessionExit, IProvide<ISes
         if (autoConnect == null)
             return;
         _autoReady = true;
-        string playerName = CmdArgs.GetValue("--name") ?? "";
+        string playerName = CmdArgs.GetValue("--name") ?? _settings.PlayerName;
         StartConnecting(autoConnect, CmdArgs.GetInt("--port", NetConfig.DEFAULT_PORT), playerName);
     }
 
@@ -65,9 +70,9 @@ public partial class ClientSessionController : Node, ISessionExit, IProvide<ISes
         ServerLauncher.Kill();
     }
 
-    public void OnHostRequested(int port, string playerName, string adminPassword)
+    public void OnHostRequested(int port, string playerName, string adminPassword, string serverName)
     {
-        if (!ServerLauncher.Spawn(port, adminPassword))
+        if (!ServerLauncher.Spawn(port, adminPassword, serverName))
         {
             _menu?.SetStatus("Failed to start local server.");
             return;

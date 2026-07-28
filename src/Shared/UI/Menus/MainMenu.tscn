@@ -3,6 +3,8 @@
 [ext_resource type="Script" uid="uid://ca7dhedcdj2cq" path="res://src/Client/Menus/MainMenu.cs" id="1_menu"]
 [ext_resource type="Script" uid="uid://bingu8fm6o7on" path="res://src/Client/Menus/MainMenuAmbient/MenuBackdrop.cs" id="2_go2oq"]
 [ext_resource type="FontFile" uid="uid://tah7qwxd4iyq" path="res://Assets/Fonts/Metal_Mania/MetalMania-Regular.ttf" id="3_lt8ac"]
+[ext_resource type="PackedScene" path="res://src/Shared/UI/Menus/ServerBrowser.tscn" id="4_browser"]
+[ext_resource type="PackedScene" path="res://src/Shared/UI/Menus/Settings.tscn" id="5_settings"]
 
 [sub_resource type="Animation" id="Animation_duaim"]
 length = 0.001
@@ -41,7 +43,7 @@ _data = {
 &"start_sequence": SubResource("Animation_lt8ac")
 }
 
-[node name="MainMenu" type="Control" unique_id=1489092193 node_paths=PackedStringArray("_backdrop", "_homePanel", "_joinPanel", "_hostPanel", "_joinNameEdit", "_addressEdit", "_hostNameEdit", "_portEdit", "_adminPasswordEdit", "_status", "_player")]
+[node name="MainMenu" type="Control" unique_id=1489092193 node_paths=PackedStringArray("_backdrop", "_homePanel", "_browser", "_settingsScreen", "_hostPanel", "_serverNameEdit", "_portEdit", "_adminPasswordEdit", "_status", "_player")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -53,11 +55,10 @@ size_flags_vertical = 3
 script = ExtResource("1_menu")
 _backdrop = NodePath("MenuBackdrop")
 _homePanel = NodePath("HomePanel")
-_joinPanel = NodePath("MenuCenter/Menu/JoinPanel")
+_browser = NodePath("ServerBrowser")
+_settingsScreen = NodePath("Settings")
 _hostPanel = NodePath("MenuCenter/Menu/HostPanel")
-_joinNameEdit = NodePath("MenuCenter/Menu/JoinPanel/PlayerNameEdit")
-_addressEdit = NodePath("MenuCenter/Menu/JoinPanel/AddressEdit")
-_hostNameEdit = NodePath("MenuCenter/Menu/HostPanel/PlayerNameEdit")
+_serverNameEdit = NodePath("MenuCenter/Menu/HostPanel/ServerNameEdit")
 _portEdit = NodePath("MenuCenter/Menu/HostPanel/PortEdit")
 _adminPasswordEdit = NodePath("MenuCenter/Menu/HostPanel/AdminPasswordEdit")
 _status = NodePath("MenuCenter/Menu/Status")
@@ -96,53 +97,6 @@ custom_minimum_size = Vector2(420, 0)
 layout_mode = 2
 theme_override_constants/separation = 16
 
-[node name="JoinPanel" type="VBoxContainer" parent="MenuCenter/Menu" unique_id=115536821]
-visible = false
-layout_mode = 2
-theme_override_constants/separation = 12
-
-[node name="Title" type="Label" parent="MenuCenter/Menu/JoinPanel" unique_id=1702357993]
-layout_mode = 2
-theme_override_fonts/font = ExtResource("3_lt8ac")
-theme_override_font_sizes/font_size = 42
-text = "JOIN GAME"
-horizontal_alignment = 1
-
-[node name="Description" type="Label" parent="MenuCenter/Menu/JoinPanel" unique_id=739858601]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.65, 0.65, 0.65, 1)
-text = "Connect to an existing Mortz server."
-horizontal_alignment = 1
-
-[node name="PlayerNameLabel" type="Label" parent="MenuCenter/Menu/JoinPanel" unique_id=927649662]
-layout_mode = 2
-text = "Player name"
-
-[node name="PlayerNameEdit" type="LineEdit" parent="MenuCenter/Menu/JoinPanel" unique_id=250817890]
-custom_minimum_size = Vector2(0, 42)
-layout_mode = 2
-placeholder_text = "Enter your name"
-
-[node name="AddressLabel" type="Label" parent="MenuCenter/Menu/JoinPanel" unique_id=223244741]
-layout_mode = 2
-text = "Server address"
-
-[node name="AddressEdit" type="LineEdit" parent="MenuCenter/Menu/JoinPanel" unique_id=121016716]
-custom_minimum_size = Vector2(0, 42)
-layout_mode = 2
-text = "127.0.0.1"
-placeholder_text = "Address or address:port"
-
-[node name="JoinConfirmButton" type="Button" parent="MenuCenter/Menu/JoinPanel" unique_id=1545043138]
-custom_minimum_size = Vector2(0, 42)
-layout_mode = 2
-text = "Join server"
-
-[node name="JoinBackButton" type="Button" parent="MenuCenter/Menu/JoinPanel" unique_id=1219370632]
-custom_minimum_size = Vector2(0, 42)
-layout_mode = 2
-text = "Back"
-
 [node name="HostPanel" type="VBoxContainer" parent="MenuCenter/Menu" unique_id=690896267]
 visible = false
 layout_mode = 2
@@ -161,14 +115,15 @@ theme_override_colors/font_color = Color(0.65, 0.65, 0.65, 1)
 text = "Start a dedicated server and join it."
 horizontal_alignment = 1
 
-[node name="PlayerNameLabel" type="Label" parent="MenuCenter/Menu/HostPanel" unique_id=1729654567]
+[node name="ServerNameLabel" type="Label" parent="MenuCenter/Menu/HostPanel" unique_id=1729654567]
 layout_mode = 2
-text = "Player name"
+text = "Server name"
 
-[node name="PlayerNameEdit" type="LineEdit" parent="MenuCenter/Menu/HostPanel" unique_id=1086691518]
+[node name="ServerNameEdit" type="LineEdit" parent="MenuCenter/Menu/HostPanel" unique_id=1086691518]
 custom_minimum_size = Vector2(0, 42)
 layout_mode = 2
-placeholder_text = "Enter your name"
+max_length = 40
+placeholder_text = "Shown in the server browser"
 
 [node name="PortLabel" type="Label" parent="MenuCenter/Menu/HostPanel" unique_id=349024977]
 layout_mode = 2
@@ -259,20 +214,26 @@ text = "Map editor"
 
 [node name="Settings" type="Button" parent="HomePanel/HBoxContainer/VBoxContainer2" unique_id=140986444]
 layout_mode = 2
-disabled = true
-text = "Setttings"
+text = "Settings"
 
 [node name="Exit" type="Button" parent="HomePanel/HBoxContainer/VBoxContainer2" unique_id=598760290]
 layout_mode = 2
 text = "Exit"
 
+[node name="ServerBrowser" parent="." unique_id=1204551103 instance=ExtResource("4_browser")]
+visible = false
+layout_mode = 1
+
+[node name="Settings" parent="." unique_id=1204551104 instance=ExtResource("5_settings")]
+visible = false
+layout_mode = 1
+
 [node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=1690997220]
 libraries/ = SubResource("AnimationLibrary_duaim")
 
-[connection signal="pressed" from="MenuCenter/Menu/JoinPanel/JoinConfirmButton" to="." method="OnJoinConfirmed"]
-[connection signal="pressed" from="MenuCenter/Menu/JoinPanel/JoinBackButton" to="." method="OnBackPressed"]
 [connection signal="pressed" from="MenuCenter/Menu/HostPanel/HostConfirmButton" to="." method="OnHostConfirmed"]
 [connection signal="pressed" from="MenuCenter/Menu/HostPanel/HostBackButton" to="." method="OnBackPressed"]
 [connection signal="pressed" from="HomePanel/HBoxContainer/VBoxContainer2/JoinButton" to="." method="OnJoinMenuPressed"]
 [connection signal="pressed" from="HomePanel/HBoxContainer/VBoxContainer2/HostButton" to="." method="OnHostMenuPressed"]
+[connection signal="pressed" from="HomePanel/HBoxContainer/VBoxContainer2/Settings" to="." method="OnSettingsPressed"]
 [connection signal="pressed" from="HomePanel/HBoxContainer/VBoxContainer2/Exit" to="." method="OnExitPressed"]

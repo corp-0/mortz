@@ -10,6 +10,9 @@ public static class NetConfig
     public const int DEFAULT_PORT = 7777;
     public const int MAX_PLAYERS = 8;
     public const int MAX_NAME_LENGTH = 24;
+    /// <summary>Stays under ServerQueryProtocol.MAX_TEXT_LENGTH so the browser
+    /// never clips a name further.</summary>
+    public const int MAX_SERVER_NAME_LENGTH = 40;
     public const int MAX_CHAT_BYTES = 256;
     public const int MAX_CHAT_HISTORY = 100;
     public const int MAX_CHAT_COMMAND_ARGS = 16;

@@ -1,0 +1,122 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/Client/Menus/ServerBrowser.cs" id="1_browser"]
+[ext_resource type="PackedScene" path="res://src/Shared/UI/Menus/ServerRow.tscn" id="2_row"]
+[ext_resource type="Script" path="res://src/Client/Servers/ServerProbe.cs" id="3_probe"]
+[ext_resource type="FontFile" uid="uid://tah7qwxd4iyq" path="res://Assets/Fonts/Metal_Mania/MetalMania-Regular.ttf" id="4_font"]
+[ext_resource type="PackedScene" path="res://src/Shared/UI/Menus/DirectConnectPanel.tscn" id="5_direct"]
+
+[node name="ServerBrowser" type="Control" node_paths=PackedStringArray("_probe", "_rows", "_status", "_joinButton", "_favoriteButton", "_directPanel")]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_browser")
+_rowScene = ExtResource("2_row")
+_probe = NodePath("Probe")
+_rows = NodePath("Margin/Column/Scroll/Rows")
+_status = NodePath("Margin/Column/Status")
+_joinButton = NodePath("Margin/Column/Actions/Join")
+_favoriteButton = NodePath("Margin/Column/Actions/Favorite")
+_directPanel = NodePath("Margin/Column/DirectPanel")
+
+[node name="Probe" type="Node" parent="."]
+script = ExtResource("3_probe")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.026, 0.032, 0.044, 0.88)
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 60
+theme_override_constants/margin_top = 40
+theme_override_constants/margin_right = 60
+theme_override_constants/margin_bottom = 40
+
+[node name="Column" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="Margin/Column"]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("4_font")
+theme_override_font_sizes/font_size = 42
+text = "SERVERS"
+
+[node name="Hint" type="Label" parent="Margin/Column"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.62, 0.62, 0.65, 1)
+text = "Favorites and servers on your network are checked on every refresh."
+
+[node name="Scroll" type="ScrollContainer" parent="Margin/Column"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Rows" type="VBoxContainer" parent="Margin/Column/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="Status" type="Label" parent="Margin/Column"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.55, 0.45, 1)
+autowrap_mode = 2
+
+[node name="DirectPanel" parent="Margin/Column" instance=ExtResource("5_direct")]
+layout_mode = 2
+
+[node name="Actions" type="HBoxContainer" parent="Margin/Column"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Join" type="Button" parent="Margin/Column/Actions"]
+custom_minimum_size = Vector2(160, 44)
+layout_mode = 2
+disabled = true
+text = "Join server"
+
+[node name="Favorite" type="Button" parent="Margin/Column/Actions"]
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+disabled = true
+text = "Favorite"
+
+[node name="Refresh" type="Button" parent="Margin/Column/Actions"]
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+text = "Refresh"
+
+[node name="Direct" type="Button" parent="Margin/Column/Actions"]
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+text = "Direct connect"
+
+[node name="Spacer" type="Control" parent="Margin/Column/Actions"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Back" type="Button" parent="Margin/Column/Actions"]
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+text = "Back"
+
+[connection signal="pressed" from="Margin/Column/Actions/Join" to="." method="OnJoinPressed"]
+[connection signal="pressed" from="Margin/Column/Actions/Favorite" to="." method="OnFavoritePressed"]
+[connection signal="pressed" from="Margin/Column/Actions/Refresh" to="." method="OnRefreshPressed"]
+[connection signal="pressed" from="Margin/Column/Actions/Direct" to="." method="OnDirectConnectPressed"]
+[connection signal="pressed" from="Margin/Column/Actions/Back" to="." method="OnBackPressed"]

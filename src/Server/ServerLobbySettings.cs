@@ -37,7 +37,7 @@ public partial class ServerLobbySettings : Node, IServerLobbySettings
     private bool _subscribed;
 
     [Dependency]
-    public ServerHost Host => this.DependOn<ServerHost>();
+    public ServerBootConfig Config => this.DependOn<ServerBootConfig>();
 
     [Dependency]
     public IServerSession Session => this.DependOn<IServerSession>();
@@ -54,8 +54,8 @@ public partial class ServerLobbySettings : Node, IServerLobbySettings
 
     public void OnResolved()
     {
-        Map = Host.Map;
-        Rules = Host.Rules;
+        Map = Config.Map;
+        Rules = Config.Rules;
         LoadCatalog();
         LobbySettingsRequestMsg.Received += OnSettingsRequest;
         LobbyRulesUpdateMsg.Received += OnRulesUpdate;
@@ -85,7 +85,7 @@ public partial class ServerLobbySettings : Node, IServerLobbySettings
 
     private void LoadCatalog()
     {
-        ContentCatalogResult result = ContentCatalog.Load(Host.ContentRootPath);
+        ContentCatalogResult result = ContentCatalog.Load(Config.ContentRootPath);
         foreach (ContentDiagnostic diagnostic in result.Diagnostics)
         {
             if (diagnostic.Severity == ContentDiagnosticSeverity.ERROR)
@@ -142,7 +142,7 @@ public partial class ServerLobbySettings : Node, IServerLobbySettings
             return;
         }
 
-        MapPackage? selected = MapPackage.Load(message.MapId, Host.ContentRootPath);
+        MapPackage? selected = MapPackage.Load(message.MapId, Config.ContentRootPath);
         if (selected == null)
         {
             SendTo(sender);

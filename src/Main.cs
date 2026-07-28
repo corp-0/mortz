@@ -16,7 +16,7 @@ public partial class Main : Node
     public override void _Ready()
     {
         bool serverMode = OS.HasFeature("dedicated_server") || CmdArgs.HasFlag("--server");
-        if (!serverMode && !CmdArgs.HasFlag("--windowed") && !Engine.IsEditorHint())
+        if (!serverMode && !CmdArgs.HasFlag("--windowed") && !OS.HasFeature("editor"))
             GoFullScreen();
         AddChild((serverMode ? _serverScene : _clientScene).Instantiate());
     }

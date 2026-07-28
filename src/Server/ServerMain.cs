@@ -10,7 +10,8 @@ namespace Mortz.Server;
 [Meta(typeof(IAutoNode))]
 public partial class ServerMain : Node,
     IProvide<NetworkManager>,
-    IProvide<ServerHost>,
+    IProvide<ServerBootConfig>,
+    IProvide<IServerIdentity>,
     IProvide<IServerSession>,
     IProvide<IServerAdminAuthorizer>,
     IProvide<IServerLobbySettings>
@@ -21,9 +22,11 @@ public partial class ServerMain : Node,
     [Export] private ServerLobbySettings _lobbySettings = null!;
 
     private NetworkManager _network = null!;
+    private ServerBootConfig _config = null!;
 
     NetworkManager IProvide<NetworkManager>.Value() => _network;
-    ServerHost IProvide<ServerHost>.Value() => _host;
+    ServerBootConfig IProvide<ServerBootConfig>.Value() => _config;
+    IServerIdentity IProvide<IServerIdentity>.Value() => _config;
     IServerSession IProvide<IServerSession>.Value() => _session;
     IServerAdminAuthorizer IProvide<IServerAdminAuthorizer>.Value() => _chat;
     IServerLobbySettings IProvide<IServerLobbySettings>.Value() => _lobbySettings;
@@ -32,12 +35,13 @@ public partial class ServerMain : Node,
 
     public void OnReady()
     {
-        if (!_host.IsConfigured)
+        if (_host.Config is not { } config)
         {
             GetTree().Quit(1);
             return;
         }
 
+        _config = config;
         _network = GetNode<NetworkManager>(NetworkManager.AUTOLOAD_PATH);
         this.Provide();
         if (!_host.Listen(_network))
