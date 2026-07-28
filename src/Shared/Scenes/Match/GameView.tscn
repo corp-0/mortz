@@ -23,14 +23,15 @@
 [ext_resource type="Script" uid="uid://b7xyv1173ixe1" path="res://src/Client/Chat/ClientChat.cs" id="22_chat"]
 [ext_resource type="Script" path="res://src/Client/Announcements/AnnouncementChat.cs" id="26_annchat"]
 [ext_resource type="PackedScene" path="res://src/Shared/UI/Chat/GameChat.tscn" id="23_gamechat"]
+[ext_resource type="Script" uid="uid://bxsnp7y1yhbw" path="res://src/Client/Match/MortarClient.cs" id="27_mortarclient"]
 
-[node name="GameView" type="Node2D" unique_id=1808596722 node_paths=PackedStringArray("_ropes", "_localPlayer", "_players", "_mortars", "_hud", "_finalKillReplay", "_killFeed", "_announcements", "_chat")]
+[node name="GameView" type="Node2D" unique_id=1808596722 node_paths=PackedStringArray("_ropes", "_localPlayer", "_players", "_mortarClient", "_hud", "_finalKillReplay", "_killFeed", "_announcements", "_chat")]
 script = ExtResource("1_gview")
 _gameMapScene = ExtResource("2_gmap")
 _ropes = NodePath("RopeOverlay")
 _localPlayer = NodePath("LocalPlayer")
 _players = NodePath("Players")
-_mortars = NodePath("Mortars")
+_mortarClient = NodePath("MortarClient")
 _hud = NodePath("Hud/PlayerStatus")
 _finalKillReplay = NodePath("FinalKillReplay")
 _killFeed = NodePath("KillFeed")
@@ -53,6 +54,12 @@ _playerScene = ExtResource("4_player")
 [node name="Mortars" type="Node2D" parent="." unique_id=1931858666]
 script = ExtResource("8_mortars")
 _mortarScene = ExtResource("9_mortar")
+
+[node name="MortarClient" type="Node" parent="." unique_id=1442867351 node_paths=PackedStringArray("_localPlayer", "_views", "_finalKillReplay")]
+script = ExtResource("27_mortarclient")
+_localPlayer = NodePath("../LocalPlayer")
+_views = NodePath("../Mortars")
+_finalKillReplay = NodePath("../FinalKillReplay")
 
 [node name="ReplayCamera" type="Camera2D" parent="." unique_id=1800253533]
 enabled = false

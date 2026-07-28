@@ -2,7 +2,6 @@ using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
 using Mortz.Client.Announcements;
-using Mortz.Client.Audio;
 using Mortz.Client.Chat;
 using Mortz.Client.Feed;
 using Mortz.Client.Replay;
@@ -19,12 +18,7 @@ using Mortz.Shared;
 
 namespace Mortz.Client.Match;
 
-/// <summary>
-/// Composition root of the in-game screen. Routes incoming snapshots into the
-/// interpolation clock and the local player's reconciliation, then pushes
-/// each rendered frame out to the map, player, mortar and rope views. All the
-/// pieces are separate nodes, wired in GameView.tscn.
-/// </summary>
+/// <summary>Composition root of the in-game screen, wired in GameView.tscn.</summary>
 [Meta(typeof(IAutoNode))]
 public partial class GameView : Node2D,
     IProvide<IKillFeed>,
@@ -36,7 +30,7 @@ public partial class GameView : Node2D,
     [Export] private RopeOverlay _ropes = null!;
     [Export] private LocalPlayerController _localPlayer = null!;
     [Export] private PlayerViewManager _players = null!;
-    [Export] private MortarViewManager _mortars = null!;
+    [Export] private MortarClient _mortarClient = null!;
     [Export] private PlayerStatusHud _hud = null!;
     [Export] private FinalKillReplay _finalKillReplay = null!;
     [Export] private KillFeed _killFeed = null!;
@@ -45,9 +39,6 @@ public partial class GameView : Node2D,
 
     [Dependency]
     private INetwork Network => this.DependOn<INetwork>();
-
-    [Dependency]
-    private ISfx Sfx => this.DependOn<ISfx>();
 
     IKillFeed IProvide<IKillFeed>.Value() => _killFeed;
     IAnnouncementDirector IProvide<IAnnouncementDirector>.Value() => _announcements;
@@ -59,19 +50,10 @@ public partial class GameView : Node2D,
     /// <summary>Diagnostics tap: a snapshot was buffered and reconciled.</summary>
     public event Action<Snapshot>? SnapshotApplied;
 
-    /// <summary>Successive parries of one mortar climb a major pentatonic scale,
-    /// with rising gain since resampling up thins the sound.</summary>
-    private static readonly float[] _parryPitches =
-        Array.ConvertAll(new[] { 0, 2, 4, 7, 9, 12 }, st => Mathf.Pow(2f, st / 12f));
-
-    private const float PARRY_GAIN_DB_PER_STEP = 1f;
-
     private readonly SnapshotInterpolator _interpolator = new();
     private GameMap _gameMap = null!;
-    private MortarReplicaSet _remoteMortars = null!;
     private MatchConfig _config = null!;
     private readonly Dictionary<byte, int> _peersBySlot = new();
-    private readonly Dictionary<ushort, int> _parriesByMortar = new();
 
     public int NewestSnapshotTick => _interpolator.NewestTick;
     public float RenderTick => _interpolator.RenderTick;
@@ -89,7 +71,7 @@ public partial class GameView : Node2D,
         // would leave it on top.
         MoveChild(_gameMap, 0);
         _localPlayer.Initialize(new Predictor(_gameMap.Mask, config));
-        _remoteMortars = new MortarReplicaSet(_gameMap.Mask, config);
+        _mortarClient.Initialize(config, () => _interpolator.NewestTick);
         // Base stats to start from; the server's per-player modifier lists
         // (PlayerModifiersMsg) take over as they arrive.
         _players.Configure(config);
@@ -99,10 +81,6 @@ public partial class GameView : Node2D,
     public void OnResolved()
     {
         Network.SnapshotReceived += OnSnapshotReceived;
-        CarveMsg.Received += OnCarve;
-        ShellRetireMsg.Received += OnShellRetire;
-        MortarLifecycleMsg.Received += OnMortarLifecycle;
-        MortarCorrectionMsg.Received += OnMortarCorrection;
         RosterMsg.Received += OnRoster;
         PlayerModifiersMsg.Received += OnPlayerModifiers;
         this.Provide();
@@ -111,10 +89,6 @@ public partial class GameView : Node2D,
     public void OnExitTree()
     {
         Network.SnapshotReceived -= OnSnapshotReceived;
-        CarveMsg.Received -= OnCarve;
-        ShellRetireMsg.Received -= OnShellRetire;
-        MortarLifecycleMsg.Received -= OnMortarLifecycle;
-        MortarCorrectionMsg.Received -= OnMortarCorrection;
         RosterMsg.Received -= OnRoster;
         PlayerModifiersMsg.Received -= OnPlayerModifiers;
     }
@@ -164,99 +138,6 @@ public partial class GameView : Node2D,
             if (msg.Slots[i] is > 0 and <= NetConfig.MAX_PLAYERS)
                 _peersBySlot[msg.Slots[i]] = (int)msg.PeerIds[i];
         }
-    }
-
-    /// <summary>Our shell exploded server-side; retire the predicted copy so it
-    /// can't fly on and carve a ghost. Deflected shells carry -1 and are skipped.</summary>
-    private void OnCarve(CarveMsg msg)
-    {
-        if (msg.SpawnSeq >= 0 && msg.OwnerId == Network.LocalPeerId &&
-            _localPlayer.RetireShell(msg.SpawnSeq))
-            GD.Print($"[client] retired shell seq {msg.SpawnSeq} (authoritative explosion)");
-    }
-
-    /// <summary>Reliable retirement is the delivery guarantee when a parry takes
-    /// over one of our shells. Settle the carve even if its impact was queued but
-    /// had not reached GameMap yet; the lifecycle deflect path below is the
-    /// low-latency fallback and both paths are idempotent.</summary>
-    private void OnShellRetire(ShellRetireMsg msg)
-    {
-        bool hadPrediction = _localPlayer.RetireShell(msg.SpawnSeq);
-        bool hadCarve = _gameMap.RevertPredictedCarve(msg.SpawnSeq);
-        if (hadPrediction || hadCarve)
-            GD.Print($"[client] retired shell seq {msg.SpawnSeq} (reliable server event)");
-    }
-
-    private void OnMortarLifecycle(MortarLifecycleMsg msg)
-    {
-        if (!MortarWire.TryReadLifecycle(msg.Events, out int tick,
-                out List<SimWorld.MortarEvent> events))
-        {
-            GD.PrintErr("[client] dropped malformed mortar lifecycle batch");
-            return;
-        }
-        foreach (SimWorld.MortarEvent e in events)
-        {
-            switch (e.Kind)
-            {
-                case SimWorld.MortarEventKind.SPAWN:
-                    _remoteMortars.Spawn(e.State, tick, NewestSnapshotTick);
-                    if (e.State.FiredBy != Network.LocalPeerId)
-                        Sfx.PlayAt(Sfx.Sounds.MortarFire,
-                            new Vector2(e.State.Position.X, e.State.Position.Y));
-                    break;
-                case SimWorld.MortarEventKind.DEFLECT:
-                    _remoteMortars.Deflect(e.State, tick, NewestSnapshotTick);
-                    RetireDeflectedPrediction(e.State);
-                    PlayParrySound(e.State);
-                    break;
-                case SimWorld.MortarEventKind.END:
-                    _parriesByMortar.Remove(e.State.Id);
-                    RetireEndedMortar(e.State.Id);
-                    break;
-            }
-        }
-    }
-
-    private void PlayParrySound(in MortarState state)
-    {
-        int step = _parriesByMortar.GetValueOrDefault(state.Id);
-        _parriesByMortar[state.Id] = step + 1;
-        step = Math.Min(step, _parryPitches.Length - 1);
-        Sfx.PlayAt(Sfx.Sounds.ParrySuccess,
-            new Vector2(state.Position.X, state.Position.Y),
-            _parryPitches[step], step * PARRY_GAIN_DB_PER_STEP);
-    }
-
-    private void RetireDeflectedPrediction(in MortarState state)
-    {
-        if (state.FiredBy != Network.LocalPeerId)
-            return;
-        bool hadShell = _localPlayer.RetireShell(state.SpawnSeq);
-        bool hadCarve = _gameMap.RevertPredictedCarve(state.SpawnSeq);
-        if (hadShell || hadCarve)
-            GD.Print($"[client] retired shell seq {state.SpawnSeq} (deflected)");
-    }
-
-    private void RetireEndedMortar(ushort id)
-    {
-        if (!_remoteMortars.TryEnd(id, out MortarState state) ||
-            state.FiredBy != Network.LocalPeerId)
-            return;
-        _localPlayer.RetireShell(state.SpawnSeq);
-        _localPlayer.ForgetCompleted(state.SpawnSeq);
-    }
-
-    private void OnMortarCorrection(MortarCorrectionMsg msg)
-    {
-        if (!_remoteMortars.Correct(msg.States, msg.Tick, NewestSnapshotTick))
-            GD.PrintErr("[client] dropped malformed mortar correction");
-    }
-
-    public override void _PhysicsProcess(double delta)
-    {
-        if (!_finalKillReplay.MatchFrozen)
-            _remoteMortars.Tick();
     }
 
     public override void _Process(double delta)
@@ -311,16 +192,13 @@ public partial class GameView : Node2D,
         }
 
         _players.Prune();
-        IReadOnlyList<RenderMortar> remoteMortars = _remoteMortars.Render();
-        IReadOnlyList<(int SpawnSeq, MortarState Shell)> predictedMortars = _localPlayer.Shells;
-        _mortars.SyncPredicted(predictedMortars);
-        _mortars.SyncRemote(remoteMortars, _localPlayer.CompletedShells);
+        IReadOnlyList<RenderMortar> remoteMortars = _mortarClient.RenderFrame();
 
         _finalKillReplay.Record(
             RenderTick,
             replayPlayers,
             remoteMortars,
-            predictedMortars,
+            _localPlayer.Shells,
             _ropes.Segments,
             localId);
     }

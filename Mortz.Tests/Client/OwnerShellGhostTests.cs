@@ -82,7 +82,7 @@ public class OwnerShellGhostTests
                             replicas.Deflect(e.State, serverTick, serverTick);
                             break;
                         case SimWorld.MortarEventKind.END:
-                            // Mirrors GameView.RetireEndedMortar.
+                            // Mirrors MortarClient.RetireEndedMortar.
                             if (replicas.TryEnd(e.State.Id, out MortarState ended) &&
                                 ended.FiredBy == LOCAL_ID)
                             {
