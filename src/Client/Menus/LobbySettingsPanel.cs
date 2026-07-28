@@ -12,11 +12,6 @@ using Mortz.Shared;
 
 namespace Mortz.Client.Menus;
 
-/// <summary>
-/// Lobby-owned presentation of the canonical server setup. State lives in
-/// MatchSetup; this panel renders it and pushes signed admin edits from its
-/// own editing copy.
-/// </summary>
 [Meta(typeof(IAutoNode))]
 public partial class LobbySettingsPanel : PanelContainer
 {
@@ -24,15 +19,17 @@ public partial class LobbySettingsPanel : PanelContainer
     [Export] private OptionButton _mapPicker = null!;
     [Export] private TextureRect _mapPreview = null!;
     [Export] private Label _mapStatus = null!;
-    [Export] private UiPropertySheet _sheet = null!;
+    [Export] private UiPropertySheet _rulesSheet = null!;
+    [Export] private UiPropertySheet _physicsSheet = null!;
 
     private readonly List<string> _mapIds = [];
     private readonly List<string> _modeIds = [];
     private MatchConfig _config = new();
     private bool _applyingState;
-    // Snapshot of Setup.HasServerState; UpdateEditing also runs before the
-    // dependency resolves.
+    // UpdateEditing also runs before Setup resolves.
     private bool _hasServerState;
+    private bool _customSelected;
+    private string _lastModeId = "";
     private bool _subscribed;
     private string _previewMapId = "";
     private string _previewMapHash = "";
@@ -47,8 +44,10 @@ public partial class LobbySettingsPanel : PanelContainer
     {
         _mapPicker.ItemSelected += OnMapSelected;
         _modePicker.ItemSelected += OnModeSelected;
-        _sheet.Build(MatchConfigUiMetadata.Categories, _config, OnRuleChanged);
+        _rulesSheet.Build(ModeRulesUiMetadata.Categories, _config.Rules, OnConfigEdited);
+        _physicsSheet.Build(PhysicsUiMetadata.Categories, _config.Physics, OnConfigEdited);
         UpdateEditing(isAdmin: false);
+        UpdateRulesVisibility();
     }
 
     public void OnResolved()
@@ -84,11 +83,18 @@ public partial class LobbySettingsPanel : PanelContainer
             return;
         }
 
-        _config = Setup.CopyRules();
+        if (Setup.ModeId != _lastModeId)
+        {
+            _customSelected = false;
+            _lastModeId = Setup.ModeId;
+        }
+        _config = Setup.CopyConfig();
         ApplyMapOptions(Setup.MapId, Setup.MapOptions);
         ApplyModeOptions(Setup.ModeId, Setup.ModeOptions);
-        _sheet.UpdateModel(_config);
+        _rulesSheet.UpdateModel(_config.Rules);
+        _physicsSheet.UpdateModel(_config.Physics);
         UpdateEditing(Admin.IsAdmin);
+        UpdateRulesVisibility();
         UpdatePreview(Setup.MapId, Setup.MapHash);
     }
 
@@ -112,7 +118,6 @@ public partial class LobbySettingsPanel : PanelContainer
         _applyingState = false;
     }
 
-    /// <summary>Adds a trailing "Custom" entry, picked when the rules match no mode.</summary>
     private void ApplyModeOptions(string selectedMode, IReadOnlyList<ContentOption> options)
     {
         _applyingState = true;
@@ -129,7 +134,7 @@ public partial class LobbySettingsPanel : PanelContainer
             _modePicker.AddItem(string.IsNullOrWhiteSpace(option.Name) ? option.Id : option.Name);
         }
         _modePicker.AddItem("Custom");
-        _modePicker.Select(selected >= 0 ? selected : _modeIds.Count);
+        _modePicker.Select(selected >= 0 && !_customSelected ? selected : _modeIds.Count);
         _applyingState = false;
     }
 
@@ -139,10 +144,12 @@ public partial class LobbySettingsPanel : PanelContainer
             return;
         if (index >= _modeIds.Count)
         {
-            // Nothing to apply for "Custom", snap back to the real state.
-            ApplyModeOptions(Setup.ModeId, Setup.ModeOptions);
+            _customSelected = true;
+            UpdateRulesVisibility();
             return;
         }
+        _customSelected = false;
+        UpdateRulesVisibility();
         string modeId = _modeIds[(int)index];
         byte[] payload = Encoding.UTF8.GetBytes(modeId);
         if (Admin.TrySignAdminAction(AdminAction.SET_LOBBY_MODE, payload,
@@ -152,7 +159,7 @@ public partial class LobbySettingsPanel : PanelContainer
         }
     }
 
-    private void OnRuleChanged()
+    private void OnConfigEdited()
     {
         if (!Admin.IsAdmin)
             return;
@@ -163,6 +170,9 @@ public partial class LobbySettingsPanel : PanelContainer
             new LobbyRulesUpdateMsg(payload, sequence, tag).SendToServer();
         }
     }
+
+    private void UpdateRulesVisibility() =>
+        _rulesSheet.Visible = _lastModeId == "" || _customSelected;
 
     private void OnMapSelected(long index)
     {
@@ -207,12 +217,11 @@ public partial class LobbySettingsPanel : PanelContainer
         bool canEdit = isAdmin && _hasServerState;
         _modePicker.Disabled = !canEdit;
         _mapPicker.Disabled = !canEdit;
-        _sheet.SetEditable(canEdit);
+        _rulesSheet.SetEditable(canEdit);
+        _physicsSheet.SetEditable(canEdit);
     }
 
-    // Layer PNGs decode to whatever format they were saved in (an RGB
-    // background without alpha is legal, and user maps will bring anything),
-    // while BlendRect refuses mismatched formats. Normalize to RGBA first.
+    // BlendRect requires matching formats.
     internal static Image ComposePreview(MapPackage map)
     {
         Image combined = (Image)map.Background.Duplicate();
@@ -223,8 +232,7 @@ public partial class LobbySettingsPanel : PanelContainer
         return combined;
     }
 
-    /// <summary>Copies only when a conversion is actually needed; the
-    /// package's images are shared and must not be mutated.</summary>
+    // Package images are shared.
     private static Image Rgba(Image layer)
     {
         if (layer.GetFormat() == Image.Format.Rgba8)

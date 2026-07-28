@@ -15,9 +15,12 @@ public class MatchSessionTests
         TerrainMask terrain = new(128, 128, (_, _) => false, (_, _) => false);
         return new MatchSession(terrain, new MatchConfig
         {
-            Teams = teams,
-            KillTarget = killTarget,
-            SuicidePenalty = suicidePenalty,
+            Rules = new ModeRules
+            {
+                Teams = teams,
+                KillTarget = killTarget,
+                SuicidePenalty = suicidePenalty,
+            },
         }, seed: 1, victoryLapTicks, spawnPoints);
     }
 

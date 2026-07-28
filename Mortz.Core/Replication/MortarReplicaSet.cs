@@ -11,11 +11,11 @@ public sealed class MortarReplicaSet
     private readonly Dictionary<ushort, MortarState> _states = new();
     private readonly HashSet<ushort> _stopped = new();
     private readonly TerrainMask _terrain;
-    private readonly MatchConfig _config;
+    private readonly Physics _config;
     private bool _hasCorrection;
     private int _lastCorrectionTick;
 
-    public MortarReplicaSet(TerrainMask terrain, MatchConfig config)
+    public MortarReplicaSet(TerrainMask terrain, Physics config)
     {
         _terrain = terrain;
         _config = config;

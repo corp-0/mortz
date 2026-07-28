@@ -91,7 +91,7 @@ internal sealed class ServerProtocol
         SendScores(peerId, match);
         SendLiveMortars(peerId, match);
         if (match.ActiveMatchPoint is { } matchPoint)
-            MatchPointMessage(matchPoint, match.Config).SendTo(peerId);
+            MatchPointMessage(matchPoint, match.Config.Rules).SendTo(peerId);
         if (match.Winner is { } winner)
             new MatchEndMsg(winner.ByTeam, winner.Id).SendTo(peerId);
         if (match.FinalKill is { } finalKill)
@@ -131,7 +131,7 @@ internal sealed class ServerProtocol
         }
         foreach (ScoredElimination elimination in frame.Eliminations)
         {
-            BroadcastElimination(elimination, match.Config);
+            BroadcastElimination(elimination, match.Config.Rules);
         }
         foreach (GameEventJudge.Judgment judgment in frame.GameEvents)
         {
@@ -143,7 +143,7 @@ internal sealed class ServerProtocol
         if (frame.MatchPoint is { } matchPoint)
         {
             GD.Print($"[server] match point {(matchPoint.Active ? "on" : "off")}");
-            MatchPointMessage(matchPoint, match.Config).Broadcast();
+            MatchPointMessage(matchPoint, match.Config.Rules).Broadcast();
         }
 
         if (frame.Tick % NetConfig.TICKS_PER_SNAPSHOT == 0 && match.World.Players.Count > 0)
@@ -156,7 +156,7 @@ internal sealed class ServerProtocol
         if (frame.MatchEnded is { } winner)
         {
             string who = winner.ByTeam ? $"team {winner.Id}" : _players.Name(winner.Id);
-            GD.Print($"[server] match over: {who} wins (first to {match.Config.KillTarget})");
+            GD.Print($"[server] match over: {who} wins (first to {match.Config.Rules.KillTarget})");
             new MatchEndMsg(winner.ByTeam, winner.Id).Broadcast();
         }
     }
@@ -192,7 +192,7 @@ internal sealed class ServerProtocol
         _mortarPayloadBytes += (sizeof(int) + sizeof(int) + states.Length) * match.World.Players.Count;
     }
 
-    private void BroadcastElimination(ScoredElimination elimination, MatchConfig config)
+    private void BroadcastElimination(ScoredElimination elimination, ModeRules config)
     {
         Scoreboard.DeathResult score = elimination.Score;
         EliminationFlags flags = score.Kind switch
@@ -222,7 +222,7 @@ internal sealed class ServerProtocol
     }
 
     /// <summary>TEAM_KILLS with teams off plays as PLAYER_KILLS everywhere.</summary>
-    private static MatchPointMsg MatchPointMessage(MatchPointChange change, MatchConfig config)
+    private static MatchPointMsg MatchPointMessage(MatchPointChange change, ModeRules config)
     {
         WinCondition kind = config.Teams && config.WinCondition == WinCondition.TEAM_KILLS
             ? WinCondition.TEAM_KILLS

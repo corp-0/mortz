@@ -22,7 +22,7 @@ public class PlayerViewTypingTests : NodeServiceTest
         _manager.FakeDependency<INetwork>(new FakeNetwork { LocalPeerId = 1 });
         _manager.FakeDependency<ISfx>(new NullSfx());
         Host(_manager);
-        _manager.Configure(new MatchConfig());
+        _manager.Configure(new Physics());
     }
 
     [Fact]

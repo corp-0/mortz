@@ -81,7 +81,7 @@ internal sealed class MatchSession
         IReadOnlyList<Vec2>? spawnPoints = null)
     {
         World = new SimWorld(terrain, config, seed, spawnPoints);
-        Scores = new Scoreboard(config);
+        Scores = new Scoreboard(config.Rules);
         _victoryLapTicks = Math.Max(1, victoryLapTicks);
     }
 
@@ -90,7 +90,7 @@ internal sealed class MatchSession
     public byte AddPlayer(int peerId, byte lobbyTeam = 0)
     {
         byte team = 0;
-        if (Config.Teams)
+        if (Config.Rules.Teams)
             team = lobbyTeam != 0 ? lobbyTeam : NextTeam();
         World.AddPlayer(peerId, team);
         Scores.AddPlayer(peerId, team);
@@ -210,7 +210,7 @@ internal sealed class MatchSession
         {
             if (peerId == death.PeerId || player.RespawnTicks > 0)
                 continue;
-            if (Config.Teams && victimTeam != 0 && player.TeamId == victimTeam)
+            if (Config.Rules.Teams && victimTeam != 0 && player.TeamId == victimTeam)
                 continue;
             float distance = (player.Position - death.Position).LengthSquared();
             if (distance < best)
@@ -248,7 +248,7 @@ internal sealed class MatchSession
     /// are kills.</summary>
     private Dictionary<int, byte>? JudgeTeams(List<GameEventJudge.Kill> kills)
     {
-        if (!Config.Teams || kills.Count == 0)
+        if (!Config.Rules.Teams || kills.Count == 0)
             return null;
         return World.Players.ToDictionary(pair => pair.Key, pair => pair.Value.TeamId);
     }

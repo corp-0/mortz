@@ -263,7 +263,15 @@ public class MortarTests
     [Fact]
     public void ShellReachingMaxLifetime_DetonatesAtItsCurrentPosition()
     {
-        MatchConfig config = new() { MortarSpeed = 100, MortarGravity = 0, SpawnImmunity = 0 };
+        MatchConfig config = new()
+        {
+            Physics = new Physics
+            {
+                MortarSpeed = 100,
+                MortarGravity = 0,
+                SpawnImmunity = 0,
+            },
+        };
         config.Clamp();
         SimWorld w = new SimWorld(TestWorlds.Flat(), config);
         w.AddPlayer(1);

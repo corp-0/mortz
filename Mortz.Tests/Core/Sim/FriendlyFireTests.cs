@@ -57,9 +57,8 @@ public class FriendlyFireTests
     {
         MatchConfig cfg = new()
         {
-            Teams = true,
-            FriendlyFire = friendlyFire,
-            SpawnImmunity = 0,
+            Rules = new ModeRules { Teams = true, FriendlyFire = friendlyFire },
+            Physics = new Physics { SpawnImmunity = 0 },
         };
         SimWorld w = new SimWorld(TestWorlds.Flat(), cfg);
         w.AddPlayer(SHOOTER, shooterTeam);
@@ -81,7 +80,7 @@ public class FriendlyFireTests
         PlayerState victimBefore = w.Players[VICTIM];
         Step(w, ref seq, 1, InputButtons.FIRE);
         (int ex, int ey, _, _, _) = Assert.Single(w.Explosions);
-        Assert.True(BlastSim.Damage(victimBefore, new Vec2(ex, ey), w.Config) > 0,
+        Assert.True(BlastSim.Damage(victimBefore, new Vec2(ex, ey), w.Config.Physics) > 0,
             "setup guard: the blast must reach the victim");
     }
 

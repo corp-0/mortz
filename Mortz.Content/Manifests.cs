@@ -35,13 +35,12 @@ public sealed record MapManifest(
     }
 }
 
-/// <summary>Rules is a default MatchConfig with the [rules] overlay applied
-/// and clamped, so a mode's identity is exactly its config bytes.</summary>
 public sealed record GameModeManifest(
     int FormatVersion,
     string Name,
     string Description,
-    MatchConfig Rules)
+    MatchConfig Config,
+    ImmutableArray<AuthoredKey> PhysicsOverrides)
 {
     public const int CURRENT_FORMAT_VERSION = 1;
 }
@@ -60,12 +59,12 @@ public static partial class ContentManifestReader
 
     private static readonly HashSet<string> _modeKeys =
     [
-        "format_version", "name", "description", "rules",
+        "format_version", "name", "description", "rules", "physics",
     ];
 
     private static readonly HashSet<string> _rulesetKeys =
     [
-        "rules",
+        "rules", "physics",
     ];
 
     public static ContentReadResult<ContentPackManifest> ReadPackFile(string path) =>
@@ -139,18 +138,20 @@ public static partial class ContentManifestReader
         int? formatVersion = RequiredInt(table, "format_version", source, diagnostics);
         string? name = RequiredString(table, "name", source, diagnostics);
         string description = OptionalString(table, "description", source, diagnostics) ?? "";
-        MatchConfig rules = ReadRulesTable(table, source, diagnostics);
+        ModeRules rules = ReadRulesTable(table, source, diagnostics);
+        Physics physics = ReadPhysicsTable(table, source, diagnostics,
+            out ImmutableArray<AuthoredKey> authored);
 
         if (formatVersion is not null && formatVersion != GameModeManifest.CURRENT_FORMAT_VERSION)
             Error(diagnostics, source, $"unsupported format_version {formatVersion}; expected {GameModeManifest.CURRENT_FORMAT_VERSION}");
 
         GameModeManifest? manifest = diagnostics.Any(IsError) || formatVersion == null || name == null
             ? null
-            : new GameModeManifest(formatVersion.Value, name, description, rules);
+            : new GameModeManifest(formatVersion.Value, name, description,
+                new MatchConfig { Rules = rules, Physics = physics }, authored);
         return new ContentReadResult<GameModeManifest>(manifest, diagnostics);
     }
 
-    /// <summary>A --ruleset file: just the [rules] table, same shape as a mode's.</summary>
     public static ContentReadResult<MatchConfig> ReadRuleset(string text, string source = "ruleset.toml")
     {
         List<ContentDiagnostic> diagnostics = [];
@@ -159,38 +160,62 @@ public static partial class ContentManifestReader
             return new ContentReadResult<MatchConfig>(null, diagnostics);
 
         WarnUnknownKeys(table, _rulesetKeys, source, diagnostics);
-        MatchConfig rules = ReadRulesTable(table, source, diagnostics);
-        return new ContentReadResult<MatchConfig>(diagnostics.Any(IsError) ? null : rules, diagnostics);
+        ModeRules rules = ReadRulesTable(table, source, diagnostics);
+        Physics physics = ReadPhysicsTable(table, source, diagnostics, out _);
+        MatchConfig config = new() { Rules = rules, Physics = physics };
+        return new ContentReadResult<MatchConfig>(diagnostics.Any(IsError) ? null : config, diagnostics);
     }
 
+    private delegate ConfigKeyResult TryApplyKey(string key, object? value, out string error);
+
     /// <summary>A missing [rules] table is legal and means all defaults.</summary>
-    private static MatchConfig ReadRulesTable(TomlTable table, string source,
+    private static ModeRules ReadRulesTable(TomlTable table, string source,
         List<ContentDiagnostic> diagnostics)
     {
-        MatchConfig config = new();
-        if (!table.TryGetValue("rules", out object value))
-            return config;
-        if (value is not TomlTable rules)
+        ModeRules rules = new();
+        ApplySection(table, "rules", rules.TryApplyKey, source, diagnostics);
+        rules.Clamp();
+        return rules;
+    }
+
+    private static Physics ReadPhysicsTable(TomlTable table, string source,
+        List<ContentDiagnostic> diagnostics, out ImmutableArray<AuthoredKey> authored)
+    {
+        Physics physics = new();
+        authored = ApplySection(table, "physics", physics.TryApplyKey, source, diagnostics);
+        physics.Clamp();
+        return physics;
+    }
+
+    private static ImmutableArray<AuthoredKey> ApplySection(TomlTable table, string name,
+        TryApplyKey apply, string source, List<ContentDiagnostic> diagnostics)
+    {
+        if (!table.TryGetValue(name, out object value))
+            return [];
+        if (value is not TomlTable section)
         {
-            Error(diagnostics, source, "'rules' must be a table");
-            return config;
+            Error(diagnostics, source, $"'{name}' must be a table");
+            return [];
         }
 
-        foreach (string key in rules.Keys)
+        ImmutableArray<AuthoredKey>.Builder applied = ImmutableArray.CreateBuilder<AuthoredKey>();
+        foreach (string key in section.Keys)
         {
-            switch (config.TryApplyKey(key, rules[key], out string error))
+            switch (apply(key, section[key], out string error))
             {
+                case ConfigKeyResult.APPLIED:
+                    applied.Add(new AuthoredKey(key, section[key]));
+                    break;
                 case ConfigKeyResult.UNKNOWN_KEY:
                     diagnostics.Add(new ContentDiagnostic(ContentDiagnosticSeverity.WARNING, source,
-                        $"unknown key 'rules.{key}'"));
+                        $"unknown key '{name}.{key}'"));
                     break;
                 case ConfigKeyResult.INVALID_VALUE:
-                    Error(diagnostics, source, $"rules.{key}: {error}");
+                    Error(diagnostics, source, $"{name}.{key}: {error}");
                     break;
             }
         }
-        config.Clamp();
-        return config;
+        return applied.ToImmutable();
     }
 
     public static string WriteMap(MapManifest manifest)

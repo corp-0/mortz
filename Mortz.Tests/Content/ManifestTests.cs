@@ -24,10 +24,10 @@ public class ManifestTests
         Assert.Empty(result.Diagnostics);
         Assert.Equal("Team Deathmatch", manifest.Name);
         Assert.Equal("Two teams.", manifest.Description);
-        Assert.True(manifest.Rules.Teams);
-        Assert.Equal(WinCondition.TEAM_KILLS, manifest.Rules.WinCondition);
-        Assert.Equal(15, manifest.Rules.KillTarget);
-        Assert.True(manifest.Rules.FriendlyFire); // untouched fields keep defaults
+        Assert.True(manifest.Config.Rules.Teams);
+        Assert.Equal(WinCondition.TEAM_KILLS, manifest.Config.Rules.WinCondition);
+        Assert.Equal(15, manifest.Config.Rules.KillTarget);
+        Assert.True(manifest.Config.Rules.FriendlyFire);
     }
 
     [Fact]
@@ -37,7 +37,7 @@ public class ManifestTests
             "format_version = 1\nname = \"Vanilla\"\n");
 
         GameModeManifest manifest = Assert.IsType<GameModeManifest>(result.Value);
-        Assert.Equal(new MatchConfig().ToBytes(), manifest.Rules.ToBytes());
+        Assert.Equal(new MatchConfig().ToBytes(), manifest.Config.ToBytes());
     }
 
     [Fact]
@@ -86,22 +86,22 @@ public class ManifestTests
             """);
 
         GameModeManifest manifest = Assert.IsType<GameModeManifest>(result.Value);
-        Assert.Equal(999, manifest.Rules.KillTarget);
+        Assert.Equal(999, manifest.Config.Rules.KillTarget);
     }
 
     [Fact]
-    public void RulesetFileIsJustTheRulesTable()
+    public void RulesetFileReadsPhysicsTable()
     {
         ContentReadResult<MatchConfig> result = ContentManifestReader.ReadRuleset("""
-            [rules]
+            [physics]
             gravity = 600
             rope_pull_accel = 4000
             """);
 
         MatchConfig config = Assert.IsType<MatchConfig>(result.Value);
         Assert.Empty(result.Diagnostics);
-        Assert.Equal(600, config.Gravity);
-        Assert.Equal(4000, config.RopePullAccel);
+        Assert.Equal(600, config.Physics.Gravity);
+        Assert.Equal(4000, config.Physics.RopePullAccel);
     }
 
     [Fact]

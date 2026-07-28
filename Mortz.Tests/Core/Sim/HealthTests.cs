@@ -49,7 +49,8 @@ public class HealthTests
             // The shooter suicides at own feet, the victim catches the graze ring.
             Step(w, ref seq, 1, InputButtons.FIRE);
             (int ex, int ey, _, _, _) = Assert.Single(w.Explosions);
-            int expected = BlastSim.Damage(victimBefore, new Vec2(ex, ey), TestWorlds.NoSpawnProtectionConfig);
+            int expected = BlastSim.Damage(
+                victimBefore, new Vec2(ex, ey), TestWorlds.NoSpawnProtectionConfig.Physics);
             Assert.InRange(expected, SimConfig.BLAST_EDGE_DAMAGE, SimConfig.MORTAR_DAMAGE - 1); // setup guard: a graze, not a core hit
 
             victimDied = w.Deaths.Any(d => d.PeerId == VICTIM);

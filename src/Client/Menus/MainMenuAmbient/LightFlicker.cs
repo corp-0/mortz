@@ -91,11 +91,11 @@ public partial class LightFlicker : Node3D
 
     public override void _Ready()
     {
-        _light = this.GetByTypeOrNull<Light3D>() ?? throw new ArgumentNullException();
+        _light = this.GetChildByTypeOrNull<Light3D>() ?? throw new ArgumentNullException();
         _timeLeft = RandRange(_minLitTime, _maxLitTime);
         if (_isMainLight)
         {
-            _ambientLight = _root.GetByTypeOrNull<DirectionalLight3D>();
+            _ambientLight = _root.GetChildByTypeOrNull<DirectionalLight3D>();
         }
     }
 

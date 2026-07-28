@@ -11,6 +11,7 @@ using Mortz.Client.Stats;
 using Mortz.Client.Ui;
 using Mortz.Core.Match;
 using Mortz.Core.Net.Messages;
+using Mortz.Extensions;
 using Mortz.Net;
 using Mortz.Server;
 using Mortz.Server.Chat;
@@ -31,18 +32,23 @@ public class ChatCompositionTests : NodeServiceTest
         new LobbySettingsMsg("castlewars", "hash", ["castlewars"], ["Castle Wars"],
             [], [], "", new MatchConfig().ToBytes()).Broadcast();
 
-        UiPropertySheet sheet = lobby.GetNode<UiPropertySheet>(
-            "Content/Main/Settings/Margin/Column/RulesScroll/RulesColumn/Rules");
+        UiPropertySheet rulesSheet = lobby.GetDescendantByType<UiPropertySheet>(
+            sheet => sheet.BoundModelType == typeof(ModeRules));
+        UiPropertySheet physicsSheet = lobby.GetDescendantByType<UiPropertySheet>(
+            sheet => sheet.BoundModelType == typeof(Physics));
         Assert.Equal(
-            MatchConfigUiMetadata.Categories.Sum(category => category.Properties.Count),
-            sheet.ControlCount);
-        Assert.Equal(MatchConfigUiMetadata.Categories.Count, sheet.CategoryBlockCount);
+            ModeRulesUiMetadata.Categories.Sum(category => category.Properties.Count),
+            rulesSheet.ControlCount);
+        Assert.Equal(ModeRulesUiMetadata.Categories.Count, rulesSheet.CategoryBlockCount);
+        Assert.Equal(
+            PhysicsUiMetadata.Categories.Sum(category => category.Properties.Count),
+            physicsSheet.ControlCount);
+        Assert.Equal(PhysicsUiMetadata.Categories.Count, physicsSheet.CategoryBlockCount);
 
-        VBoxContainer players = lobby.GetNode<VBoxContainer>(
-            "Content/Main/Sidebar/LobbyCard/Margin/Column/Roster/" +
-            "SingleColumnRoster/Players");
+        SingleColumnRoster roster = lobby.GetDescendantByType<SingleColumnRoster>();
+        VBoxContainer players = roster.GetDescendantByType<VBoxContainer>();
         Assert.Equal(2, players.GetChildCount());
-        Assert.IsType<LobbyChat>(lobby.GetNode("Content/Main/Sidebar/ChatPanel"));
+        Assert.IsType<LobbyChat>(lobby.GetDescendantByType<LobbyChat>());
     }
 
     [Fact]
@@ -51,7 +57,8 @@ public class ChatCompositionTests : NodeServiceTest
         Lobby lobby = InstantiateLobby();
         try
         {
-            Assert.IsType<LobbySettingsPanel>(lobby.GetNode("Content/Main/Settings"));
+            Assert.IsType<LobbySettingsPanel>(
+                lobby.GetDescendantByType<LobbySettingsPanel>());
         }
         finally
         {
@@ -96,8 +103,8 @@ public class ChatCompositionTests : NodeServiceTest
         Lobby lobby = InstantiateLobby();
         try
         {
-            Assert.IsType<ClientChat>(lobby.GetNode("ClientChat"));
-            Assert.IsType<LobbyChat>(lobby.GetNode("Content/Main/Sidebar/ChatPanel"));
+            Assert.IsType<ClientChat>(lobby.GetDescendantByType<ClientChat>());
+            Assert.IsType<LobbyChat>(lobby.GetDescendantByType<LobbyChat>());
         }
         finally
         {
@@ -109,9 +116,9 @@ public class ChatCompositionTests : NodeServiceTest
         GameView game = gameScene.Instantiate<GameView>();
         try
         {
-            Assert.IsType<KillFeed>(game.GetNode("KillFeed"));
-            Assert.IsType<ClientChat>(game.GetNode("ClientChat"));
-            Assert.IsType<GameChat>(game.GetNode("Hud/GameChat"));
+            Assert.IsType<KillFeed>(game.GetDescendantByType<KillFeed>());
+            Assert.IsType<ClientChat>(game.GetDescendantByType<ClientChat>());
+            Assert.IsType<GameChat>(game.GetDescendantByType<GameChat>());
         }
         finally
         {
@@ -127,10 +134,12 @@ public class ChatCompositionTests : NodeServiceTest
         ServerMain root = scene.Instantiate<ServerMain>();
         try
         {
-            Assert.IsType<ServerHost>(root.GetNode("Host"));
-            Assert.IsType<ServerSessionController>(root.GetNode("Session"));
-            Assert.IsType<ServerChat>(root.GetNode("Chat"));
-            Assert.IsType<ServerLobbySettings>(root.GetNode("LobbySettings"));
+            Assert.IsType<ServerHost>(root.GetDescendantByType<ServerHost>());
+            Assert.IsType<ServerSessionController>(
+                root.GetDescendantByType<ServerSessionController>());
+            Assert.IsType<ServerChat>(root.GetDescendantByType<ServerChat>());
+            Assert.IsType<ServerLobbySettings>(
+                root.GetDescendantByType<ServerLobbySettings>());
         }
         finally
         {

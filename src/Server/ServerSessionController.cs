@@ -70,7 +70,7 @@ public partial class ServerSessionController : Node, IServerSession
         TeamJoinRequestMsg.Received -= OnTeamJoinRequest;
         TeamSwapRequestMsg.Received -= OnTeamSwapRequest;
         EndMatchRequestMsg.Received -= OnEndMatchRequest;
-        LobbySettings.RulesChanged -= OnRulesChanged;
+        LobbySettings.ConfigChanged -= OnConfigChanged;
         _subscribed = false;
     }
 
@@ -103,7 +103,7 @@ public partial class ServerSessionController : Node, IServerSession
         TeamJoinRequestMsg.Received += OnTeamJoinRequest;
         TeamSwapRequestMsg.Received += OnTeamSwapRequest;
         EndMatchRequestMsg.Received += OnEndMatchRequest;
-        LobbySettings.RulesChanged += OnRulesChanged;
+        LobbySettings.ConfigChanged += OnConfigChanged;
         _subscribed = true;
     }
 
@@ -119,7 +119,7 @@ public partial class ServerSessionController : Node, IServerSession
         }
 
         LobbySession lobby = _lobby!;
-        lobby.SetTeamsEnabled(LobbySettings.Rules.Teams);
+        lobby.SetTeamsEnabled(LobbySettings.Config.Rules.Teams);
         lobby.Add(peerId);
         GD.Print($"[server] player {peerId} '{name}' entered lobby ({lobby.Count} waiting)");
         _protocol.BroadcastLobby(lobby);
@@ -171,11 +171,11 @@ public partial class ServerSessionController : Node, IServerSession
         _protocol.BroadcastLobby(lobby);
     }
 
-    private void OnRulesChanged()
+    private void OnConfigChanged()
     {
-        if (_lobby is not { } lobby || !lobby.SetTeamsEnabled(LobbySettings.Rules.Teams))
+        if (_lobby is not { } lobby || !lobby.SetTeamsEnabled(LobbySettings.Config.Rules.Teams))
             return;
-        GD.Print($"[server] lobby teams {(LobbySettings.Rules.Teams ? "assigned" : "cleared")}");
+        GD.Print($"[server] lobby teams {(LobbySettings.Config.Rules.Teams ? "assigned" : "cleared")}");
         _protocol.BroadcastLobby(lobby);
     }
 
@@ -214,7 +214,7 @@ public partial class ServerSessionController : Node, IServerSession
 
         int victoryLapTicks = (int)(MATCH_END_SECONDS * SimConfig.TICK_RATE);
         MapPackage selectedMap = LobbySettings.Map;
-        MatchSession match = new(selectedMap.BuildMask(), LobbySettings.Rules, Random.Shared.Next(),
+        MatchSession match = new(selectedMap.BuildMask(), LobbySettings.Config, Random.Shared.Next(),
             victoryLapTicks, selectedMap.SpawnPoints);
         _match = match;
         _lobby = null;
@@ -251,7 +251,7 @@ public partial class ServerSessionController : Node, IServerSession
 
     private void ReturnToLobby(MatchSession completedMatch)
     {
-        _lobby = LobbySession.For(_players.PeerIds, LobbySettings.Rules.Teams);
+        _lobby = LobbySession.For(_players.PeerIds, LobbySettings.Config.Rules.Teams);
         _match = null;
         GD.Print($"[server] back to lobby ({completedMatch.World.Players.Count} player(s))");
         _protocol.BroadcastLobby(_lobby);

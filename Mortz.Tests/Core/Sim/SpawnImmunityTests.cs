@@ -63,7 +63,10 @@ public class SpawnImmunityTests
     [Fact]
     public void LateProtectedPress_MustNotFire_OnceTheTimerHasRunOut()
     {
-        MatchConfig config = new() { SpawnImmunity = 2f / SimConfig.TICK_RATE };
+        MatchConfig config = new()
+        {
+            Physics = new Physics { SpawnImmunity = 2f / SimConfig.TICK_RATE },
+        };
         SimWorld world = new(TestWorlds.Flat(), config,
             spawnPoints: [new Vec2(100, TestWorlds.FLOOR_Y)]);
         world.AddPlayer(1);
@@ -115,7 +118,10 @@ public class SpawnImmunityTests
         Assert.Equal(SimConfig.MAX_HEALTH, protectedWorld.Players[2].Health);
 
         // Geometry guard: without protection the same blast damages the victim.
-        MatchConfig vulnerableConfig = new() { SpawnImmunity = 0 };
+        MatchConfig vulnerableConfig = new()
+        {
+            Physics = new Physics { SpawnImmunity = 0 },
+        };
         SimWorld vulnerableWorld = new(TestWorlds.Flat(), vulnerableConfig, spawnPoints: closeSpawns);
         vulnerableWorld.AddPlayer(1);
         vulnerableWorld.AddPlayer(2);

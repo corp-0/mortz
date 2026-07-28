@@ -10,7 +10,7 @@ namespace Mortz.Core.Sim;
 /// </summary>
 public static class MortarSim
 {
-    public static MortarOutcome Tick(ref MortarState m, TerrainMask terrain, MatchConfig cfg, float dt)
+    public static MortarOutcome Tick(ref MortarState m, TerrainMask terrain, Physics cfg, float dt)
     {
         if (++m.AgeTicks >= SimConfig.MORTAR_MAX_LIFETIME_TICKS)
             return MortarOutcome.EXPLODED;

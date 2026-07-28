@@ -3,7 +3,7 @@
 [ext_resource type="Script" uid="uid://ccv87mfb0uwoq" path="res://src/Client/Menus/LobbySettingsPanel.cs" id="1"]
 [ext_resource type="PackedScene" uid="uid://pbne52ymu80j" path="res://src/Shared/UI/Controls/UiPropertySheet.tscn" id="2"]
 
-[node name="LobbySettingsPanel" type="PanelContainer" unique_id=289524066 node_paths=PackedStringArray("_modePicker", "_mapPicker", "_mapPreview", "_mapStatus", "_sheet")]
+[node name="LobbySettingsPanel" type="PanelContainer" unique_id=289524066 node_paths=PackedStringArray("_modePicker", "_mapPicker", "_mapPreview", "_mapStatus", "_rulesSheet", "_physicsSheet")]
 custom_minimum_size = Vector2(440, 0)
 offset_right = 440.0
 offset_bottom = 720.0
@@ -14,7 +14,8 @@ _modePicker = NodePath("Margin/Column/Header/MapInfo/ModePicker")
 _mapPicker = NodePath("Margin/Column/Header/MapInfo/MapPicker")
 _mapPreview = NodePath("Margin/Column/Header/PreviewFrame/MapPreview")
 _mapStatus = NodePath("Margin/Column/Header/MapInfo/MapStatus")
-_sheet = NodePath("Margin/Column/RulesScroll/RulesColumn/Rules")
+_rulesSheet = NodePath("Margin/Column/RulesScroll/RulesColumn/Rules")
+_physicsSheet = NodePath("Margin/Column/RulesScroll/RulesColumn/Physics")
 
 [node name="Margin" type="MarginContainer" parent="." unique_id=531731578]
 layout_mode = 2
@@ -98,13 +99,17 @@ layout_mode = 2
 [node name="RulesHeader" type="HBoxContainer" parent="Margin/Column/RulesScroll/RulesColumn" unique_id=994957328]
 layout_mode = 2
 
-[node name="RulesTitle" type="Label" parent="Margin/Column/RulesScroll/RulesColumn/RulesHeader" unique_id=1452904282]
+[node name="SettingsTitle" type="Label" parent="Margin/Column/RulesScroll/RulesColumn/RulesHeader" unique_id=1452904282]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.886, 0.925, 0.973, 1)
 theme_override_font_sizes/font_size = 22
-text = "MATCH RULES"
+text = "MATCH SETTINGS"
 
 [node name="Rules" parent="Margin/Column/RulesScroll/RulesColumn" unique_id=995309611 instance=ExtResource("2")]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Physics" parent="Margin/Column/RulesScroll/RulesColumn" unique_id=1471520893 instance=ExtResource("2")]
 layout_mode = 2
 size_flags_horizontal = 3

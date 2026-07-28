@@ -116,7 +116,8 @@ public class DrainFidelityTests
     {
         SimWorld server = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         server.AddPlayer(1);
-        Predictor predictor = new Predictor(server.Terrain, TestWorlds.NoSpawnProtectionConfig);
+        Predictor predictor = new Predictor(
+            server.Terrain, TestWorlds.NoSpawnProtectionConfig.Physics);
         predictor.Reconcile(server.Players[1], -1);
 
         const int FIRE_T = 30;
@@ -171,7 +172,8 @@ public class DrainFidelityTests
     {
         SimWorld server = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         server.AddPlayer(1);
-        Predictor predictor = new Predictor(server.Terrain, TestWorlds.NoSpawnProtectionConfig);
+        Predictor predictor = new Predictor(
+            server.Terrain, TestWorlds.NoSpawnProtectionConfig.Physics);
         predictor.Reconcile(server.Players[1], -1);
 
         HashSet<int> predictedSeqs = new HashSet<int>();

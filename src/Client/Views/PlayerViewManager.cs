@@ -43,12 +43,12 @@ public partial class PlayerViewManager : Node2D
     // Replicated per-player modifier lists resolve through the same
     // StatsPipeline the server runs; base stats are the fallback until a
     // player's list arrives.
-    private MatchConfig _config = null!;
+    private Physics _config = null!;
     private PlayerStats _stats = null!;
     private readonly Dictionary<int, PlayerStats> _playerStats = new();
 
     /// <summary>Must be called before the first Place (GameView.Initialize does).</summary>
-    public void Configure(MatchConfig config)
+    public void Configure(Physics config)
     {
         _config = config;
         _stats = PlayerStats.Resolve(config);

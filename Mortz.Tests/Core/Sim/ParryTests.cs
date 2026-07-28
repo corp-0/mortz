@@ -38,7 +38,8 @@ public class ParryTests
         // Exact reversal on X (gravity only ever touches Y). The parrier owns
         // the shell now; FiredBy still points at the original shooter.
         Assert.Single(w.Mortars);
-        Assert.Equal(-TestWorlds.NoSpawnProtectionConfig.MortarSpeed, w.Mortars[0].Velocity.X);
+        Assert.Equal(-TestWorlds.NoSpawnProtectionConfig.Physics.MortarSpeed,
+            w.Mortars[0].Velocity.X);
         Assert.Equal(1, w.Mortars[0].OwnerId);
         Assert.Equal(2, w.Mortars[0].FiredBy);
         Assert.True(w.Mortars[0].Deflected);

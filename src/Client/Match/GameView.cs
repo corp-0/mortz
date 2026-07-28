@@ -52,7 +52,7 @@ public partial class GameView : Node2D,
 
     private readonly SnapshotInterpolator _interpolator = new();
     private GameMap _gameMap = null!;
-    private MatchConfig _config = null!;
+    private Physics _config = null!;
     private readonly Dictionary<byte, int> _peersBySlot = new();
 
     public int NewestSnapshotTick => _interpolator.NewestTick;
@@ -63,19 +63,19 @@ public partial class GameView : Node2D,
     public void Initialize(MapPackage map, MatchConfig config,
         TerrainSyncEncoding terrainEncoding, byte[] terrainData)
     {
-        _config = config;
+        _config = config.Physics;
         _gameMap = _gameMapScene.Instantiate<GameMap>();
-        _gameMap.Initialize(map, config, terrainEncoding, terrainData);
+        _gameMap.Initialize(map, config.Physics, terrainEncoding, terrainData);
         AddChild(_gameMap);
         // Terrain has to draw under the players, mortars and ropes; AddChild
         // would leave it on top.
         MoveChild(_gameMap, 0);
-        _localPlayer.Initialize(new Predictor(_gameMap.Mask, config));
-        _mortarClient.Initialize(config, () => _interpolator.NewestTick);
+        _localPlayer.Initialize(new Predictor(_gameMap.Mask, config.Physics));
+        _mortarClient.Initialize(config.Physics, () => _interpolator.NewestTick);
         // Base stats to start from; the server's per-player modifier lists
         // (PlayerModifiersMsg) take over as they arrive.
-        _players.Configure(config);
-        _hud.Configure(PlayerStats.Resolve(config));
+        _players.Configure(config.Physics);
+        _hud.Configure(PlayerStats.Resolve(config.Physics));
     }
 
     public void OnResolved()

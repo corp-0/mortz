@@ -124,7 +124,10 @@ public class NetMessageTests : IDisposable
         LobbySettingsMsg received = default;
         Action<LobbySettingsMsg> handler = message => received = message;
         LobbySettingsMsg.Received += handler;
-        byte[] config = new MatchConfig { Gravity = 321 }.ToBytes();
+        byte[] config = new MatchConfig
+        {
+            Physics = new Physics { Gravity = 321 },
+        }.ToBytes();
         try
         {
             new LobbySettingsMsg("castlewars", "hash", ["arena", "castlewars"],

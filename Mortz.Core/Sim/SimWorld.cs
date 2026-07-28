@@ -90,7 +90,7 @@ public sealed class SimWorld
         _netSlots[peerId] = slot;
         _modifiers[peerId] = [];
         _situations[peerId] = Situations.NONE;
-        _stats[peerId] = PlayerStats.Resolve(Config);
+        _stats[peerId] = PlayerStats.Resolve(Config.Physics);
         _effective[peerId] = _stats[peerId];
         _players[peerId] = FreshState(peerId, lastInputSeq: -1) with
         {
@@ -124,7 +124,7 @@ public sealed class SimWorld
 
     private void RecomputeStats(int peerId)
     {
-        _stats[peerId] = StatsPipeline.Resolve(Config, _modifiers[peerId]);
+        _stats[peerId] = StatsPipeline.Resolve(Config.Physics, _modifiers[peerId]);
         _effective[peerId] = Compose(peerId, _situations[peerId]);
     }
 
@@ -134,7 +134,7 @@ public sealed class SimWorld
             return _stats[peerId];
         List<StatsModifier> all = new(_modifiers[peerId]);
         SituationEffects.AppendModifiers(flags, all);
-        return StatsPipeline.Resolve(Config, all);
+        return StatsPipeline.Resolve(Config.Physics, all);
     }
 
     /// <summary>Recomputes only when the situation flips, not every tick.</summary>
@@ -162,8 +162,8 @@ public sealed class SimWorld
             JumpsLeft = stats.TotalJumps,
             Ammo = stats.MaxAmmo,
             Health = stats.MaxHealth,
-            SpawnImmunityTicks = (byte)Config.SpawnImmunityTicks,
-            SpawnImmunityFireThroughSeq = lastInputSeq + Config.SpawnImmunityTicks,
+            SpawnImmunityTicks = (byte)Config.Physics.SpawnImmunityTicks,
+            SpawnImmunityFireThroughSeq = lastInputSeq + Config.Physics.SpawnImmunityTicks,
             LastInputSeq = lastInputSeq,
         };
     }
@@ -249,7 +249,7 @@ public sealed class SimWorld
                 foreach ((int seq, PlayerInput consumed) in queue.Consumed)
                 {
                     if (WeaponSim.Tick(ref state, consumed, prevButtons, stats, seq))
-                        SpawnMortar(WeaponSim.NewShell(_nextMortarId++, seq, state, consumed, Config));
+                        SpawnMortar(WeaponSim.NewShell(_nextMortarId++, seq, state, consumed, Config.Physics));
                     prevButtons = consumed.Buttons;
                 }
                 state.PrevButtons = queue.RawAppliedInput.Buttons;
@@ -290,7 +290,7 @@ public sealed class SimWorld
         for (int i = _mortars.Count - 1; i >= 0; i--)
         {
             MortarState m = _mortars[i];
-            MortarOutcome outcome = MortarSim.Tick(ref m, Terrain, Config, SimConfig.DT);
+            MortarOutcome outcome = MortarSim.Tick(ref m, Terrain, Config.Physics, SimConfig.DT);
             if (outcome == MortarOutcome.FLYING)
                 TryDeflect(ref m);
             if (outcome == MortarOutcome.FLYING && DirectHit(m))
@@ -360,18 +360,18 @@ public sealed class SimWorld
     private void Explode(in MortarState m)
     {
         Vec2 at = m.Position;
-        Terrain.CarveCircle((int)at.X, (int)at.Y, Config.MortarCarveRadius);
+        Terrain.CarveCircle((int)at.X, (int)at.Y, Config.Physics.MortarCarveRadius);
         // A deflected shell keeps the shooter's seq for retirement, but its
         // carve matches no prediction: broadcast -1.
         int carveSeq = m.Deflected ? -1 : m.SpawnSeq;
-        _explosions.Add(((int)at.X, (int)at.Y, Config.MortarCarveRadius, m.OwnerId, carveSeq));
+        _explosions.Add(((int)at.X, (int)at.Y, Config.Physics.MortarCarveRadius, m.OwnerId, carveSeq));
 
         foreach (int id in _players.Keys.ToArray())
         {
             PlayerState p = _players[id];
             if (!CombatEligibility.CanTakeDamage(p))
                 continue;
-            int damage = BlastSim.Damage(p, at, Config);
+            int damage = BlastSim.Damage(p, at, Config.Physics);
             if (damage == 0 || SparedByFriendlyFire(p, m.OwnerId))
                 continue;
             if (damage >= p.Health)
@@ -388,7 +388,7 @@ public sealed class SimWorld
 
     /// <summary>Only blast damage is spared; shells still explode and carve.</summary>
     private bool SparedByFriendlyFire(in PlayerState victim, int shooterId) =>
-        !Config.FriendlyFire && Config.Teams &&
+        !Config.Rules.FriendlyFire && Config.Rules.Teams &&
         victim.PeerId != shooterId && victim.TeamId != 0 &&
         _players.TryGetValue(shooterId, out PlayerState shooter) &&
         shooter.TeamId == victim.TeamId;
@@ -400,7 +400,7 @@ public sealed class SimWorld
         Velocity = Vec2.Zero,
         Health = 0,
         Rope = RopeMode.NONE,
-        RespawnTicks = (byte)Config.RespawnDelayTicks,
+        RespawnTicks = (byte)Config.Physics.RespawnDelayTicks,
         SpawnImmunityTicks = 0,
     };
 

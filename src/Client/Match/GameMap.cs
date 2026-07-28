@@ -59,7 +59,7 @@ public partial class GameMap : Node2D
     private List<(Vector2 Position, Color Color)> _activeReplayPixels = [];
 
     /// <summary>Must be called right after instantiating, before entering the tree.</summary>
-    public void Initialize(MapPackage map, MatchConfig config,
+    public void Initialize(MapPackage map, Physics config,
         TerrainSyncEncoding terrainEncoding, byte[] terrainData)
     {
         Mask = map.BuildMask();

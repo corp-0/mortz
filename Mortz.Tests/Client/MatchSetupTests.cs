@@ -20,25 +20,25 @@ public class MatchSetupTests : NodeServiceTest
     public void SettingsApplyAndEventsFireOnTransitionsOnly()
     {
         MatchSetup setup = Host(new MatchSetup());
-        int rules = 0, teams = 0, settings = 0;
-        setup.RulesChanged += () => rules++;
+        int config = 0, teams = 0, settings = 0;
+        setup.ConfigChanged += () => config++;
         setup.TeamsChanged += () => teams++;
         setup.SettingsChanged += () => settings++;
 
-        Settings(new MatchConfig { Teams = true, KillTarget = 5 }).Broadcast();
+        Settings(new MatchConfig { Rules = new ModeRules { Teams = true, KillTarget = 5 } }).Broadcast();
 
         Assert.True(setup.HasServerState);
-        Assert.True(setup.Rules.Teams);
-        Assert.Equal(5, setup.Rules.KillTarget);
+        Assert.True(setup.Config.Rules.Teams);
+        Assert.Equal(5, setup.Config.Rules.KillTarget);
         Assert.Equal("castlewars", setup.MapId);
         Assert.Equal([new ContentOption("castlewars", "Castle Wars")], setup.MapOptions);
-        Assert.Equal((1, 1, 1), (rules, teams, settings));
+        Assert.Equal((1, 1, 1), (config, teams, settings));
 
-        Settings(new MatchConfig { Teams = true, KillTarget = 5 }).Broadcast();
-        Assert.Equal((1, 1, 1), (rules, teams, settings));
+        Settings(new MatchConfig { Rules = new ModeRules { Teams = true, KillTarget = 5 } }).Broadcast();
+        Assert.Equal((1, 1, 1), (config, teams, settings));
 
-        Settings(new MatchConfig { Teams = true, KillTarget = 6 }).Broadcast();
-        Assert.Equal((2, 1, 2), (rules, teams, settings));
+        Settings(new MatchConfig { Rules = new ModeRules { Teams = true, KillTarget = 6 } }).Broadcast();
+        Assert.Equal((2, 1, 2), (config, teams, settings));
     }
 
     [Fact]
@@ -69,22 +69,22 @@ public class MatchSetupTests : NodeServiceTest
     }
 
     [Fact]
-    public void CopyRulesGivesEditorsAnIndependentConfig()
+    public void CopyConfigGivesEditorsAnIndependentConfig()
     {
         MatchSetup setup = Host(new MatchSetup());
-        Settings(new MatchConfig { KillTarget = 9 }).Broadcast();
+        Settings(new MatchConfig { Rules = new ModeRules { KillTarget = 9 } }).Broadcast();
 
-        MatchConfig copy = setup.CopyRules();
-        copy.KillTarget = 123;
+        MatchConfig copy = setup.CopyConfig();
+        copy.Rules.KillTarget = 123;
 
-        Assert.Equal(9, setup.Rules.KillTarget);
+        Assert.Equal(9, setup.Config.Rules.KillTarget);
     }
 
     [Fact]
     public void InvalidServerSettingsSurfaceAnErrorAndKeepState()
     {
         MatchSetup setup = Host(new MatchSetup());
-        Settings(new MatchConfig { KillTarget = 7 }).Broadcast();
+        Settings(new MatchConfig { Rules = new ModeRules { KillTarget = 7 } }).Broadcast();
         int settings = 0;
         setup.SettingsChanged += () => settings++;
 
@@ -92,7 +92,7 @@ public class MatchSetupTests : NodeServiceTest
             .Broadcast();
 
         Assert.Equal("Server sent an invalid map catalog.", setup.SettingsError);
-        Assert.Equal(7, setup.Rules.KillTarget);
+        Assert.Equal(7, setup.Config.Rules.KillTarget);
         Assert.True(setup.HasServerState);
         Assert.Equal(1, settings);
 
@@ -100,7 +100,7 @@ public class MatchSetupTests : NodeServiceTest
         Assert.Equal("Server sent invalid match settings.", setup.SettingsError);
         Assert.Equal(2, settings);
 
-        Settings(new MatchConfig { KillTarget = 7 }).Broadcast();
+        Settings(new MatchConfig { Rules = new ModeRules { KillTarget = 7 } }).Broadcast();
         Assert.Equal("", setup.SettingsError);
         Assert.Equal(3, settings);
     }
@@ -156,11 +156,11 @@ public class MatchSetupTests : NodeServiceTest
         int teams = 0;
         setup.TeamsChanged += () => teams++;
 
-        new WelcomeMsg("arena", "abc", new MatchConfig { Teams = true }.ToBytes(),
+        new WelcomeMsg("arena", "abc", new MatchConfig { Rules = new ModeRules { Teams = true } }.ToBytes(),
             (byte)TerrainSyncEncoding.CARVE_LOG, 1, 10, 1).SendTo(1);
 
         Assert.True(setup.HasServerState);
-        Assert.True(setup.Rules.Teams);
+        Assert.True(setup.Config.Rules.Teams);
         Assert.Equal("arena", setup.MapId);
         Assert.Equal(1, teams);
     }

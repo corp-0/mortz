@@ -67,7 +67,8 @@ public class ShellRetirementTests
     {
         SimWorld server = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         server.AddPlayer(1);
-        Predictor predictor = new Predictor(server.Terrain, TestWorlds.NoSpawnProtectionConfig);
+        Predictor predictor = new Predictor(
+            server.Terrain, TestWorlds.NoSpawnProtectionConfig.Physics);
         predictor.Reconcile(server.Players[1], -1);
 
         // Fire straight up so the shell stays airborne for the whole test, then
@@ -94,7 +95,8 @@ public class ShellRetirementTests
             destructible: (_, y) => y >= TestWorlds.FLOOR_Y);
         SimWorld server = new SimWorld(terrain, TestWorlds.NoSpawnProtectionConfig);
         server.AddPlayer(1);
-        Predictor predictor = new Predictor(terrain, TestWorlds.NoSpawnProtectionConfig);
+        Predictor predictor = new Predictor(
+            terrain, TestWorlds.NoSpawnProtectionConfig.Physics);
         predictor.Reconcile(server.Players[1], -1);
 
         predictor.LocalTick(new PlayerInput(InputButtons.FIRE, 64)); // point-blank floor impact
@@ -111,7 +113,8 @@ public class ShellRetirementTests
             destructible: (_, y) => y >= TestWorlds.FLOOR_Y);
         SimWorld server = new SimWorld(terrain, TestWorlds.NoSpawnProtectionConfig);
         server.AddPlayer(1);
-        Predictor predictor = new Predictor(terrain, TestWorlds.NoSpawnProtectionConfig);
+        Predictor predictor = new Predictor(
+            terrain, TestWorlds.NoSpawnProtectionConfig.Physics);
         PlayerState spawn = server.Players[1];
         predictor.Reconcile(spawn, -1);
 

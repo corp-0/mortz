@@ -20,7 +20,8 @@ public class PredictorTests
     {
         SimWorld server = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         server.AddPlayer(1);
-        Predictor predictor = new Predictor(server.Terrain, TestWorlds.NoSpawnProtectionConfig);
+        Predictor predictor = new Predictor(
+            server.Terrain, TestWorlds.NoSpawnProtectionConfig.Physics);
         predictor.Reconcile(server.Players[1], -1); // spawn state
 
         for (int t = 0; t < 300; t++)
@@ -48,7 +49,8 @@ public class PredictorTests
     {
         SimWorld server = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         server.AddPlayer(1);
-        Predictor predictor = new Predictor(server.Terrain, TestWorlds.NoSpawnProtectionConfig);
+        Predictor predictor = new Predictor(
+            server.Terrain, TestWorlds.NoSpawnProtectionConfig.Physics);
         predictor.Reconcile(server.Players[1], -1);
 
         for (int t = 0; t < 300; t++)
@@ -78,7 +80,8 @@ public class PredictorTests
     {
         SimWorld server = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         server.AddPlayer(1);
-        Predictor predictor = new Predictor(server.Terrain, TestWorlds.NoSpawnProtectionConfig);
+        Predictor predictor = new Predictor(
+            server.Terrain, TestWorlds.NoSpawnProtectionConfig.Physics);
         predictor.Reconcile(server.Players[1], -1);
 
         HashSet<int> predictedShellSeqs = new HashSet<int>();
@@ -119,7 +122,8 @@ public class PredictorTests
     {
         SimWorld server = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         server.AddPlayer(1);
-        Predictor predictor = new Predictor(server.Terrain, TestWorlds.NoSpawnProtectionConfig);
+        Predictor predictor = new Predictor(
+            server.Terrain, TestWorlds.NoSpawnProtectionConfig.Physics);
         predictor.Reconcile(server.Players[1], -1);
 
         // Run with every 3rd input packet lost, then go idle.
@@ -153,7 +157,8 @@ public class PredictorTests
     {
         SimWorld server = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         server.AddPlayer(1);
-        Predictor predictor = new Predictor(server.Terrain, TestWorlds.NoSpawnProtectionConfig);
+        Predictor predictor = new Predictor(
+            server.Terrain, TestWorlds.NoSpawnProtectionConfig.Physics);
         predictor.Reconcile(server.Players[1], -1);
 
         predictor.LocalTick(new PlayerInput(InputButtons.FIRE, AIM_UP_LEFT));
@@ -172,7 +177,8 @@ public class PredictorTests
     {
         SimWorld server = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         server.AddPlayer(1);
-        Predictor predictor = new Predictor(server.Terrain, TestWorlds.NoSpawnProtectionConfig);
+        Predictor predictor = new Predictor(
+            server.Terrain, TestWorlds.NoSpawnProtectionConfig.Physics);
         predictor.Reconcile(server.Players[1], -1);
 
         for (int t = 0; t < 240; t++)
@@ -211,7 +217,8 @@ public class PredictorTests
         const int LAG = 6;
         SimWorld server = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         server.AddPlayer(1);
-        Predictor predictor = new Predictor(server.Terrain, TestWorlds.NoSpawnProtectionConfig);
+        Predictor predictor = new Predictor(
+            server.Terrain, TestWorlds.NoSpawnProtectionConfig.Physics);
         predictor.Reconcile(server.Players[1], -1);
 
         Queue<(PlayerState State, int Ack)> wire = new();
@@ -248,7 +255,8 @@ public class PredictorTests
             destructible: (_, y) => y >= TestWorlds.FLOOR_Y);
         SimWorld server = new SimWorld(world, TestWorlds.NoSpawnProtectionConfig);
         server.AddPlayer(1);
-        Predictor predictor = new Predictor(world, TestWorlds.NoSpawnProtectionConfig);
+        Predictor predictor = new Predictor(
+            world, TestWorlds.NoSpawnProtectionConfig.Physics);
         predictor.Reconcile(server.Players[1], -1);
 
         predictor.LocalTick(new PlayerInput(InputButtons.NONE));
@@ -285,7 +293,8 @@ public class PredictorTests
     {
         SimWorld server = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         server.AddPlayer(7);
-        Predictor predictor = new Predictor(server.Terrain, TestWorlds.NoSpawnProtectionConfig);
+        Predictor predictor = new Predictor(
+            server.Terrain, TestWorlds.NoSpawnProtectionConfig.Physics);
 
         // Inputs recorded before the spawn snapshot arrives must not crash or offset.
         predictor.LocalTick(new PlayerInput(InputButtons.RIGHT));
@@ -315,7 +324,8 @@ public class PredictorTests
         SimWorld server = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         server.AddPlayer(1);
         PlayerState spawn = server.Players[1];
-        Predictor predictor = new Predictor(server.Terrain, TestWorlds.NoSpawnProtectionConfig);
+        Predictor predictor = new Predictor(
+            server.Terrain, TestWorlds.NoSpawnProtectionConfig.Physics);
         predictor.Reconcile(spawn, -1);
 
         for (int t = 0; t < 30; t++)

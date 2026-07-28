@@ -17,6 +17,8 @@ public partial class UiPropertySheet : VBoxContainer
 
     private readonly List<IUiPropertyControl> _controls = [];
 
+    public Type? BoundModelType { get; private set; }
+
     internal int ControlCount => _controls.Count;
     internal int CategoryBlockCount { get; private set; }
 
@@ -29,6 +31,7 @@ public partial class UiPropertySheet : VBoxContainer
     public void Build(IReadOnlyList<UiCategoryDescriptor> categories, object model,
         Action changed)
     {
+        BoundModelType = model.GetType();
         int categoryIndex = 0;
         foreach (UiCategoryDescriptor category in categories)
         {

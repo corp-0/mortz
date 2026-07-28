@@ -126,7 +126,7 @@ public class BandwidthTests
     [Fact]
     public void MortarReplica_RendersOnPresentGameplayTimeline()
     {
-        MatchConfig config = new() { MortarGravity = 0 };
+        Physics config = new() { MortarGravity = 0 };
         config.Clamp();
         MortarReplicaSet replicas = new(
             new TerrainMask(2_000, 1_000, (_, _) => false, (_, _) => false), config);
@@ -145,7 +145,7 @@ public class BandwidthTests
     [Fact]
     public void MortarReplica_IgnoresStaleCorrectionsAndAppliesFreshImmediately()
     {
-        MatchConfig config = new() { MortarGravity = 0 };
+        Physics config = new() { MortarGravity = 0 };
         config.Clamp();
         MortarReplicaSet replicas = new(
             new TerrainMask(2_000, 1_000, (_, _) => false, (_, _) => false), config);
@@ -164,7 +164,7 @@ public class BandwidthTests
     [Fact]
     public void MortarReplica_CorrectionOrderingSurvivesTickWrap()
     {
-        MatchConfig config = new() { MortarGravity = 0 };
+        Physics config = new() { MortarGravity = 0 };
         config.Clamp();
         MortarReplicaSet replicas = new(
             new TerrainMask(2_000, 1_000, (_, _) => false, (_, _) => false), config);
@@ -183,7 +183,7 @@ public class BandwidthTests
     [Fact]
     public void MortarReplica_AuthoritativeEndRemovesImmediately()
     {
-        MatchConfig config = new() { MortarGravity = 0 };
+        Physics config = new() { MortarGravity = 0 };
         config.Clamp();
         MortarReplicaSet replicas = new(
             new TerrainMask(2_000, 1_000, (_, _) => false, (_, _) => false), config);
@@ -203,7 +203,7 @@ public class BandwidthTests
     public void ZeroGravityStationaryShell_StillExpires()
     {
         TerrainMask empty = new(100, 100, (_, _) => false, (_, _) => false);
-        MatchConfig config = new() { MortarGravity = 0 };
+        Physics config = new() { MortarGravity = 0 };
         config.Clamp();
         MortarState shell = new() { Position = new Vec2(50, -10) };
 
@@ -219,9 +219,12 @@ public class BandwidthTests
     {
         MatchConfig config = new()
         {
-            MortarMaxAmmo = 30,
-            MortarGravity = 0,
-            SpawnImmunity = 0,
+            Physics = new Physics
+            {
+                MortarMaxAmmo = 30,
+                MortarGravity = 0,
+                SpawnImmunity = 0,
+            },
         };
         config.Clamp();
         SimWorld world = new(TestWorlds.Flat(), config);

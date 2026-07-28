@@ -36,7 +36,7 @@ public partial class RosterHost : ViewVariantHost<RosterLayout>
     }
 
     protected override RosterLayout CurrentKey() =>
-        Setup.Rules.Teams ? RosterLayout.TEAM_COLUMNS : RosterLayout.SINGLE;
+        Setup.Config.Rules.Teams ? RosterLayout.TEAM_COLUMNS : RosterLayout.SINGLE;
 
     protected override PackedScene SceneFor(RosterLayout key) =>
         key == RosterLayout.TEAM_COLUMNS ? _teamColumns : _single;

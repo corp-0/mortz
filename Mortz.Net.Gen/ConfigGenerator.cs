@@ -7,20 +7,11 @@ using Microsoft.CodeAnalysis.Text;
 
 namespace Mortz.Net.Gen;
 
-/// <summary>
-/// Expands [PlayerStat] and [MatchRule] properties on MatchConfig into
-/// everything hand-maintained before: the Stat enum, unified Clamp, wire,
-/// PlayerStats, and the modifier pipeline switches. The property is the
-/// single declaration (type, name, default initializer); the attribute
-/// carries the clamp range and the PlayerStats conversion.
-/// See plans/2026-07-19-stat-table-codegen-design.md.
-/// </summary>
 [Generator]
 public sealed class ConfigGenerator : IIncrementalGenerator
 {
     private const string PLAYER_STAT_ATTRIBUTE = "Mortz.Core.Match.PlayerStatAttribute";
     private const string MATCH_RULE_ATTRIBUTE = "Mortz.Core.Match.MatchRuleAttribute";
-    private const string CONFIG_TYPE = "Mortz.Core.Match.MatchConfig";
     private const string TICK_RATE_TYPE = "Mortz.Core.Sim.SimConfig";
 
     private static readonly DiagnosticDescriptor _invalidRange = new(
@@ -69,12 +60,11 @@ public sealed class ConfigGenerator : IIncrementalGenerator
         COUNT_BYTE = 4,
     }
 
-    /// <summary>One attributed MatchConfig property. StatName is the derived
-    /// PlayerStats/enum identity (statsName override or the property name);
-    /// meaningless for rules. Default carries the initializer's constant for
-    /// numeric and enum fields, null when non-constant or bool.</summary>
     private sealed record FieldModel(
         FieldKind Kind,
+        string Owner,
+        string OwnerName,
+        string OwnerNamespace,
         string Name,
         string Type,
         bool IsEnum,
@@ -118,9 +108,6 @@ public sealed class ConfigGenerator : IIncrementalGenerator
         Location location = node.GetLocation();
         ImmutableArray<Diagnostic>.Builder diagnostics = ImmutableArray.CreateBuilder<Diagnostic>();
 
-        if (symbol.ContainingType.ToDisplayString() != CONFIG_TYPE)
-            diagnostics.Add(Diagnostic.Create(_misuse, location, name,
-                "config attributes only apply to MatchConfig properties"));
         bool publicGetSet = symbol is
         {
             IsStatic: false,
@@ -168,7 +155,11 @@ public sealed class ConfigGenerator : IIncrementalGenerator
                     conv == Convert.TICKS_BYTE ? "byte" : "ushort"));
         }
 
-        return new FieldModel(kind, name, type, isEnum, enumMembers, statsName ?? name, min, max,
+        return new FieldModel(kind,
+            symbol.ContainingType.ToDisplayString(),
+            symbol.ContainingType.Name,
+            symbol.ContainingType.ContainingNamespace.ToDisplayString(),
+            name, type, isEnum, enumMembers, statsName ?? name, min, max,
             conv, defaultValue, node.SyntaxTree.FilePath, node.SpanStart, diagnostics.ToImmutable());
     }
 
@@ -201,9 +192,6 @@ public sealed class ConfigGenerator : IIncrementalGenerator
                 $"min/max apply to numeric rules only, not {type}"));
     }
 
-    /// <summary>The initializer's constant, when there is one and it is
-    /// numeric (enums surface as their underlying integer). Non-constant
-    /// initializers simply skip the range check.</summary>
     private static double? ConstantDefault(GeneratorAttributeSyntaxContext ctx,
         PropertyDeclarationSyntax node)
     {
@@ -222,8 +210,6 @@ public sealed class ConfigGenerator : IIncrementalGenerator
         };
     }
 
-    /// <summary>Null when SimConfig.TICK_RATE cannot be resolved (broken
-    /// build in progress); the overflow check just skips that pass.</summary>
     private static int? TickRate(GeneratorAttributeSyntaxContext ctx)
     {
         INamedTypeSymbol? simConfig =
@@ -265,27 +251,43 @@ public sealed class ConfigGenerator : IIncrementalGenerator
             }
         }
 
-        FieldModel[] statFields = valid.Where(m => m.Kind == FieldKind.STAT).ToArray();
-        if (statFields.Length > 0)
-            spc.AddSource("Stat.g.cs",
-                SourceText.From(EmitStatEnum(statFields),
-                    Encoding.UTF8));
-        spc.AddSource("MatchConfig.g.cs",
-            SourceText.From(EmitConfig(valid),
-                Encoding.UTF8));
-        if (statFields.Length > 0)
+        foreach (IGrouping<string, FieldModel> owner in valid.GroupBy(m => m.Owner))
         {
-            spc.AddSource("PlayerStats.g.cs",
-                SourceText.From(EmitPlayerStats(statFields),
-                    Encoding.UTF8));
-            spc.AddSource("StatsPipeline.g.cs",
-                SourceText.From(EmitPipeline(statFields),
+            spc.AddSource($"{HintName(owner.Key)}.g.cs",
+                SourceText.From(EmitConfig(owner.ToArray()),
                     Encoding.UTF8));
         }
+
+        FieldModel[] statFields = valid.Where(m => m.Kind == FieldKind.STAT).ToArray();
+        if (statFields.Length == 0)
+            return;
+        if (statFields.Select(m => m.Owner).Distinct().Count() > 1)
+        {
+            spc.ReportDiagnostic(Diagnostic.Create(_misuse, Location.None, statFields[0].Name,
+                "all [PlayerStat] properties must share a single containing type"));
+            return;
+        }
+        spc.AddSource("Stat.g.cs",
+            SourceText.From(EmitStatEnum(statFields),
+                Encoding.UTF8));
+        spc.AddSource("PlayerStats.g.cs",
+            SourceText.From(EmitPlayerStats(statFields),
+                Encoding.UTF8));
+        spc.AddSource("StatsPipeline.g.cs",
+            SourceText.From(EmitPipeline(statFields),
+                Encoding.UTF8));
     }
 
-    /// <summary>DashCooldown (TICKS_BYTE) -> DashCooldownTicks; RAW and
-    /// COUNT_BYTE keep the stat name.</summary>
+    private static string HintName(string typeName)
+    {
+        var sb = new StringBuilder(typeName.Length);
+        foreach (char c in typeName)
+        {
+            sb.Append(char.IsLetterOrDigit(c) ? c : '_');
+        }
+        return sb.ToString();
+    }
+
     private static string StatsFieldName(FieldModel m) =>
         m.Conv is Convert.TICKS_INT or Convert.TICKS_BYTE or Convert.TICKS_USHORT
             ? m.StatName + "Ticks"
@@ -307,13 +309,7 @@ public sealed class ConfigGenerator : IIncrementalGenerator
         sb.AppendLine();
         sb.AppendLine("namespace Mortz.Core.Sim;");
         sb.AppendLine();
-        sb.AppendLine("/// <summary>One player's resolved sim numbers: the match config's");
-        sb.AppendLine("/// per-player bases with that player's modifiers applied (StatsPipeline");
-        sb.AppendLine("/// composes those in config units and re-clamps before calling Resolve).");
-        sb.AppendLine("/// The sim reads these and never MatchConfig directly. Seconds become");
-        sb.AppendLine("/// ticks here, once, sized for the byte counters in PlayerState (the");
-        sb.AppendLine("/// config clamps guarantee they fit). Generated from the [PlayerStat]");
-        sb.AppendLine("/// properties on MatchConfig.</summary>");
+        string owner = $"global::{stats[0].Owner}";
         sb.AppendLine("public sealed class PlayerStats");
         sb.AppendLine("{");
         foreach (FieldModel m in stats)
@@ -321,10 +317,10 @@ public sealed class ConfigGenerator : IIncrementalGenerator
             sb.AppendLine($"    public readonly {StatsFieldType(m)} {StatsFieldName(m)};");
         }
         sb.AppendLine();
-        sb.AppendLine("    public static PlayerStats Resolve(global::Mortz.Core.Match.MatchConfig cfg) =>");
+        sb.AppendLine($"    public static PlayerStats Resolve({owner} cfg) =>");
         sb.AppendLine("        new PlayerStats(cfg);");
         sb.AppendLine();
-        sb.AppendLine("    private PlayerStats(global::Mortz.Core.Match.MatchConfig cfg)");
+        sb.AppendLine($"    private PlayerStats({owner} cfg)");
         sb.AppendLine("    {");
         foreach (FieldModel m in stats)
         {
@@ -354,9 +350,10 @@ public sealed class ConfigGenerator : IIncrementalGenerator
         sb.AppendLine();
         sb.AppendLine("namespace Mortz.Core.Sim.Modifiers;");
         sb.AppendLine();
+        string owner = $"global::{stats[0].Owner}";
         sb.AppendLine("public static partial class StatsPipeline");
         sb.AppendLine("{");
-        sb.AppendLine("    private static float Get(global::Mortz.Core.Match.MatchConfig c, Stat stat) => stat switch");
+        sb.AppendLine($"    private static float Get({owner} c, Stat stat) => stat switch");
         sb.AppendLine("    {");
         foreach (FieldModel m in stats)
         {
@@ -365,7 +362,7 @@ public sealed class ConfigGenerator : IIncrementalGenerator
         sb.AppendLine("        _ => throw new global::System.ArgumentOutOfRangeException(nameof(stat)),");
         sb.AppendLine("    };");
         sb.AppendLine();
-        sb.AppendLine("    private static void Set(global::Mortz.Core.Match.MatchConfig c, Stat stat, float value)");
+        sb.AppendLine($"    private static void Set({owner} c, Stat stat, float value)");
         sb.AppendLine("    {");
         sb.AppendLine("        int rounded = (int)global::System.MathF.Round(value);");
         sb.AppendLine("        switch (stat)");
@@ -390,8 +387,6 @@ public sealed class ConfigGenerator : IIncrementalGenerator
         sb.AppendLine();
         sb.AppendLine("namespace Mortz.Core.Sim.Modifiers;");
         sb.AppendLine();
-        sb.AppendLine("/// <summary>Every stat a modifier can touch, in config units (seconds,");
-        sb.AppendLine("/// pixels); generated from the [PlayerStat] properties on MatchConfig.</summary>");
         sb.AppendLine("public enum Stat : byte");
         sb.AppendLine("{");
         foreach (FieldModel m in statFields)
@@ -404,16 +399,15 @@ public sealed class ConfigGenerator : IIncrementalGenerator
 
     private static string EmitConfig(FieldModel[] fields)
     {
+        string name = fields[0].OwnerName;
         var sb = new StringBuilder();
         sb.AppendLine("// <auto-generated by Mortz.Net.Gen/>");
         sb.AppendLine("#nullable enable");
         sb.AppendLine();
-        sb.AppendLine("namespace Mortz.Core.Match;");
+        sb.AppendLine($"namespace {fields[0].OwnerNamespace};");
         sb.AppendLine();
-        sb.AppendLine("public sealed partial class MatchConfig");
+        sb.AppendLine($"public sealed partial class {name}");
         sb.AppendLine("{");
-        sb.AppendLine("    /// <summary>Force every declared field into its sane range; NaN lands");
-        sb.AppendLine("    /// on the minimum, undefined enum values on their default.</summary>");
         sb.AppendLine("    public void Clamp()");
         sb.AppendLine("    {");
         foreach (FieldModel m in fields)
@@ -437,9 +431,8 @@ public sealed class ConfigGenerator : IIncrementalGenerator
         sb.AppendLine("    private static float C(float v, float min, float max) =>");
         sb.AppendLine("        float.IsNaN(v) ? min : global::System.Math.Clamp(v, min, max);");
         sb.AppendLine();
-        sb.AppendLine("    /// <summary>Field order is property declaration order; any change to");
-        sb.AppendLine("    /// the declared fields needs a PROTOCOL_VERSION bump.</summary>");
-        sb.AppendLine("    internal static byte[] Serialize(MatchConfig config)");
+        sb.AppendLine("    // Changing field order requires a protocol version bump.");
+        sb.AppendLine($"    internal static byte[] Serialize({name} config)");
         sb.AppendLine("    {");
         sb.AppendLine("        using global::System.IO.MemoryStream stream = new global::System.IO.MemoryStream();");
         sb.AppendLine("        using global::System.IO.BinaryWriter w = new global::System.IO.BinaryWriter(stream);");
@@ -452,11 +445,11 @@ public sealed class ConfigGenerator : IIncrementalGenerator
         sb.AppendLine("        return stream.ToArray();");
         sb.AppendLine("    }");
         sb.AppendLine();
-        sb.AppendLine("    internal static MatchConfig Deserialize(byte[] data)");
+        sb.AppendLine($"    internal static {name} Deserialize(byte[] data)");
         sb.AppendLine("    {");
         sb.AppendLine("        using global::System.IO.MemoryStream stream = new global::System.IO.MemoryStream(data, writable: false);");
         sb.AppendLine("        using global::System.IO.BinaryReader r = new global::System.IO.BinaryReader(stream);");
-        sb.AppendLine("        MatchConfig config = new MatchConfig");
+        sb.AppendLine($"        {name} config = new {name}");
         sb.AppendLine("        {");
         foreach (FieldModel m in fields)
         {
@@ -476,10 +469,7 @@ public sealed class ConfigGenerator : IIncrementalGenerator
 
     private static void EmitApplier(StringBuilder sb, FieldModel[] fields)
     {
-        sb.AppendLine("    /// <summary>Applies one authoring key (snake_case of the property name).");
-        sb.AppendLine("    /// Takes the raw parsed value: bool, long, double, or string for enums.");
-        sb.AppendLine("    /// Call Clamp() after the last key.</summary>");
-        sb.AppendLine("    public ConfigKeyResult TryApplyKey(string key, object? value, out string error)");
+        sb.AppendLine("    public global::Mortz.Core.Match.ConfigKeyResult TryApplyKey(string key, object? value, out string error)");
         sb.AppendLine("    {");
         sb.AppendLine("        error = \"\";");
         sb.AppendLine("        switch (key)");
@@ -497,7 +487,7 @@ public sealed class ConfigGenerator : IIncrementalGenerator
                 sb.AppendLine($"                    global::System.Enum.IsDefined(e{m.Name}))");
                 sb.AppendLine("                {");
                 sb.AppendLine($"                    {m.Name} = e{m.Name};");
-                sb.AppendLine("                    return ConfigKeyResult.APPLIED;");
+                sb.AppendLine("                    return global::Mortz.Core.Match.ConfigKeyResult.APPLIED;");
                 sb.AppendLine("                }");
                 sb.AppendLine($"                error = \"'{key}' must be one of: {values}\";");
             }
@@ -506,7 +496,7 @@ public sealed class ConfigGenerator : IIncrementalGenerator
                 sb.AppendLine($"                if (value is bool b{m.Name})");
                 sb.AppendLine("                {");
                 sb.AppendLine($"                    {m.Name} = b{m.Name};");
-                sb.AppendLine("                    return ConfigKeyResult.APPLIED;");
+                sb.AppendLine("                    return global::Mortz.Core.Match.ConfigKeyResult.APPLIED;");
                 sb.AppendLine("                }");
                 sb.AppendLine($"                error = \"'{key}' must be a boolean\";");
             }
@@ -515,7 +505,7 @@ public sealed class ConfigGenerator : IIncrementalGenerator
                 sb.AppendLine($"                if (value is long l{m.Name} && l{m.Name} is >= int.MinValue and <= int.MaxValue)");
                 sb.AppendLine("                {");
                 sb.AppendLine($"                    {m.Name} = (int)l{m.Name};");
-                sb.AppendLine("                    return ConfigKeyResult.APPLIED;");
+                sb.AppendLine("                    return global::Mortz.Core.Match.ConfigKeyResult.APPLIED;");
                 sb.AppendLine("                }");
                 sb.AppendLine($"                error = \"'{key}' must be a 32-bit integer\";");
             }
@@ -524,20 +514,20 @@ public sealed class ConfigGenerator : IIncrementalGenerator
                 sb.AppendLine($"                if (value is double d{m.Name})");
                 sb.AppendLine("                {");
                 sb.AppendLine($"                    {m.Name} = (float)d{m.Name};");
-                sb.AppendLine("                    return ConfigKeyResult.APPLIED;");
+                sb.AppendLine("                    return global::Mortz.Core.Match.ConfigKeyResult.APPLIED;");
                 sb.AppendLine("                }");
                 sb.AppendLine($"                if (value is long i{m.Name})");
                 sb.AppendLine("                {");
                 sb.AppendLine($"                    {m.Name} = i{m.Name};");
-                sb.AppendLine("                    return ConfigKeyResult.APPLIED;");
+                sb.AppendLine("                    return global::Mortz.Core.Match.ConfigKeyResult.APPLIED;");
                 sb.AppendLine("                }");
                 sb.AppendLine($"                error = \"'{key}' must be a number\";");
             }
-            sb.AppendLine("                return ConfigKeyResult.INVALID_VALUE;");
+            sb.AppendLine("                return global::Mortz.Core.Match.ConfigKeyResult.INVALID_VALUE;");
         }
         sb.AppendLine("            default:");
         sb.AppendLine("                error = $\"unknown key '{key}'\";");
-        sb.AppendLine("                return ConfigKeyResult.UNKNOWN_KEY;");
+        sb.AppendLine("                return global::Mortz.Core.Match.ConfigKeyResult.UNKNOWN_KEY;");
         sb.AppendLine("        }");
         sb.AppendLine("    }");
     }
@@ -553,8 +543,6 @@ public sealed class ConfigGenerator : IIncrementalGenerator
     private static string F(float value) =>
         value.ToString("R", CultureInfo.InvariantCulture) + "f";
 
-    /// <summary>MaxRunSpeed -> MAX_RUN_SPEED, CoyoteBonusPer100Speed ->
-    /// COYOTE_BONUS_PER_100_SPEED.</summary>
     private static string ToScreamingSnake(string pascal)
     {
         var sb = new StringBuilder(pascal.Length + 8);

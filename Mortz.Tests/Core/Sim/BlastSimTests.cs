@@ -11,7 +11,7 @@ public class BlastSimTests
 
     private const float CORE = SimConfig.MORTAR_CARVE_RADIUS * SimConfig.BLAST_CORE_FRACTION;
     private const float RIM = SimConfig.MORTAR_CARVE_RADIUS;
-    private static readonly MatchConfig _cfg = TestWorlds.NoSpawnProtectionConfig;
+    private static readonly Physics _cfg = TestWorlds.NoSpawnProtectionConfig.Physics;
 
     [Fact]
     public void BlastOnBodyCenter_DealsFullDamage()

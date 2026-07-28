@@ -38,12 +38,12 @@ public partial class MortarClient : Node
     private const float PARRY_GAIN_DB_PER_STEP = 1f;
 
     private MortarReplicaSet _remoteMortars = null!;
-    private MatchConfig _config = null!;
+    private Physics _config = null!;
     private Func<int> _newestSnapshotTick = null!;
     private readonly Dictionary<ushort, int> _parriesByMortar = new();
 
     /// <summary>Must be called before entering the tree.</summary>
-    public void Initialize(MatchConfig config, Func<int> newestSnapshotTick)
+    public void Initialize(Physics config, Func<int> newestSnapshotTick)
     {
         _config = config;
         _newestSnapshotTick = newestSnapshotTick;

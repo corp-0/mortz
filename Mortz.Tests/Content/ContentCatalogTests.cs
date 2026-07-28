@@ -185,11 +185,11 @@ public sealed class ContentCatalogTests : IDisposable
 
         Assert.True(catalog.TryGetMode("deathmatch", out ResolvedContent<GameModeManifest>? deathmatch));
         Assert.Equal("Hyper Deathmatch", deathmatch!.Winner.Manifest.Name);
-        Assert.Equal(50, deathmatch.Winner.Manifest.Rules.KillTarget);
+        Assert.Equal(50, deathmatch.Winner.Manifest.Config.Rules.KillTarget);
         Assert.Equal(["base", "mod"],
             deathmatch.OverrideChain.Select(m => m.SourcePack.Manifest.Id).ToArray());
         Assert.True(catalog.TryGetMode("teamdeathmatch", out ResolvedContent<GameModeManifest>? teams));
-        Assert.True(teams!.Winner.Manifest.Rules.Teams);
+        Assert.True(teams!.Winner.Manifest.Config.Rules.Teams);
     }
 
     [Fact]

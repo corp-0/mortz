@@ -19,10 +19,9 @@ public partial class MatchSetup : Node
     private readonly List<ContentOption> _modeOptions = [];
     private readonly List<LobbyMember> _members = [];
     private readonly List<SwapOffer> _swapOffers = [];
-    private byte[] _rulesBytes;
+    private byte[] _configBytes;
 
-    /// <summary>Any rule value changed.</summary>
-    public event Action? RulesChanged;
+    public event Action? ConfigChanged;
 
     /// <summary>The Teams rule toggled or a lobby team assignment moved.</summary>
     public event Action? TeamsChanged;
@@ -39,8 +38,7 @@ public partial class MatchSetup : Node
     /// <summary>False until the first valid server settings arrive.</summary>
     public bool HasServerState { get; private set; }
 
-    /// <summary>Canonical rules; treat as read-only. Editors mutate a CopyRules().</summary>
-    public MatchConfig Rules { get; private set; } = new();
+    public MatchConfig Config { get; private set; } = new();
 
     public string MapId { get; private set; } = "";
     public string MapHash { get; private set; } = "";
@@ -57,9 +55,9 @@ public partial class MatchSetup : Node
     public IReadOnlyList<LobbyMember> Members => _members;
     public IReadOnlyList<SwapOffer> SwapOffers => _swapOffers;
 
-    public MatchSetup() => _rulesBytes = Rules.ToBytes();
+    public MatchSetup() => _configBytes = Config.ToBytes();
 
-    public MatchConfig CopyRules() => MatchConfig.FromBytes(_rulesBytes);
+    public MatchConfig CopyConfig() => MatchConfig.FromBytes(_configBytes);
 
     public override void _Ready()
     {
@@ -96,10 +94,10 @@ public partial class MatchSetup : Node
             return;
         }
 
-        MatchConfig rules;
+        MatchConfig config;
         try
         {
-            rules = MatchConfig.FromBytes(message.Config);
+            config = MatchConfig.FromBytes(message.Config);
         }
         catch (IOException)
         {
@@ -127,7 +125,7 @@ public partial class MatchSetup : Node
         {
             _modeOptions.Add(new ContentOption(message.ModeIds[i], message.ModeNames[i]));
         }
-        ApplyRules(rules, settingsChanged);
+        ApplyConfig(config, settingsChanged);
     }
 
     private void ApplyLobbyState(LobbyStateMsg message)
@@ -165,10 +163,10 @@ public partial class MatchSetup : Node
     /// the lobby broadcast; the catalog stays whatever it was.</summary>
     private void ApplyWelcome(WelcomeMsg message)
     {
-        MatchConfig rules;
+        MatchConfig config;
         try
         {
-            rules = MatchConfig.FromBytes(message.Config);
+            config = MatchConfig.FromBytes(message.Config);
         }
         catch (IOException)
         {
@@ -180,21 +178,21 @@ public partial class MatchSetup : Node
         HasServerState = true;
         MapId = message.MapId;
         MapHash = message.MapHash;
-        ApplyRules(rules, settingsChanged);
+        ApplyConfig(config, settingsChanged);
     }
 
-    private void ApplyRules(MatchConfig rules, bool raiseSettings)
+    private void ApplyConfig(MatchConfig config, bool raiseSettings)
     {
-        byte[] bytes = rules.ToBytes();
-        bool rulesChanged = !bytes.AsSpan().SequenceEqual(_rulesBytes);
-        bool teamsToggled = Rules.Teams != rules.Teams;
-        Rules = rules;
-        _rulesBytes = bytes;
-        if (rulesChanged)
-            RulesChanged?.Invoke();
+        byte[] bytes = config.ToBytes();
+        bool configChanged = !bytes.AsSpan().SequenceEqual(_configBytes);
+        bool teamsToggled = Config.Rules.Teams != config.Rules.Teams;
+        Config = config;
+        _configBytes = bytes;
+        if (configChanged)
+            ConfigChanged?.Invoke();
         if (teamsToggled)
             TeamsChanged?.Invoke();
-        if (raiseSettings || rulesChanged)
+        if (raiseSettings || configChanged)
             SettingsChanged?.Invoke();
     }
 

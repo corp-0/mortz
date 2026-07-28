@@ -17,7 +17,7 @@ public sealed class Predictor
 {
     private readonly InputHistory _history = new();
     private readonly TerrainMask _terrain;
-    private readonly MatchConfig _cfg;
+    private readonly Physics _cfg;
     // Stats must compose exactly like the server's or every replay
     // mispredicts. _tier1 is config + replicated persistent modifiers;
     // _effective adds the current situation on top.
@@ -33,7 +33,7 @@ public sealed class Predictor
     private PlayerState _state;
 
     /// <param name="terrain">The client's mask; carve events mutate it in place.</param>
-    public Predictor(TerrainMask terrain, MatchConfig config)
+    public Predictor(TerrainMask terrain, Physics config)
     {
         _terrain = terrain;
         _cfg = config;

@@ -19,7 +19,8 @@ public class StaleSnapshotTests
     {
         SimWorld server = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         server.AddPlayer(1);
-        Predictor predictor = new Predictor(server.Terrain, TestWorlds.NoSpawnProtectionConfig);
+        Predictor predictor = new Predictor(
+            server.Terrain, TestWorlds.NoSpawnProtectionConfig.Physics);
         predictor.Reconcile(server.Players[1], -1, server.Tick);
 
         // Run right for a while, reconciling each fresh (increasing-tick) snapshot.

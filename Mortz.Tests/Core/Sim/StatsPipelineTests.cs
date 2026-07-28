@@ -11,7 +11,7 @@ public class StatsPipelineTests
     [Fact]
     public void AddsApplyBeforeMuls_RegardlessOfListOrder()
     {
-        MatchConfig cfg = new MatchConfig { MaxRunSpeed = 100 };
+        Physics cfg = new Physics { MaxRunSpeed = 100 };
         PlayerStats stats = StatsPipeline.Resolve(cfg,
         [
             new StatsModifier(ModifierId.ICE, Mul(Stat.MAX_RUN_SPEED, 2f)),
@@ -23,15 +23,15 @@ public class StatsPipelineTests
     [Fact]
     public void ConfigClampsCapTheComposition()
     {
-        PlayerStats stats = StatsPipeline.Resolve(new MatchConfig(),
+        PlayerStats stats = StatsPipeline.Resolve(new Physics(),
             [new StatsModifier(ModifierId.SPECIAL, Mul(Stat.PARRY_RADIUS, 100f))]);
-        Assert.Equal(200f, stats.ParryRadius); // MatchConfig clamp ceiling
+        Assert.Equal(200f, stats.ParryRadius);
     }
 
     [Fact]
     public void IntStatsRoundInsteadOfTruncating()
     {
-        MatchConfig cfg = new MatchConfig();
+        Physics cfg = new Physics();
         PlayerStats stats = StatsPipeline.Resolve(cfg,
             [new StatsModifier(ModifierId.WATER, Add(Stat.TOTAL_JUMPS, -1f))]);
         Assert.Equal((byte)(cfg.TotalJumps - 1), stats.TotalJumps);
@@ -40,7 +40,7 @@ public class StatsPipelineTests
     [Fact]
     public void EmptyList_MatchesPlainResolve()
     {
-        MatchConfig cfg = new MatchConfig { MaxRunSpeed = 123 };
+        Physics cfg = new Physics { MaxRunSpeed = 123 };
         Assert.Equal(PlayerStats.Resolve(cfg).MaxRunSpeed,
             StatsPipeline.Resolve(cfg, []).MaxRunSpeed);
     }

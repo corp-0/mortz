@@ -23,7 +23,7 @@ public class PlayerViewStatsTests : NodeServiceTest
         manager.FakeDependency<INetwork>(new FakeNetwork());
         manager.FakeDependency<ISfx>(new NullSfx());
         Host(manager);
-        manager.Configure(new MatchConfig());
+        manager.Configure(new Physics());
 
         float baseRadius = TestWorlds.Stats.ParryRadius;
         byte[] bigParry = ModifierWire.Serialize(

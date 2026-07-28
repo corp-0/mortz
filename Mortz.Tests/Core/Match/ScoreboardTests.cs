@@ -5,7 +5,7 @@ namespace Mortz.Tests.Core.Match;
 
 public class ScoreboardTests
 {
-    private static MatchConfig Cfg(bool teams = false,
+    private static ModeRules Cfg(bool teams = false,
         WinCondition win = WinCondition.PLAYER_KILLS, int target = 3,
         SuicidePenalty suicidePenalty = SuicidePenalty.NONE) => new()
         {

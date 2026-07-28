@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Text;
 using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
@@ -12,41 +13,33 @@ using Mortz.Shared;
 
 namespace Mortz.Server;
 
-/// <summary>Server-owned lobby setup consumed by the match lifecycle.</summary>
 public interface IServerLobbySettings
 {
-    /// <summary>An admin's rules edit was accepted and Rules replaced.</summary>
-    event Action? RulesChanged;
+    event Action? ConfigChanged;
 
     MapPackage Map { get; }
-    MatchConfig Rules { get; }
+    MatchConfig Config { get; }
 
-    /// <summary>Name of the mode the rules currently match, or "Custom".</summary>
     string ModeName { get; }
 
     void SendTo(long peerId);
     void Broadcast();
 }
 
-/// <summary>
-/// Persistent lobby feature that owns map/rule selection, verifies signed
-/// admin mutations, and publishes the same canonical state to every client.
-/// </summary>
 [Meta(typeof(IAutoNode))]
 public partial class ServerLobbySettings : Node, IServerLobbySettings
 {
     private sealed record MapOption(string Id, string Name);
 
-    /// <summary>PresetBytes matching Rules.ToBytes() is what puts the lobby
-    /// in this mode.</summary>
-    private sealed record ModeOption(string Id, string Name, byte[] PresetBytes);
+    private sealed record ModeOption(string Id, string Name, byte[] RulesBytes,
+        ImmutableArray<AuthoredKey> PhysicsOverrides);
 
     private readonly Dictionary<string, MapOption> _maps = new(StringComparer.Ordinal);
     private readonly List<ModeOption> _modes = [];
     private bool _subscribed;
 
     [Dependency]
-    public ServerBootConfig Config => this.DependOn<ServerBootConfig>();
+    public ServerBootConfig Boot => this.DependOn<ServerBootConfig>();
 
     [Dependency]
     public IServerSession Session => this.DependOn<IServerSession>();
@@ -54,10 +47,10 @@ public partial class ServerLobbySettings : Node, IServerLobbySettings
     [Dependency]
     public IServerAdminAuthorizer Admin => this.DependOn<IServerAdminAuthorizer>();
 
-    public event Action? RulesChanged;
+    public event Action? ConfigChanged;
 
     public MapPackage Map { get; private set; } = null!;
-    public MatchConfig Rules { get; private set; } = null!;
+    public MatchConfig Config { get; private set; } = null!;
 
     public string ModeName
     {
@@ -72,8 +65,8 @@ public partial class ServerLobbySettings : Node, IServerLobbySettings
 
     public void OnResolved()
     {
-        Map = Config.Map;
-        Rules = Config.Rules;
+        Map = Boot.Map;
+        Config = Boot.Rules;
         LoadCatalog();
         LobbySettingsRequestMsg.Received += OnSettingsRequest;
         LobbyRulesUpdateMsg.Received += OnRulesUpdate;
@@ -105,7 +98,7 @@ public partial class ServerLobbySettings : Node, IServerLobbySettings
 
     private void LoadCatalog()
     {
-        ContentCatalog catalog = Config.Content.Catalog;
+        ContentCatalog catalog = Boot.Content.Catalog;
         foreach ((string id, ResolvedContent<MapManifest> resolved) in catalog.Maps
                      .OrderBy(pair => pair.Value.Winner.Manifest.Name, StringComparer.Ordinal)
                      .ThenBy(pair => pair.Key, StringComparer.Ordinal))
@@ -118,16 +111,35 @@ public partial class ServerLobbySettings : Node, IServerLobbySettings
                      .Take(NetConfig.MAX_LOBBY_MODES))
         {
             GameModeManifest manifest = resolved.Winner.Manifest;
-            _modes.Add(new ModeOption(id, manifest.Name, manifest.Rules.ToBytes()));
+            _modes.Add(new ModeOption(id, manifest.Name,
+                manifest.Config.Rules.ToBytes(), manifest.PhysicsOverrides));
         }
         if (!_maps.ContainsKey(Map.MapId))
             _maps[Map.MapId] = new MapOption(Map.MapId, Map.DisplayName);
     }
 
+    // Prefer the mode with more authored physics overrides.
     private ModeOption? CurrentMode()
     {
-        byte[] rules = Rules.ToBytes();
-        return _modes.Find(mode => rules.AsSpan().SequenceEqual(mode.PresetBytes));
+        byte[] rules = Config.Rules.ToBytes();
+        return _modes
+            .Where(mode => rules.AsSpan().SequenceEqual(mode.RulesBytes) && PhysicsMatches(mode))
+            .OrderByDescending(mode => mode.PhysicsOverrides.Length)
+            .FirstOrDefault();
+    }
+
+    private bool PhysicsMatches(ModeOption mode)
+    {
+        if (mode.PhysicsOverrides.IsEmpty)
+            return true;
+        byte[] current = Config.Physics.ToBytes();
+        Physics overlaid = Physics.FromBytes(current);
+        foreach (AuthoredKey authored in mode.PhysicsOverrides)
+        {
+            overlaid.TryApplyKey(authored.Key, authored.Value, out _);
+        }
+        overlaid.Clamp();
+        return current.AsSpan().SequenceEqual(overlaid.ToBytes());
     }
 
     private void OnRulesUpdate(long sender, LobbyRulesUpdateMsg message)
@@ -142,7 +154,7 @@ public partial class ServerLobbySettings : Node, IServerLobbySettings
 
         try
         {
-            Rules = MatchConfig.FromBytes(message.Config);
+            Config = MatchConfig.FromBytes(message.Config);
         }
         catch (IOException)
         {
@@ -150,7 +162,7 @@ public partial class ServerLobbySettings : Node, IServerLobbySettings
             return;
         }
         GD.Print($"[server] lobby rules updated by admin {sender}");
-        RulesChanged?.Invoke();
+        ConfigChanged?.Invoke();
         Broadcast();
     }
 
@@ -168,9 +180,19 @@ public partial class ServerLobbySettings : Node, IServerLobbySettings
             return;
         }
 
-        Rules = MatchConfig.FromBytes(mode.PresetBytes);
+        Physics physics = Physics.FromBytes(Config.Physics.ToBytes());
+        foreach (AuthoredKey authored in mode.PhysicsOverrides)
+        {
+            physics.TryApplyKey(authored.Key, authored.Value, out _);
+        }
+        physics.Clamp();
+        Config = new MatchConfig
+        {
+            Rules = ModeRules.FromBytes(mode.RulesBytes),
+            Physics = physics,
+        };
         GD.Print($"[server] lobby mode set to '{mode.Id}' by admin {sender}");
-        RulesChanged?.Invoke();
+        ConfigChanged?.Invoke();
         Broadcast();
     }
 
@@ -186,7 +208,7 @@ public partial class ServerLobbySettings : Node, IServerLobbySettings
             return;
         }
 
-        MapPackage? selected = Config.Content.LoadMap(message.MapId);
+        MapPackage? selected = Boot.Content.LoadMap(message.MapId);
         if (selected == null)
         {
             SendTo(sender);
@@ -224,6 +246,6 @@ public partial class ServerLobbySettings : Node, IServerLobbySettings
             _modes.Select(mode => mode.Id).ToArray(),
             _modes.Select(mode => mode.Name).ToArray(),
             CurrentMode()?.Id ?? "",
-            Rules.ToBytes());
+            Config.ToBytes());
     }
 }

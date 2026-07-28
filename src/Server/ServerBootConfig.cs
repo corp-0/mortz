@@ -97,7 +97,7 @@ public sealed class ServerBootConfig : IServerIdentity
             return null;
         }
         GD.Print($"[server] mode '{modeId}' loaded");
-        return mode.Winner.Manifest.Rules;
+        return mode.Winner.Manifest.Config;
     }
 
     private static void PrintDiagnostics(IReadOnlyList<ContentDiagnostic> diagnostics)

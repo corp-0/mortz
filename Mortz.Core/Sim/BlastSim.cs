@@ -9,7 +9,7 @@ namespace Mortz.Core.Sim;
 /// </summary>
 public static class BlastSim
 {
-    public static int Damage(in PlayerState p, Vec2 center, MatchConfig cfg)
+    public static int Damage(in PlayerState p, Vec2 center, Physics cfg)
     {
         float d = DistanceToBody(p, center);
         float core = cfg.MortarCarveRadius * cfg.BlastCoreFraction;

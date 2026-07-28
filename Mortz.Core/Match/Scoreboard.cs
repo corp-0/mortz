@@ -45,7 +45,7 @@ public sealed class Scoreboard
         public bool CreditedKill => Kind == DeathKind.KILL;
     }
 
-    private readonly MatchConfig _config;
+    private readonly ModeRules _config;
     // 1-based by TeamId ([0] never read); two teams in v1, sized here only.
     private readonly int[] _teamKills = new int[3];
     // Sorted so scoreboard sync and winner scans are deterministic.
@@ -54,7 +54,7 @@ public sealed class Scoreboard
     public IReadOnlyDictionary<int, Row> Rows => _rows;
     public int TeamKills(byte teamId) => _teamKills[teamId];
 
-    public Scoreboard(MatchConfig config) => _config = config;
+    public Scoreboard(ModeRules config) => _config = config;
 
     public void AddPlayer(int peerId, byte teamId) => _rows[peerId] = new Row(teamId, 0, 0);
 

@@ -41,7 +41,7 @@ public static class WeaponSim
     /// <summary>The one spawn formula, shared so a predicted shell and the
     /// authoritative one fly the same path.</summary>
     public static MortarState NewShell(ushort id, int spawnSeq, in PlayerState shooter, PlayerInput input,
-        MatchConfig cfg)
+        Physics cfg)
     {
         Vec2 center = shooter.Position with { Y = shooter.Position.Y - SimConfig.PLAYER_HALF_HEIGHT };
         return new MortarState

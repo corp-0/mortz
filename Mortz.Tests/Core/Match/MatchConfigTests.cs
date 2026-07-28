@@ -9,20 +9,27 @@ namespace Mortz.Tests.Core.Match;
 public class MatchConfigTests
 {
     [Fact]
-    public void GeneratedMetadata_CoversEveryWritableRule_InDeclarationOrder()
+    public void GeneratedMetadata_CoversEveryWritableProperty_InDeclarationOrder()
     {
-        IUiPropertyDescriptor[] descriptors = MatchConfigUiMetadata.Categories
+        AssertMetadataCoversWritableProperties(typeof(ModeRules), ModeRulesUiMetadata.Categories);
+        AssertMetadataCoversWritableProperties(typeof(Physics), PhysicsUiMetadata.Categories);
+    }
+
+    private static void AssertMetadataCoversWritableProperties(
+        Type owner, IReadOnlyList<UiCategoryDescriptor> categories)
+    {
+        IUiPropertyDescriptor[] descriptors = categories
             .SelectMany(category => category.Properties)
             .ToArray();
-        PropertyInfo[] writableRules = WritableRules().ToArray();
+        PropertyInfo[] writableProperties = WritableProperties(owner).ToArray();
 
         Assert.Equal(
-            writableRules.Select(property => property.Name),
+            writableProperties.Select(property => property.Name),
             descriptors.Select(descriptor => descriptor.Name));
         foreach (IUiPropertyDescriptor descriptor in descriptors)
         {
             PropertyInfo property = Assert.Single(
-                writableRules, candidate => candidate.Name == descriptor.Name);
+                writableProperties, candidate => candidate.Name == descriptor.Name);
             Assert.Equal(property.PropertyType, descriptor.ValueType);
         }
     }
@@ -30,104 +37,118 @@ public class MatchConfigTests
     [Fact]
     public void GeneratedMetadata_BindsTypedAndUntypedValues()
     {
-        MatchConfig config = new();
-        IUiPropertyDescriptor gravity = MatchConfigUiMetadata.Categories
+        Physics physics = new();
+        IUiPropertyDescriptor gravity = PhysicsUiMetadata.Categories
             .SelectMany(category => category.Properties)
-            .Single(property => property.Name == nameof(MatchConfig.Gravity));
-        UiPropertyDescriptor<MatchConfig, float> typedGravity =
-            Assert.IsType<UiPropertyDescriptor<MatchConfig, float>>(gravity);
+            .Single(property => property.Name == nameof(Physics.Gravity));
+        UiPropertyDescriptor<Physics, float> typedGravity =
+            Assert.IsType<UiPropertyDescriptor<Physics, float>>(gravity);
 
-        typedGravity.Set(config, 321f);
-        Assert.Equal(321f, typedGravity.Get(config));
-        gravity.SetValue(config, 654f);
-        Assert.Equal(654f, gravity.GetValue(config));
-        Assert.Throws<ArgumentException>(() => gravity.SetValue(config, 654));
+        typedGravity.Set(physics, 321f);
+        Assert.Equal(321f, typedGravity.Get(physics));
+        gravity.SetValue(physics, 654f);
+        Assert.Equal(654f, gravity.GetValue(physics));
+        Assert.Throws<ArgumentException>(() => gravity.SetValue(physics, 654));
         Assert.Throws<ArgumentException>(() => gravity.SetValue(new object(), 654f));
 
-        IUiPropertyDescriptor winCondition = MatchConfigUiMetadata.Categories
+        ModeRules rules = new();
+        IUiPropertyDescriptor winCondition = ModeRulesUiMetadata.Categories
             .SelectMany(category => category.Properties)
-            .Single(property => property.Name == nameof(MatchConfig.WinCondition));
-        winCondition.SetValue(config, WinCondition.TEAM_KILLS);
-        Assert.Equal(WinCondition.TEAM_KILLS, config.WinCondition);
+            .Single(property => property.Name == nameof(ModeRules.WinCondition));
+        winCondition.SetValue(rules, WinCondition.TEAM_KILLS);
+        Assert.Equal(WinCondition.TEAM_KILLS, rules.WinCondition);
     }
 
     [Fact]
     public void GeneratedMetadata_CarriesRenderHints()
     {
-        IUiPropertyDescriptor[] descriptors = MatchConfigUiMetadata.Categories
+        IUiPropertyDescriptor gravity = PhysicsUiMetadata.Categories
             .SelectMany(category => category.Properties)
-            .ToArray();
-
-        IUiPropertyDescriptor gravity = descriptors
-            .Single(property => property.Name == nameof(MatchConfig.Gravity));
+            .Single(property => property.Name == nameof(Physics.Gravity));
         Assert.Equal(100, gravity.Min);
         Assert.Equal(8000, gravity.Max);
         Assert.Equal(50, gravity.Step);
 
+        IUiPropertyDescriptor[] ruleDescriptors = ModeRulesUiMetadata.Categories
+            .SelectMany(category => category.Properties)
+            .ToArray();
+
         // step not stated
-        IUiPropertyDescriptor killTarget = descriptors
-            .Single(property => property.Name == nameof(MatchConfig.KillTarget));
+        IUiPropertyDescriptor killTarget = ruleDescriptors
+            .Single(property => property.Name == nameof(ModeRules.KillTarget));
         Assert.Equal(1, killTarget.Min);
         Assert.Equal(999, killTarget.Max);
         Assert.Null(killTarget.Step);
 
-        IUiPropertyDescriptor teams = descriptors
-            .Single(property => property.Name == nameof(MatchConfig.Teams));
+        IUiPropertyDescriptor teams = ruleDescriptors
+            .Single(property => property.Name == nameof(ModeRules.Teams));
         Assert.Null(teams.Min);
         Assert.Null(teams.Max);
         Assert.Null(teams.Step);
     }
 
-    /// <summary>Reflection so a new rule that nobody added to the codec fails
-    /// here instead of silently arriving at its default on every client.</summary>
     [Fact]
-    public void WireBlob_CarriesEveryRule()
+    public void WireBlob_CarriesEveryConfigProperty()
     {
         MatchConfig expected = new();
-        foreach (PropertyInfo property in WritableRules())
-        {
-            object current = property.GetValue(expected)!;
-            object changed = current switch
-            {
-                float f => f + 0.01f,
-                int i => i + 1,
-                bool b => !b,
-                WinCondition => WinCondition.TEAM_KILLS,
-                SuicidePenalty => SuicidePenalty.REWARD_CLOSEST_ENEMY,
-                _ => throw new InvalidOperationException($"Unhandled rule type {property.PropertyType}"),
-            };
-            property.SetValue(expected, changed);
-        }
+        ChangeWritableProperties(expected.Rules);
+        ChangeWritableProperties(expected.Physics);
         expected.Clamp();
 
         MatchConfig actual = MatchConfig.FromBytes(expected.ToBytes());
 
-        foreach (PropertyInfo property in WritableRules())
+        AssertWritablePropertiesEqual(expected.Rules, actual.Rules);
+        AssertWritablePropertiesEqual(expected.Physics, actual.Physics);
+    }
+
+    private static IEnumerable<PropertyInfo> WritableProperties(Type owner) =>
+        owner.GetProperties().Where(property => property.CanWrite);
+
+    private static void ChangeWritableProperties<T>(T instance)
+    {
+        foreach (PropertyInfo property in WritableProperties(typeof(T)))
         {
-            Assert.Equal(property.GetValue(expected), property.GetValue(actual));
+            object current = property.GetValue(instance)!;
+            object changed = current switch
+            {
+                float value => value + 0.01f,
+                int value => value + 1,
+                bool value => !value,
+                WinCondition => WinCondition.TEAM_KILLS,
+                SuicidePenalty => SuicidePenalty.REWARD_CLOSEST_ENEMY,
+                _ => throw new InvalidOperationException(
+                    $"Unhandled config type {property.PropertyType}"),
+            };
+            property.SetValue(instance, changed);
         }
     }
 
-    private static IEnumerable<PropertyInfo> WritableRules() =>
-        typeof(MatchConfig).GetProperties().Where(property => property.CanWrite);
+    private static void AssertWritablePropertiesEqual<T>(T expected, T actual)
+    {
+        foreach (PropertyInfo property in WritableProperties(typeof(T)))
+            Assert.Equal(property.GetValue(expected), property.GetValue(actual));
+    }
 
     [Fact]
     public void WireBlob_RoundTrips()
     {
         MatchConfig sent = new()
         {
-            Gravity = 750,
-            MortarMaxAmmo = 8,
-            GroundFriction = 0,
-            SpawnImmunity = 2.25f,
+            Physics = new Physics
+            {
+                Gravity = 750,
+                MortarMaxAmmo = 8,
+                GroundFriction = 0,
+                SpawnImmunity = 2.25f,
+            },
         };
         MatchConfig got = MatchConfig.FromBytes(sent.ToBytes());
 
-        Assert.Equal(750, got.Gravity);
-        Assert.Equal(8, got.MortarMaxAmmo);
-        Assert.Equal(0, got.GroundFriction);
-        Assert.Equal(2.25f, got.SpawnImmunity);
-        Assert.Equal(SimConfig.MAX_RUN_SPEED, got.MaxRunSpeed); // untouched fields keep defaults
+        Assert.Equal(750, got.Physics.Gravity);
+        Assert.Equal(8, got.Physics.MortarMaxAmmo);
+        Assert.Equal(0, got.Physics.GroundFriction);
+        Assert.Equal(2.25f, got.Physics.SpawnImmunity);
+        Assert.Equal(SimConfig.MAX_RUN_SPEED, got.Physics.MaxRunSpeed);
     }
 
     [Fact]
@@ -143,19 +164,22 @@ public class MatchConfigTests
     {
         MatchConfig hostile = new()
         {
-            Gravity = float.NaN,
-            MortarCarveRadius = 100000,
-            MaxHealth = 9999,
-            MortarReloadPerShell = -3,
-            SpawnImmunity = 999,
+            Physics = new Physics
+            {
+                Gravity = float.NaN,
+                MortarCarveRadius = 100000,
+                MaxHealth = 9999,
+                MortarReloadPerShell = -3,
+                SpawnImmunity = 999,
+            },
         };
         MatchConfig got = MatchConfig.FromBytes(hostile.ToBytes());
 
-        Assert.Equal(100, got.Gravity); // NaN lands on the minimum
-        Assert.Equal(128, got.MortarCarveRadius);
-        Assert.Equal(250, got.MaxHealth);
-        Assert.Equal(0.1f, got.MortarReloadPerShell);
-        Assert.Equal(4, got.SpawnImmunity);
+        Assert.Equal(100, got.Physics.Gravity);
+        Assert.Equal(128, got.Physics.MortarCarveRadius);
+        Assert.Equal(250, got.Physics.MaxHealth);
+        Assert.Equal(0.1f, got.Physics.MortarReloadPerShell);
+        Assert.Equal(4, got.Physics.SpawnImmunity);
     }
 
     [Fact]
@@ -163,63 +187,73 @@ public class MatchConfigTests
     {
         MatchConfig sent = new()
         {
-            Teams = true,
-            WinCondition = WinCondition.TEAM_KILLS,
-            KillTarget = 5,
-            FriendlyFire = false,
-            SuicidePenalty = SuicidePenalty.REWARD_CLOSEST_ENEMY,
+            Rules = new ModeRules
+            {
+                Teams = true,
+                WinCondition = WinCondition.TEAM_KILLS,
+                KillTarget = 5,
+                FriendlyFire = false,
+                SuicidePenalty = SuicidePenalty.REWARD_CLOSEST_ENEMY,
+            },
         };
         MatchConfig got = MatchConfig.FromBytes(sent.ToBytes());
 
-        Assert.True(got.Teams);
-        Assert.Equal(WinCondition.TEAM_KILLS, got.WinCondition);
-        Assert.Equal(5, got.KillTarget);
-        Assert.False(got.FriendlyFire);
-        Assert.Equal(SuicidePenalty.REWARD_CLOSEST_ENEMY, got.SuicidePenalty);
+        Assert.True(got.Rules.Teams);
+        Assert.Equal(WinCondition.TEAM_KILLS, got.Rules.WinCondition);
+        Assert.Equal(5, got.Rules.KillTarget);
+        Assert.False(got.Rules.FriendlyFire);
+        Assert.Equal(SuicidePenalty.REWARD_CLOSEST_ENEMY, got.Rules.SuicidePenalty);
 
-        MatchConfig hostile = new() { WinCondition = (WinCondition)99, KillTarget = 0 };
+        MatchConfig hostile = new()
+        {
+            Rules = new ModeRules { WinCondition = (WinCondition)99, KillTarget = 0 },
+        };
         got = MatchConfig.FromBytes(hostile.ToBytes());
-        Assert.Equal(WinCondition.PLAYER_KILLS, got.WinCondition);
-        Assert.Equal(1, got.KillTarget);
+        Assert.Equal(WinCondition.PLAYER_KILLS, got.Rules.WinCondition);
+        Assert.Equal(1, got.Rules.KillTarget);
     }
 
     [Fact]
     public void TryApplyKey_SetsTypedValuesFromRawTomlTypes()
     {
-        MatchConfig config = new();
+        ModeRules rules = new();
+        Physics physics = new();
 
-        Assert.Equal(ConfigKeyResult.APPLIED, config.TryApplyKey("teams", true, out _));
-        Assert.Equal(ConfigKeyResult.APPLIED, config.TryApplyKey("win_condition", "team_kills", out _));
-        Assert.Equal(ConfigKeyResult.APPLIED, config.TryApplyKey("kill_target", 30L, out _));
-        Assert.Equal(ConfigKeyResult.APPLIED, config.TryApplyKey("gravity", 600L, out _));
-        Assert.Equal(ConfigKeyResult.APPLIED, config.TryApplyKey("spawn_immunity", 2.5, out _));
+        Assert.Equal(ConfigKeyResult.APPLIED, rules.TryApplyKey("teams", true, out _));
+        Assert.Equal(ConfigKeyResult.APPLIED, rules.TryApplyKey("win_condition", "team_kills", out _));
+        Assert.Equal(ConfigKeyResult.APPLIED, rules.TryApplyKey("kill_target", 30L, out _));
+        Assert.Equal(ConfigKeyResult.APPLIED, physics.TryApplyKey("gravity", 600L, out _));
+        Assert.Equal(ConfigKeyResult.APPLIED, physics.TryApplyKey("spawn_immunity", 2.5, out _));
 
-        Assert.True(config.Teams);
-        Assert.Equal(WinCondition.TEAM_KILLS, config.WinCondition);
-        Assert.Equal(30, config.KillTarget);
-        Assert.Equal(600, config.Gravity); // integers feed float rules
-        Assert.Equal(2.5f, config.SpawnImmunity);
-        Assert.Equal(150, config.SpawnImmunityTicks);
-        Assert.True(config.FriendlyFire); // untouched fields keep defaults
+        Assert.True(rules.Teams);
+        Assert.Equal(WinCondition.TEAM_KILLS, rules.WinCondition);
+        Assert.Equal(30, rules.KillTarget);
+        Assert.Equal(600, physics.Gravity);
+        Assert.Equal(2.5f, physics.SpawnImmunity);
+        Assert.Equal(150, physics.SpawnImmunityTicks);
+        Assert.True(rules.FriendlyFire);
     }
 
     [Fact]
     public void TryApplyKey_RejectsUnknownKeysAndWrongTypes()
     {
-        MatchConfig config = new();
+        ModeRules rules = new();
 
-        Assert.Equal(ConfigKeyResult.UNKNOWN_KEY, config.TryApplyKey("lives", 3L, out string error));
+        Assert.Equal(ConfigKeyResult.UNKNOWN_KEY, rules.TryApplyKey("lives", 3L, out string error));
         Assert.Contains("lives", error);
-        Assert.Equal(ConfigKeyResult.INVALID_VALUE, config.TryApplyKey("teams", "yes", out _));
-        Assert.Equal(ConfigKeyResult.INVALID_VALUE, config.TryApplyKey("win_condition", "most_flags", out error));
+        Assert.Equal(ConfigKeyResult.INVALID_VALUE, rules.TryApplyKey("teams", "yes", out _));
+        Assert.Equal(ConfigKeyResult.INVALID_VALUE, rules.TryApplyKey("win_condition", "most_flags", out error));
         Assert.Contains("player_kills", error); // the error lists the legal values
-        Assert.Equal(ConfigKeyResult.INVALID_VALUE, config.TryApplyKey("kill_target", 1.5, out _));
+        Assert.Equal(ConfigKeyResult.INVALID_VALUE, rules.TryApplyKey("kill_target", 1.5, out _));
+
+        Assert.Equal(ConfigKeyResult.UNKNOWN_KEY, rules.TryApplyKey("gravity", 600L, out _));
+        Assert.Equal(ConfigKeyResult.UNKNOWN_KEY, new Physics().TryApplyKey("teams", true, out _));
     }
 
     [Fact]
     public void DefaultResolvedStats_MatchTheSimConfigConsts()
     {
-        PlayerStats stats = PlayerStats.Resolve(new MatchConfig());
+        PlayerStats stats = PlayerStats.Resolve(new Physics());
 
         Assert.Equal(SimConfig.MAX_RUN_SPEED, stats.MaxRunSpeed);
         Assert.Equal(SimConfig.TOTAL_JUMPS, stats.TotalJumps);
@@ -229,14 +263,14 @@ public class MatchConfigTests
         Assert.Equal(SimConfig.MAX_HEALTH, stats.MaxHealth);
         Assert.Equal(SimConfig.PARRY_WINDOW_TICKS, stats.ParryWindowTicks);
         Assert.Equal(SimConfig.PARRY_COOLDOWN_TICKS, stats.ParryCooldownTicks);
-        Assert.Equal(SimConfig.SPAWN_IMMUNITY, new MatchConfig().SpawnImmunity);
-        Assert.Equal(SimConfig.SPAWN_IMMUNITY_TICKS, new MatchConfig().SpawnImmunityTicks);
+        Assert.Equal(SimConfig.SPAWN_IMMUNITY, new Physics().SpawnImmunity);
+        Assert.Equal(SimConfig.SPAWN_IMMUNITY_TICKS, new Physics().SpawnImmunityTicks);
     }
 
     [Fact]
     public void ClampedTickValues_FitTheByteCountersInPlayerState()
     {
-        MatchConfig maxed = new()
+        Physics maxed = new()
         {
             DashCooldown = 999,
             RopeMissCooldown = 999,

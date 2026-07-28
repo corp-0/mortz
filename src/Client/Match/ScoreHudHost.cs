@@ -36,7 +36,7 @@ public partial class ScoreHudHost : ViewVariantHost<ScoreHudKind>
     }
 
     protected override ScoreHudKind CurrentKey() =>
-        Setup.Rules.Teams ? ScoreHudKind.TEAM_KILLS : ScoreHudKind.PLAYER_KILLS;
+        Setup.Config.Rules.Teams ? ScoreHudKind.TEAM_KILLS : ScoreHudKind.PLAYER_KILLS;
 
     protected override PackedScene SceneFor(ScoreHudKind key) =>
         key == ScoreHudKind.TEAM_KILLS ? _teamKills : _playerKills;

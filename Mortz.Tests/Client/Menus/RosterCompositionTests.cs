@@ -102,7 +102,10 @@ public class RosterCompositionTests : NodeServiceTest
 
     private static LobbySettingsMsg Settings(bool teams, int killTarget = 20)
     {
-        MatchConfig config = new() { Teams = teams, KillTarget = killTarget };
+        MatchConfig config = new()
+        {
+            Rules = new ModeRules { Teams = teams, KillTarget = killTarget },
+        };
         return new LobbySettingsMsg("castlewars", "hash", ["castlewars"], ["Castle Wars"],
             [], [], "", config.ToBytes());
     }
