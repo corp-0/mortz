@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Text;
 using Mortz.Core.Net;
 
 namespace Mortz.Core.Admin;
@@ -15,7 +16,9 @@ public sealed class AdminAuthenticator : IDisposable
         public ulong LastCommandSequence;
     }
 
-    private readonly byte[]? _passwordKey;
+    // Raw password, not a key: PBKDF2 is salted with the per-attempt challenge,
+    // so we can only derive inside Verify.
+    private readonly byte[]? _passwordUtf8;
     private readonly ulong _challengeTimeoutMs;
     private readonly Dictionary<long, Session> _sessions = new();
     private readonly PeerRateLimiter _attemptLimiter = new(capacity: 3, tokensPerSecond: 0.05);
@@ -27,10 +30,10 @@ public sealed class AdminAuthenticator : IDisposable
             throw new ArgumentOutOfRangeException(nameof(challengeTimeoutMs));
         _challengeTimeoutMs = challengeTimeoutMs;
         if (password.Length > 0)
-            _passwordKey = AdminCrypto.DerivePasswordKey(password);
+            _passwordUtf8 = Encoding.UTF8.GetBytes(password);
     }
 
-    public bool Enabled => _passwordKey != null;
+    public bool Enabled => _passwordUtf8 != null;
 
     public void Connected(long peerId, ReadOnlySpan<byte> sessionId)
     {
@@ -79,21 +82,29 @@ public sealed class AdminAuthenticator : IDisposable
                 return AdminProofResult.EXPIRED;
             if (proof.Length != AdminCrypto.TAG_BYTES)
                 return AdminProofResult.INVALID;
-            byte[] expected = AdminCrypto.ComputeProof(_passwordKey!, peerId, challenge);
+            byte[] passwordKey = AdminCrypto.DerivePasswordKey(_passwordUtf8!, challenge);
             try
             {
-                if (!CryptographicOperations.FixedTimeEquals(expected, proof))
-                    return AdminProofResult.INVALID;
+                byte[] expected = AdminCrypto.ComputeProof(passwordKey, peerId, challenge);
+                try
+                {
+                    if (!CryptographicOperations.FixedTimeEquals(expected, proof))
+                        return AdminProofResult.INVALID;
+                }
+                finally
+                {
+                    CryptographicOperations.ZeroMemory(expected);
+                }
+
+                ClearAdminKey(session);
+                session.AdminKey = AdminCrypto.DeriveSessionKey(passwordKey, peerId, challenge);
+                session.LastCommandSequence = 0;
+                return AdminProofResult.ACCEPTED;
             }
             finally
             {
-                CryptographicOperations.ZeroMemory(expected);
+                CryptographicOperations.ZeroMemory(passwordKey);
             }
-
-            ClearAdminKey(session);
-            session.AdminKey = AdminCrypto.DeriveSessionKey(_passwordKey!, peerId, challenge);
-            session.LastCommandSequence = 0;
-            return AdminProofResult.ACCEPTED;
         }
         finally
         {
@@ -146,8 +157,8 @@ public sealed class AdminAuthenticator : IDisposable
     public void Dispose()
     {
         Reset();
-        if (_passwordKey != null)
-            CryptographicOperations.ZeroMemory(_passwordKey);
+        if (_passwordUtf8 != null)
+            CryptographicOperations.ZeroMemory(_passwordUtf8);
     }
 
     private static void ClearChallenge(Session session)

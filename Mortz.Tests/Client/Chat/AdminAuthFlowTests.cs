@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Text;
 using Mortz.Client.Admin;
 using Mortz.Core.Admin;
 using Mortz.Core.Net;
@@ -49,7 +50,8 @@ public class AdminAuthFlowTests : IDisposable
         {
             AdminProofMsg.Received -= proofHandler;
         }
-        byte[] passwordKey = AdminCrypto.DerivePasswordKey(PASSWORD);
+        byte[] passwordKey = AdminCrypto.DerivePasswordKey(
+            Encoding.UTF8.GetBytes(PASSWORD), challenge);
         Assert.Equal(AdminCrypto.ComputeProof(passwordKey, PEER, challenge),
             receivedProof.Proof);
 

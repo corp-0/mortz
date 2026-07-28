@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Text;
 using Mortz.Core.Admin;
 using Mortz.Core.Net.Messages;
 
@@ -9,7 +10,9 @@ namespace Mortz.Client.Admin;
 /// owner forwards, and never lets a password or key linger in memory.</summary>
 public sealed class AdminAuthFlow
 {
-    private byte[]? _pendingPasswordKey;
+    // Raw password, not a key: PBKDF2 is salted with the server challenge,
+    // so derivation waits for it.
+    private byte[]? _pendingPassword;
     private byte[]? _pendingAdminKey;
     private byte[]? _adminKey;
     private ulong _nextSequence = 1;
@@ -21,7 +24,7 @@ public sealed class AdminAuthFlow
     public void Begin(string password)
     {
         Reset();
-        _pendingPasswordKey = AdminCrypto.DerivePasswordKey(password);
+        _pendingPassword = Encoding.UTF8.GetBytes(password);
         new AdminAuthRequestMsg().SendToServer();
     }
 
@@ -30,18 +33,19 @@ public sealed class AdminAuthFlow
     /// secrets are dropped either way).</summary>
     public bool TryAnswerChallenge(long localPeerId, AdminChallengeMsg message)
     {
-        if (_pendingPasswordKey == null || localPeerId == 0 ||
+        if (_pendingPassword == null || localPeerId == 0 ||
             message.Challenge.Length != AdminCrypto.CHALLENGE_BYTES)
         {
             ClearPending();
             return false;
         }
-        byte[] proof = AdminCrypto.ComputeProof(_pendingPasswordKey, localPeerId,
+        byte[] passwordKey = AdminCrypto.DerivePasswordKey(_pendingPassword, message.Challenge);
+        CryptographicOperations.ZeroMemory(_pendingPassword);
+        _pendingPassword = null;
+        byte[] proof = AdminCrypto.ComputeProof(passwordKey, localPeerId, message.Challenge);
+        _pendingAdminKey = AdminCrypto.DeriveSessionKey(passwordKey, localPeerId,
             message.Challenge);
-        _pendingAdminKey = AdminCrypto.DeriveSessionKey(_pendingPasswordKey, localPeerId,
-            message.Challenge);
-        CryptographicOperations.ZeroMemory(_pendingPasswordKey);
-        _pendingPasswordKey = null;
+        CryptographicOperations.ZeroMemory(passwordKey);
         new AdminProofMsg(proof).SendToServer();
         CryptographicOperations.ZeroMemory(proof);
         return true;
@@ -87,11 +91,11 @@ public sealed class AdminAuthFlow
 
     private void ClearPending()
     {
-        if (_pendingPasswordKey != null)
-            CryptographicOperations.ZeroMemory(_pendingPasswordKey);
+        if (_pendingPassword != null)
+            CryptographicOperations.ZeroMemory(_pendingPassword);
         if (_pendingAdminKey != null)
             CryptographicOperations.ZeroMemory(_pendingAdminKey);
-        _pendingPasswordKey = null;
+        _pendingPassword = null;
         _pendingAdminKey = null;
     }
 

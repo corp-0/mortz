@@ -10,22 +10,22 @@ public static class AdminCrypto
     public const int CHALLENGE_BYTES = SESSION_ID_BYTES + NONCE_BYTES;
     public const int KEY_BYTES = 32;
     public const int TAG_BYTES = 32;
+    // OWASP 2023 floor for PBKDF2-SHA256. The server only pays it inside the
+    // rate-limited proof check.
+    public const int PBKDF2_ITERATIONS = 600_000;
 
     private static readonly byte[] _proofContext = Encoding.UTF8.GetBytes("mortz-admin-proof-v1");
     private static readonly byte[] _sessionContext = Encoding.UTF8.GetBytes("mortz-admin-session-v1");
     private static readonly byte[] _commandContext = Encoding.UTF8.GetBytes("mortz-admin-command-v1");
 
-    public static byte[] DerivePasswordKey(string password)
+    // The challenge is the salt: unique per attempt and both sides already have it.
+    public static byte[] DerivePasswordKey(ReadOnlySpan<byte> passwordUtf8,
+        ReadOnlySpan<byte> challenge)
     {
-        byte[] bytes = Encoding.UTF8.GetBytes(password);
-        try
-        {
-            return SHA256.HashData(bytes);
-        }
-        finally
-        {
-            CryptographicOperations.ZeroMemory(bytes);
-        }
+        if (challenge.Length != CHALLENGE_BYTES)
+            throw new ArgumentException($"Challenge must be {CHALLENGE_BYTES} bytes.", nameof(challenge));
+        return Rfc2898DeriveBytes.Pbkdf2(passwordUtf8, challenge, PBKDF2_ITERATIONS,
+            HashAlgorithmName.SHA256, KEY_BYTES);
     }
 
     public static byte[] BuildChallenge(ReadOnlySpan<byte> sessionId, ReadOnlySpan<byte> nonce)

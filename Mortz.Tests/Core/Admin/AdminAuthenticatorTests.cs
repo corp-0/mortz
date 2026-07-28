@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Text;
 using Mortz.Core.Admin;
 using Xunit;
 
@@ -14,7 +15,7 @@ public class AdminAuthenticatorTests
     {
         using AdminAuthenticator auth = Connected();
         byte[] challenge = Begin(auth, nowMs: 1_000, Nonce(2));
-        byte[] passwordKey = AdminCrypto.DerivePasswordKey(PASSWORD);
+        byte[] passwordKey = Key(challenge);
         byte[] proof = AdminCrypto.ComputeProof(passwordKey, PEER, challenge);
         byte[] sessionKey = AdminCrypto.DeriveSessionKey(passwordKey, PEER, challenge);
 
@@ -40,18 +41,16 @@ public class AdminAuthenticatorTests
     {
         using AdminAuthenticator auth = Connected(challengeTimeoutMs: 100);
         byte[] challenge = Begin(auth, nowMs: 50, Nonce(3));
-        byte[] key = AdminCrypto.DerivePasswordKey(PASSWORD);
-        byte[] proof = AdminCrypto.ComputeProof(key, PEER, challenge);
+        byte[] proof = AdminCrypto.ComputeProof(Key(challenge), PEER, challenge);
 
         Assert.Equal(AdminProofResult.EXPIRED, auth.Verify(PEER, 151, proof));
         Assert.Equal(AdminProofResult.NO_CHALLENGE, auth.Verify(PEER, 151, proof));
 
         challenge = Begin(auth, nowMs: 200, Nonce(4));
-        proof = AdminCrypto.ComputeProof(key, PEER, challenge);
+        proof = AdminCrypto.ComputeProof(Key(challenge), PEER, challenge);
         proof[0] ^= 1;
         Assert.Equal(AdminProofResult.INVALID, auth.Verify(PEER, 201, proof));
         Assert.Equal(AdminProofResult.NO_CHALLENGE, auth.Verify(PEER, 201, proof));
-        CryptographicOperations.ZeroMemory(key);
     }
 
     [Fact]
@@ -59,7 +58,7 @@ public class AdminAuthenticatorTests
     {
         using AdminAuthenticator auth = Connected();
         byte[] first = Begin(auth, 1, Nonce(5));
-        byte[] key = AdminCrypto.DerivePasswordKey(PASSWORD);
+        byte[] key = Key(first);
         Assert.Equal(AdminProofResult.ACCEPTED,
             auth.Verify(PEER, 2, AdminCrypto.ComputeProof(key, PEER, first)));
 
@@ -77,7 +76,7 @@ public class AdminAuthenticatorTests
     {
         using AdminAuthenticator auth = Connected();
         byte[] first = Begin(auth, 1, Nonce(7));
-        byte[] key = AdminCrypto.DerivePasswordKey(PASSWORD);
+        byte[] key = Key(first);
         Assert.Equal(AdminProofResult.ACCEPTED,
             auth.Verify(PEER, 2, AdminCrypto.ComputeProof(key, PEER, first)));
         Assert.True(auth.IsAdmin(PEER));
@@ -123,6 +122,9 @@ public class AdminAuthenticatorTests
             auth.Begin(PEER, nowMs, nonce, out byte[] challenge));
         return challenge;
     }
+
+    private static byte[] Key(byte[] challenge) =>
+        AdminCrypto.DerivePasswordKey(Encoding.UTF8.GetBytes(PASSWORD), challenge);
 
     private static byte[] SessionId(byte value) =>
         Enumerable.Repeat(value, AdminCrypto.SESSION_ID_BYTES).ToArray();
