@@ -26,7 +26,7 @@ public readonly struct SfxHandle
 /// <summary>Sound-effect manager, one per client. Voices come from bounded
 /// pools; a full pool steals the oldest voice of equal or lower priority, and
 /// drops the sound if there is none.</summary>
-public partial class Sfx : Node
+public partial class Sfx : Node, ISfx
 {
     internal const int FLAT_PREWARM = 8;
     internal const int FLAT_CAP = 16;
@@ -47,7 +47,6 @@ public partial class Sfx : Node
 
     [Export] private SoundRegistry? _sounds;
 
-    private static Sfx? _instance;
     private readonly List<Voice> _flat = new();
     private readonly List<Voice> _spatial = new();
     private ulong _startSerial;
@@ -58,14 +57,11 @@ public partial class Sfx : Node
     internal int ActiveFlatVoices => _flat.Count(v => v.Active);
     internal int ActiveSpatialVoices => _spatial.Count(v => v.Active);
 
-    public static SoundRegistry Sounds =>
-        _instance?._sounds ?? throw new InvalidOperationException("Sfx is not ready.");
+    public SoundRegistry Sounds =>
+        _sounds ?? throw new InvalidOperationException("Sfx has no SoundRegistry assigned.");
 
     public override void _Ready()
     {
-        if (_instance != null && _instance != this)
-            GD.PushError("More than one Sfx manager entered the client tree.");
-        _instance = this;
         ProcessPriority = 100;
         for (int i = 0; i < FLAT_PREWARM; i++)
         {
@@ -81,8 +77,6 @@ public partial class Sfx : Node
     {
         ReleaseAll(_flat);
         ReleaseAll(_spatial);
-        if (_instance == this)
-            _instance = null;
     }
 
     public override void _Process(double delta)
@@ -97,17 +91,17 @@ public partial class Sfx : Node
         }
     }
 
-    public static SfxHandle Play(SoundEffect? sound, float pitch = 1f, float gainDb = 0f) =>
-        _instance?.Start(sound, spatial: false, default, null, pitch, gainDb) ?? default;
+    public SfxHandle Play(SoundEffect? sound, float pitch = 1f, float gainDb = 0f) =>
+        Start(sound, spatial: false, default, null, pitch, gainDb);
 
-    public static SfxHandle PlayAt(SoundEffect? sound, Vector2 position, float pitch = 1f,
+    public SfxHandle PlayAt(SoundEffect? sound, Vector2 position, float pitch = 1f,
         float gainDb = 0f) =>
-        _instance?.Start(sound, spatial: true, position, null, pitch, gainDb) ?? default;
+        Start(sound, spatial: true, position, null, pitch, gainDb);
 
-    public static SfxHandle PlayAttached(SoundEffect? sound, Node2D target, float pitch = 1f,
+    public SfxHandle PlayAttached(SoundEffect? sound, Node2D target, float pitch = 1f,
         float gainDb = 0f) =>
-        _instance?.Start(sound, spatial: true,
-            target.OrNull()?.GlobalPosition ?? default, target, pitch, gainDb) ?? default;
+        Start(sound, spatial: true,
+            target.OrNull()?.GlobalPosition ?? default, target, pitch, gainDb);
 
     internal void Stop(bool spatial, int index, uint generation) =>
         ReleaseVoice(spatial ? _spatial : _flat, index, generation, stop: true);

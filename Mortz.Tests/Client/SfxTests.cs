@@ -15,7 +15,7 @@ public class SfxTests(MortzGodotFixture godot)
         Assert.Equal(Sfx.FLAT_PREWARM, f.Manager.FlatVoiceCount);
         Assert.Equal(Sfx.SPATIAL_PREWARM, f.Manager.SpatialVoiceCount);
 
-        SfxHandle handle = Sfx.Play(f.Gameplay);
+        SfxHandle handle = f.Manager.Play(f.Gameplay);
         Assert.Equal(1, f.Manager.ActiveFlatVoices);
         handle.Stop();
         handle.Stop();
@@ -27,13 +27,13 @@ public class SfxTests(MortzGodotFixture godot)
     public void NaturalFinishAndInvalidTargetRecycleVoices()
     {
         using Fixture f = new(godot.Tree);
-        Sfx.Play(f.Gameplay);
+        f.Manager.Play(f.Gameplay);
         AudioStreamPlayer player = Assert.IsType<AudioStreamPlayer>(f.Manager.GetChild(0));
         player.EmitSignal(AudioStreamPlayer.SignalName.Finished);
         Assert.Equal(0, f.Manager.ActiveFlatVoices);
 
         Node2D target = new();
-        Sfx.PlayAttached(f.Gameplay, target);
+        f.Manager.PlayAttached(f.Gameplay, target);
         Assert.Equal(1, f.Manager.ActiveSpatialVoices);
         target.Free();
         f.Manager._Process(0);
@@ -47,13 +47,13 @@ public class SfxTests(MortzGodotFixture godot)
         SfxHandle oldest = default;
         for (int i = 0; i < Sfx.FLAT_CAP; i++)
         {
-            SfxHandle handle = Sfx.Play(f.Gameplay);
+            SfxHandle handle = f.Manager.Play(f.Gameplay);
             if (i == 0) oldest = handle;
         }
         Assert.Equal(Sfx.FLAT_CAP, f.Manager.FlatVoiceCount);
         Assert.Equal(Sfx.FLAT_CAP, f.Manager.ActiveFlatVoices);
 
-        SfxHandle critical = Sfx.Play(f.Critical);
+        SfxHandle critical = f.Manager.Play(f.Critical);
         Assert.Equal(Sfx.FLAT_CAP, f.Manager.ActiveFlatVoices);
         oldest.Stop(); // stale after the steal
         Assert.Equal(Sfx.FLAT_CAP, f.Manager.ActiveFlatVoices);
@@ -67,10 +67,10 @@ public class SfxTests(MortzGodotFixture godot)
         using Fixture f = new(godot.Tree);
         for (int i = 0; i < Sfx.FLAT_CAP; i++)
         {
-            Sfx.Play(f.Critical);
+            f.Manager.Play(f.Critical);
         }
 
-        SfxHandle dropped = Sfx.Play(f.Gameplay);
+        SfxHandle dropped = f.Manager.Play(f.Gameplay);
         dropped.Stop();
         Assert.Equal(Sfx.FLAT_CAP, f.Manager.ActiveFlatVoices);
         Assert.Equal(Sfx.FLAT_CAP, f.Manager.FlatVoiceCount);
@@ -82,7 +82,7 @@ public class SfxTests(MortzGodotFixture godot)
         using Fixture f = new(godot.Tree);
         for (int i = 0; i < Sfx.SPATIAL_CAP + 1; i++)
         {
-            Sfx.PlayAt(f.Gameplay, new Vector2(i, 0));
+            f.Manager.PlayAt(f.Gameplay, new Vector2(i, 0));
         }
         Assert.Equal(Sfx.SPATIAL_CAP, f.Manager.SpatialVoiceCount);
         Assert.Equal(Sfx.SPATIAL_CAP, f.Manager.ActiveSpatialVoices);
@@ -93,7 +93,7 @@ public class SfxTests(MortzGodotFixture godot)
     {
         using Fixture f = new(godot.Tree);
         using SoundEffect missing = new();
-        Sfx.Play(missing);
+        f.Manager.Play(missing);
         default(SfxHandle).Stop();
         Assert.Equal(0, f.Manager.ActiveFlatVoices);
     }
@@ -103,14 +103,14 @@ public class SfxTests(MortzGodotFixture godot)
     {
         using Fixture f = new(godot.Tree);
 
-        SfxHandle scaled = Sfx.Play(f.Gameplay);
+        SfxHandle scaled = f.Manager.Play(f.Gameplay);
         AudioStreamPlayer scaledPlayer = Assert.IsType<AudioStreamPlayer>(f.Manager.GetChild(0));
         ClientClock.BeginReplay();
         f.Manager._Process(0);
         Assert.Equal(ClientClock.REPLAY_TIME_SCALE, scaledPlayer.PitchScale, precision: 3);
         scaled.Stop();
 
-        SfxHandle announcement = Sfx.Play(f.Critical);
+        SfxHandle announcement = f.Manager.Play(f.Critical);
         AudioStreamPlayer announcementPlayer = Assert.IsType<AudioStreamPlayer>(f.Manager.GetChild(0));
         Assert.Equal(1f, announcementPlayer.PitchScale, precision: 3);
         announcement.Stop();

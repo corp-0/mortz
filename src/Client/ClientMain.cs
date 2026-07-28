@@ -1,6 +1,7 @@
 using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
+using Mortz.Client.Audio;
 using Mortz.Net;
 
 namespace Mortz.Client;
@@ -9,12 +10,16 @@ namespace Mortz.Client;
 [Meta(typeof(IAutoNode))]
 public partial class ClientMain : Node,
     IProvide<NetworkManager>,
-    IProvide<INetwork>
+    IProvide<INetwork>,
+    IProvide<ISfx>
 {
+    [Export] private Sfx _sfx = null!;
+
     private NetworkManager _network = null!;
 
     NetworkManager IProvide<NetworkManager>.Value() => _network;
     INetwork IProvide<INetwork>.Value() => _network;
+    ISfx IProvide<ISfx>.Value() => _sfx;
 
     public override void _Notification(int what) => this.Notify(what);
 

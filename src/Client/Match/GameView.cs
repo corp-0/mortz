@@ -46,6 +46,9 @@ public partial class GameView : Node2D,
     [Dependency]
     private INetwork Network => this.DependOn<INetwork>();
 
+    [Dependency]
+    private ISfx Sfx => this.DependOn<ISfx>();
+
     IKillFeed IProvide<IKillFeed>.Value() => _killFeed;
     IAnnouncementDirector IProvide<IAnnouncementDirector>.Value() => _announcements;
     ClientChat IProvide<ClientChat>.Value() => _chat;

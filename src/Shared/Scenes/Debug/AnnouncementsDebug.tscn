@@ -11,7 +11,7 @@
 [ext_resource type="PackedScene" path="res://src/Shared/UI/Hud/AnnouncementBanner.tscn" id="9_banner"]
 [ext_resource type="PackedScene" path="res://src/Shared/UI/Chat/GameChat.tscn" id="10_gamechat"]
 
-[node name="AnnouncementsDebug" type="Control" unique_id=133924536 node_paths=PackedStringArray("_roster", "_admin", "_chat")]
+[node name="AnnouncementsDebug" type="Control" unique_id=133924536 node_paths=PackedStringArray("_roster", "_admin", "_chat", "_sfx")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -22,6 +22,7 @@ script = ExtResource("1_host")
 _roster = NodePath("ClientRoster")
 _admin = NodePath("ClientAdmin")
 _chat = NodePath("ClientChat")
+_sfx = NodePath("Sfx")
 
 [node name="ClientRoster" type="Node" parent="." unique_id=674686940]
 script = ExtResource("2_roster")

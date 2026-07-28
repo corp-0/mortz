@@ -1,6 +1,7 @@
 using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
+using Mortz.Client.Audio;
 using Mortz.Client.Chat;
 using Mortz.Core.Match;
 using Mortz.Core.Net.Messages;
@@ -24,6 +25,9 @@ public partial class PlayerViewManager : Node2D
 
     [Dependency]
     private INetwork Network => this.DependOn<INetwork>();
+
+    [Dependency]
+    private ISfx Sfx => this.DependOn<ISfx>();
 
     /// <summary>A remote player's rendered feet position this frame (lag probe tap).</summary>
     public event Action<Vector2>? RemotePlaced;
@@ -142,6 +146,7 @@ public partial class PlayerViewManager : Node2D
         if (!_views.TryGetValue(peerId, out PlayerView? view))
         {
             view = _playerScene.Instantiate<PlayerView>();
+            view.SetSfx(Sfx);
             view.Configure(_playerStats.GetValueOrDefault(peerId, _stats));
             view.SetIsLocal(isLocal);
             view.SetReplayActive(_replayActive);

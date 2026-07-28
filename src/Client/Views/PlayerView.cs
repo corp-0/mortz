@@ -33,6 +33,7 @@ public partial class PlayerView : Node2D
 
     internal PlayerStats StatsForTest { get; private set; } = null!;
 
+    private ISfx _sfx = null!;
     private bool _boxVisible;
     private bool _shieldVisible;
     private bool _isLocal;
@@ -40,6 +41,8 @@ public partial class PlayerView : Node2D
     private float _hitFlash;
     private PlayerViewState? _previous;
     private SfxHandle _reloadSound;
+
+    public void SetSfx(ISfx sfx) => _sfx = sfx;
 
     /// <summary>Called before the first Apply (PlayerViewManager does) and again
     /// whenever this player's replicated stats change.</summary>
@@ -128,11 +131,11 @@ public partial class PlayerView : Node2D
     private void PlayTransitions(PlayerViewTransition transitions)
     {
         if (transitions.HasFlag(PlayerViewTransition.PARRY_RAISED))
-            Sfx.PlayAttached(Sfx.Sounds.ParryRaise, this);
+            _sfx.PlayAttached(_sfx.Sounds.ParryRaise, this);
         if (transitions.HasFlag(PlayerViewTransition.SHELL_RELOAD_STARTED))
         {
             _reloadSound.Stop();
-            _reloadSound = Sfx.PlayAttached(Sfx.Sounds.MortarReload, this);
+            _reloadSound = _sfx.PlayAttached(_sfx.Sounds.MortarReload, this);
         }
         else if (transitions.HasFlag(PlayerViewTransition.RELOAD_STOPPED))
         {

@@ -1,5 +1,6 @@
 using Chickensoft.AutoInject;
 using Godot;
+using Mortz.Client.Audio;
 using Mortz.Client.Match;
 using Mortz.Client.Views;
 using Mortz.Core.Match;
@@ -20,6 +21,7 @@ public class PlayerViewStatsTests : NodeServiceTest
     {
         PlayerViewManager manager = TakeManagerFromGameViewScene();
         manager.FakeDependency<INetwork>(new FakeNetwork());
+        manager.FakeDependency<ISfx>(new NullSfx());
         Host(manager);
         manager.Configure(new MatchConfig());
 

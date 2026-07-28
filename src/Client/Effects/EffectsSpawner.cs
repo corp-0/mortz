@@ -26,6 +26,9 @@ public partial class EffectsSpawner : Node2D
     [Dependency]
     private GameMap Map => this.DependOn<GameMap>();
 
+    [Dependency]
+    private ISfx Sfx => this.DependOn<ISfx>();
+
     public override void _Notification(int what) => this.Notify(what);
 
     public void OnReady()

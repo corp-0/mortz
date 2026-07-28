@@ -9,8 +9,9 @@
 [ext_resource type="PackedScene" path="res://src/Shared/Scenes/Root/ConnectedSession.tscn" id="7_csession"]
 [ext_resource type="Script" uid="uid://drn2cynsax60k" path="res://src/Client/Session/ClientSessionController.cs" id="8_session"]
 
-[node name="ClientMain" type="Node" unique_id=282168119]
+[node name="ClientMain" type="Node" unique_id=282168119 node_paths=PackedStringArray("_sfx")]
 script = ExtResource("1_cmain")
+_sfx = NodePath("Sfx")
 
 [node name="Sfx" type="Node" parent="." unique_id=552139458]
 script = ExtResource("5_sfx")

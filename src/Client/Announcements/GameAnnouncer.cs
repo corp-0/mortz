@@ -42,6 +42,9 @@ public partial class GameAnnouncer : Node
     [Dependency]
     private INetwork Network => this.DependOn<INetwork>();
 
+    [Dependency]
+    private ISfx Sfx => this.DependOn<ISfx>();
+
     private readonly AnnouncementQueue _queue = new();
     private readonly VariantPicker _picker = new();
     private double _clock;
@@ -135,7 +138,7 @@ public partial class GameAnnouncer : Node
         };
 
     /// <summary>1..n variants per cue; most have one for now.</summary>
-    private static SoundEffect?[] Sounds(Cue cue) => cue switch
+    private SoundEffect?[] Sounds(Cue cue) => cue switch
     {
         Cue.FIRST_BLOOD => [Sfx.Sounds.FirstBlood],
         Cue.HUMILIATION => [Sfx.Sounds.Owned],

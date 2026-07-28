@@ -24,6 +24,9 @@ public partial class MortarViewManager : Node2D
     [Dependency]
     private INetwork Network => this.DependOn<INetwork>();
 
+    [Dependency]
+    private ISfx Sfx => this.DependOn<ISfx>();
+
     public override void _Notification(int what) => this.Notify(what);
 
     private readonly Dictionary<ushort, MortarView> _remote = new();

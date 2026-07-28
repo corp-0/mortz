@@ -3,6 +3,7 @@ using Chickensoft.Introspection;
 using Godot;
 using Mortz.Client.Admin;
 using Mortz.Client.Announcements;
+using Mortz.Client.Audio;
 using Mortz.Client.Chat;
 using Mortz.Client.Roster;
 using Mortz.Client.Session;
@@ -21,7 +22,8 @@ public partial class AnnouncementsDebug : Control,
     IProvide<ClientAdmin>,
     IProvide<ClientChat>,
     IProvide<INetwork>,
-    IProvide<ISessionExit>
+    IProvide<ISessionExit>,
+    IProvide<ISfx>
 {
     private const long KILLER = 1;
     private const long VICTIM = 2;
@@ -33,6 +35,7 @@ public partial class AnnouncementsDebug : Control,
     [Export] private ClientRoster _roster = null!;
     [Export] private ClientAdmin _admin = null!;
     [Export] private ClientChat _chat = null!;
+    [Export] private Sfx _sfx = null!;
 
     IAnnouncementDirector IProvide<IAnnouncementDirector>.Value() => _director;
     ClientRoster IProvide<ClientRoster>.Value() => _roster;
@@ -40,6 +43,7 @@ public partial class AnnouncementsDebug : Control,
     ClientChat IProvide<ClientChat>.Value() => _chat;
     INetwork IProvide<INetwork>.Value() => _network;
     ISessionExit IProvide<ISessionExit>.Value() => _sessionExit;
+    ISfx IProvide<ISfx>.Value() => _sfx;
 
     public override void _Notification(int what) => this.Notify(what);
 
