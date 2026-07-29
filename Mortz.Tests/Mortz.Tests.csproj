@@ -10,8 +10,7 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
   </PropertyGroup>
   <ItemGroup>
-    <!-- 2dog.xunit pulls in 2dog.engine and compiles its collection definitions into this assembly -->
-    <PackageReference Include="2dog.xunit" Version="4.7.1.45" />
+    <PackageReference Include="2dog.engine" Version="4.7.1.64" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.0" />
     <PackageReference Include="Moq" Version="4.20.72" />
     <PackageReference Include="xunit.v3" Version="3.2.2" />
