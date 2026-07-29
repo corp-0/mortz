@@ -8,6 +8,7 @@ using Mortz.Core.Chat;
 using Mortz.Core.Chat.Commands;
 using Mortz.Core.Net;
 using Mortz.Core.Net.Messages;
+using Mortz.Core.Text;
 
 namespace Mortz.Client.Chat;
 
@@ -17,12 +18,15 @@ namespace Mortz.Client.Chat;
 public partial class ClientChat : Node
 {
     private readonly ChatCommandRegistry<ClientCommandContext> _commands = new();
+    private readonly List<ChatLine> _lines = [];
     private bool _subscribed;
 
     public ClientChat() => _commands.RegisterAssemblyCommands();
 
-    public ChatState State { get; } = new();
+    public IReadOnlyList<ChatLine> Lines => _lines;
     public IEnumerable<ChatCommandMetadata> CommandCatalog => _commands.Commands;
+    public event Action<ChatLine>? LineAdded;
+    public event Action? Cleared;
 
     [Dependency]
     private ClientAdmin Admin => this.DependOn<ClientAdmin>();
@@ -34,7 +38,7 @@ public partial class ClientChat : Node
 
     public void OnResolved()
     {
-        ChatLineMsg.Received += OnChatLine;
+        ChatProtocol.Received += OnChatLine;
         Admin.StatusLine += OnAdminStatusLine;
         _subscribed = true;
     }
@@ -43,7 +47,7 @@ public partial class ClientChat : Node
     {
         if (!_subscribed)
             return;
-        ChatLineMsg.Received -= OnChatLine;
+        ChatProtocol.Received -= OnChatLine;
         Admin.StatusLine -= OnAdminStatusLine;
         _subscribed = false;
     }
@@ -57,7 +61,7 @@ public partial class ClientChat : Node
             if (!_commands.TryParse(input.TrimStart(),
                     out ChatCommand<ClientCommandContext>? command, out string parseError))
             {
-                State.AddSystem(parseError, isPrivate: true);
+                AddPrivate(parseError);
                 return false;
             }
             command!.Execute(new ClientCommandContext(this, Admin, SessionExit));
@@ -69,42 +73,37 @@ public partial class ClientChat : Node
             string error = reason == ChatRejectReason.TOO_LONG
                 ? $"Messages are limited to {NetConfig.MAX_CHAT_BYTES} UTF-8 bytes."
                 : "Message is empty.";
-            State.AddSystem(error, isPrivate: true);
+            AddPrivate(error);
             return false;
         }
         new ChatSendMsg(text).SendToServer();
         return true;
     }
 
-    private void OnChatLine(ChatLineMsg message)
+    public void Add(ChatLine line)
     {
-        if (!Enum.IsDefined(message.Kind) ||
-            !Enum.IsDefined(message.TextFormat) ||
-            string.IsNullOrWhiteSpace(message.Text))
-        {
-            return;
-        }
-        switch (message.Kind)
-        {
-            case ChatLineKind.PLAYER when message.TextFormat == ChatTextFormat.MARKDOWN:
-                State.Add(new ChatEntry(ChatEntryKind.PLAYER, message.SenderId,
-                    message.SenderName, message.Text, message.TextFormat));
-                break;
-            case ChatLineKind.SYSTEM
-                when message.TextFormat is ChatTextFormat.PLAIN or ChatTextFormat.RICH_TEXT:
-                State.Add(new ChatEntry(ChatEntryKind.SYSTEM, message.SenderId,
-                    message.SenderName, message.Text, message.TextFormat));
-                break;
-            case ChatLineKind.ROLL
-                when message.TextFormat == ChatTextFormat.PLAIN &&
-                     DiceRoll.TryParse(message.Text, out _):
-                State.Add(new ChatEntry(ChatEntryKind.ROLL, message.SenderId,
-                    message.SenderName, message.Text));
-                break;
-            default:
-                break;
-        }
+        ArgumentNullException.ThrowIfNull(line);
+        if (_lines.Count == NetConfig.MAX_CHAT_HISTORY)
+            _lines.RemoveAt(0);
+        _lines.Add(line);
+        LineAdded?.Invoke(line);
     }
 
-    private void OnAdminStatusLine(string line) => State.AddSystem(line, isPrivate: true);
+    public void AddSystem(string text) => Add(new ChatLine.System(text));
+
+    public void AddSystem(RichText text) => Add(new ChatLine.System(text));
+
+    public void AddPrivate(string text) => Add(new ChatLine.Private(text));
+
+    public void AddPrivate(RichText text) => Add(new ChatLine.Private(text));
+
+    public void Clear()
+    {
+        _lines.Clear();
+        Cleared?.Invoke();
+    }
+
+    private void OnChatLine(ChatLine.Remote line) => Add(line);
+
+    private void OnAdminStatusLine(string line) => AddPrivate(line);
 }

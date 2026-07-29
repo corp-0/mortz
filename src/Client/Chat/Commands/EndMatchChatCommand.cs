@@ -24,9 +24,8 @@ internal sealed class EndMatchChatCommand : ClientChatCommand
         if (!context.Admin.TrySignAdminAction(AdminAction.END_MATCH, [],
                 out ulong sequence, out byte[] tag))
         {
-            context.Chat.State.AddSystem(
-                "Admin access required. Authenticate with /admin <password> in the lobby.",
-                isPrivate: true);
+            context.Chat.AddPrivate(
+                "Admin access required. Authenticate with /admin <password> in the lobby.");
             return;
         }
         new EndMatchRequestMsg(sequence, tag).SendToServer();

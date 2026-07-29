@@ -39,7 +39,7 @@ public partial class AnnouncementChat : Node
         foreach (Announcement a in batch)
         {
             if (Compose(a) is { } line)
-                Chat.State.AddSystem(line);
+                Chat.AddSystem(line);
         }
     }
 
@@ -53,7 +53,7 @@ public partial class AnnouncementChat : Node
             ? new RichText().Add(kills, new Style().Bold()).Add(" wins!")
             : new RichText().Add(mp.Leader, new Style().Bold()).Add(" needs ")
                 .Add(kills, new Style().Bold()).Add("!");
-        Chat.State.AddSystem(line);
+        Chat.AddSystem(line);
     }
 
     private RichText? Compose(Announcement a) => a.Kind switch

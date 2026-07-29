@@ -271,30 +271,28 @@ public class NetMessageTests : IDisposable
     public void ChatAndAdminServerMessages_RoundTrip()
     {
         UseLoopback(receiverIsServer: false);
-        ChatLineMsg line = default;
+        ChatLine.Remote? line = null;
         AdminChallengeMsg challenge = default;
         AdminStateMsg state = default;
-        Action<ChatLineMsg> lineHandler = message => line = message;
+        Action<ChatLine.Remote> lineHandler = message => line = message;
         Action<AdminChallengeMsg> challengeHandler = message => challenge = message;
         Action<AdminStateMsg> stateHandler = message => state = message;
-        ChatLineMsg.Received += lineHandler;
+        ChatProtocol.Received += lineHandler;
         AdminChallengeMsg.Received += challengeHandler;
         AdminStateMsg.Received += stateHandler;
         try
         {
-            new ChatLineMsg(ChatLineKind.PLAYER, 42, "Alice", "hello 🐛",
-                ChatTextFormat.MARKDOWN).Broadcast();
+            ChatProtocol.Broadcast(new ChatLine.Player(42, "Alice", "hello 🐛"));
             new AdminChallengeMsg([1, 2, 3]).SendTo(42);
             new AdminStateMsg(true, "granted").SendTo(42);
         }
         finally
         {
-            ChatLineMsg.Received -= lineHandler;
+            ChatProtocol.Received -= lineHandler;
             AdminChallengeMsg.Received -= challengeHandler;
             AdminStateMsg.Received -= stateHandler;
         }
-        Assert.Equal(new ChatLineMsg(ChatLineKind.PLAYER, 42, "Alice", "hello 🐛",
-            ChatTextFormat.MARKDOWN), line);
+        Assert.Equal(new ChatLine.Player(42, "Alice", "hello 🐛"), line);
         Assert.Equal([1, 2, 3], challenge.Challenge);
         Assert.Equal(new AdminStateMsg(true, "granted"), state);
     }

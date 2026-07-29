@@ -5,6 +5,7 @@ using Mortz.Core.Admin;
 using Mortz.Core.Chat;
 using Mortz.Core.Input;
 using Mortz.Core.Match;
+using Mortz.Core.Net;
 using Mortz.Core.Net.Messages;
 using Mortz.Core.Sim;
 using Mortz.Net;
@@ -199,17 +200,15 @@ public partial class ServerSessionController : Node, IServerSession
             return;
         if (_match is not { } match)
         {
-            new ChatLineMsg(ChatLineKind.SYSTEM, 0, "Server", "No match is running.",
-                    ChatTextFormat.PLAIN)
-                .SendTo(sender);
+            ChatProtocol.SendTo(sender, new ChatLine.System("No match is running."));
             return;
         }
 
         GD.Print($"[server] admin {sender} '{_players.Name(sender)}' force-ended the match");
         ReturnToLobby(match);
         // After the lobby broadcast so it lands in the fresh lobby chats.
-        new ChatLineMsg(ChatLineKind.SYSTEM, 0, "Server",
-            $"{_players.Name(sender)} ended the match.", ChatTextFormat.PLAIN).Broadcast();
+        ChatProtocol.Broadcast(
+            new ChatLine.System($"{_players.Name(sender)} ended the match."));
     }
 
     private void TryStartMatch()

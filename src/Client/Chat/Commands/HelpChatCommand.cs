@@ -19,7 +19,7 @@ internal sealed class HelpChatCommand : ClientChatCommand
             RichText line = new RichText()
                 .Add(metadata.Usage, new Style().Bold())
                 .Add(" - ").Add(metadata.Description);
-            context.Chat.State.AddSystem(line, isPrivate: true);
+            context.Chat.AddPrivate(line);
         }
     }
 }

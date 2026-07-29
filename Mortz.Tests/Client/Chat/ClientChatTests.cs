@@ -45,7 +45,7 @@ public class ClientChatTests : NodeServiceTest
         Assert.Equal(NetRegistry.ID_AdminAuthRequestMsg, sentId);
         Assert.DoesNotContain("definitely-not-a-chat-secret",
             Encoding.UTF8.GetString(sentPayload));
-        Assert.DoesNotContain(_chat.State.Entries,
+        Assert.DoesNotContain(_chat.Lines,
             entry => entry.Text.Contains("definitely-not-a-chat-secret",
                 StringComparison.Ordinal));
     }
@@ -75,7 +75,7 @@ public class ClientChatTests : NodeServiceTest
         Assert.True(_admin.IsAdmin);
         Assert.True(_admin.TrySignAdminAction(4, [1, 2, 3], out _, out byte[] tag));
         Assert.NotEmpty(tag);
-        Assert.Contains(_chat.State.Entries,
+        Assert.Contains(_chat.Lines,
             entry => entry.Text == "Admin access granted.");
     }
 
@@ -83,72 +83,66 @@ public class ClientChatTests : NodeServiceTest
     public void RollLinesBecomeRollEntriesAndOutOfRangeValuesAreDropped()
     {
         byte[] payload = Capture(
-            () => new ChatLineMsg(ChatLineKind.ROLL, SENDER, "Alice", "73",
-                ChatTextFormat.PLAIN).Broadcast());
-        Assert.True(NetRegistry.Dispatch(NetRegistry.ID_ChatLineMsg, SENDER,
+            () => ChatProtocol.Broadcast(new ChatLine.Roll(SENDER, "Alice", 73)));
+        Assert.True(NetRegistry.Dispatch(NetRegistry.ID_ChatMsg, SENDER,
             payload, isServer: false));
-        ChatEntry entry = Assert.Single(_chat.State.Entries);
-        Assert.Equal(ChatEntryKind.ROLL, entry.Kind);
-        Assert.Equal("73", entry.Text);
+        ChatLine.Roll entry = Assert.IsType<ChatLine.Roll>(
+            Assert.Single(_chat.Lines));
+        Assert.Equal(73, entry.Value);
         Assert.Equal("Alice", entry.SenderName);
 
-        byte[] bogus = Capture(
-            () => new ChatLineMsg(ChatLineKind.ROLL, SENDER, "Alice", "999",
-                ChatTextFormat.PLAIN).Broadcast());
-        Assert.True(NetRegistry.Dispatch(NetRegistry.ID_ChatLineMsg, SENDER,
+        byte[] bogus = ChatPayload(kind: 2, SENDER, "Alice", "999", format: 0);
+        Assert.True(NetRegistry.Dispatch(NetRegistry.ID_ChatMsg, SENDER,
             bogus, isServer: false));
-        Assert.Single(_chat.State.Entries);
+        Assert.Single(_chat.Lines);
     }
 
     [Fact]
     public void DropsUnknownServerLineKinds()
     {
         byte[] payload = Capture(
-            () => new ChatLineMsg(ChatLineKind.PLAYER, SENDER, "Alice", "hello",
-                ChatTextFormat.MARKDOWN).Broadcast());
+            () => ChatProtocol.Broadcast(
+                new ChatLine.Player(SENDER, "Alice", "hello")));
         payload[0] = byte.MaxValue;
 
-        Assert.True(NetRegistry.Dispatch(NetRegistry.ID_ChatLineMsg, SENDER,
+        Assert.True(NetRegistry.Dispatch(NetRegistry.ID_ChatMsg, SENDER,
             payload, isServer: false));
-        Assert.Empty(_chat.State.Entries);
+        Assert.Empty(_chat.Lines);
     }
 
     [Fact]
     public void RichSystemLinesKeepTrustedServerFormatting()
     {
         byte[] payload = Capture(
-            () => new ChatLineMsg(ChatLineKind.SYSTEM, 0, "Server",
-                "[b]changed[/b]", ChatTextFormat.RICH_TEXT).Broadcast());
+            () => ChatProtocol.Broadcast(
+                new ChatLine.System(new Mortz.Core.Text.RichText()
+                    .Add("changed", new Mortz.Core.Text.Style().Bold()))));
 
-        Assert.True(NetRegistry.Dispatch(NetRegistry.ID_ChatLineMsg, SENDER,
+        Assert.True(NetRegistry.Dispatch(NetRegistry.ID_ChatMsg, SENDER,
             payload, isServer: false));
 
-        ChatEntry entry = Assert.Single(_chat.State.Entries);
-        Assert.Equal(ChatEntryKind.SYSTEM, entry.Kind);
-        Assert.Equal(ChatTextFormat.RICH_TEXT, entry.TextFormat);
+        ChatLine.System entry = Assert.IsType<ChatLine.System>(
+            Assert.Single(_chat.Lines));
         Assert.Equal("[b]changed[/b]", entry.Render().ToString());
     }
 
     [Fact]
     public void DropsUnsupportedKindAndFormatCombinations()
     {
-        byte[] playerPlain = Capture(
-            () => new ChatLineMsg(ChatLineKind.PLAYER, SENDER, "Alice", "hello",
-                ChatTextFormat.PLAIN).Broadcast());
-        byte[] systemMarkdown = Capture(
-            () => new ChatLineMsg(ChatLineKind.SYSTEM, 0, "Server", "**hello**",
-                ChatTextFormat.MARKDOWN).Broadcast());
-        byte[] unknownFormat = Capture(
-            () => new ChatLineMsg(ChatLineKind.SYSTEM, 0, "Server", "hello",
-                (ChatTextFormat)byte.MaxValue).Broadcast());
+        byte[] playerPlain = ChatPayload(
+            kind: 0, SENDER, "Alice", "hello", format: 0);
+        byte[] systemMarkdown = ChatPayload(
+            kind: 1, 0, "Server", "**hello**", format: 1);
+        byte[] unknownFormat = ChatPayload(
+            kind: 1, 0, "Server", "hello", format: byte.MaxValue);
 
-        Assert.True(NetRegistry.Dispatch(NetRegistry.ID_ChatLineMsg, SENDER,
+        Assert.True(NetRegistry.Dispatch(NetRegistry.ID_ChatMsg, SENDER,
             playerPlain, isServer: false));
-        Assert.True(NetRegistry.Dispatch(NetRegistry.ID_ChatLineMsg, SENDER,
+        Assert.True(NetRegistry.Dispatch(NetRegistry.ID_ChatMsg, SENDER,
             systemMarkdown, isServer: false));
-        Assert.True(NetRegistry.Dispatch(NetRegistry.ID_ChatLineMsg, SENDER,
+        Assert.True(NetRegistry.Dispatch(NetRegistry.ID_ChatMsg, SENDER,
             unknownFormat, isServer: false));
-        Assert.Empty(_chat.State.Entries);
+        Assert.Empty(_chat.Lines);
     }
 
     [Fact]
@@ -167,5 +161,22 @@ public class ClientChatTests : NodeServiceTest
         NetTransport.Send = (_, bytes, _, _) => payload = bytes;
         send();
         return payload;
+    }
+
+    private static byte[] ChatPayload(
+        byte kind,
+        long senderId,
+        string senderName,
+        string text,
+        byte format)
+    {
+        using var stream = new MemoryStream();
+        using var writer = new BinaryWriter(stream);
+        writer.Write(kind);
+        writer.Write(senderId);
+        writer.Write(senderName);
+        writer.Write(text);
+        writer.Write(format);
+        return stream.ToArray();
     }
 }

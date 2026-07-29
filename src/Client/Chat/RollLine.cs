@@ -108,7 +108,7 @@ public partial class RollLine : HBoxContainer
         foreach (Node child in GetChildren())
         {
             RemoveChild(child);
-            child.QueueFree();
+            child.Free();
         }
         AddChild(BuildSettledLabel());
     }

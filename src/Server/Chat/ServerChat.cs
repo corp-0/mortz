@@ -82,8 +82,13 @@ public partial class ServerChat : Node, IServerAdminAuthorizer
 
     private void OnPeerJoined(long peerId, string requestedName)
     {
-        if (Session.ContainsPlayer(peerId))
-            _admin.Connected(peerId, CryptoRandom.GetBytes(AdminCrypto.SESSION_ID_BYTES));
+        if (!Session.ContainsPlayer(peerId)) return;
+
+        _admin.Connected(peerId, CryptoRandom.GetBytes(AdminCrypto.SESSION_ID_BYTES));
+        RichText joinedText = new RichText()
+            .Add(requestedName, new Style().Bold())
+            .Add(" joined the game.");
+        ChatProtocol.Broadcast(new ChatLine.System(joinedText));
     }
 
     private void OnPeerLeft(long peerId)
@@ -92,6 +97,10 @@ public partial class ServerChat : Node, IServerAdminAuthorizer
         _admin.Remove(peerId);
         if (_typing.Remove(peerId))
             new TypingStateMsg(peerId, false).Broadcast();
+        RichText leftText = new RichText()
+            .Add(Session.PlayerName(peerId), new Style().Bold())
+            .Add(" left the game.");
+        ChatProtocol.Broadcast(new ChatLine.System(leftText));
     }
 
     // Dropping no-op repeats is the flood guard: one broadcast per state flip.
@@ -111,9 +120,8 @@ public partial class ServerChat : Node, IServerAdminAuthorizer
         if (_chatPolicy.TryAccept(sender, Time.GetTicksMsec(), message.Text,
                 out string text, out ChatRejectReason reason))
         {
-            new ChatLineMsg(ChatLineKind.PLAYER, sender, Session.PlayerName(sender), text,
-                    ChatTextFormat.MARKDOWN)
-                .Broadcast();
+            ChatProtocol.Broadcast(
+                new ChatLine.Player(sender, Session.PlayerName(sender), text));
             return;
         }
 
@@ -137,8 +145,8 @@ public partial class ServerChat : Node, IServerAdminAuthorizer
             !_chatPolicy.TryAcceptRoll(sender, Time.GetTicksMsec()))
             return;
         int value = Random.Shared.Next(DiceRoll.MIN, DiceRoll.MAX + 1);
-        new ChatLineMsg(ChatLineKind.ROLL, sender, Session.PlayerName(sender),
-            value.ToString(), ChatTextFormat.PLAIN).Broadcast();
+        ChatProtocol.Broadcast(
+            new ChatLine.Roll(sender, Session.PlayerName(sender), value));
     }
 
     private void OnAdminAuthRequest(long sender, AdminAuthRequestMsg message)
@@ -208,12 +216,10 @@ public partial class ServerChat : Node, IServerAdminAuthorizer
                 .Add(" > ")
                 .Add(delta.After);
 
-            new ChatLineMsg(ChatLineKind.SYSTEM, 0, "Server", text,
-                ChatTextFormat.RICH_TEXT).Broadcast();
+            ChatProtocol.Broadcast(new ChatLine.System(text));
         }
     }
 
     private static void SendPrivateSystem(long peerId, string text) =>
-        new ChatLineMsg(ChatLineKind.SYSTEM, 0, "Server", text, ChatTextFormat.PLAIN)
-            .SendTo(peerId);
+        ChatProtocol.SendTo(peerId, new ChatLine.System(text));
 }

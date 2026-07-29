@@ -1,0 +1,120 @@
+using Mortz.Core.Text;
+
+namespace Mortz.Core.Chat;
+
+public abstract record ChatLine
+{
+    internal ChatLine()
+    {
+    }
+
+    public abstract string Text { get; }
+
+    public abstract RichText Render();
+
+    public abstract record Remote : ChatLine
+    {
+        internal Remote()
+        {
+        }
+    }
+
+    public sealed record Player : Remote
+    {
+        public Player(long senderId, string senderName, string text)
+        {
+            SenderId = RequirePeerId(senderId);
+            SenderName = RequireSenderName(senderName);
+            Text = RequireText(text);
+        }
+
+        public long SenderId { get; }
+        public string SenderName { get; }
+        public override string Text { get; }
+
+        public override RichText Render() => ChatMarkdown.Render(Text);
+    }
+
+    public sealed record System : Remote
+    {
+        private readonly string _bbCode;
+
+        public System(string text)
+        {
+            string valid = RequireText(text);
+            _bbCode = new RichText(valid).ToString();
+        }
+
+        public System(RichText text)
+        {
+            ArgumentNullException.ThrowIfNull(text);
+            _bbCode = RequireText(text.ToString());
+        }
+
+        public override string Text => _bbCode;
+
+        public override RichText Render() => RichText.FromTrustedBbCode(_bbCode);
+
+        internal static System FromTrustedBbCode(string bbCode) =>
+            new(RichText.FromTrustedBbCode(RequireText(bbCode)));
+    }
+
+    public sealed record Roll : Remote
+    {
+        public Roll(long senderId, string senderName, int value)
+        {
+            if (value is < DiceRoll.MIN or > DiceRoll.MAX)
+                throw new ArgumentOutOfRangeException(nameof(value));
+            SenderId = RequirePeerId(senderId);
+            SenderName = RequireSenderName(senderName);
+            Value = value;
+        }
+
+        public long SenderId { get; }
+        public string SenderName { get; }
+        public int Value { get; }
+        public override string Text => Value.ToString();
+
+        public override RichText Render() => new(Text);
+    }
+
+    public sealed record Private : ChatLine
+    {
+        public Private(string text)
+        {
+            string valid = RequireText(text);
+            Text = new RichText(valid).ToString();
+        }
+
+        public Private(RichText text)
+        {
+            ArgumentNullException.ThrowIfNull(text);
+            Text = RequireText(text.ToString());
+        }
+
+        public override string Text { get; }
+
+        public override RichText Render() => RichText.FromTrustedBbCode(Text);
+    }
+
+    private static string RequireText(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            throw new ArgumentException("Chat line text cannot be empty.", nameof(text));
+        return text;
+    }
+
+    private static string RequireSenderName(string senderName)
+    {
+        if (string.IsNullOrWhiteSpace(senderName))
+            throw new ArgumentException("Chat sender name cannot be empty.", nameof(senderName));
+        return senderName;
+    }
+
+    private static long RequirePeerId(long peerId)
+    {
+        if (peerId <= 0)
+            throw new ArgumentOutOfRangeException(nameof(peerId));
+        return peerId;
+    }
+}

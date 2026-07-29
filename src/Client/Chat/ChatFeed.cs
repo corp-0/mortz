@@ -27,7 +27,7 @@ public partial class ChatFeed : VBoxContainer
 
     // Not folded into the ?. call: a null-conditional skips argument
     // evaluation, and the line must exist even with no listeners.
-    private void OnEntryAdded(ChatEntry entry)
+    private void OnEntryAdded(ChatLine entry)
     {
         Control line = AddLine(entry, animate: true);
         LineAdded?.Invoke(line);
@@ -38,7 +38,7 @@ public partial class ChatFeed : VBoxContainer
     private void Rebuild()
     {
         ClearLines();
-        foreach (ChatEntry entry in _chat.State.Entries)
+        foreach (ChatLine entry in _chat.Lines)
         {
             AddLine(entry, animate: false);
         }
@@ -49,8 +49,8 @@ public partial class ChatFeed : VBoxContainer
     {
         if (_subscribed)
             return;
-        _chat.State.EntryAdded += OnEntryAdded;
-        _chat.State.Cleared += OnCleared;
+        _chat.LineAdded += OnEntryAdded;
+        _chat.Cleared += OnCleared;
         _subscribed = true;
         Rebuild();
     }
@@ -59,17 +59,16 @@ public partial class ChatFeed : VBoxContainer
     {
         if (!_subscribed)
             return;
-        _chat.State.EntryAdded -= OnEntryAdded;
-        _chat.State.Cleared -= OnCleared;
+        _chat.LineAdded -= OnEntryAdded;
+        _chat.Cleared -= OnCleared;
         _subscribed = false;
     }
 
-    private Control AddLine(ChatEntry entry, bool animate)
+    private Control AddLine(ChatLine entry, bool animate)
     {
-        Control line =
-            entry.Kind == ChatEntryKind.ROLL && DiceRoll.TryParse(entry.Text, out int rolled)
-                ? RollLine.Create(entry.SenderName, rolled, animate)
-                : BuildTextLine(entry);
+        Control line = entry is ChatLine.Roll roll
+            ? RollLine.Create(roll.SenderName, roll.Value, animate)
+            : BuildTextLine(entry);
         AddChild(line);
         while (GetChildCount() > NetConfig.MAX_CHAT_HISTORY)
         {
@@ -79,14 +78,15 @@ public partial class ChatFeed : VBoxContainer
     }
 
     // Lines never take the mouse; the in-game overlay stays click-through.
-    private static RichTextLabel BuildTextLine(ChatEntry entry)
+    private static RichTextLabel BuildTextLine(ChatLine entry)
     {
         RichText content = entry.Render();
-        RichText text = entry.Kind switch
+        RichText text = entry switch
         {
-            ChatEntryKind.PLAYER => new RichText().Add(entry.SenderName, new Style().Bold())
+            ChatLine.Player player => new RichText()
+                .Add(player.SenderName, new Style().Bold())
                 .Add(": ").Add(content),
-            ChatEntryKind.PRIVATE => new RichText().Add("* ", new Style().Italic()).Add(content),
+            ChatLine.Private => new RichText().Add("* ", new Style().Italic()).Add(content),
             _ => content,
         };
         return new RichTextLabel
@@ -104,7 +104,7 @@ public partial class ChatFeed : VBoxContainer
         foreach (Node child in GetChildren())
         {
             RemoveChild(child);
-            child.QueueFree();
+            child.Free();
         }
     }
 }
