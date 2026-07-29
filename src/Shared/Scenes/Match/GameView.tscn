@@ -13,15 +13,15 @@
 [ext_resource type="Script" uid="uid://b3jq6f2xj1ct" path="res://src/Client/Diagnostics/LagProbes.cs" id="11_lagprobes"]
 [ext_resource type="Script" uid="uid://c4xs1n8kwl65d" path="res://src/Client/Diagnostics/E2EHooks.cs" id="12_e2e"]
 [ext_resource type="PackedScene" path="res://src/Shared/UI/Hud/PlayerStatusHud.tscn" id="13_status"]
+[ext_resource type="PackedScene" path="res://src/Shared/UI/Hud/WinnerBanner.tscn" id="15_score"]
 [ext_resource type="Script" uid="uid://bxev1av5gpki2" path="res://src/Client/Announcements/GameAnnouncer.cs" id="16_announcer"]
-[ext_resource type="Script" uid="uid://cpeja6avfvxqv" path="res://src/Client/Announcements/AnnouncementDirector.cs" id="24_director"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/Hud/AnnouncementBanner.tscn" id="25_banner"]
 [ext_resource type="Script" uid="uid://6aqxhxbup147" path="res://src/Client/Replay/FinalKillReplay.cs" id="17_replay"]
 [ext_resource type="PackedScene" path="res://src/Shared/UI/Hud/ScoreHudHost.tscn" id="18_scorehost"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/Hud/WinnerBanner.tscn" id="15_score"]
 [ext_resource type="Script" uid="uid://b7xyv1173ixe1" path="res://src/Client/Chat/ClientChat.cs" id="22_chat"]
-[ext_resource type="Script" path="res://src/Client/Announcements/AnnouncementChat.cs" id="26_annchat"]
 [ext_resource type="PackedScene" path="res://src/Shared/UI/Chat/GameChat.tscn" id="23_gamechat"]
+[ext_resource type="Script" uid="uid://cpeja6avfvxqv" path="res://src/Client/Announcements/AnnouncementDirector.cs" id="24_director"]
+[ext_resource type="PackedScene" uid="uid://bkx20bfq77ejk" path="res://src/Shared/UI/Hud/AnnouncementBanner.tscn" id="25_banner"]
+[ext_resource type="Script" uid="uid://cukwng3fiyn6t" path="res://src/Client/Announcements/AnnouncementChat.cs" id="26_annchat"]
 [ext_resource type="Script" uid="uid://bxsnp7y1yhbw" path="res://src/Client/Match/MortarClient.cs" id="27_mortarclient"]
 
 [node name="GameView" type="Node2D" unique_id=1808596722 node_paths=PackedStringArray("_ropes", "_localPlayer", "_players", "_mortarClient", "_hud", "_finalKillReplay", "_announcements", "_chat")]
@@ -85,7 +85,7 @@ script = ExtResource("26_annchat")
 
 [node name="Hud" type="CanvasLayer" parent="." unique_id=1180743937]
 
-[node name="PlayerStatus" parent="Hud" instance=ExtResource("13_status")]
+[node name="PlayerStatus" parent="Hud" unique_id=523373374 instance=ExtResource("13_status")]
 
 [node name="ScoreHud" parent="Hud" unique_id=1037392052 instance=ExtResource("18_scorehost")]
 
@@ -94,6 +94,7 @@ script = ExtResource("26_annchat")
 [node name="AnnouncementBanner" parent="Hud" unique_id=1206395185 instance=ExtResource("25_banner")]
 
 [node name="GameChat" parent="Hud" unique_id=1206395184 instance=ExtResource("23_gamechat")]
+anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
 offset_left = 12.0

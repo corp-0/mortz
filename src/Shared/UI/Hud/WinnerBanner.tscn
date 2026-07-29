@@ -1,8 +1,8 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://d0kvogyk6fo0q"]
 
 [ext_resource type="Script" uid="uid://287ujoa71wsm" path="res://src/Client/Match/WinnerBanner.cs" id="1_winner"]
 
-[node name="WinnerBanner" type="Control" node_paths=PackedStringArray("_winnerLabel")]
+[node name="WinnerBanner" type="Control" unique_id=1270869332 node_paths=PackedStringArray("_winnerLabel")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -13,7 +13,7 @@ mouse_filter = 2
 script = ExtResource("1_winner")
 _winnerLabel = NodePath("Winner")
 
-[node name="Winner" type="Label" parent="."]
+[node name="Winner" type="Label" parent="." unique_id=120249513]
 visible = false
 layout_mode = 0
 anchor_left = 0.5

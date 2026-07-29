@@ -1,9 +1,9 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://b86jqbl2lr84v"]
 
-[ext_resource type="Script" path="res://src/Client/Menus/SettingsScreen.cs" id="1_settings"]
+[ext_resource type="Script" uid="uid://c8gie3xcpplkw" path="res://src/Client/Menus/SettingsScreen.cs" id="1_settings"]
 [ext_resource type="FontFile" uid="uid://tah7qwxd4iyq" path="res://Assets/Fonts/Metal_Mania/MetalMania-Regular.ttf" id="2_font"]
 
-[node name="Settings" type="Control" node_paths=PackedStringArray("_playerNameEdit", "_status")]
+[node name="Settings" type="Control" unique_id=1644661506 node_paths=PackedStringArray("_playerNameEdit", "_status")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -14,7 +14,7 @@ script = ExtResource("1_settings")
 _playerNameEdit = NodePath("Center/Panel/Margin/Column/PlayerNameEdit")
 _status = NodePath("Center/Panel/Margin/Column/Status")
 
-[node name="Background" type="ColorRect" parent="."]
+[node name="Background" type="ColorRect" parent="." unique_id=1541445504]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -24,7 +24,7 @@ grow_vertical = 2
 mouse_filter = 2
 color = Color(0.026, 0.032, 0.044, 0.88)
 
-[node name="Center" type="CenterContainer" parent="."]
+[node name="Center" type="CenterContainer" parent="." unique_id=460910903]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -32,56 +32,56 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="Panel" type="PanelContainer" parent="Center"]
+[node name="Panel" type="PanelContainer" parent="Center" unique_id=2015354260]
 custom_minimum_size = Vector2(480, 0)
 layout_mode = 2
 
-[node name="Margin" type="MarginContainer" parent="Center/Panel"]
+[node name="Margin" type="MarginContainer" parent="Center/Panel" unique_id=1241181604]
 layout_mode = 2
 theme_override_constants/margin_left = 24
 theme_override_constants/margin_top = 20
 theme_override_constants/margin_right = 24
 theme_override_constants/margin_bottom = 20
 
-[node name="Column" type="VBoxContainer" parent="Center/Panel/Margin"]
+[node name="Column" type="VBoxContainer" parent="Center/Panel/Margin" unique_id=1248179544]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="Title" type="Label" parent="Center/Panel/Margin/Column"]
+[node name="Title" type="Label" parent="Center/Panel/Margin/Column" unique_id=1535745843]
 layout_mode = 2
 theme_override_fonts/font = ExtResource("2_font")
 theme_override_font_sizes/font_size = 42
 text = "SETTINGS"
 horizontal_alignment = 1
 
-[node name="PlayerNameLabel" type="Label" parent="Center/Panel/Margin/Column"]
+[node name="PlayerNameLabel" type="Label" parent="Center/Panel/Margin/Column" unique_id=2001564334]
 layout_mode = 2
 text = "Player name"
 
-[node name="PlayerNameEdit" type="LineEdit" parent="Center/Panel/Margin/Column"]
+[node name="PlayerNameEdit" type="LineEdit" parent="Center/Panel/Margin/Column" unique_id=1793149801]
 custom_minimum_size = Vector2(0, 42)
 layout_mode = 2
-max_length = 24
 placeholder_text = "The name other players see"
+max_length = 24
 
-[node name="Hint" type="Label" parent="Center/Panel/Margin/Column"]
+[node name="Hint" type="Label" parent="Center/Panel/Margin/Column" unique_id=1385316275]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.62, 0.62, 0.65, 1)
 theme_override_font_sizes/font_size = 13
 text = "Saved on this machine. Steam will handle names later."
 autowrap_mode = 2
 
-[node name="Status" type="Label" parent="Center/Panel/Margin/Column"]
+[node name="Status" type="Label" parent="Center/Panel/Margin/Column" unique_id=1729495059]
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.55, 0.45, 1)
 autowrap_mode = 2
 
-[node name="SaveButton" type="Button" parent="Center/Panel/Margin/Column"]
+[node name="SaveButton" type="Button" parent="Center/Panel/Margin/Column" unique_id=600511734]
 custom_minimum_size = Vector2(0, 42)
 layout_mode = 2
 text = "Save"
 
-[node name="BackButton" type="Button" parent="Center/Panel/Margin/Column"]
+[node name="BackButton" type="Button" parent="Center/Panel/Margin/Column" unique_id=1739241608]
 custom_minimum_size = Vector2(0, 42)
 layout_mode = 2
 text = "Back"

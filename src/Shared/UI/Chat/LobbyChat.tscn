@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://ciqycdoqosx85"]
 
-[ext_resource type="Script" uid="uid://dfrjixf7towk0" path="res://src/Client/Chat/ChatPanel.cs" id="1_bawat"]
+[ext_resource type="Script" uid="uid://dfrjixf7towk0" path="res://src/Client/Chat/LobbyChat.cs" id="1_bawat"]
 [ext_resource type="Script" uid="uid://dgbj7v1nbhv77" path="res://src/Client/Chat/ChatFeed.cs" id="2_hu15t"]
 
 [node name="LobbyChat" type="PanelContainer" unique_id=2023193911 node_paths=PackedStringArray("_scroll", "_feed", "_input")]

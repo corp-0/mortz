@@ -1,6 +1,6 @@
-[gd_resource type="Resource" script_class="SoundEffect" format=3]
+[gd_resource type="Resource" script_class="SoundEffect" format=3 uid="uid://bj8sd8j8f3itq"]
 
-[ext_resource type="AudioStream" path="res://Assets/Sounds/Announcer/multi_kill.wav" id="1"]
+[ext_resource type="AudioStream" uid="uid://d28f4wverlcnq" path="res://Assets/Sounds/Announcer/multi_kill.wav" id="1"]
 [ext_resource type="Script" uid="uid://ds47gmtfre85k" path="res://src/Client/Audio/SoundEffect.cs" id="2"]
 
 [resource]

@@ -1,6 +1,6 @@
-[gd_resource type="Resource" script_class="SoundEffect" format=3]
+[gd_resource type="Resource" script_class="SoundEffect" format=3 uid="uid://chrnj7nhnu0o0"]
 
-[ext_resource type="AudioStream" path="res://Assets/Sounds/Announcer/holy_shit.wav" id="1"]
+[ext_resource type="AudioStream" uid="uid://c6ncgd1ax18bf" path="res://Assets/Sounds/Announcer/holy_shit.wav" id="1"]
 [ext_resource type="Script" uid="uid://ds47gmtfre85k" path="res://src/Client/Audio/SoundEffect.cs" id="2"]
 
 [resource]

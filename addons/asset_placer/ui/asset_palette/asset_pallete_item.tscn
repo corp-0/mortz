@@ -1,20 +1,24 @@
 [gd_scene format=3 uid="uid://dyevu7h71klg4"]
 
 [ext_resource type="Script" uid="uid://dbfr66nx70y7c" path="res://addons/asset_placer/ui/asset_palette/asset_pallete_item.gd" id="1_c2ruk"]
-[ext_resource type="Texture2D" uid="uid://be61c5ff55gfo" path="res://addons/asset_placer/icon.png" id="2_c2ruk"]
+[ext_resource type="Script" uid="uid://dmicn3kmr620j" path="res://addons/asset_placer/utils/system_icon.gd" id="2_c2ruk"]
+
+[sub_resource type="Texture2D" id="Texture2D_c2ruk"]
+resource_local_to_scene = false
+resource_name = ""
+script = ExtResource("2_c2ruk")
+icon_name = &"Add"
 
 [node name="VBoxContainer" type="VBoxContainer" unique_id=510652609]
 offset_right = 40.0
 offset_bottom = 40.0
 script = ExtResource("1_c2ruk")
-button_size = null
-configurable = null
 
 [node name="Button" type="Button" parent="." unique_id=1843764788]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(64, 64)
 layout_mode = 2
-icon = ExtResource("2_c2ruk")
+icon = SubResource("Texture2D_c2ruk")
 icon_alignment = 1
 expand_icon = true
 

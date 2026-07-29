@@ -1,7 +1,7 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://jdflpktp0k7t"]
 
-[ext_resource type="Script" path="res://src/Client/Chat/GameChat.cs" id="1_gamechat"]
-[ext_resource type="Script" path="res://src/Client/Chat/ChatFeed.cs" id="2_feed"]
+[ext_resource type="Script" uid="uid://b2lgc33gj8kva" path="res://src/Client/Chat/GameChat.cs" id="1_gamechat"]
+[ext_resource type="Script" uid="uid://dgbj7v1nbhv77" path="res://src/Client/Chat/ChatFeed.cs" id="2_feed"]
 
 [sub_resource type="Theme" id="Theme_outline"]
 Label/colors/font_outline_color = Color(0, 0, 0, 0.9)
@@ -16,7 +16,9 @@ corner_radius_top_right = 4
 corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
 
-[node name="GameChat" type="Control" node_paths=PackedStringArray("_background", "_scroll", "_feed", "_input")]
+[node name="GameChat" type="Control" unique_id=1359305138 node_paths=PackedStringArray("_background", "_scroll", "_feed", "_input")]
+layout_mode = 3
+anchors_preset = 0
 offset_right = 380.0
 offset_bottom = 284.0
 mouse_filter = 2
@@ -27,7 +29,7 @@ _scroll = NodePath("Margin/Column/Scroll")
 _feed = NodePath("Margin/Column/Scroll/Feed")
 _input = NodePath("Margin/Column/Input")
 
-[node name="Background" type="Panel" parent="."]
+[node name="Background" type="Panel" parent="." unique_id=1650796968]
 visible = false
 layout_mode = 1
 anchors_preset = 15
@@ -37,7 +39,7 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_bg")
 
-[node name="Margin" type="MarginContainer" parent="."]
+[node name="Margin" type="MarginContainer" parent="." unique_id=266772257]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -50,26 +52,26 @@ theme_override_constants/margin_top = 8
 theme_override_constants/margin_right = 10
 theme_override_constants/margin_bottom = 8
 
-[node name="Column" type="VBoxContainer" parent="Margin"]
+[node name="Column" type="VBoxContainer" parent="Margin" unique_id=1725328578]
 layout_mode = 2
 mouse_filter = 2
 theme_override_constants/separation = 6
 
-[node name="Scroll" type="ScrollContainer" parent="Margin/Column"]
+[node name="Scroll" type="ScrollContainer" parent="Margin/Column" unique_id=881490906]
 layout_mode = 2
 size_flags_vertical = 3
 mouse_filter = 2
 horizontal_scroll_mode = 0
 vertical_scroll_mode = 3
 
-[node name="Feed" type="VBoxContainer" parent="Margin/Column/Scroll"]
+[node name="Feed" type="VBoxContainer" parent="Margin/Column/Scroll" unique_id=7064580]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 8
 mouse_filter = 2
 script = ExtResource("2_feed")
 
-[node name="Input" type="LineEdit" parent="Margin/Column"]
+[node name="Input" type="LineEdit" parent="Margin/Column" unique_id=1070351102]
 visible = false
 layout_mode = 2
 placeholder_text = "Chat or /help"

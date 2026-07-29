@@ -122,8 +122,8 @@ text = "Server name"
 [node name="ServerNameEdit" type="LineEdit" parent="MenuCenter/Menu/HostPanel" unique_id=1086691518]
 custom_minimum_size = Vector2(0, 42)
 layout_mode = 2
-max_length = 40
 placeholder_text = "Shown in the server browser"
+max_length = 40
 
 [node name="PortLabel" type="Label" parent="MenuCenter/Menu/HostPanel" unique_id=349024977]
 layout_mode = 2

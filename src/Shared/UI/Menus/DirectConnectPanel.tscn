@@ -1,8 +1,8 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://i48m8fxwjjq1"]
 
-[ext_resource type="Script" path="res://src/Client/Menus/DirectConnectPanel.cs" id="1_direct"]
+[ext_resource type="Script" uid="uid://cs06f0eolctk0" path="res://src/Client/Menus/DirectConnectPanel.cs" id="1_direct"]
 
-[node name="DirectConnectPanel" type="PanelContainer" node_paths=PackedStringArray("_address", "_port", "_status", "_joinAnyway")]
+[node name="DirectConnectPanel" type="PanelContainer" unique_id=1746312581 node_paths=PackedStringArray("_address", "_port", "_status", "_joinAnyway")]
 visible = false
 script = ExtResource("1_direct")
 _address = NodePath("DirectMargin/DirectColumn/Fields/Address")
@@ -10,58 +10,58 @@ _port = NodePath("DirectMargin/DirectColumn/Fields/Port")
 _status = NodePath("DirectMargin/DirectColumn/DirectStatus")
 _joinAnyway = NodePath("DirectMargin/DirectColumn/DirectActions/JoinAnyway")
 
-[node name="DirectMargin" type="MarginContainer" parent="."]
+[node name="DirectMargin" type="MarginContainer" parent="." unique_id=2009956353]
 layout_mode = 2
 theme_override_constants/margin_left = 16
 theme_override_constants/margin_top = 12
 theme_override_constants/margin_right = 16
 theme_override_constants/margin_bottom = 12
 
-[node name="DirectColumn" type="VBoxContainer" parent="DirectMargin"]
+[node name="DirectColumn" type="VBoxContainer" parent="DirectMargin" unique_id=1589185565]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="DirectTitle" type="Label" parent="DirectMargin/DirectColumn"]
+[node name="DirectTitle" type="Label" parent="DirectMargin/DirectColumn" unique_id=1786104966]
 layout_mode = 2
 text = "Direct connect"
 
-[node name="Fields" type="HBoxContainer" parent="DirectMargin/DirectColumn"]
+[node name="Fields" type="HBoxContainer" parent="DirectMargin/DirectColumn" unique_id=540386957]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="Address" type="LineEdit" parent="DirectMargin/DirectColumn/Fields"]
+[node name="Address" type="LineEdit" parent="DirectMargin/DirectColumn/Fields" unique_id=2080299984]
 custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
 size_flags_horizontal = 3
 placeholder_text = "Address or hostname"
 
-[node name="Port" type="LineEdit" parent="DirectMargin/DirectColumn/Fields"]
+[node name="Port" type="LineEdit" parent="DirectMargin/DirectColumn/Fields" unique_id=680034672]
 custom_minimum_size = Vector2(120, 40)
 layout_mode = 2
-max_length = 5
 placeholder_text = "Port"
+max_length = 5
 
-[node name="DirectStatus" type="Label" parent="DirectMargin/DirectColumn"]
+[node name="DirectStatus" type="Label" parent="DirectMargin/DirectColumn" unique_id=981076071]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.75, 0.75, 0.78, 1)
 autowrap_mode = 2
 
-[node name="DirectActions" type="HBoxContainer" parent="DirectMargin/DirectColumn"]
+[node name="DirectActions" type="HBoxContainer" parent="DirectMargin/DirectColumn" unique_id=622191794]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="Find" type="Button" parent="DirectMargin/DirectColumn/DirectActions"]
+[node name="Find" type="Button" parent="DirectMargin/DirectColumn/DirectActions" unique_id=59379364]
 custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
 text = "Find server"
 
-[node name="JoinAnyway" type="Button" parent="DirectMargin/DirectColumn/DirectActions"]
+[node name="JoinAnyway" type="Button" parent="DirectMargin/DirectColumn/DirectActions" unique_id=378683421]
 visible = false
 custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
 text = "Join anyway"
 
-[node name="Cancel" type="Button" parent="DirectMargin/DirectColumn/DirectActions"]
+[node name="Cancel" type="Button" parent="DirectMargin/DirectColumn/DirectActions" unique_id=1910914492]
 custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
 text = "Cancel"

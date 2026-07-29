@@ -1,6 +1,6 @@
-[gd_resource type="Resource" script_class="SoundEffect" format=3]
+[gd_resource type="Resource" script_class="SoundEffect" format=3 uid="uid://c60xnqofp4q2t"]
 
-[ext_resource type="AudioStream" path="res://Assets/Sounds/Announcer/shutdown.wav" id="1"]
+[ext_resource type="AudioStream" uid="uid://km3sqb0ne2rj" path="res://Assets/Sounds/Announcer/shutdown.wav" id="1"]
 [ext_resource type="Script" uid="uid://ds47gmtfre85k" path="res://src/Client/Audio/SoundEffect.cs" id="2"]
 
 [resource]

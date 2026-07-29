@@ -1,14 +1,14 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=3 uid="uid://cvbnc0n16omeo"]
 
-[ext_resource type="Script" path="res://addons/asset_placer/ui/settings/thumbnail_regeneration_dialog.gd" id="1_1"]
+[ext_resource type="Script" uid="uid://c0r4k5np4hu46" path="res://addons/asset_placer/ui/settings/thumbnail_regeneration_dialog.gd" id="1_1"]
 
-[node name="ThumbnailRegenerationDialog" type="AcceptDialog"]
+[node name="ThumbnailRegenerationDialog" type="AcceptDialog" unique_id=877027688]
 title = "Regenerate Thumbnails"
-size = Vector2i(520, 210)
 initial_position = 1
+size = Vector2i(520, 210)
 script = ExtResource("1_1")
 
-[node name="MarginContainer" type="MarginContainer" parent="."]
+[node name="MarginContainer" type="MarginContainer" parent="." unique_id=943018009]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -19,22 +19,21 @@ offset_bottom = -8.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="VBox" type="VBoxContainer" parent="MarginContainer"]
+[node name="VBox" type="VBoxContainer" parent="MarginContainer" unique_id=1657092505]
 layout_mode = 2
 
-[node name="StatusLabel" type="Label" parent="MarginContainer/VBox"]
+[node name="StatusLabel" type="Label" parent="MarginContainer/VBox" unique_id=329771516]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Preparing thumbnail regeneration..."
 
-[node name="ProgressBar" type="ProgressBar" parent="MarginContainer/VBox"]
+[node name="ProgressBar" type="ProgressBar" parent="MarginContainer/VBox" unique_id=917191321]
 unique_name_in_owner = true
 layout_mode = 2
 max_value = 1.0
-value = 0.0
 show_percentage = false
 
-[node name="DetailsLabel" type="Label" parent="MarginContainer/VBox"]
+[node name="DetailsLabel" type="Label" parent="MarginContainer/VBox" unique_id=1828439928]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Done 0/0"
