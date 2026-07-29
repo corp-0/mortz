@@ -87,7 +87,7 @@ public partial class ServerProbe : Node
     /// custom one is only reachable by direct connect.</summary>
     public void DiscoverLan()
     {
-        if (_socket is not { } socket)
+        if (_socket is not PacketPeerUdp socket)
             return;
         int port = ServerQueryProtocol.QueryPort(NetConfig.DEFAULT_PORT);
         uint nonce = _tracker.BeginBroadcast(Time.GetTicksMsec(), port);
@@ -97,7 +97,7 @@ public partial class ServerProbe : Node
 
     public override void _Process(double delta)
     {
-        if (_socket is not { } socket)
+        if (_socket is not PacketPeerUdp socket)
             return;
         ulong now = Time.GetTicksMsec();
         AdvanceResolves(now);
@@ -130,7 +130,7 @@ public partial class ServerProbe : Node
 
     private void Send(uint nonce, string address, int port, ulong now)
     {
-        if (_socket is not { } socket)
+        if (_socket is not PacketPeerUdp socket)
             return;
         socket.SetDestAddress(address, port);
         socket.PutPacket(ServerQueryProtocol.EncodeRequest(nonce));

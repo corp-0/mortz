@@ -193,7 +193,7 @@ public partial class ClientSessionController : Node, ISessionExit,
 
     private void OnTerrainChunk(TerrainChunkMsg message)
     {
-        if (_pendingMatch is not { } pending)
+        if (_pendingMatch is not ClientMatchBootstrap pending)
             return;
         TerrainChunkResult result = pending.Terrain.Accept(message);
         if (result.State is TerrainChunkState.IGNORED or TerrainChunkState.WAITING)

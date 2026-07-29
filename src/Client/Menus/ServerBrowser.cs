@@ -75,7 +75,7 @@ public partial class ServerBrowser : Control
 
     public void OnJoinPressed()
     {
-        if (_selected is not { } entry)
+        if (_selected is not ServerEntry entry)
             return;
         switch (entry.Status)
         {
@@ -93,7 +93,7 @@ public partial class ServerBrowser : Control
 
     public void OnFavoritePressed()
     {
-        if (_selected is { } entry)
+        if (_selected is ServerEntry entry)
             ToggleFavorite(entry);
     }
 
@@ -123,7 +123,7 @@ public partial class ServerBrowser : Control
     {
         _directTarget = null;
         _directPanel.Found();
-        if (_list.Find(endpoint) is { } entry)
+        if (_list.Find(endpoint) is ServerEntry entry)
             Select(entry);
         Note($"Found {endpoint}. Star it to keep it in your list.");
     }
@@ -159,7 +159,7 @@ public partial class ServerBrowser : Control
         _list.ApplyReply(reply.Endpoint, reply.Info, reply.PingMs);
         if (wasListed)
             RowFor(reply.Endpoint)?.Refresh();
-        else if (_list.Find(reply.Endpoint) is { } added)
+        else if (_list.Find(reply.Endpoint) is ServerEntry added)
             InsertRow(added);
     }
 

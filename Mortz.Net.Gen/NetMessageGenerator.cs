@@ -86,7 +86,7 @@ public sealed class NetMessageGenerator : IIncrementalGenerator
         {
             foreach (ParameterSyntax p in parameters.Parameters)
             {
-                if (ctx.SemanticModel.GetDeclaredSymbol(p) is not { } ps)
+                if (ctx.SemanticModel.GetDeclaredSymbol(p) is not IParameterSymbol ps)
                     continue;
                 string type = ps.Type.ToDisplayString();
                 bool byteEnum = ps.Type is INamedTypeSymbol

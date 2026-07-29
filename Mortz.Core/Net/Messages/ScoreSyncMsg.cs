@@ -5,4 +5,4 @@ namespace Mortz.Core.Net.Messages;
 /// start blank. The elimination stream keeps it current afterwards.</summary>
 [NetMessage(NetChannel.RELIABLE, NetDirection.SERVER_TO_CLIENT)]
 public readonly partial record struct ScoreSyncMsg(
-    long[] PeerIds, int[] Kills, int[] Deaths, int Team1Kills, int Team2Kills);
+    long[] PeerIds, int[] Kills, int[] Deaths, int BlueKills, int RedKills);

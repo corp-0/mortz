@@ -19,11 +19,36 @@ public class ScoreboardTests
         };
 
     [Fact]
+    public void ATeamWithTheTeamsRuleOff_IsUnconstructible()
+    {
+        Scoreboard s = new Scoreboard(Cfg());
+
+        Assert.Throws<ArgumentException>(() => s.AddPlayer(1, Team.BLUE));
+    }
+
+    [Fact]
+    public void SameTeamKillsAreTeamkills_ButUnassignedKillersAreNot()
+    {
+        Scoreboard s = new Scoreboard(Cfg(teams: true));
+        s.AddPlayer(1, Team.BLUE);
+        s.AddPlayer(2, Team.BLUE);
+        s.AddPlayer(3); // never took a side
+        s.AddPlayer(4);
+
+        Assert.Equal(Scoreboard.DeathKind.TEAM_KILL,
+            s.ScoreDeath(new Scoreboard.Death(VictimId: 2, KillerId: 1))!.Value.Kind);
+        Assert.Equal(Scoreboard.DeathKind.KILL,
+            s.ScoreDeath(new Scoreboard.Death(VictimId: 4, KillerId: 3))!.Value.Kind);
+        Assert.Equal(Scoreboard.DeathKind.KILL,
+            s.ScoreDeath(new Scoreboard.Death(VictimId: 2, KillerId: 3))!.Value.Kind);
+    }
+
+    [Fact]
     public void Kill_CreditsTheKiller_AndCountsTheVictimsDeath()
     {
         Scoreboard s = new Scoreboard(Cfg());
-        s.AddPlayer(1, 0);
-        s.AddPlayer(2, 0);
+        s.AddPlayer(1);
+        s.AddPlayer(2);
 
         Assert.Null(s.ScoreDeath(new Scoreboard.Death(VictimId: 2, KillerId: 1))?.Winner);
 
@@ -37,7 +62,7 @@ public class ScoreboardTests
     public void Suicide_OwnShellOrDeathPit_CountsADeathAndNoKill()
     {
         Scoreboard s = new Scoreboard(Cfg());
-        s.AddPlayer(1, 0);
+        s.AddPlayer(1);
 
         s.ScoreDeath(new Scoreboard.Death(VictimId: 1, KillerId: 1)); // own shell
         s.ScoreDeath(new Scoreboard.Death(VictimId: 1, KillerId: 0)); // death pit
@@ -50,7 +75,7 @@ public class ScoreboardTests
     public void SuicidePenalty_SubtractsAKill_ScoresGoNegative()
     {
         Scoreboard s = new Scoreboard(Cfg(suicidePenalty: SuicidePenalty.KILL));
-        s.AddPlayer(1, 0);
+        s.AddPlayer(1);
 
         s.ScoreDeath(new Scoreboard.Death(VictimId: 1, KillerId: 1));
         s.ScoreDeath(new Scoreboard.Death(VictimId: 1, KillerId: 0));
@@ -63,15 +88,15 @@ public class ScoreboardTests
     {
         Scoreboard s = new Scoreboard(
             Cfg(teams: true, suicidePenalty: SuicidePenalty.KILL_NO_NEGATIVE));
-        s.AddPlayer(1, 1);
-        s.AddPlayer(2, 2);
+        s.AddPlayer(1, Team.BLUE);
+        s.AddPlayer(2, Team.RED);
 
         s.ScoreDeath(new Scoreboard.Death(VictimId: 2, KillerId: 1)); // 1-0
         s.ScoreDeath(new Scoreboard.Death(VictimId: 1, KillerId: 1)); // the point goes back
         s.ScoreDeath(new Scoreboard.Death(VictimId: 1, KillerId: 0)); // at zero: nothing to take
 
         Assert.Equal(0, s.Rows[1].Kills);
-        Assert.Equal(0, s.TeamKills(1));
+        Assert.Equal(0, s.TeamKills[Team.BLUE]);
     }
 
     [Fact]
@@ -79,8 +104,8 @@ public class ScoreboardTests
     {
         Scoreboard s = new Scoreboard(
             Cfg(suicidePenalty: SuicidePenalty.REWARD_CLOSEST_ENEMY));
-        s.AddPlayer(1, 0);
-        s.AddPlayer(2, 0);
+        s.AddPlayer(1);
+        s.AddPlayer(2);
 
         Scoreboard.DeathResult result = s.ScoreDeath(
             new Scoreboard.Death(VictimId: 1, KillerId: 1, NearestEnemyId: 2))!.Value;
@@ -95,13 +120,13 @@ public class ScoreboardTests
     {
         Scoreboard s = new Scoreboard(
             Cfg(suicidePenalty: SuicidePenalty.REWARD_CLOSEST_ENEMY, target: 1));
-        s.AddPlayer(1, 0);
-        s.AddPlayer(2, 0);
+        s.AddPlayer(1);
+        s.AddPlayer(2);
 
-        Scoreboard.MatchWinner? winner = s.ScoreDeath(
+        Victor? winner = s.ScoreDeath(
             new Scoreboard.Death(VictimId: 1, KillerId: 0, NearestEnemyId: 2))?.Winner;
 
-        Assert.Equal(new Scoreboard.MatchWinner(ByTeam: false, Id: 2), winner);
+        Assert.Equal(new PlayerVictor(2), winner);
     }
 
     [Fact]
@@ -109,7 +134,7 @@ public class ScoreboardTests
     {
         Scoreboard s = new Scoreboard(
             Cfg(suicidePenalty: SuicidePenalty.REWARD_CLOSEST_ENEMY));
-        s.AddPlayer(1, 0);
+        s.AddPlayer(1);
 
         Scoreboard.DeathResult result = s.ScoreDeath(
             new Scoreboard.Death(VictimId: 1, KillerId: 1))!.Value;
@@ -122,30 +147,30 @@ public class ScoreboardTests
     public void Teamkill_AwardsNothing_VictimsDeathStillCounts()
     {
         Scoreboard s = new Scoreboard(Cfg(teams: true));
-        s.AddPlayer(1, 1);
-        s.AddPlayer(2, 1);
+        s.AddPlayer(1, Team.BLUE);
+        s.AddPlayer(2, Team.BLUE);
 
         s.ScoreDeath(new Scoreboard.Death(VictimId: 2, KillerId: 1));
 
         Assert.Equal(0, s.Rows[1].Kills);
         Assert.Equal(1, s.Rows[2].Deaths);
-        Assert.Equal(0, s.TeamKills(1));
+        Assert.Equal(0, s.TeamKills[Team.BLUE]);
     }
 
     [Fact]
     public void TeamTotals_AccumulateAtKillTime_AndSurviveLeavers()
     {
         Scoreboard s = new Scoreboard(Cfg(teams: true, target: 10));
-        s.AddPlayer(1, 1);
-        s.AddPlayer(2, 1);
-        s.AddPlayer(3, 2);
+        s.AddPlayer(1, Team.BLUE);
+        s.AddPlayer(2, Team.BLUE);
+        s.AddPlayer(3, Team.RED);
 
         s.ScoreDeath(new Scoreboard.Death(VictimId: 3, KillerId: 1));
         s.ScoreDeath(new Scoreboard.Death(VictimId: 3, KillerId: 2));
-        Assert.Equal(2, s.TeamKills(1));
+        Assert.Equal(2, s.TeamKills[Team.BLUE]);
 
         s.RemovePlayer(1); // rage quit keeps the team's points on the board
-        Assert.Equal(2, s.TeamKills(1));
+        Assert.Equal(2, s.TeamKills[Team.BLUE]);
         Assert.False(s.Rows.ContainsKey(1));
     }
 
@@ -154,58 +179,58 @@ public class ScoreboardTests
     {
         Scoreboard s = new Scoreboard(
             Cfg(teams: true, suicidePenalty: SuicidePenalty.KILL));
-        s.AddPlayer(1, 1);
-        s.AddPlayer(2, 2);
+        s.AddPlayer(1, Team.BLUE);
+        s.AddPlayer(2, Team.RED);
 
         s.ScoreDeath(new Scoreboard.Death(VictimId: 2, KillerId: 1)); // 1-0
         s.ScoreDeath(new Scoreboard.Death(VictimId: 1, KillerId: 1)); // the point goes back
 
         Assert.Equal(0, s.Rows[1].Kills);
-        Assert.Equal(0, s.TeamKills(1));
+        Assert.Equal(0, s.TeamKills[Team.BLUE]);
     }
 
     [Fact]
     public void KillsWithoutTeams_FirstPlayerToTargetWins()
     {
         Scoreboard s = new Scoreboard(Cfg(target: 2));
-        s.AddPlayer(1, 0);
-        s.AddPlayer(2, 0);
+        s.AddPlayer(1);
+        s.AddPlayer(2);
 
         Assert.Null(s.ScoreDeath(new Scoreboard.Death(VictimId: 2, KillerId: 1))?.Winner);
-        Scoreboard.MatchWinner? winner =
+        Victor? winner =
             s.ScoreDeath(new Scoreboard.Death(VictimId: 2, KillerId: 1))?.Winner;
 
-        Assert.Equal(new Scoreboard.MatchWinner(ByTeam: false, Id: 1), winner);
+        Assert.Equal(new PlayerVictor(1), winner);
     }
 
     [Fact]
     public void KillsWithTeams_TeammatesCombineToTheTarget()
     {
         Scoreboard s = new Scoreboard(Cfg(teams: true, target: 2));
-        s.AddPlayer(1, 1);
-        s.AddPlayer(2, 1);
-        s.AddPlayer(3, 2);
+        s.AddPlayer(1, Team.BLUE);
+        s.AddPlayer(2, Team.BLUE);
+        s.AddPlayer(3, Team.RED);
 
         Assert.Null(s.ScoreDeath(new Scoreboard.Death(VictimId: 3, KillerId: 1))?.Winner);
-        Scoreboard.MatchWinner? winner =
+        Victor? winner =
             s.ScoreDeath(new Scoreboard.Death(VictimId: 3, KillerId: 2))?.Winner;
 
-        Assert.Equal(new Scoreboard.MatchWinner(ByTeam: true, Id: 1), winner);
+        Assert.Equal(new TeamVictor(Team.BLUE), winner);
     }
 
     [Fact]
     public void KillsStandingWithTeams_UsesTheCombinedTeamTotal()
     {
         Scoreboard s = new Scoreboard(Cfg(teams: true, target: 3));
-        s.AddPlayer(1, 1);
-        s.AddPlayer(2, 1);
-        s.AddPlayer(3, 2);
+        s.AddPlayer(1, Team.BLUE);
+        s.AddPlayer(2, Team.BLUE);
+        s.AddPlayer(3, Team.RED);
 
         s.ScoreDeath(new Scoreboard.Death(VictimId: 3, KillerId: 1));
         s.ScoreDeath(new Scoreboard.Death(VictimId: 3, KillerId: 2));
 
         Assert.Equal(new Scoreboard.MatchStanding(
-            LeaderId: 1, LeaderIsTeam: true, Remaining: 1), s.Standing());
+            Leader: new TeamVictor(Team.BLUE), Remaining: 1), s.Standing());
     }
 
     [Fact]
@@ -222,23 +247,23 @@ public class ScoreboardTests
     {
         Scoreboard s = new Scoreboard(Cfg(
             winCondition: WinCondition.KILL_LEAD, leadTarget: 2));
-        s.AddPlayer(1, 0);
-        s.AddPlayer(2, 0);
-        s.AddPlayer(3, 0);
+        s.AddPlayer(1);
+        s.AddPlayer(2);
+        s.AddPlayer(3);
 
         Assert.Null(s.ScoreDeath(new Scoreboard.Death(VictimId: 2, KillerId: 1))?.Winner);
-        Assert.Equal(new Scoreboard.MatchStanding(1, false, 1), s.Standing());
+        Assert.Equal(new Scoreboard.MatchStanding(new PlayerVictor(1), 1), s.Standing());
 
         Assert.Null(s.ScoreDeath(new Scoreboard.Death(VictimId: 3, KillerId: 2))?.Winner);
-        Assert.Equal(new Scoreboard.MatchStanding(0, false, 2), s.Standing());
+        Assert.Equal(new Scoreboard.MatchStanding(null, 2), s.Standing());
 
         Assert.Null(s.ScoreDeath(new Scoreboard.Death(VictimId: 3, KillerId: 1))?.Winner);
-        Assert.Equal(new Scoreboard.MatchStanding(1, false, 1), s.Standing());
+        Assert.Equal(new Scoreboard.MatchStanding(new PlayerVictor(1), 1), s.Standing());
 
-        Scoreboard.MatchWinner? winner =
+        Victor? winner =
             s.ScoreDeath(new Scoreboard.Death(VictimId: 2, KillerId: 1))?.Winner;
 
-        Assert.Equal(new Scoreboard.MatchWinner(false, 1), winner);
+        Assert.Equal(new PlayerVictor(1), winner);
     }
 
     [Fact]
@@ -246,15 +271,15 @@ public class ScoreboardTests
     {
         Scoreboard s = new Scoreboard(Cfg(
             teams: true, winCondition: WinCondition.KILL_LEAD, leadTarget: 2));
-        s.AddPlayer(1, 1);
-        s.AddPlayer(2, 1);
-        s.AddPlayer(3, 2);
+        s.AddPlayer(1, Team.BLUE);
+        s.AddPlayer(2, Team.BLUE);
+        s.AddPlayer(3, Team.RED);
 
         Assert.Null(s.ScoreDeath(new Scoreboard.Death(VictimId: 3, KillerId: 1))?.Winner);
-        Scoreboard.MatchWinner? winner =
+        Victor? winner =
             s.ScoreDeath(new Scoreboard.Death(VictimId: 3, KillerId: 2))?.Winner;
 
-        Assert.Equal(new Scoreboard.MatchWinner(true, 1), winner);
+        Assert.Equal(new TeamVictor(Team.BLUE), winner);
     }
 
     [Fact]
@@ -264,14 +289,14 @@ public class ScoreboardTests
             suicidePenalty: SuicidePenalty.KILL,
             winCondition: WinCondition.KILL_LEAD,
             leadTarget: 2));
-        s.AddPlayer(1, 0);
-        s.AddPlayer(2, 0);
+        s.AddPlayer(1);
+        s.AddPlayer(2);
 
         Assert.Null(s.ScoreDeath(new Scoreboard.Death(VictimId: 2, KillerId: 1))?.Winner);
-        Scoreboard.MatchWinner? winner =
+        Victor? winner =
             s.ScoreDeath(new Scoreboard.Death(VictimId: 2, KillerId: 2))?.Winner;
 
-        Assert.Equal(new Scoreboard.MatchWinner(false, 1), winner);
+        Assert.Equal(new PlayerVictor(1), winner);
     }
 
     [Fact]
@@ -279,18 +304,18 @@ public class ScoreboardTests
     {
         Scoreboard s = new Scoreboard(Cfg(
             winCondition: WinCondition.KILL_LEAD, leadTarget: 1));
-        s.AddPlayer(1, 0);
+        s.AddPlayer(1);
 
         Assert.Null(s.ScoreDeath(new Scoreboard.Death(VictimId: 1, KillerId: 1))?.Winner);
-        Assert.Equal(new Scoreboard.MatchStanding(0, false, 1), s.Standing());
+        Assert.Equal(new Scoreboard.MatchStanding(null, 1), s.Standing());
     }
 
     [Fact]
     public void KillerWhoAlreadyLeft_CreditsNobody()
     {
         Scoreboard s = new Scoreboard(Cfg());
-        s.AddPlayer(1, 0);
-        s.AddPlayer(2, 0);
+        s.AddPlayer(1);
+        s.AddPlayer(2);
         s.RemovePlayer(1);
 
         // shell outlived its shooter
@@ -304,7 +329,7 @@ public class ScoreboardTests
     public void UnknownVictim_IsIgnored()
     {
         Scoreboard s = new Scoreboard(Cfg());
-        s.AddPlayer(1, 0);
+        s.AddPlayer(1);
 
         Assert.Null(s.ScoreDeath(new Scoreboard.Death(VictimId: 99, KillerId: 1)));
         Assert.Equal(0, s.Rows[1].Kills);
@@ -317,8 +342,8 @@ public class ScoreboardTests
     public void ScoreDeath_ClassifiesUncreditedDeaths(int killerId, Scoreboard.DeathKind expected)
     {
         Scoreboard s = new Scoreboard(Cfg());
-        s.AddPlayer(1, 0);
-        s.AddPlayer(2, 0);
+        s.AddPlayer(1);
+        s.AddPlayer(2);
 
         Scoreboard.DeathResult result =
             s.ScoreDeath(new Scoreboard.Death(VictimId: 2, killerId))!.Value;
@@ -331,8 +356,8 @@ public class ScoreboardTests
     public void ScoreDeath_ReturnsFinalRowsTalliesAndWinner()
     {
         Scoreboard s = new Scoreboard(Cfg(teams: true, target: 1));
-        s.AddPlayer(1, 1);
-        s.AddPlayer(2, 2);
+        s.AddPlayer(1, Team.BLUE);
+        s.AddPlayer(2, Team.RED);
 
         Scoreboard.DeathResult result =
             s.ScoreDeath(new Scoreboard.Death(VictimId: 2, KillerId: 1))!.Value;
@@ -341,7 +366,7 @@ public class ScoreboardTests
         Assert.True(result.CreditedKill);
         Assert.Equal(1, result.Killer!.Value.Kills);
         Assert.Equal(1, result.Victim.Deaths);
-        Assert.Equal(1, result.Team1Kills);
-        Assert.Equal(new Scoreboard.MatchWinner(true, 1), result.Winner);
+        Assert.Equal(1, result.TeamKills[Team.BLUE]);
+        Assert.Equal(new TeamVictor(Team.BLUE), result.Winner);
     }
 }

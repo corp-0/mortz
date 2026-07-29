@@ -3,7 +3,9 @@ namespace Mortz.Client.Announcements;
 public interface IAnnouncementDirector
 {
     event Action<IReadOnlyList<Announcement>>? BatchReady;
-    event Action<MatchPointState>? MatchPointChanged;
+
+    /// <summary>Null when match point lapsed.</summary>
+    event Action<MatchPointState?>? MatchPointChanged;
 
     MatchPointState? MatchPoint { get; }
 }

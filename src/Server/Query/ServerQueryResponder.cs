@@ -56,7 +56,7 @@ public partial class ServerQueryResponder : Node
 
     public override void _Process(double delta)
     {
-        if (_socket is not { } socket)
+        if (_socket is not PacketPeerUdp socket)
             return;
         ulong now = Time.GetTicksMsec();
         for (int i = 0; i < MAX_PACKETS_PER_FRAME && socket.GetAvailablePacketCount() > 0; i++)

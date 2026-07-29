@@ -96,7 +96,7 @@ internal static class SnapshotWire
             if (!slotIds)
             {
                 writer.Write(player.Skin);
-                writer.Write(player.TeamId);
+                writer.Write(TeamWire.ToByte(player.Team));
             }
             writer.Write(player.SpawnImmunityFireThroughSeq);
             writer.Write(player.ParryCooldown);
@@ -156,7 +156,7 @@ internal static class SnapshotWire
             if (!slotIds)
             {
                 player.Skin = reader.ReadByte();
-                player.TeamId = reader.ReadByte();
+                player.Team = TeamWire.FromByte(reader.ReadByte());
             }
             player.SpawnImmunityFireThroughSeq = reader.ReadInt32();
             player.ParryCooldown = reader.ReadUInt16();

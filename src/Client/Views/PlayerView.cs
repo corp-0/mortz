@@ -1,6 +1,7 @@
 using Godot;
 using Mortz.Client.Audio;
 using Mortz.Client.Ui;
+using Mortz.Core.Match;
 using Mortz.Core.Sim;
 
 namespace Mortz.Client.Views;
@@ -83,15 +84,15 @@ public partial class PlayerView : Node2D
     }
 
     /// <summary>Nameplates wear the team color; body tint stays free for the
-    /// hit flash. 0 restores the neutral color when teams turn off.</summary>
-    public void SetTeam(byte teamId) =>
-        _nameplate.Modulate = TeamColors.For(teamId);
+    /// hit flash. No team means the neutral color, as when teams turn off.</summary>
+    public void SetTeam(Team? team) =>
+        _nameplate.Modulate = team is Team assigned ? TeamColors.For(assigned) : Colors.White;
 
     public override void _ExitTree() => _reloadSound.Stop();
 
     public void Apply(in PlayerViewState next, bool playTransitions = true)
     {
-        if (playTransitions && _previous is { } previous)
+        if (playTransitions && _previous is PlayerViewState previous)
             PlayTransitions(PlayerViewTransitions.Between(previous, next, _isLocal));
 
         if ((next.ParryTicks > 0) != _shieldVisible)

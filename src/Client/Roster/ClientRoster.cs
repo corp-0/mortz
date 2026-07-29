@@ -1,4 +1,6 @@
 using Godot;
+using Mortz.Core.Match;
+using Mortz.Core.Net;
 using Mortz.Core.Net.Messages;
 
 namespace Mortz.Client.Roster;
@@ -9,13 +11,13 @@ namespace Mortz.Client.Roster;
 public partial class ClientRoster : Node
 {
     private readonly Dictionary<long, string> _names = [];
-    private readonly Dictionary<long, byte> _teams = [];
+    private readonly Dictionary<long, Team?> _teams = [];
 
     public string NameOf(long peerId) =>
         _names.TryGetValue(peerId, out string? name) ? name : $"Player {peerId}";
 
-    /// <summary>0 when the player is unknown or teams are off.</summary>
-    public byte TeamOf(long peerId) => _teams.GetValueOrDefault(peerId);
+    /// <summary>Null when the player is unknown or teams are off.</summary>
+    public Team? TeamOf(long peerId) => _teams.GetValueOrDefault(peerId);
 
     public override void _Ready()
     {
@@ -44,7 +46,7 @@ public partial class ClientRoster : Node
         {
             _names[peerIds[i]] = names[i];
             if (i < teams.Length)
-                _teams[peerIds[i]] = teams[i];
+                _teams[peerIds[i]] = TeamWire.FromByte(teams[i]);
         }
     }
 }

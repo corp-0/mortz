@@ -42,10 +42,10 @@ public sealed class SimWorld
     // Shells in flight, in spawn order.
     private readonly List<MortarState> _mortars = new();
     private readonly List<MortarState> _forcedMortarExplosions = new();
-    private readonly List<(int X, int Y, int Radius, int OwnerId, int SpawnSeq)> _explosions = new();
-    private readonly List<(int FiredBy, int SpawnSeq)> _shellRetirements = new();
+    private readonly List<Explosion> _explosions = new();
+    private readonly List<ShellRetirement> _shellRetirements = new();
     private readonly List<MortarEvent> _mortarEvents = new();
-    private readonly List<(int PeerId, Vec2 Position, int KillerId, bool Owned, int ShellId)> _deaths = new();
+    private readonly List<Death> _deaths = new();
     private ushort _nextMortarId;
 
     // Only drawn from at AddPlayer; a fixed seed keeps tests reproducible.
@@ -55,23 +55,17 @@ public sealed class SimWorld
     public IReadOnlyDictionary<int, PlayerStats> Stats => _stats;
     public IReadOnlyList<MortarState> Mortars => _mortars;
 
-    /// <summary>Terrain impacts from the last Step; OwnerId and SpawnSeq let the
-    /// owner's client match its predicted carve to the authoritative one.</summary>
-    public IReadOnlyList<(int X, int Y, int Radius, int OwnerId, int SpawnSeq)> Explosions => _explosions;
+    /// <summary>Terrain impacts from the last Step.</summary>
+    public IReadOnlyList<Explosion> Explosions => _explosions;
 
-    /// <summary>Predicted shells the server took over this Step, sent reliably
-    /// to the original shooter.</summary>
-    public IReadOnlyList<(int FiredBy, int SpawnSeq)> ShellRetirements => _shellRetirements;
+    /// <summary>Predicted shells the server took over this Step.</summary>
+    public IReadOnlyList<ShellRetirement> ShellRetirements => _shellRetirements;
 
     /// <summary>Ordered authoritative shell lifecycle changes from the last Step.</summary>
     public IReadOnlyList<MortarEvent> MortarEvents => _mortarEvents;
 
-    /// <summary>Deaths from the last Step, body center at the moment of death.
-    /// KillerId is the explosion's owner (the parrier for a parried shell), 0
-    /// for a death pit, the victim's own id for suicide. Owned = a parried
-    /// shell killed the very player who fired it. ShellId is the killing
-    /// shell's mortar id, -1 when no shell was involved (death pit).</summary>
-    public IReadOnlyList<(int PeerId, Vec2 Position, int KillerId, bool Owned, int ShellId)> Deaths => _deaths;
+    /// <summary>Deaths from the last Step.</summary>
+    public IReadOnlyList<Death> Deaths => _deaths;
 
     public SimWorld(TerrainMask terrain, MatchConfig config, int seed = 0,
         IReadOnlyList<Vec2>? spawnPoints = null)
@@ -82,8 +76,10 @@ public sealed class SimWorld
         _spawnPoints = spawnPoints?.ToArray() ?? [];
     }
 
-    public void AddPlayer(int peerId, byte teamId = 0)
+    public void AddPlayer(int peerId, Team? team = null)
     {
+        if (team != null && !Config.Rules.Teams)
+            throw new ArgumentException("Team assignment with the Teams rule off.", nameof(team));
         byte slot = Enumerable.Range(1, NetConfig.MAX_PLAYERS)
             .Select(i => (byte)i)
             .First(i => !_netSlots.ContainsValue(i));
@@ -95,7 +91,7 @@ public sealed class SimWorld
         _players[peerId] = FreshState(peerId, lastInputSeq: -1) with
         {
             Skin = (byte)_rng.Next(SimConfig.SKIN_COUNT),
-            TeamId = teamId,
+            Team = team,
         };
         _inputs[peerId] = new InputQueue();
     }
@@ -228,7 +224,7 @@ public sealed class SimWorld
                     state = FreshState(id, queue.LastAppliedSeq) with
                     {
                         Skin = prev.Skin,
-                        TeamId = prev.TeamId,
+                        Team = prev.Team,
                     };
             }
             else
@@ -256,7 +252,8 @@ public sealed class SimWorld
                 state.Aim = queue.RawAppliedInput.Aim;
                 if (FellOutOfTheMap(state))
                 {
-                    _deaths.Add((id, BodyCenter(state), 0, false, -1)); // death pit: no killer, no shell
+                    _deaths.Add(new Death(id, BodyCenter(state),
+                        KillerId: 0, Owned: false, ShellId: -1)); // death pit
                     state = Corpse(state);
                 }
             }
@@ -326,7 +323,7 @@ public sealed class SimWorld
                 continue;
             m.Velocity = -m.Velocity;
             if (!m.Deflected)
-                _shellRetirements.Add((m.FiredBy, m.SpawnSeq));
+                _shellRetirements.Add(new ShellRetirement(m.FiredBy, m.SpawnSeq));
             m.OwnerId = id;
             m.Deflected = true;
             _mortarEvents.Add(new MortarEvent(MortarEventKind.DEFLECT, m));
@@ -364,7 +361,8 @@ public sealed class SimWorld
         // A deflected shell keeps the shooter's seq for retirement, but its
         // carve matches no prediction: broadcast -1.
         int carveSeq = m.Deflected ? -1 : m.SpawnSeq;
-        _explosions.Add(((int)at.X, (int)at.Y, Config.Physics.MortarCarveRadius, m.OwnerId, carveSeq));
+        _explosions.Add(new Explosion((int)at.X, (int)at.Y,
+            Config.Physics.MortarCarveRadius, m.OwnerId, carveSeq));
 
         foreach (int id in _players.Keys.ToArray())
         {
@@ -377,7 +375,8 @@ public sealed class SimWorld
             if (damage >= p.Health)
             {
                 // OWNED: the parried shell came back for its own shooter.
-                _deaths.Add((id, BodyCenter(p), m.OwnerId, m.Deflected && id == m.FiredBy, m.Id));
+                _deaths.Add(new Death(id, BodyCenter(p), m.OwnerId,
+                    Owned: m.Deflected && id == m.FiredBy, ShellId: m.Id));
                 _players[id] = Corpse(p);
                 continue;
             }
@@ -388,10 +387,9 @@ public sealed class SimWorld
 
     /// <summary>Only blast damage is spared; shells still explode and carve.</summary>
     private bool SparedByFriendlyFire(in PlayerState victim, int shooterId) =>
-        !Config.Rules.FriendlyFire && Config.Rules.Teams &&
-        victim.PeerId != shooterId && victim.TeamId != 0 &&
+        !Config.Rules.FriendlyFire && victim.PeerId != shooterId &&
         _players.TryGetValue(shooterId, out PlayerState shooter) &&
-        shooter.TeamId == victim.TeamId;
+        Teams.SameSide(victim.Team, shooter.Team);
 
     /// <summary>Body stays where it died until the respawn countdown ends;
     /// rope drops so nothing renders.</summary>

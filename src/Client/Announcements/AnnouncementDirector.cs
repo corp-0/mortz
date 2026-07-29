@@ -3,6 +3,7 @@ using Chickensoft.Introspection;
 using Godot;
 using Mortz.Client.Roster;
 using Mortz.Core.Match;
+using Mortz.Core.Net;
 using Mortz.Core.Net.Messages;
 
 namespace Mortz.Client.Announcements;
@@ -18,7 +19,7 @@ public partial class AnnouncementDirector : Node, IAnnouncementDirector
     private readonly List<GameEventMsg> _pending = new();
 
     public event Action<IReadOnlyList<Announcement>>? BatchReady;
-    public event Action<MatchPointState>? MatchPointChanged;
+    public event Action<MatchPointState?>? MatchPointChanged;
 
     public MatchPointState? MatchPoint { get; private set; }
 
@@ -27,13 +28,13 @@ public partial class AnnouncementDirector : Node, IAnnouncementDirector
     public void OnReady()
     {
         GameEventMsg.Received += OnGameEvent;
-        MatchPointMsg.Received += OnMatchPoint;
+        MatchProtocol.MatchPointChanged += OnMatchPoint;
     }
 
     public void OnExitTree()
     {
         GameEventMsg.Received -= OnGameEvent;
-        MatchPointMsg.Received -= OnMatchPoint;
+        MatchProtocol.MatchPointChanged -= OnMatchPoint;
     }
 
     public override void _Process(double delta)
@@ -47,17 +48,16 @@ public partial class AnnouncementDirector : Node, IAnnouncementDirector
 
     private void OnGameEvent(GameEventMsg msg) => _pending.Add(msg);
 
-    private void OnMatchPoint(MatchPointMsg msg)
+    private void OnMatchPoint(MatchPoint? state)
     {
-        MatchPointState state = Describe(msg, Roster.NameOf);
-        MatchPoint = state.Active ? state : null;
-        MatchPointChanged?.Invoke(state);
+        MatchPoint = state is MatchPoint held ? Describe(held, Roster.NameOf, Roster.TeamOf) : null;
+        MatchPointChanged?.Invoke(MatchPoint);
     }
 
     /// <summary>Folded, priority ordered (ties keep arrival order), names
     /// resolved.</summary>
     internal static Announcement[] Describe(
-        IReadOnlyList<GameEventMsg> events, Func<long, string> name, Func<long, byte> team) =>
+        IReadOnlyList<GameEventMsg> events, Func<long, string> name, Func<long, Team?> team) =>
         DropCoveredRegularKills(FoldHolyShit(events))
             .OrderBy(e => Priority(e.Kind))
             .Select(e => new Announcement(
@@ -83,15 +83,19 @@ public partial class AnnouncementDirector : Node, IAnnouncementDirector
             .ToArray();
     }
 
-    internal static MatchPointState Describe(MatchPointMsg msg, Func<long, string> name)
+    internal static MatchPointState Describe(
+        MatchPoint held, Func<long, string> name, Func<long, Team?> team)
     {
-        if (msg.LeaderId == 0)
-            return new(msg.Active, msg.Remaining, null);
-        string leader = msg.LeaderIsTeam ? $"Team {msg.LeaderId}" : name(msg.LeaderId);
-        return new(msg.Active, msg.Remaining, leader);
+        MatchPointLeader? leader = held.Leader switch
+        {
+            TeamVictor victor => new MatchPointLeader(Teams.Name(victor.Team), victor.Team),
+            PlayerVictor victor => new MatchPointLeader(name(victor.PeerId), team(victor.PeerId)),
+            _ => null,
+        };
+        return new MatchPointState(held.Remaining, leader);
     }
 
-    private static Combatant Who(long id, Func<long, string> name, Func<long, byte> team) =>
+    private static Combatant Who(long id, Func<long, string> name, Func<long, Team?> team) =>
         new(id, name(id), team(id));
 
     /// <summary>Drops an actor's MULTI_KILL into their HOLY_SHIT, which then

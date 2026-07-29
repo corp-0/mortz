@@ -2,14 +2,14 @@ namespace Mortz.Core.Match.WinConditions;
 
 public sealed class KillsWinConditionStrategy : WinConditionStrategy
 {
-    public override Scoreboard.MatchWinner? Resolve(WinConditionContext context)
+    public override Victor? Resolve(WinConditionContext context)
     {
         if (context.Rules.Teams)
         {
-            for (byte team = 1; team <= context.TeamCount; team++)
+            foreach (Team team in Teams.ALL)
             {
-                if (context.TeamKills(team) >= context.Rules.KillTarget)
-                    return new Scoreboard.MatchWinner(true, team);
+                if (context.TeamKills[team] >= context.Rules.KillTarget)
+                    return new TeamVictor(team);
             }
             return null;
         }
@@ -17,7 +17,7 @@ public sealed class KillsWinConditionStrategy : WinConditionStrategy
         foreach ((int peerId, Scoreboard.Row row) in context.Rows)
         {
             if (row.Kills >= context.Rules.KillTarget)
-                return new Scoreboard.MatchWinner(false, peerId);
+                return new PlayerVictor(peerId);
         }
         return null;
     }
@@ -25,16 +25,15 @@ public sealed class KillsWinConditionStrategy : WinConditionStrategy
     public override Scoreboard.MatchStanding Standing(WinConditionContext context)
     {
         int best = 0;
-        int leader = 0;
-        bool byTeam = context.Rules.Teams;
-        if (byTeam)
+        Victor? leader = null;
+        if (context.Rules.Teams)
         {
-            for (byte team = 1; team <= context.TeamCount; team++)
+            foreach (Team team in Teams.ALL)
             {
-                if (context.TeamKills(team) <= best)
+                if (context.TeamKills[team] <= best)
                     continue;
-                best = context.TeamKills(team);
-                leader = team;
+                best = context.TeamKills[team];
+                leader = new TeamVictor(team);
             }
         }
         else
@@ -44,11 +43,11 @@ public sealed class KillsWinConditionStrategy : WinConditionStrategy
                 if (row.Kills <= best)
                     continue;
                 best = row.Kills;
-                leader = peerId;
+                leader = new PlayerVictor(peerId);
             }
         }
 
         return new Scoreboard.MatchStanding(
-            leader, byTeam, Math.Max(0, context.Rules.KillTarget - best));
+            leader, Math.Max(0, context.Rules.KillTarget - best));
     }
 }

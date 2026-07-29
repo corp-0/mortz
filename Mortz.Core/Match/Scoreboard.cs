@@ -10,7 +10,7 @@ namespace Mortz.Core.Match;
 /// </summary>
 public sealed class Scoreboard
 {
-    public record struct Row(byte TeamId, int Kills, int Deaths);
+    public record struct Row(Team? Team, int Kills, int Deaths);
 
     public enum DeathKind
     {
@@ -20,9 +20,6 @@ public sealed class Scoreboard
         TEAM_KILL,
         UNCREDITED,
     }
-
-    /// <summary>Id is a team id when ByTeam, a peer id otherwise.</summary>
-    public readonly record struct MatchWinner(bool ByTeam, int Id);
 
     /// <summary>A suicide's kill handed to an enemy; Kills is their tally after.</summary>
     public readonly record struct KillReward(int PeerId, int Kills);
@@ -40,22 +37,20 @@ public sealed class Scoreboard
         Row? Killer,
         Row Victim,
         KillReward? Reward,
-        int Team1Kills,
-        int Team2Kills,
-        MatchWinner? Winner)
+        TeamKills TeamKills,
+        Victor? Winner)
     {
         public bool CreditedKill => Kind == DeathKind.KILL;
     }
 
     private readonly ModeRules _config;
     private readonly WinConditionStrategy _winCondition;
-    // 1-based by TeamId ([0] never read); two teams in v1, sized here only.
-    private readonly int[] _teamKills = new int[3];
+    private TeamKills _teamKills;
     // Sorted so scoreboard sync and winner scans are deterministic.
     private readonly SortedDictionary<int, Row> _rows = new();
 
     public IReadOnlyDictionary<int, Row> Rows => _rows;
-    public int TeamKills(byte teamId) => _teamKills[teamId];
+    public TeamKills TeamKills => _teamKills;
 
     public Scoreboard(ModeRules config)
     {
@@ -63,7 +58,12 @@ public sealed class Scoreboard
         _winCondition = WinConditionStrategy.Create(config.WinCondition);
     }
 
-    public void AddPlayer(int peerId, byte teamId) => _rows[peerId] = new Row(teamId, 0, 0);
+    public void AddPlayer(int peerId, Team? team = null)
+    {
+        if (team != null && !_config.Teams)
+            throw new ArgumentException("Team assignment with the Teams rule off.", nameof(team));
+        _rows[peerId] = new Row(team, 0, 0);
+    }
 
     /// <summary>The row goes, the team total keeps what they scored.</summary>
     public void RemovePlayer(int peerId) => _rows.Remove(peerId);
@@ -96,7 +96,7 @@ public sealed class Scoreboard
         {
             kind = DeathKind.UNCREDITED;
         }
-        else if (_config.Teams && killer.TeamId != 0 && killer.TeamId == victim.TeamId)
+        else if (Teams.SameSide(killer.Team, victim.Team))
         {
             kind = DeathKind.TEAM_KILL;
         }
@@ -113,8 +113,7 @@ public sealed class Scoreboard
             _rows.TryGetValue(death.KillerId, out Row killerAfter) ? killerAfter : null,
             _rows[death.VictimId],
             reward,
-            TeamKills(1),
-            TeamKills(2),
+            _teamKills,
             _winCondition.Resolve(Context()));
     }
 
@@ -148,16 +147,16 @@ public sealed class Scoreboard
     {
         Row row = _rows[peerId];
         _rows[peerId] = row with { Kills = row.Kills + delta };
-        if (row.TeamId != 0)
-            _teamKills[row.TeamId] += delta;
+        if (row.Team is Team team)
+            _teamKills = _teamKills.Add(team, delta);
     }
 
     /// <summary>Progress still needed by whoever is closest to winning.</summary>
     public int RemainingToWin() => Standing().Remaining;
 
-    /// <summary>LeaderId is a peer id, or a team id when LeaderIsTeam; 0 while
-    /// nobody has a meaningful lead.</summary>
-    public readonly record struct MatchStanding(int LeaderId, bool LeaderIsTeam, int Remaining);
+    /// <summary>Leader is null while nobody has a meaningful lead; once
+    /// Remaining hits zero they win.</summary>
+    public readonly record struct MatchStanding(Victor? Leader, int Remaining);
 
     public MatchStanding Standing() => _winCondition.Standing(Context());
 

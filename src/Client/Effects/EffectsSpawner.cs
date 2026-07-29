@@ -78,7 +78,7 @@ public partial class EffectsSpawner : Node2D
 
     private void OnDeath(DeathMsg msg)
     {
-        if (_finalKill is { } final && msg.PeerId == final.VictimId)
+        if (_finalKill is FinalKillMsg final && msg.PeerId == final.VictimId)
             return;
         Sfx.PlayAt(Sfx.Sounds.DeathScream, new Vector2(msg.X, msg.Y));
         _liveEffects.AddChild(GibBurst.Create(
@@ -89,7 +89,7 @@ public partial class EffectsSpawner : Node2D
     {
         _finalKill = msg;
         _replayDebris = [];
-        if (_recentDebris is { } recent &&
+        if (_recentDebris is (Vector2 Center, List<(Vector2 Position, Color Color)> Debris) recent &&
             recent.Center.DistanceSquaredTo(new Vector2(msg.ImpactX, msg.ImpactY)) <= 4f)
             _replayDebris = recent.Debris;
     }
@@ -141,7 +141,7 @@ public partial class EffectsSpawner : Node2D
     }
 
     private bool SuppressExplosion(Vector2 center) =>
-        _finalKill is { } final && final.Flags.HasFlag(FinalKillFlags.EXPLOSION) &&
+        _finalKill is FinalKillMsg final && final.Flags.HasFlag(FinalKillFlags.EXPLOSION) &&
         center.DistanceSquaredTo(new Vector2(final.ImpactX, final.ImpactY)) <= 4f;
 
     private Node2D NewContainer(string name)

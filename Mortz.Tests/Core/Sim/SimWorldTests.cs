@@ -1,3 +1,4 @@
+using Mortz.Core.Match;
 using Mortz.Core.Replication;
 using Mortz.Core.Sim;
 using Mortz.Core.Terrain;
@@ -7,6 +8,14 @@ namespace Mortz.Tests.Core.Sim;
 
 public class SimWorldTests
 {
+    [Fact]
+    public void ATeamWithTheTeamsRuleOff_IsUnconstructible()
+    {
+        SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.ProductionConfig);
+
+        Assert.Throws<ArgumentException>(() => w.AddPlayer(1, Team.BLUE));
+    }
+
     [Fact]
     public void SameInputs_ProduceIdenticalState_Determinism()
     {

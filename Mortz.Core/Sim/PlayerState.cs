@@ -1,3 +1,5 @@
+using Mortz.Core.Match;
+
 namespace Mortz.Core.Sim;
 
 /// <summary>
@@ -71,8 +73,9 @@ public record struct PlayerState
     /// <summary>Sprite frame dealt by the server at join; survives respawns.</summary>
     public byte Skin;
 
-    /// <summary>0 = no team, 1/2 = the teams; the sim reads it for friendly fire.</summary>
-    public byte TeamId;
+    /// <summary>Null when they have no team; the sim reads it for friendly
+    /// fire.</summary>
+    public Team? Team;
 
     /// <summary>Newest input seq the server applied (-1 before any); the ack
     /// prediction replays from. Not in the snapshot: the server sends each

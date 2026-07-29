@@ -40,12 +40,12 @@ internal sealed class ServerProtocol
     public void BroadcastLobby(LobbySession lobby)
     {
         IReadOnlyList<LobbyPlayer> players = lobby.Players;
-        IReadOnlyList<(long From, long To)> offers = lobby.SwapOffers;
+        IReadOnlyList<SwapOffer> offers = lobby.SwapOffers;
         new LobbyStateMsg(
             players.Select(player => player.PeerId).ToArray(),
             players.Select(player => _players.Name(player.PeerId)).ToArray(),
             players.Select(player => player.Ready ? (byte)1 : (byte)0).ToArray(),
-            players.Select(player => player.Team).ToArray(),
+            players.Select(player => TeamWire.ToByte(player.Team)).ToArray(),
             offers.Select(offer => offer.From).ToArray(),
             offers.Select(offer => offer.To).ToArray())
             .Broadcast();
@@ -75,7 +75,8 @@ internal sealed class ServerProtocol
             peerIds,
             peerIds.Select(_players.Name).ToArray(),
             peerIds.Select(peerId => match.World.Players[(int)peerId].Skin).ToArray(),
-            peerIds.Select(peerId => match.World.Players[(int)peerId].TeamId).ToArray(),
+            peerIds.Select(peerId => TeamWire.ToByte(match.World.Players[(int)peerId].Team))
+                .ToArray(),
             peerIds.Select(peerId => match.World.Players[(int)peerId].NetSlot).ToArray())
             .Broadcast();
         // Modifier lists ride with every roster; clients resolve them through
@@ -92,11 +93,11 @@ internal sealed class ServerProtocol
         SendWelcome(peerId, match);
         SendScores(peerId, match);
         SendLiveMortars(peerId, match);
-        if (match.ActiveMatchPoint is { } matchPoint)
-            MatchPointMessage(matchPoint, match.Config.Rules).SendTo(peerId);
-        if (match.Winner is { } winner)
-            new MatchEndMsg(winner.ByTeam, winner.Id).SendTo(peerId);
-        if (match.FinalKill is { } finalKill)
+        if (match.ActiveMatchPoint is MatchPoint matchPoint)
+            MatchProtocol.SendMatchPointTo(peerId, match.Config.Rules.WinCondition, matchPoint);
+        if (match.Winner is Victor winner)
+            MatchProtocol.SendMatchEndTo(peerId, winner);
+        if (match.FinalKill is FinalKillEvent finalKill)
             ToMessage(finalKill).SendTo(peerId);
     }
 
@@ -109,21 +110,21 @@ internal sealed class ServerProtocol
 
         // Reliable ordering matters: clients arm effect suppression before the
         // matching carve/death packets arrive, then replay them cosmetically.
-        if (frame.FinalKill is { } finalKill)
+        if (frame.FinalKill is FinalKillEvent finalKill)
             ToMessage(finalKill).Broadcast();
 
         BroadcastMortarEvents(frame.Tick, frame.MortarEvents, match.World.Players.Count);
 
-        foreach (ServerExplosion explosion in frame.Explosions)
+        foreach (Explosion explosion in frame.Explosions)
         {
             GD.Print($"[server] mortar exploded at ({explosion.X},{explosion.Y})");
             BroadcastCarve(explosion);
         }
-        foreach ((int firedBy, int spawnSeq) in frame.ShellRetirements)
+        foreach (ShellRetirement retirement in frame.ShellRetirements)
         {
-            new ShellRetireMsg(spawnSeq).SendTo(firedBy);
+            new ShellRetireMsg(retirement.SpawnSeq).SendTo(retirement.FiredBy);
         }
-        foreach (ServerDeath death in frame.Deaths)
+        foreach (Death death in frame.Deaths)
         {
             GD.Print($"[server] player {death.PeerId} gibbed at " +
                      $"({(int)death.Position.X},{(int)death.Position.Y})" +
@@ -142,10 +143,10 @@ internal sealed class ServerProtocol
             new GameEventMsg(judgment.Kind, judgment.ActorId, judgment.VictimId,
                 judgment.Magnitude, judgment.Detail).Broadcast();
         }
-        if (frame.MatchPoint is { } matchPoint)
+        if (frame.MatchPoint is MatchPointChange change)
         {
-            GD.Print($"[server] match point {(matchPoint.Active ? "on" : "off")}");
-            MatchPointMessage(matchPoint, match.Config.Rules).Broadcast();
+            GD.Print($"[server] match point {(change.Held != null ? "on" : "off")}");
+            MatchProtocol.BroadcastMatchPoint(match.Config.Rules.WinCondition, change.Held);
         }
 
         if (frame.Tick % NetConfig.TICKS_PER_SNAPSHOT == 0 && match.World.Players.Count > 0)
@@ -155,11 +156,11 @@ internal sealed class ServerProtocol
         if (_printNetStats && frame.Tick % SimConfig.TICK_RATE == 0)
             PrintStats(match);
 
-        if (frame.MatchEnded is { } winner)
+        if (frame.MatchEnded is Victor winner)
         {
-            string who = winner.ByTeam ? $"team {winner.Id}" : _players.Name(winner.Id);
-            GD.Print($"[server] match over: {who} wins (first to {match.Config.Rules.KillTarget})");
-            new MatchEndMsg(winner.ByTeam, winner.Id).Broadcast();
+            GD.Print($"[server] match over: {Describe(winner)} wins " +
+                     $"(first to {match.Config.Rules.KillTarget})");
+            MatchProtocol.BroadcastMatchEnd(winner);
         }
     }
 
@@ -213,9 +214,11 @@ internal sealed class ServerProtocol
         int killerKills = suicide ? score.Victim.Kills : score.Killer?.Kills ?? 0;
         new EliminationMsg(score.KillerId, score.VictimId, flags, killerKills,
             score.Victim.Deaths, score.Reward?.PeerId ?? 0, score.Reward?.Kills ?? 0,
-            score.Team1Kills, score.Team2Kills).Broadcast();
+            score.TeamKills.Blue, score.TeamKills.Red).Broadcast();
 
-        string teams = config.Teams ? $", teams {score.Team1Kills}-{score.Team2Kills}" : "";
+        string teams = config.Teams
+            ? $", teams {score.TeamKills.Blue}-{score.TeamKills.Red}"
+            : "";
         GD.Print(suicide
             ? $"[server] {_players.Name(score.VictimId)} suicides " +
               $"({score.Victim.Kills} kills, {score.Victim.Deaths} deaths{teams})"
@@ -223,12 +226,12 @@ internal sealed class ServerProtocol
               $"({killerKills} kills{teams})");
     }
 
-    private static MatchPointMsg MatchPointMessage(MatchPointChange change, ModeRules config)
+    private string Describe(Victor victor) => victor switch
     {
-        return new MatchPointMsg(change.Active, config.WinCondition,
-            (byte)Math.Clamp(change.Remaining, 0, byte.MaxValue),
-            change.LeaderId, change.LeaderIsTeam);
-    }
+        TeamVictor team => Teams.Name(team.Team),
+        PlayerVictor player => _players.Name(player.PeerId),
+        _ => throw new ArgumentOutOfRangeException(nameof(victor)),
+    };
 
     private void SendWelcome(long peerId, MatchSession match)
     {
@@ -260,8 +263,8 @@ internal sealed class ServerProtocol
             scores.Rows.Keys.Select(id => (long)id).ToArray(),
             scores.Rows.Values.Select(row => row.Kills).ToArray(),
             scores.Rows.Values.Select(row => row.Deaths).ToArray(),
-            scores.TeamKills(1),
-            scores.TeamKills(2)).SendTo(peerId);
+            scores.TeamKills.Blue,
+            scores.TeamKills.Red).SendTo(peerId);
     }
 
     private void SendLiveMortars(long peerId, MatchSession match)
@@ -284,7 +287,7 @@ internal sealed class ServerProtocol
         return new SessionWinsMsg(peerIds, peerIds.Select(wins.Wins).ToArray());
     }
 
-    private static void BroadcastCarve(ServerExplosion explosion) =>
+    private static void BroadcastCarve(Explosion explosion) =>
         new CarveMsg(PackCoordinate(explosion.X), PackCoordinate(explosion.Y),
             PackRadius(explosion.Radius), explosion.OwnerId, explosion.SpawnSeq).Broadcast();
 
@@ -322,8 +325,8 @@ internal sealed class ServerProtocol
         if (finalKill.Elimination.Owned)
             flags |= FinalKillFlags.OWNED;
 
-        ServerDeath death = finalKill.Death;
-        ServerExplosion? explosion = finalKill.Explosion;
+        Death death = finalKill.Death;
+        Explosion? explosion = finalKill.Explosion;
         if (explosion != null)
             flags |= FinalKillFlags.EXPLOSION;
         int impactX = explosion?.X ?? (int)death.Position.X;

@@ -1,4 +1,6 @@
 using Godot;
+using Mortz.Core.Match;
+using Mortz.Core.Net;
 using Mortz.Core.Net.Messages;
 
 namespace Mortz.Client.Match;
@@ -13,13 +15,13 @@ public partial class WinnerBanner : Control
     public override void _Ready()
     {
         RosterMsg.Received += OnRoster;
-        MatchEndMsg.Received += OnMatchEnd;
+        MatchProtocol.MatchEnded += OnMatchEnd;
     }
 
     public override void _ExitTree()
     {
         RosterMsg.Received -= OnRoster;
-        MatchEndMsg.Received -= OnMatchEnd;
+        MatchProtocol.MatchEnded -= OnMatchEnd;
     }
 
     private void OnRoster(RosterMsg msg)
@@ -32,11 +34,18 @@ public partial class WinnerBanner : Control
         }
     }
 
-    private void OnMatchEnd(MatchEndMsg msg)
+    private void OnMatchEnd(Victor winner)
     {
-        _winnerLabel.Text = msg.ByTeam ? $"Team {msg.WinnerId} wins!" : $"{Name(msg.WinnerId)} wins!";
+        _winnerLabel.Text = $"{Describe(winner)} wins!";
         _winnerLabel.Visible = true;
     }
+
+    private string Describe(Victor winner) => winner switch
+    {
+        TeamVictor team => Teams.Name(team.Team),
+        PlayerVictor player => Name(player.PeerId),
+        _ => throw new ArgumentOutOfRangeException(nameof(winner)),
+    };
 
     private new string Name(long peerId) =>
         _names.TryGetValue(peerId, out string? name) ? name : $"Player {peerId}";

@@ -1,5 +1,6 @@
 using Godot;
 using Mortz.Client.Servers;
+using Mortz.Core.Net.Query;
 
 namespace Mortz.Client.Menus;
 
@@ -35,7 +36,7 @@ public partial class ServerRow : Button
         _statusDot.Color = StatusColor();
         // An unnamed row already shows the address as its title.
         _detail.Text = Entry.HasName ? $"{Entry.Endpoint} - {StatusText()}" : StatusText();
-        _population.Text = Entry.Info is { } info ? $"{info.Players}/{info.MaxPlayers}" : "-";
+        _population.Text = Entry.Info is ServerInfo info ? $"{info.Players}/{info.MaxPlayers}" : "-";
         _ping.Text = Entry.Status == ServerStatus.ONLINE ? $"{Entry.PingMs} ms" : "";
         _star.Text = Entry.IsFavorite ? "★" : "☆";
         _star.Disabled = !Entry.CanToggleFavorite;
@@ -76,7 +77,7 @@ public partial class ServerRow : Button
                 return "no response";
             case ServerStatus.INCOMPATIBLE:
                 return "different game version";
-            case ServerStatus.ONLINE when Entry.Info is { } info:
+            case ServerStatus.ONLINE when Entry.Info is ServerInfo info:
                 return $"{info.Mode} - {info.Map} - {(info.InLobby ? "in lobby" : "in match")}";
             default:
                 return "not checked";

@@ -1,3 +1,4 @@
+using Mortz.Core.Match;
 using Mortz.Server.Lobby;
 using Xunit;
 
@@ -37,7 +38,8 @@ public class LobbySessionTests
 
         Assert.True(lobby.SetTeamsEnabled(true));
 
-        Assert.Equal([(byte)1, (byte)2, (byte)1], lobby.Players.Select(player => player.Team));
+        Assert.Equal<Team?>([Team.BLUE, Team.RED, Team.BLUE],
+            lobby.Players.Select(player => player.Team));
     }
 
     [Fact]
@@ -55,11 +57,11 @@ public class LobbySessionTests
     {
         LobbySession lobby = LobbySession.For([1, 2, 3], teamsEnabled: true);
 
-        lobby.Remove(1); // team 1 loses a member, leaving 3 alone on it
-        lobby.Add(4);    // ties break to team 1, so it fills back up
-        lobby.Add(5);    // team 1 now outnumbers, so 5 lands on team 2
+        lobby.Remove(1); // blue loses a member, leaving 3 alone on it
+        lobby.Add(4);    // ties break to blue, so it fills back up
+        lobby.Add(5);    // blue now outnumbers, so 5 lands on red
 
-        Assert.Equal([(byte)2, (byte)1, (byte)1, (byte)2],
+        Assert.Equal<Team?>([Team.RED, Team.BLUE, Team.BLUE, Team.RED],
             lobby.Players.Select(player => player.Team));
         Assert.Equal([2L, 3L, 4L, 5L], lobby.Players.Select(player => player.PeerId));
     }
@@ -70,10 +72,11 @@ public class LobbySessionTests
         LobbySession lobby = LobbySession.For([1, 2], teamsEnabled: true);
 
         Assert.True(lobby.SetTeamsEnabled(false));
-        Assert.All(lobby.Players, player => Assert.Equal(0, player.Team));
+        Assert.All(lobby.Players, player => Assert.Null(player.Team));
 
         Assert.True(lobby.SetTeamsEnabled(true));
-        Assert.Equal([(byte)1, (byte)2], lobby.Players.Select(player => player.Team));
+        Assert.Equal<Team?>([Team.BLUE, Team.RED],
+            lobby.Players.Select(player => player.Team));
     }
 
     [Fact]
@@ -92,15 +95,15 @@ public class LobbySessionTests
     public void PlayersJumpOnlyToTeamsWithAFreeSlot()
     {
         LobbySession lobby = LobbySession.For([1, 2, 3], teamsEnabled: true);
-        // Teams start 1/2/1; capacity is 2 per side.
+        // Teams start blue/red/blue; capacity is 2 per side.
 
-        Assert.True(lobby.TrySetTeam(1, 2));  // team 2 had a free slot
-        Assert.False(lobby.TrySetTeam(3, 2)); // now it is full
-        Assert.False(lobby.TrySetTeam(3, 1)); // already there
-        Assert.False(lobby.TrySetTeam(99, 2));
-        Assert.False(lobby.TrySetTeam(1, 3)); // no such team
+        Assert.True(lobby.TrySetTeam(1, Team.RED));  // red had a free slot
+        Assert.False(lobby.TrySetTeam(3, Team.RED)); // now it is full
+        Assert.False(lobby.TrySetTeam(3, Team.BLUE)); // already there
+        Assert.False(lobby.TrySetTeam(99, Team.RED));
 
-        Assert.Equal([(byte)2, (byte)2, (byte)1], lobby.Players.Select(player => player.Team));
+        Assert.Equal<Team?>([Team.RED, Team.RED, Team.BLUE],
+            lobby.Players.Select(player => player.Team));
     }
 
     [Fact]
@@ -108,7 +111,7 @@ public class LobbySessionTests
     {
         LobbySession lobby = LobbySession.For([1, 2]);
 
-        Assert.False(lobby.TrySetTeam(1, 2));
+        Assert.False(lobby.TrySetTeam(1, Team.RED));
     }
 
     [Fact]
@@ -118,10 +121,11 @@ public class LobbySessionTests
         lobby.SetReady(1, true);
 
         Assert.Equal(SwapResult.OFFERED, lobby.RequestSwap(1, 2));
-        Assert.Equal([(1L, 2L)], lobby.SwapOffers);
+        Assert.Equal([new SwapOffer(1, 2)], lobby.SwapOffers);
         Assert.Equal(SwapResult.SWAPPED, lobby.RequestSwap(2, 1));
 
-        Assert.Equal([(byte)2, (byte)1], lobby.Players.Select(player => player.Team));
+        Assert.Equal<Team?>([Team.RED, Team.BLUE],
+            lobby.Players.Select(player => player.Team));
         Assert.Equal([true, false], lobby.Players.Select(player => player.Ready));
         Assert.Empty(lobby.SwapOffers);
     }
@@ -135,7 +139,8 @@ public class LobbySessionTests
         Assert.Equal(SwapResult.CANCELLED, lobby.RequestSwap(1, 2));
 
         Assert.Empty(lobby.SwapOffers);
-        Assert.Equal([(byte)1, (byte)2], lobby.Players.Select(player => player.Team));
+        Assert.Equal<Team?>([Team.BLUE, Team.RED],
+            lobby.Players.Select(player => player.Team));
     }
 
     [Fact]
@@ -158,8 +163,8 @@ public class LobbySessionTests
         lobby.RequestSwap(1, 2);
         lobby.RequestSwap(3, 2);
 
-        Assert.True(lobby.TrySetTeam(1, 2)); // 1 joins 2's team, that offer is moot
-        Assert.Equal([(3L, 2L)], lobby.SwapOffers);
+        Assert.True(lobby.TrySetTeam(1, Team.RED)); // 1 joins 2's team, that offer is moot
+        Assert.Equal([new SwapOffer(3, 2)], lobby.SwapOffers);
 
         lobby.Remove(2);
         Assert.Empty(lobby.SwapOffers);
@@ -185,6 +190,6 @@ public class LobbySessionTests
         Assert.False(lobby.SetTeamsEnabled(true));
 
         lobby.Add(1);
-        Assert.Equal((byte)1, lobby.Players[0].Team);
+        Assert.Equal<Team?>(Team.BLUE, lobby.Players[0].Team);
     }
 }

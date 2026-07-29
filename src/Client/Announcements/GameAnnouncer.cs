@@ -58,7 +58,7 @@ public partial class GameAnnouncer : Node
     public override void _Process(double delta)
     {
         _clock += delta;
-        if (_queue.Next(_clock) is { } cue)
+        if (_queue.Next(_clock) is Cue cue)
         {
             SoundEffect?[] variants = Sounds(cue);
             Sfx.Play(variants[_picker.Next(cue, variants.Length)]);

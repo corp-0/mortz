@@ -12,7 +12,7 @@ public abstract class WinConditionStrategy
                 "Unsupported win condition."),
         };
 
-    public abstract Scoreboard.MatchWinner? Resolve(WinConditionContext context);
+    public abstract Victor? Resolve(WinConditionContext context);
 
     public abstract Scoreboard.MatchStanding Standing(WinConditionContext context);
 }

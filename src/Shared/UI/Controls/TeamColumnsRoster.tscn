@@ -33,7 +33,7 @@ theme_override_constants/separation = 5
 [node name="Header" type="Label" parent="Column/Teams/Team1" unique_id=1926973214]
 layout_mode = 2
 theme_override_font_sizes/font_size = 18
-text = "TEAM 1"
+text = "TEAM BLUE"
 
 [node name="Slots" type="VBoxContainer" parent="Column/Teams/Team1" unique_id=1827519058]
 layout_mode = 2
@@ -47,7 +47,7 @@ theme_override_constants/separation = 5
 [node name="Header" type="Label" parent="Column/Teams/Team2" unique_id=2056922118]
 layout_mode = 2
 theme_override_font_sizes/font_size = 18
-text = "TEAM 2"
+text = "TEAM RED"
 
 [node name="Slots" type="VBoxContainer" parent="Column/Teams/Team2" unique_id=995752385]
 layout_mode = 2

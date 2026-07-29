@@ -17,7 +17,7 @@ public partial class ServerHost : Node
 
     public bool Listen(NetworkManager network)
     {
-        if (Config is not { } config)
+        if (Config is not ServerBootConfig config)
             return false;
         Error error = network.StartServer(config.GamePort);
         if (error != Error.Ok)

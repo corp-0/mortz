@@ -5,7 +5,8 @@ namespace Mortz.Core.Match;
 /// <summary>Enemies each player has killed since their own last death;
 /// covering the whole enemy roster is a team wipe. Progress goes stale when
 /// kills sit more than a window apart, so a wipe is a sustained run, not an
-/// all-match tally.</summary>
+/// all-match tally. Unassigned players never appear in the team map, so they
+/// neither wipe nor need wiping.</summary>
 public sealed class TeamWipeTracker
 {
     private const float WINDOW_SECONDS = 15f;
@@ -19,11 +20,11 @@ public sealed class TeamWipeTracker
     /// killed every current member of the enemy team, which resets the
     /// set.</summary>
     public bool OnKill(int killerId, int victimId, int tick,
-        IReadOnlyDictionary<int, byte> teams)
+        IReadOnlyDictionary<int, Team> teams)
     {
-        if (!teams.TryGetValue(killerId, out byte killerTeam) ||
-            !teams.TryGetValue(victimId, out byte victimTeam) ||
-            killerTeam == 0 || killerTeam == victimTeam)
+        if (!teams.TryGetValue(killerId, out Team killerTeam) ||
+            !teams.TryGetValue(victimId, out Team victimTeam) ||
+            killerTeam == victimTeam)
             return false;
         if (!_killedSinceDeath.TryGetValue(killerId, out (HashSet<int> Killed, int Tick) state))
             state = (new HashSet<int>(), tick);
@@ -32,7 +33,7 @@ public sealed class TeamWipeTracker
         state.Killed.Add(victimId);
         _killedSinceDeath[killerId] = (state.Killed, tick);
         bool wipe = teams.All(pair =>
-            pair.Value == killerTeam || pair.Value == 0 || state.Killed.Contains(pair.Key));
+            pair.Value == killerTeam || state.Killed.Contains(pair.Key));
         if (wipe)
             state.Killed.Clear();
         return wipe;

@@ -2,6 +2,8 @@ using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
 using Mortz.Client.Match;
+using Mortz.Core.Match;
+using Mortz.Core.Net;
 using Mortz.Core.Net.Messages;
 using Mortz.Core.Replication;
 using Mortz.Core.Sim;
@@ -37,7 +39,7 @@ public partial class E2EHooks : Node
     {
         _gameView.SnapshotApplied += LogHeartbeat;
         EliminationMsg.Received += LogScore;
-        MatchEndMsg.Received += LogMatchEnd;
+        MatchProtocol.MatchEnded += LogMatchEnd;
         if (CmdArgs.HasFlag("--test-fire"))
         {
             _localPlayer.ButtonFilter = (_, buttons) => buttons | InputButtons.FIRE;
@@ -118,7 +120,7 @@ public partial class E2EHooks : Node
     public override void _ExitTree()
     {
         EliminationMsg.Received -= LogScore;
-        MatchEndMsg.Received -= LogMatchEnd;
+        MatchProtocol.MatchEnded -= LogMatchEnd;
     }
 
     /// <summary>Score echoes for E2E log matching; peer ids, not names, this
@@ -129,11 +131,19 @@ public partial class E2EHooks : Node
         GD.Print(suicide
             ? $"[client] score: {m.VictimId} suicides ({m.KillerKills} kills, {m.VictimDeaths} deaths)"
             : $"[client] score: {m.KillerId} killed {m.VictimId} ({m.KillerKills} kills), " +
-              $"teams {m.Team1Kills}-{m.Team2Kills}");
+              $"teams {m.BlueKills}-{m.RedKills}");
     }
 
-    private static void LogMatchEnd(MatchEndMsg m) =>
-        GD.Print($"[client] match over: {(m.ByTeam ? $"team {m.WinnerId}" : $"player {m.WinnerId}")} wins");
+    private static void LogMatchEnd(Victor winner)
+    {
+        string who = winner switch
+        {
+            TeamVictor team => Teams.Name(team.Team),
+            PlayerVictor player => $"player {player.PeerId}",
+            _ => "nobody",
+        };
+        GD.Print($"[client] match over: {who} wins");
+    }
 
     /// <summary>Heartbeat log for headless E2E verification, once per sim-second.</summary>
     private void LogHeartbeat(Snapshot snapshot)

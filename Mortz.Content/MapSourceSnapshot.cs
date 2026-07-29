@@ -51,7 +51,7 @@ public sealed class MapSourceSnapshot
             ContentReadResult<MapManifest> read = ContentManifestReader.ReadMap(
                 manifestText, definition.ManifestPath);
             diagnostics.AddRange(read.Diagnostics);
-            if (read.Value is not { } manifest)
+            if (read.Value is not MapManifest manifest)
                 return new ContentReadResult<MapSourceSnapshot>(null, diagnostics);
 
             return new ContentReadResult<MapSourceSnapshot>(

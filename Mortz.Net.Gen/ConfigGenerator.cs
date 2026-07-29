@@ -142,11 +142,11 @@ public sealed class ConfigGenerator : IIncrementalGenerator
             diagnostics.Add(Diagnostic.Create(_invalidRange, location, name, min, max));
 
         double? defaultValue = ConstantDefault(ctx, node);
-        if (defaultValue is { } d && !float.IsNaN(min) && !float.IsNaN(max) && (d < min || d > max))
+        if (defaultValue is double d && !float.IsNaN(min) && !float.IsNaN(max) && (d < min || d > max))
             diagnostics.Add(Diagnostic.Create(_defaultOutsideRange, location, name, d, min, max));
 
         if (conv is Convert.TICKS_BYTE or Convert.TICKS_USHORT && !float.IsNaN(max) &&
-            TickRate(ctx) is { } tickRate)
+            TickRate(ctx) is int tickRate)
         {
             double maxTicks = (double)max * tickRate;
             double capacity = conv == Convert.TICKS_BYTE ? byte.MaxValue : ushort.MaxValue;
@@ -195,7 +195,7 @@ public sealed class ConfigGenerator : IIncrementalGenerator
     private static double? ConstantDefault(GeneratorAttributeSyntaxContext ctx,
         PropertyDeclarationSyntax node)
     {
-        if (node.Initializer is not { } initializer)
+        if (node.Initializer is not EqualsValueClauseSyntax initializer)
             return null;
         Optional<object?> constant = ctx.SemanticModel.GetConstantValue(initializer.Value);
         if (!constant.HasValue)

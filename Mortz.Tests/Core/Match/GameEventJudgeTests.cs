@@ -198,7 +198,8 @@ public class GameEventJudgeTests
     public void KillingTheWholeEnemyRosterIsATeamWipe()
     {
         GameEventJudge judge = new();
-        Dictionary<int, byte> teams = new() { [KILLER] = 1, [VICTIM] = 2, [OTHER] = 2 };
+        Dictionary<int, Team> teams =
+            new() { [KILLER] = Team.BLUE, [VICTIM] = Team.RED, [OTHER] = Team.RED };
 
         List<GameEventJudge.Judgment> first = judge.JudgeFrame(
             [Kill(KILLER, VICTIM)], tick: 0, teams);
@@ -214,7 +215,8 @@ public class GameEventJudgeTests
     public void StaleKillsDropOutOfTheWipeWindow()
     {
         GameEventJudge judge = new();
-        Dictionary<int, byte> teams = new() { [KILLER] = 1, [VICTIM] = 2, [OTHER] = 2 };
+        Dictionary<int, Team> teams =
+            new() { [KILLER] = Team.BLUE, [VICTIM] = Team.RED, [OTHER] = Team.RED };
         judge.JudgeFrame([Kill(KILLER, VICTIM)], tick: 0, teams);
 
         // The first kill went stale, so this one starts the run over.
@@ -232,7 +234,8 @@ public class GameEventJudgeTests
     public void DyingResetsTheWipeProgress()
     {
         GameEventJudge judge = new();
-        Dictionary<int, byte> teams = new() { [KILLER] = 1, [VICTIM] = 2, [OTHER] = 2 };
+        Dictionary<int, Team> teams =
+            new() { [KILLER] = Team.BLUE, [VICTIM] = Team.RED, [OTHER] = Team.RED };
         judge.JudgeFrame([Kill(KILLER, VICTIM)], tick: 0, teams);
         judge.JudgeFrame([Kill(VICTIM, KILLER)], tick: 100, teams);
 

@@ -12,7 +12,7 @@ public class AnnouncementDirectorTests
 
     private static string NameOf(long peerId) => peerId == KILLER ? "p1" : "p2";
 
-    private static byte TeamOf(long peerId) => peerId == KILLER ? (byte)1 : (byte)2;
+    private static Team? TeamOf(long peerId) => peerId == KILLER ? Team.BLUE : Team.RED;
 
     [Fact]
     public void DescribeResolvesBothCombatants()
@@ -22,8 +22,8 @@ public class AnnouncementDirectorTests
             NameOf, TeamOf);
 
         Announcement a = Assert.Single(batch);
-        Assert.Equal(new Combatant(KILLER, "p1", 1), a.Actor);
-        Assert.Equal(new Combatant(VICTIM, "p2", 2), a.Victim);
+        Assert.Equal(new Combatant(KILLER, "p1", Team.BLUE), a.Actor);
+        Assert.Equal(new Combatant(VICTIM, "p2", Team.RED), a.Victim);
     }
 
     [Fact]
@@ -84,16 +84,33 @@ public class AnnouncementDirectorTests
     }
 
     [Fact]
-    public void MatchPointNamesTheLeader()
+    public void MatchPointNamesThePlayerLeaderAndWearsTheirTeam()
     {
-        Assert.Equal("p1", AnnouncementDirector.Describe(
-            new MatchPointMsg(true, WinCondition.KILLS, 1, KILLER), NameOf).Leader);
-        Assert.Equal("Team 2", AnnouncementDirector.Describe(
-            new MatchPointMsg(true, WinCondition.KILLS, 1, 2, LeaderIsTeam: true),
-            NameOf).Leader);
-        // A kill target of 1: match point holds with nobody on the board.
-        Assert.Null(AnnouncementDirector.Describe(
-            new MatchPointMsg(true, WinCondition.KILLS, 1, 0), NameOf).Leader);
+        MatchPointState state = AnnouncementDirector.Describe(
+            new MatchPoint(3, new PlayerVictor((int)KILLER)), NameOf, TeamOf);
+
+        Assert.Equal(3, state.Remaining);
+        Assert.Equal(new MatchPointLeader("p1", Team.BLUE), state.Leader);
+    }
+
+    [Fact]
+    public void MatchPointNamesTheTeamLeaderAndWearsItself()
+    {
+        MatchPointState state = AnnouncementDirector.Describe(
+            new MatchPoint(1, new TeamVictor(Team.RED)), NameOf, TeamOf);
+
+        Assert.Equal(new MatchPointLeader("Team Red", Team.RED), state.Leader);
+    }
+
+    [Fact]
+    public void MatchPointCanHoldWithNobodyOnTheBoard()
+    {
+        // A kill target of 1: match point holds before anyone has scored.
+        MatchPointState state = AnnouncementDirector.Describe(
+            new MatchPoint(1, null), NameOf, TeamOf);
+
+        Assert.Equal(1, state.Remaining);
+        Assert.Null(state.Leader);
     }
 
     private static GameEventMsg Msg(GameEventKind kind) =>

@@ -79,7 +79,7 @@ public partial class LocalPlayerController : Node2D
 
         if (ButtonFilter != null)
             buttons = ButtonFilter(_predictor.NextSeq, buttons);
-        if (AimOverride is { } aim)
+        if (AimOverride is byte aim)
             _aim = aim;
         if (AimProvider != null)
             _aim = AimProvider();

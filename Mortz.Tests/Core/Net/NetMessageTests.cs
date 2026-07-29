@@ -114,8 +114,8 @@ public class NetMessageTests : IDisposable
         Assert.Equal([7, 8], received.PeerIds);
         Assert.Equal([4, -1], received.Kills);
         Assert.Equal([2, 6], received.Deaths);
-        Assert.Equal(4, received.Team1Kills);
-        Assert.Equal(-1, received.Team2Kills);
+        Assert.Equal(4, received.BlueKills);
+        Assert.Equal(-1, received.RedKills);
     }
 
     [Fact]

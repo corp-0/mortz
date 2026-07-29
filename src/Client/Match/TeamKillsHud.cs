@@ -3,6 +3,7 @@ using Chickensoft.Introspection;
 using Godot;
 using Mortz.Client.Score;
 using Mortz.Client.Ui;
+using Mortz.Core.Match;
 
 namespace Mortz.Client.Match;
 
@@ -22,8 +23,8 @@ public partial class TeamKillsHud : Control
 
     public void OnReady()
     {
-        _team1Label.AddThemeColorOverride("font_color", TeamColors.Team1);
-        _team2Label.AddThemeColorOverride("font_color", TeamColors.Team2);
+        _team1Label.AddThemeColorOverride("font_color", TeamColors.Blue);
+        _team2Label.AddThemeColorOverride("font_color", TeamColors.Red);
     }
 
     public void OnResolved()
@@ -46,7 +47,7 @@ public partial class TeamKillsHud : Control
     {
         if (!IsInsideTree())
             return;
-        _team1Label.Text = Score.TeamKills(1).ToString();
-        _team2Label.Text = Score.TeamKills(2).ToString();
+        _team1Label.Text = Score.TeamKills(Team.BLUE).ToString();
+        _team2Label.Text = Score.TeamKills(Team.RED).ToString();
     }
 }

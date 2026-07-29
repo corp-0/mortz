@@ -278,7 +278,7 @@ public class MortarTests
         int seq = 0;
 
         StepWith(w, ref seq, InputButtons.FIRE, AIM_UP);
-        List<(int X, int Y, int Radius, int OwnerId, int SpawnSeq)> explosions = new();
+        List<Explosion> explosions = new();
         for (int t = 1; t <= SimConfig.MORTAR_MAX_LIFETIME_TICKS && w.Mortars.Count > 0; t++)
         {
             StepWith(w, ref seq, InputButtons.NONE, AIM_UP);
@@ -286,7 +286,7 @@ public class MortarTests
         }
 
         Assert.Empty(w.Mortars);
-        (int X, int Y, int Radius, int OwnerId, int SpawnSeq) explosion = Assert.Single(explosions);
+        Explosion explosion = Assert.Single(explosions);
         Assert.Equal(1, explosion.OwnerId);
         Assert.Equal(0, explosion.SpawnSeq);
         Assert.True(explosion.Y < 0, "the long-lived upward shell should detonate above the map");

@@ -4,6 +4,7 @@ using Godot;
 using Mortz.Client.Audio;
 using Mortz.Client.Chat;
 using Mortz.Core.Match;
+using Mortz.Core.Net;
 using Mortz.Core.Net.Messages;
 using Mortz.Core.Sim;
 using Mortz.Core.Sim.Modifiers;
@@ -36,7 +37,7 @@ public partial class PlayerViewManager : Node2D
     private readonly HashSet<int> _placed = new();
     private readonly Dictionary<int, string> _names = new();
     private readonly Dictionary<int, byte> _skins = new();
-    private readonly Dictionary<int, byte> _teams = new();
+    private readonly Dictionary<int, Team?> _teams = new();
     private readonly HashSet<int> _typing = new();
     private bool _replayActive;
 
@@ -116,7 +117,7 @@ public partial class PlayerViewManager : Node2D
             _names[(int)msg.PeerIds[i]] = msg.Names[i];
             _skins[(int)msg.PeerIds[i]] = msg.Skins[i];
             if (i < msg.Teams.Length)
-                _teams[(int)msg.PeerIds[i]] = msg.Teams[i];
+                _teams[(int)msg.PeerIds[i]] = TeamWire.FromByte(msg.Teams[i]);
         }
         foreach ((int peerId, PlayerView view) in _views)
         {

@@ -24,7 +24,7 @@ public static class MapPackageLoader
         List<ContentDiagnostic> diagnostics = [];
         ContentReadResult<MapSourceSnapshot> sourceResult = MapSourceSnapshot.Read(definition);
         diagnostics.AddRange(sourceResult.Diagnostics);
-        if (sourceResult.Value is not { } source)
+        if (sourceResult.Value is not MapSourceSnapshot source)
             return new MapPackageLoadResult(null, diagnostics);
 
         Image? background = DecodePng(source.BackgroundPng, "background.png", source, diagnostics);

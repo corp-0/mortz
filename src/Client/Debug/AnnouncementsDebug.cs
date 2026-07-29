@@ -105,17 +105,16 @@ public partial class AnnouncementsDebug : Control,
         }
     }
 
-    private void OnMatchPoint3() => MatchPoint(3);
+    private void OnMatchPoint3() => SetMatchPoint(3);
 
-    private void OnMatchPoint1() => MatchPoint(1);
+    private void OnMatchPoint1() => SetMatchPoint(1);
 
-    private void OnMatchPointOff() => _director.SetMatchPoint(
-        new MatchPointMsg(false, WinCondition.KILLS, 0));
+    private void OnMatchPointOff() => _director.SetMatchPoint(null);
 
     private void Fire(params GameEventMsg[] events) => _director.Fire(events);
 
-    private void MatchPoint(byte remaining) => _director.SetMatchPoint(
-        new MatchPointMsg(true, WinCondition.KILLS, remaining, KILLER));
+    private void SetMatchPoint(int remaining) => _director.SetMatchPoint(
+        new MatchPoint(remaining, new PlayerVictor((int)KILLER)));
 
     private static GameEventMsg Event(GameEventKind kind, byte magnitude = 0) =>
         new(kind, KILLER, VICTIM, magnitude);

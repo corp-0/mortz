@@ -8,17 +8,17 @@ internal static class SpinBoxRangeHints
 {
     public static void ApplyRangeHints(this SpinBox spinBox, IUiPropertyDescriptor descriptor)
     {
-        if (descriptor.Min is { } min)
+        if (descriptor.Min is float min)
         {
             spinBox.MinValue = min;
             spinBox.AllowLesser = false;
         }
-        if (descriptor.Max is { } max)
+        if (descriptor.Max is float max)
         {
             spinBox.MaxValue = max;
             spinBox.AllowGreater = false;
         }
-        if (descriptor.Step is { } step)
+        if (descriptor.Step is float step)
             spinBox.Step = step;
     }
 }

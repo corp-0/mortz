@@ -91,7 +91,7 @@ public sealed class ContentCatalog
                     continue;
                 ContentReadResult<ContentPackManifest> read = ContentManifestReader.ReadPackFile(manifestPath);
                 diagnostics.AddRange(read.Diagnostics);
-                if (read.Value is { } manifest)
+                if (read.Value is ContentPackManifest manifest)
                     packs.Add(new ContentPackDefinition(manifest, Path.GetFullPath(directory)));
             }
         }
@@ -167,7 +167,7 @@ public sealed class ContentCatalog
 
             ContentReadResult<TManifest> read = readManifest(manifestPath);
             diagnostics.AddRange(read.Diagnostics);
-            if (read.Value is not { } manifest)
+            if (read.Value is not TManifest manifest)
                 continue;
 
             ContentDefinition<TManifest> definition = new(id, manifest, directoryPath, manifestPath, pack);

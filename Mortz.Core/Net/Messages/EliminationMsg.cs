@@ -24,5 +24,5 @@ public readonly partial record struct EliminationMsg(
     int VictimDeaths,
     long RewardedId,
     int RewardedKills,
-    int Team1Kills,
-    int Team2Kills);
+    int BlueKills,
+    int RedKills);

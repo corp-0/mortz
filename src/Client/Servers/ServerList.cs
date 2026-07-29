@@ -46,7 +46,7 @@ public sealed class ServerList
 
     public ServerEntry AddDirect(ServerEndpoint endpoint)
     {
-        if (Find(endpoint) is { } existing)
+        if (Find(endpoint) is ServerEntry existing)
             return existing;
         ServerEntry entry = new(endpoint, ServerSource.DIRECT);
         _entries.Add(entry);
@@ -57,7 +57,7 @@ public sealed class ServerList
     /// subnet stays a favorite.</summary>
     public ServerEntry AddDiscovered(ServerEndpoint endpoint)
     {
-        if (Find(endpoint) is { } existing)
+        if (Find(endpoint) is ServerEntry existing)
             return existing;
         ServerEntry entry = new(endpoint, ServerSource.LAN);
         _entries.Add(entry);
@@ -82,7 +82,7 @@ public sealed class ServerList
 
     public void ApplyTimeout(ServerEndpoint endpoint)
     {
-        if (Find(endpoint) is not { } entry)
+        if (Find(endpoint) is not ServerEntry entry)
             return;
         entry.Status = ServerStatus.OFFLINE;
         entry.PingMs = 0;

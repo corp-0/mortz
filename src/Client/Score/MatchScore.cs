@@ -1,4 +1,5 @@
 using Godot;
+using Mortz.Core.Match;
 using Mortz.Core.Net.Messages;
 
 namespace Mortz.Client.Score;
@@ -11,15 +12,13 @@ public partial class MatchScore : Node
 {
     private readonly Dictionary<long, int> _kills = [];
     private readonly Dictionary<long, int> _deaths = [];
-    private int _team1Kills;
-    private int _team2Kills;
+    private TeamKills _teamKills;
 
     public event Action? Changed;
 
     public int Kills(long peerId) => _kills.GetValueOrDefault(peerId);
     public int Deaths(long peerId) => _deaths.GetValueOrDefault(peerId);
-    public int TeamKills(byte teamId) =>
-        teamId switch { 1 => _team1Kills, 2 => _team2Kills, _ => 0 };
+    public int TeamKills(Team team) => _teamKills[team];
 
     public override void _Ready()
     {
@@ -44,8 +43,7 @@ public partial class MatchScore : Node
             _kills[message.PeerIds[i]] = message.Kills[i];
             _deaths[message.PeerIds[i]] = message.Deaths[i];
         }
-        _team1Kills = message.Team1Kills;
-        _team2Kills = message.Team2Kills;
+        _teamKills = new TeamKills(message.BlueKills, message.RedKills);
         Changed?.Invoke();
     }
 
@@ -60,8 +58,7 @@ public partial class MatchScore : Node
             _kills[message.KillerId] = message.KillerKills;
         if (message.RewardedId != 0)
             _kills[message.RewardedId] = message.RewardedKills;
-        _team1Kills = message.Team1Kills;
-        _team2Kills = message.Team2Kills;
+        _teamKills = new TeamKills(message.BlueKills, message.RedKills);
         Changed?.Invoke();
     }
 }

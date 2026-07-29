@@ -42,7 +42,7 @@ internal static class RosterSlots
             CustomMinimumSize = new Vector2(80, 0),
         });
         int wins = stats.Wins(member.PeerId);
-        string ping = stats.PingMs(member.PeerId) is { } pingMs ? $"{pingMs} ms" : "... ms";
+        string ping = stats.PingMs(member.PeerId) is int pingMs ? $"{pingMs} ms" : "... ms";
         if (compact)
         {
             row.AddChild(StatLabel($"{wins}W", new Color("fbbf24"), 30));

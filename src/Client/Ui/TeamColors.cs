@@ -1,4 +1,5 @@
 using Godot;
+using Mortz.Core.Match;
 
 namespace Mortz.Client.Ui;
 
@@ -6,13 +7,13 @@ namespace Mortz.Client.Ui;
 /// score HUD, and player nameplates so a team reads the same everywhere.</summary>
 public static class TeamColors
 {
-    public static readonly Color Team1 = new("60a5fa");
-    public static readonly Color Team2 = new("f87171");
+    public static readonly Color Blue = new("60a5fa");
+    public static readonly Color Red = new("f87171");
 
-    public static Color For(byte teamId) => teamId switch
+    public static Color For(Team team) => team switch
     {
-        1 => Team1,
-        2 => Team2,
-        _ => Colors.White,
+        Team.BLUE => Blue,
+        Team.RED => Red,
+        _ => throw new ArgumentOutOfRangeException(nameof(team)),
     };
 }

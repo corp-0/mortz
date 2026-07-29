@@ -86,7 +86,7 @@ public partial class FinalKillReplay : Node
     /// <summary>Advances replay work. True means live rendering stays frozen.</summary>
     internal bool ConsumeFrame(float delta)
     {
-        if (_pendingFinalKill is { } finalKill)
+        if (_pendingFinalKill is FinalKillMsg finalKill)
         {
             Begin(finalKill);
             _pendingFinalKill = null;

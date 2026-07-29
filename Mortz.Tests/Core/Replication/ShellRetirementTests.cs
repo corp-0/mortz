@@ -44,7 +44,7 @@ public class ShellRetirementTests
         Assert.True(deflected, "the shell should have been deflected");
         Assert.Equal(FIRE_TICK, firedSeq); // sanity: the shot was seq 5
         Assert.Equal(firedSeq, w.Mortars[0].SpawnSeq); // identity must survive the parry
-        Assert.Contains((2, firedSeq), w.ShellRetirements); // reliable notice targets the original shooter
+        Assert.Contains(new ShellRetirement(2, firedSeq), w.ShellRetirements); // reliable notice targets the original shooter
     }
 
     /// <summary>The shot's identity has to reach the owner: a deflected shell

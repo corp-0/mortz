@@ -38,7 +38,7 @@ public partial class ServerMain : Node,
 
     public void OnReady()
     {
-        if (_host.Config is not { } config)
+        if (_host.Config is not ServerBootConfig config)
         {
             GetTree().Quit(1);
             return;

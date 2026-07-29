@@ -43,8 +43,8 @@ public class MatchSessionTests
         match.AddPlayer(1);
         match.AddPlayer(2);
 
-        ScoredElimination uncredited = match.ScoreDeath(new ServerDeath(2, default, 99, false))!.Value;
-        ScoredElimination credited = match.ScoreDeath(new ServerDeath(2, default, 1, false))!.Value;
+        ScoredElimination uncredited = match.ScoreDeath(new Death(2, default, 99, false, ShellId: -1))!.Value;
+        ScoredElimination credited = match.ScoreDeath(new Death(2, default, 1, false, ShellId: -1))!.Value;
 
         Assert.False(uncredited.FirstBlood);
         Assert.True(credited.FirstBlood);
@@ -58,8 +58,8 @@ public class MatchSessionTests
         match.AddPlayer(2);
         match.AddPlayer(3);
 
-        ScoredElimination first = match.ScoreDeath(new ServerDeath(2, default, 1, false))!.Value;
-        ScoredElimination second = match.ScoreDeath(new ServerDeath(2, default, 3, false))!.Value;
+        ScoredElimination first = match.ScoreDeath(new Death(2, default, 1, false, ShellId: -1))!.Value;
+        ScoredElimination second = match.ScoreDeath(new Death(2, default, 3, false, ShellId: -1))!.Value;
 
         Assert.True(first.FirstBlood);
         Assert.False(second.FirstBlood);
@@ -69,12 +69,12 @@ public class MatchSessionTests
     public void TeamKillDoesNotConsumeFirstBlood()
     {
         MatchSession match = Session(teams: true);
-        match.AddPlayer(1); // team 1
-        match.AddPlayer(2); // team 2
-        match.AddPlayer(3); // team 1
+        match.AddPlayer(1); // blue
+        match.AddPlayer(2); // red
+        match.AddPlayer(3); // blue
 
-        ScoredElimination teamKill = match.ScoreDeath(new ServerDeath(3, default, 1, false))!.Value;
-        ScoredElimination credited = match.ScoreDeath(new ServerDeath(2, default, 1, false))!.Value;
+        ScoredElimination teamKill = match.ScoreDeath(new Death(3, default, 1, false, ShellId: -1))!.Value;
+        ScoredElimination credited = match.ScoreDeath(new Death(2, default, 1, false, ShellId: -1))!.Value;
 
         Assert.Equal(Scoreboard.DeathKind.TEAM_KILL, teamKill.Score.Kind);
         Assert.False(teamKill.FirstBlood);
@@ -85,16 +85,16 @@ public class MatchSessionTests
     public void LobbyTeamsCarryIntoTheMatchAndLateJoinersBalance()
     {
         MatchSession match = Session(teams: true);
-        match.AddPlayer(1, lobbyTeam: 2);
-        match.AddPlayer(2, lobbyTeam: 2);
-        match.AddPlayer(3, lobbyTeam: 1);
+        match.AddPlayer(1, lobbyTeam: Team.RED);
+        match.AddPlayer(2, lobbyTeam: Team.RED);
+        match.AddPlayer(3, lobbyTeam: Team.BLUE);
 
-        byte lateJoiner = match.AddPlayer(4); // no lobby team: smallest wins
+        Team? lateJoiner = match.AddPlayer(4); // no lobby team: smallest wins
 
-        Assert.Equal(2, match.World.Players[1].TeamId);
-        Assert.Equal(2, match.World.Players[2].TeamId);
-        Assert.Equal(1, match.World.Players[3].TeamId);
-        Assert.Equal(1, lateJoiner);
+        Assert.Equal(Team.RED, match.World.Players[1].Team);
+        Assert.Equal(Team.RED, match.World.Players[2].Team);
+        Assert.Equal(Team.BLUE, match.World.Players[3].Team);
+        Assert.Equal(Team.BLUE, lateJoiner);
     }
 
     [Fact]
@@ -102,7 +102,7 @@ public class MatchSessionTests
     {
         MatchSession match = Session(teams: false);
 
-        Assert.Equal(0, match.AddPlayer(1, lobbyTeam: 2));
+        Assert.Null(match.AddPlayer(1, lobbyTeam: Team.RED));
     }
 
     [Fact]
@@ -112,23 +112,23 @@ public class MatchSessionTests
         match.AddPlayer(1);
         match.AddPlayer(2);
 
-        Assert.Equal([1], match.WinnerPeers(new Scoreboard.MatchWinner(false, 1)));
+        Assert.Equal([1], match.WinnerPeers(new PlayerVictor(1)));
     }
 
     [Fact]
     public void TeamWinCreditsEveryTeammateStillInTheMatch()
     {
         MatchSession match = Session(teams: true);
-        match.AddPlayer(1); // team 1
-        match.AddPlayer(2); // team 2
-        match.AddPlayer(3); // team 1
-        match.AddPlayer(4); // team 2
+        match.AddPlayer(1); // blue
+        match.AddPlayer(2); // red
+        match.AddPlayer(3); // blue
+        match.AddPlayer(4); // red
         match.RemovePlayer(3);
 
-        int[] winners = match.WinnerPeers(new Scoreboard.MatchWinner(true, 1));
+        int[] winners = match.WinnerPeers(new TeamVictor(Team.BLUE));
 
         Assert.Equal([1], winners);
-        Assert.Equal([2, 4], match.WinnerPeers(new Scoreboard.MatchWinner(true, 2)).Order());
+        Assert.Equal([2, 4], match.WinnerPeers(new TeamVictor(Team.RED)).Order());
     }
 
     [Fact]
@@ -138,18 +138,17 @@ public class MatchSessionTests
         match.AddPlayer(1);
         match.AddPlayer(2);
 
-        match.ScoreDeath(new ServerDeath(2, default, 1, false));
+        match.ScoreDeath(new Death(2, default, 1, false, ShellId: -1));
         MatchFrame enter = match.Step();
         MatchFrame steady = match.Step();
-        match.ScoreDeath(new ServerDeath(1, default, 1, false)); // suicide penalty
+        match.ScoreDeath(new Death(1, default, 1, false, ShellId: -1)); // suicide penalty
         MatchFrame leave = match.Step();
 
-        Assert.Equal(new MatchPointChange(true, 1, LeaderId: 1, LeaderIsTeam: false),
+        Assert.Equal(new MatchPointChange(new MatchPoint(1, new PlayerVictor(1))),
             enter.MatchPoint);
         Assert.Null(steady.MatchPoint);
         // The penalty wiped the lead: nobody has scored, so there is no leader.
-        Assert.Equal(new MatchPointChange(false, 2, LeaderId: 0, LeaderIsTeam: false),
-            leave.MatchPoint);
+        Assert.Equal(new MatchPointChange(null), leave.MatchPoint);
     }
 
     [Fact]
@@ -163,7 +162,7 @@ public class MatchSessionTests
         match.AddPlayer(3);
 
         ScoredElimination scored =
-            match.ScoreDeath(new ServerDeath(1, new Vec2(10, 64), 1, false))!.Value;
+            match.ScoreDeath(new Death(1, new Vec2(10, 64), 1, false, ShellId: -1))!.Value;
 
         Assert.Equal(new Scoreboard.KillReward(2, 1), scored.Score.Reward);
         Assert.Equal(0, match.Scores.Rows[1].Kills);
@@ -176,12 +175,12 @@ public class MatchSessionTests
         MatchSession match = Session(teams: true,
             spawnPoints: [new Vec2(10, 64), new Vec2(40, 64), new Vec2(120, 64)],
             suicidePenalty: SuicidePenalty.REWARD_CLOSEST_ENEMY);
-        match.AddPlayer(1, 1);
-        match.AddPlayer(2, 1); // closest, but on the victim's team
-        match.AddPlayer(3, 2);
+        match.AddPlayer(1, Team.BLUE);
+        match.AddPlayer(2, Team.BLUE); // closest, but on the victim's team
+        match.AddPlayer(3, Team.RED);
 
         ScoredElimination scored =
-            match.ScoreDeath(new ServerDeath(1, new Vec2(10, 64), 0, false))!.Value;
+            match.ScoreDeath(new Death(1, new Vec2(10, 64), 0, false, ShellId: -1))!.Value;
 
         Assert.Equal(new Scoreboard.KillReward(3, 1), scored.Score.Reward);
         Assert.Equal(0, match.Scores.Rows[2].Kills);
@@ -195,7 +194,7 @@ public class MatchSessionTests
         match.AddPlayer(2);
 
         ScoredElimination winner = match.ScoreDeath(
-            new ServerDeath(2, new Vec2(40, 50), 1, false))!.Value;
+            new Death(2, new Vec2(40, 50), 1, false, ShellId: -1))!.Value;
         Assert.NotNull(winner.Score.Winner);
         Assert.Equal(MatchStage.VICTORY_LAP, match.Stage);
 

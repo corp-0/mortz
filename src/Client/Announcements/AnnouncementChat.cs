@@ -38,21 +38,21 @@ public partial class AnnouncementChat : Node
     {
         foreach (Announcement a in batch)
         {
-            if (Compose(a) is { } line)
+            if (Compose(a) is RichText line)
                 Chat.AddSystem(line);
         }
     }
 
     /// <summary>One line on entering; the banner keeps the standing warning.</summary>
-    private void OnMatchPoint(MatchPointState mp)
+    private void OnMatchPoint(MatchPointState? state)
     {
-        if (!mp.Active)
+        if (state is not MatchPointState held)
             return;
-        string kills = mp.Remaining <= 1 ? "one more kill" : $"{mp.Remaining} more kills";
-        RichText line = mp.Leader == null
-            ? new RichText().Add(kills, new Style().Bold()).Add(" wins!")
-            : new RichText().Add(mp.Leader, new Style().Bold()).Add(" needs ")
-                .Add(kills, new Style().Bold()).Add("!");
+        string kills = held.Remaining <= 1 ? "one more kill" : $"{held.Remaining} more kills";
+        RichText line = held.Leader is MatchPointLeader leader
+            ? new RichText().Add(leader.Name, NameStyle(leader.Team)).Add(" needs ")
+                .Add(kills, new Style().Bold()).Add("!")
+            : new RichText().Add(kills, new Style().Bold()).Add(" wins!");
         Chat.AddSystem(line);
     }
 
@@ -134,11 +134,13 @@ public partial class AnnouncementChat : Node
 
     private static RichText Player(Combatant p) => new RichText().Add(p.Name, NameStyle(p));
 
-    private static Style NameStyle(Combatant p)
+    private static Style NameStyle(Combatant p) => NameStyle(p.Team);
+
+    private static Style NameStyle(Team? team)
     {
         Style style = new Style().Bold();
-        if (p.Team != 0)
-            style.Color(TeamColors.For(p.Team));
+        if (team is Team assigned)
+            style.Color(TeamColors.For(assigned));
         return style;
     }
 }

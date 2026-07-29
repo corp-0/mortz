@@ -35,7 +35,7 @@ public partial class AnnouncementBanner : Control
         Director.BatchReady += OnBatch;
         Director.MatchPointChanged += OnMatchPoint;
         // A late joiner walks in mid match point.
-        if (Director.MatchPoint is { } active)
+        if (Director.MatchPoint is MatchPointState active)
             OnMatchPoint(active);
     }
 
@@ -50,28 +50,31 @@ public partial class AnnouncementBanner : Control
         // Reversed so the highest-priority line lands on top.
         for (int i = batch.Count - 1; i >= 0; i--)
         {
-            if (Compose(batch[i]) is { } line)
+            if (Compose(batch[i]) is RichText line)
                 AddLine(line);
         }
     }
 
-    private void OnMatchPoint(MatchPointState mp)
+    private void OnMatchPoint(MatchPointState? state)
     {
-        _matchPoint.Visible = mp.Active;
-        if (mp.Active)
-        {
-            _matchPoint.Text = new RichText(MatchPointLine(mp))
-                .Wrap(new Style()
-                    .Pulse(2f, RichTextColor.WHITE, 0.31f, -2f)
-                    .Color(RichTextColor.BLOOD_RED)
-                    .Center());
-        }
+        _matchPoint.Visible = state != null;
+        if (state is not MatchPointState held)
+            return;
+        _matchPoint.Text = MatchPointLine(held)
+            .Wrap(new Style()
+                .Pulse(2f, RichTextColor.WHITE, 0.31f, -2f)
+                .Color(RichTextColor.BLOOD_RED)
+                .Center());
     }
 
-    private static string MatchPointLine(MatchPointState mp)
+    private static RichText MatchPointLine(MatchPointState mp)
     {
         string kills = mp.Remaining <= 1 ? "one more kill" : $"{mp.Remaining} more kills";
-        return mp.Leader == null ? $"{kills} wins!" : $"{mp.Leader} needs {kills}!";
+        if (mp.Leader is not MatchPointLeader leader)
+            return new RichText($"{kills} wins!");
+        return new RichText()
+            .Add(leader.Name, NameStyle(leader.Team))
+            .Add($" needs {kills}!");
     }
 
     /// <summary>Null for the kinds the banner stays quiet on.</summary>
@@ -194,11 +197,13 @@ public partial class AnnouncementBanner : Control
 
     private static RichText Player(Combatant p) => new RichText().Add(p.Name, NameStyle(p));
 
-    private static Style NameStyle(Combatant p)
+    private static Style NameStyle(Combatant p) => NameStyle(p.Team);
+
+    private static Style NameStyle(Team? team)
     {
         Style style = new Style().Bold();
-        if (p.Team != 0)
-            style.Color(TeamColors.For(p.Team));
+        if (team is Team assigned)
+            style.Color(TeamColors.For(assigned));
         return style;
     }
 

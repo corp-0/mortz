@@ -2,7 +2,7 @@ using Mortz.Core.Match;
 
 namespace Mortz.Server.Lobby;
 
-internal readonly record struct LobbyPlayer(long PeerId, bool Ready, byte Team);
+internal readonly record struct LobbyPlayer(long PeerId, bool Ready, Team? Team);
 
 internal enum SwapResult
 {
@@ -19,7 +19,7 @@ internal enum SwapResult
 /// off clears every assignment.</summary>
 internal sealed class LobbySession
 {
-    private readonly SortedDictionary<long, (bool Ready, byte Team)> _players = new();
+    private readonly SortedDictionary<long, LobbySeat> _players = new();
     // Pending swap offers, one outgoing per player.
     private readonly SortedDictionary<long, long> _offers = new();
     private bool _teamsEnabled;
@@ -31,7 +31,7 @@ internal sealed class LobbySession
             .ToArray();
 
     public void Add(long peerId) =>
-        _players[peerId] = (false, _teamsEnabled ? SmallestTeam() : (byte)0);
+        _players[peerId] = new LobbySeat(false, _teamsEnabled ? SmallestTeam() : null);
 
     public bool Remove(long peerId)
     {
@@ -44,30 +44,30 @@ internal sealed class LobbySession
 
     public bool SetReady(long peerId, bool ready)
     {
-        if (!_players.TryGetValue(peerId, out (bool Ready, byte Team) player))
+        if (!_players.TryGetValue(peerId, out LobbySeat player))
             return false;
-        _players[peerId] = (ready, player.Team);
+        _players[peerId] = player with { Ready = ready };
         return true;
     }
 
     /// <summary>A player's own move onto a team, granted only while that team
     /// has a free slot.</summary>
-    public bool TrySetTeam(long peerId, byte team)
+    public bool TrySetTeam(long peerId, Team team)
     {
-        if (!_teamsEnabled || team is not (1 or 2) ||
-            !_players.TryGetValue(peerId, out (bool Ready, byte Team) player) ||
+        if (!_teamsEnabled ||
+            !_players.TryGetValue(peerId, out LobbySeat player) ||
             player.Team == team ||
             _players.Values.Count(other => other.Team == team) >= TeamRules.SlotsPerTeam(Count))
         {
             return false;
         }
-        _players[peerId] = (player.Ready, team);
+        _players[peerId] = player with { Team = team };
         PruneOffers();
         return true;
     }
 
-    public IReadOnlyList<(long From, long To)> SwapOffers =>
-        _offers.Select(pair => (pair.Key, pair.Value)).ToArray();
+    public IReadOnlyList<SwapOffer> SwapOffers =>
+        _offers.Select(pair => new SwapOffer(pair.Key, pair.Value)).ToArray();
 
     /// <summary>One outstanding offer per player. Repeating an offer cancels
     /// it; offering to someone already offering back executes the swap.</summary>
@@ -82,10 +82,10 @@ internal sealed class LobbySession
         }
         if (_offers.TryGetValue(to, out long reciprocal) && reciprocal == from)
         {
-            (bool Ready, byte Team) a = _players[from];
-            (bool Ready, byte Team) b = _players[to];
-            _players[from] = (a.Ready, b.Team);
-            _players[to] = (b.Ready, a.Team);
+            LobbySeat a = _players[from];
+            LobbySeat b = _players[to];
+            _players[from] = a with { Team = b.Team };
+            _players[to] = b with { Team = a.Team };
             _offers.Remove(to);
             PruneOffers();
             return SwapResult.SWAPPED;
@@ -96,9 +96,9 @@ internal sealed class LobbySession
 
     private bool CrossTeam(long from, long to) =>
         _teamsEnabled && from != to &&
-        _players.TryGetValue(from, out (bool Ready, byte Team) a) &&
-        _players.TryGetValue(to, out (bool Ready, byte Team) b) &&
-        a.Team != 0 && b.Team != 0 && a.Team != b.Team;
+        _players.TryGetValue(from, out LobbySeat a) &&
+        _players.TryGetValue(to, out LobbySeat b) &&
+        a.Team is Team fromTeam && b.Team is Team toTeam && fromTeam != toTeam;
 
     /// <summary>Offers only survive while their pair still spans both teams.</summary>
     private void PruneOffers()
@@ -118,22 +118,18 @@ internal sealed class LobbySession
             return false;
         _teamsEnabled = enabled;
         _offers.Clear(); // fresh assignment wipes manual arrangements
-        byte next = 0;
+        int next = 0;
         foreach (long peerId in _players.Keys.ToArray())
         {
-            byte team = enabled ? (byte)(next % 2 + 1) : (byte)0;
-            _players[peerId] = (_players[peerId].Ready, team);
+            Team? team = enabled ? Teams.Deal(next) : null;
+            _players[peerId] = _players[peerId] with { Team = team };
             next++;
         }
         return _players.Count > 0;
     }
 
-    private byte SmallestTeam()
-    {
-        int one = _players.Values.Count(player => player.Team == 1);
-        int two = _players.Values.Count(player => player.Team == 2);
-        return (byte)(one <= two ? 1 : 2);
-    }
+    private Team SmallestTeam() =>
+        Teams.Smallest(_players.Values.Select(player => player.Team));
 
     public static LobbySession For(IEnumerable<long> peerIds, bool teamsEnabled = false)
     {

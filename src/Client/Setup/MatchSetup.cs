@@ -135,7 +135,9 @@ public partial class MatchSetup : Node
         LobbyMember[] members = new LobbyMember[count];
         for (int i = 0; i < count; i++)
         {
-            byte team = i < message.Teams.Length ? message.Teams[i] : (byte)0;
+            Team? team = i < message.Teams.Length
+                ? TeamWire.FromByte(message.Teams[i])
+                : null;
             members[i] = new LobbyMember(message.PeerIds[i], message.Names[i],
                 message.ReadyFlags[i] != 0, team);
         }
@@ -211,14 +213,18 @@ public partial class MatchSetup : Node
             TeamsChanged?.Invoke();
     }
 
-    private static LobbyMember WithoutTeam(LobbyMember member) => member with { Team = 0 };
+    private static LobbyMember WithoutTeam(LobbyMember member) => member with { Team = null };
 
     /// <summary>Only real assignments count, so joins and leaves in a
     /// teamless lobby never read as team movement.</summary>
-    private static IEnumerable<(long PeerId, byte Team)> Assignments(
-        IEnumerable<LobbyMember> members) =>
-        members.Where(member => member.Team != 0)
-            .Select(member => (member.PeerId, member.Team));
+    private static IEnumerable<TeamAssignment> Assignments(IEnumerable<LobbyMember> members)
+    {
+        foreach (LobbyMember member in members)
+        {
+            if (member.Team is Team team)
+                yield return new TeamAssignment(member.PeerId, team);
+        }
+    }
 
     private static bool CatalogChanged(List<ContentOption> options, string[] ids, string[] names)
     {

@@ -19,7 +19,7 @@ public class FriendlyFireTests
     [Fact]
     public void FriendlyFireOff_SparesTheTeammate_NeverTheShooter()
     {
-        SimWorld w = World(friendlyFire: false, shooterTeam: 1, victimTeam: 1);
+        SimWorld w = World(friendlyFire: false, shooterTeam: Team.BLUE, victimTeam: Team.BLUE);
         int seq = 0;
         FireTheGrazeShot(w, ref seq);
 
@@ -30,7 +30,7 @@ public class FriendlyFireTests
     [Fact]
     public void FriendlyFireOff_StillHurtsEnemies()
     {
-        SimWorld w = World(friendlyFire: false, shooterTeam: 1, victimTeam: 2);
+        SimWorld w = World(friendlyFire: false, shooterTeam: Team.BLUE, victimTeam: Team.RED);
         int seq = 0;
         FireTheGrazeShot(w, ref seq);
 
@@ -38,22 +38,22 @@ public class FriendlyFireTests
     }
 
     [Fact]
-    public void TeamId_RidesTheSnapshot_AndSurvivesRespawn()
+    public void Team_RidesTheSnapshot_AndSurvivesRespawn()
     {
-        SimWorld w = World(friendlyFire: true, shooterTeam: 1, victimTeam: 2);
+        SimWorld w = World(friendlyFire: true, shooterTeam: Team.BLUE, victimTeam: Team.RED);
         int seq = 0;
 
         Snapshot restored = Snapshot.Deserialize(w.TakeSnapshot().Serialize());
-        Assert.Equal(1, restored.Players.Single(p => p.PeerId == SHOOTER).TeamId);
-        Assert.Equal(2, restored.Players.Single(p => p.PeerId == VICTIM).TeamId);
+        Assert.Equal(Team.BLUE, restored.Players.Single(p => p.PeerId == SHOOTER).Team);
+        Assert.Equal(Team.RED, restored.Players.Single(p => p.PeerId == VICTIM).Team);
 
         FireTheGrazeShot(w, ref seq); // shooter suicides
         Step(w, ref seq, SimConfig.RESPAWN_DELAY_TICKS + 1, InputButtons.NONE);
         Assert.Equal(0, w.Players[SHOOTER].RespawnTicks);
-        Assert.Equal(1, w.Players[SHOOTER].TeamId);
+        Assert.Equal(Team.BLUE, w.Players[SHOOTER].Team);
     }
 
-    private static SimWorld World(bool friendlyFire, byte shooterTeam, byte victimTeam)
+    private static SimWorld World(bool friendlyFire, Team shooterTeam, Team victimTeam)
     {
         MatchConfig cfg = new()
         {

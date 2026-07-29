@@ -116,8 +116,8 @@ public class MatchSetupTests : NodeServiceTest
         new LobbyStateMsg([1, 2], ["A", "B"], [1, 0], [0, 0], [], []).Broadcast();
         Assert.Equal((1, 0), (roster, teams));
         Assert.Equal([
-            new LobbyMember(1, "A", true, 0),
-            new LobbyMember(2, "B", false, 0),
+            new LobbyMember(1, "A", true, null),
+            new LobbyMember(2, "B", false, null),
         ], setup.Members);
 
         new LobbyStateMsg([1, 2], ["A", "B"], [1, 0], [0, 0], [], []).Broadcast();

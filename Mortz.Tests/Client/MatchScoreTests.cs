@@ -1,4 +1,5 @@
 using Mortz.Client.Score;
+using Mortz.Core.Match;
 using Mortz.Core.Net.Messages;
 using Mortz.Net;
 using Xunit;
@@ -20,8 +21,8 @@ public class MatchScoreTests : NodeServiceTest
         Assert.Equal(1, score.Kills(8));
         Assert.Equal(0, score.Deaths(7));
         Assert.Equal(2, score.Deaths(8));
-        Assert.Equal(4, score.TeamKills(1));
-        Assert.Equal(2, score.TeamKills(2));
+        Assert.Equal(4, score.TeamKills(Team.BLUE));
+        Assert.Equal(2, score.TeamKills(Team.RED));
     }
 
     [Fact]
@@ -35,8 +36,8 @@ public class MatchScoreTests : NodeServiceTest
         Assert.Equal(4, score.Kills(7));
         Assert.Equal(3, score.Deaths(8));
         Assert.Equal(1, score.Kills(8));
-        Assert.Equal(5, score.TeamKills(1));
-        Assert.Equal(2, score.TeamKills(2));
+        Assert.Equal(5, score.TeamKills(Team.BLUE));
+        Assert.Equal(2, score.TeamKills(Team.RED));
     }
 
     [Fact]
@@ -50,7 +51,7 @@ public class MatchScoreTests : NodeServiceTest
 
         Assert.Equal(1, score.Kills(8));
         Assert.Equal(1, score.Deaths(8));
-        Assert.Equal(1, score.TeamKills(1));
+        Assert.Equal(1, score.TeamKills(Team.BLUE));
     }
 
     [Fact]

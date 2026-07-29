@@ -5,6 +5,7 @@ using Mortz.Client.Setup;
 using Mortz.Client.Stats;
 using Mortz.Client.Ui;
 using Mortz.Core.Match;
+using Mortz.Core.Net;
 using Mortz.Core.Net.Messages;
 using Mortz.Net;
 
@@ -38,8 +39,8 @@ public partial class TeamColumnsRoster : ScrollContainer
 
     public void OnReady()
     {
-        _team1Header.AddThemeColorOverride("font_color", TeamColors.Team1);
-        _team2Header.AddThemeColorOverride("font_color", TeamColors.Team2);
+        _team1Header.AddThemeColorOverride("font_color", TeamColors.Blue);
+        _team2Header.AddThemeColorOverride("font_color", TeamColors.Red);
     }
 
     public void OnResolved()
@@ -78,7 +79,7 @@ public partial class TeamColumnsRoster : ScrollContainer
             }
         }
         long localId = Network.LocalPeerId;
-        byte localTeam = 0;
+        Team? localTeam = null;
         foreach (LobbyMember member in Setup.Members)
         {
             if (member.PeerId == localId)
@@ -88,11 +89,11 @@ public partial class TeamColumnsRoster : ScrollContainer
         {
             VBoxContainer column = member.Team switch
             {
-                1 => _team1Slots,
-                2 => _team2Slots,
+                Team.BLUE => _team1Slots,
+                Team.RED => _team2Slots,
                 _ => _unassigned,
             };
-            bool acrossTheDivide = localTeam != 0 && member.Team != 0 &&
+            bool acrossTheDivide = localTeam != null && member.Team != null &&
                                    member.Team != localTeam;
             column.AddChild(RosterSlots.BuildSlot(member, Stats, localId,
                 acrossTheDivide ? SwapButton(member.PeerId, localId) : null,
@@ -100,8 +101,8 @@ public partial class TeamColumnsRoster : ScrollContainer
         }
 
         int capacity = TeamRules.SlotsPerTeam(Setup.Members.Count);
-        AddEmptySlots(_team1Slots, 1, capacity, localTeam);
-        AddEmptySlots(_team2Slots, 2, capacity, localTeam);
+        AddEmptySlots(_team1Slots, Team.BLUE, capacity, localTeam);
+        AddEmptySlots(_team2Slots, Team.RED, capacity, localTeam);
     }
 
     /// <summary>Offer, cancel, or accept a trade with this opponent; one
@@ -126,13 +127,13 @@ public partial class TeamColumnsRoster : ScrollContainer
         return button;
     }
 
-    private static void AddEmptySlots(VBoxContainer column, byte team, int capacity,
-        byte localTeam)
+    private static void AddEmptySlots(VBoxContainer column, Team team, int capacity,
+        Team? localTeam)
     {
         for (int filled = column.GetChildCount(); filled < capacity; filled++)
         {
             column.AddChild(RosterSlots.BuildEmptySlot(localTeam != team,
-                () => new TeamJoinRequestMsg(team).SendToServer()));
+                () => new TeamJoinRequestMsg(TeamWire.ToByte(team)).SendToServer()));
         }
     }
 }

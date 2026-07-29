@@ -47,7 +47,7 @@ public sealed class GameEventJudge
     /// <summary>Teams is the current peer-to-team map when playing Teams mode,
     /// null otherwise; only team wipes read it.</summary>
     public List<Judgment> JudgeFrame(IReadOnlyList<Kill> kills, int tick,
-        IReadOnlyDictionary<int, byte>? teams = null)
+        IReadOnlyDictionary<int, Team>? teams = null)
     {
         List<Judgment> events = new();
         // Only the peak is announced, or one shell's triple would come out as

@@ -27,7 +27,7 @@ public abstract partial class ViewVariantHost<TKey> : Control where TKey : struc
         TKey key = CurrentKey();
         if (_activeView != null && EqualityComparer<TKey>.Default.Equals(_activeKey, key))
             return;
-        if (_activeView is { } previous)
+        if (_activeView is Node previous)
         {
             RemoveChild(previous);
             previous.QueueFree();
