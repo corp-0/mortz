@@ -24,7 +24,7 @@ public abstract record ChatLine
         public Player(long senderId, string senderName, string text)
         {
             SenderId = RequirePeerId(senderId);
-            SenderName = RequireSenderName(senderName);
+            SenderName = senderName;
             Text = RequireText(text);
         }
 
@@ -66,7 +66,7 @@ public abstract record ChatLine
             if (value is < DiceRoll.MIN or > DiceRoll.MAX)
                 throw new ArgumentOutOfRangeException(nameof(value));
             SenderId = RequirePeerId(senderId);
-            SenderName = RequireSenderName(senderName);
+            SenderName = senderName;
             Value = value;
         }
 
@@ -102,13 +102,6 @@ public abstract record ChatLine
         if (string.IsNullOrWhiteSpace(text))
             throw new ArgumentException("Chat line text cannot be empty.", nameof(text));
         return text;
-    }
-
-    private static string RequireSenderName(string senderName)
-    {
-        if (string.IsNullOrWhiteSpace(senderName))
-            throw new ArgumentException("Chat sender name cannot be empty.", nameof(senderName));
-        return senderName;
     }
 
     private static long RequirePeerId(long peerId)

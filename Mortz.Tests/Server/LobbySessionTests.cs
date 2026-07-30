@@ -6,10 +6,16 @@ namespace Mortz.Tests.Server;
 
 public class LobbySessionTests
 {
+    private static string Name(long peerId) => $"Player {peerId}";
+
+    private static LobbySession Lobby(bool teams, params long[] peers) =>
+        LobbySession.For(new SortedDictionary<long, string>(
+            peers.ToDictionary(peer => peer, Name)), teams);
+
     [Fact]
     public void LobbyStartsOnlyWhenEveryConnectedPlayerIsReady()
     {
-        LobbySession lobby = LobbySession.For([3, 1]);
+        LobbySession lobby = Lobby(teams: false, 3, 1);
 
         Assert.False(lobby.CanStart);
         Assert.True(lobby.SetReady(1, true));
@@ -23,7 +29,7 @@ public class LobbySessionTests
     [Fact]
     public void RemovingTheOnlyUnreadyPlayerCanStartTheLobby()
     {
-        LobbySession lobby = LobbySession.For([1, 2]);
+        LobbySession lobby = Lobby(teams: false, 1, 2);
         lobby.SetReady(1, true);
 
         lobby.Remove(2);
@@ -34,7 +40,7 @@ public class LobbySessionTests
     [Fact]
     public void EnablingTeamsDealsEveryoneOutBalanced()
     {
-        LobbySession lobby = LobbySession.For([1, 2, 3]);
+        LobbySession lobby = Lobby(teams: false, 1, 2, 3);
 
         Assert.True(lobby.SetTeamsEnabled(true));
 
@@ -45,7 +51,7 @@ public class LobbySessionTests
     [Fact]
     public void TeamToggleWithoutTransitionChangesNothing()
     {
-        LobbySession lobby = LobbySession.For([1, 2]);
+        LobbySession lobby = Lobby(teams: false, 1, 2);
 
         Assert.False(lobby.SetTeamsEnabled(false));
         Assert.True(lobby.SetTeamsEnabled(true));
@@ -55,11 +61,11 @@ public class LobbySessionTests
     [Fact]
     public void JoinersLandOnTheSmallestTeamAndLeaversReshuffleNobody()
     {
-        LobbySession lobby = LobbySession.For([1, 2, 3], teamsEnabled: true);
+        LobbySession lobby = Lobby(teams: true, 1, 2, 3);
 
         lobby.Remove(1); // blue loses a member, leaving 3 alone on it
-        lobby.Add(4);    // ties break to blue, so it fills back up
-        lobby.Add(5);    // blue now outnumbers, so 5 lands on red
+        lobby.Add(4, Name(4));    // ties break to blue, so it fills back up
+        lobby.Add(5, Name(5));    // blue now outnumbers, so 5 lands on red
 
         Assert.Equal<Team?>([Team.RED, Team.BLUE, Team.BLUE, Team.RED],
             lobby.Players.Select(player => player.Team));
@@ -69,7 +75,7 @@ public class LobbySessionTests
     [Fact]
     public void DisablingTeamsClearsAssignmentsAndReenablingDealsFresh()
     {
-        LobbySession lobby = LobbySession.For([1, 2], teamsEnabled: true);
+        LobbySession lobby = Lobby(teams: true, 1, 2);
 
         Assert.True(lobby.SetTeamsEnabled(false));
         Assert.All(lobby.Players, player => Assert.Null(player.Team));
@@ -82,7 +88,7 @@ public class LobbySessionTests
     [Fact]
     public void ReadyStatePersistsThroughTeamToggles()
     {
-        LobbySession lobby = LobbySession.For([1, 2]);
+        LobbySession lobby = Lobby(teams: false, 1, 2);
         lobby.SetReady(1, true);
 
         lobby.SetTeamsEnabled(true);
@@ -94,7 +100,7 @@ public class LobbySessionTests
     [Fact]
     public void PlayersJumpOnlyToTeamsWithAFreeSlot()
     {
-        LobbySession lobby = LobbySession.For([1, 2, 3], teamsEnabled: true);
+        LobbySession lobby = Lobby(teams: true, 1, 2, 3);
         // Teams start blue/red/blue; capacity is 2 per side.
 
         Assert.True(lobby.TrySetTeam(1, Team.RED));  // red had a free slot
@@ -109,7 +115,7 @@ public class LobbySessionTests
     [Fact]
     public void TeamJumpsNeedTeamsEnabled()
     {
-        LobbySession lobby = LobbySession.For([1, 2]);
+        LobbySession lobby = Lobby(teams: false, 1, 2);
 
         Assert.False(lobby.TrySetTeam(1, Team.RED));
     }
@@ -117,7 +123,7 @@ public class LobbySessionTests
     [Fact]
     public void MutualSwapOffersTradeTeamsAndKeepReadyState()
     {
-        LobbySession lobby = LobbySession.For([1, 2], teamsEnabled: true); // 1/2
+        LobbySession lobby = Lobby(teams: true, 1, 2); // 1/2
         lobby.SetReady(1, true);
 
         Assert.Equal(SwapResult.OFFERED, lobby.RequestSwap(1, 2));
@@ -133,7 +139,7 @@ public class LobbySessionTests
     [Fact]
     public void RepeatingAnOfferCancelsIt()
     {
-        LobbySession lobby = LobbySession.For([1, 2], teamsEnabled: true);
+        LobbySession lobby = Lobby(teams: true, 1, 2);
 
         Assert.Equal(SwapResult.OFFERED, lobby.RequestSwap(1, 2));
         Assert.Equal(SwapResult.CANCELLED, lobby.RequestSwap(1, 2));
@@ -146,20 +152,20 @@ public class LobbySessionTests
     [Fact]
     public void SwapOffersNeedACrossTeamPair()
     {
-        LobbySession lobby = LobbySession.For([1, 2, 3], teamsEnabled: true); // 1/2/1
+        LobbySession lobby = Lobby(teams: true, 1, 2, 3); // 1/2/1
 
         Assert.Equal(SwapResult.NONE, lobby.RequestSwap(1, 3)); // same team
         Assert.Equal(SwapResult.NONE, lobby.RequestSwap(1, 1));
         Assert.Equal(SwapResult.NONE, lobby.RequestSwap(1, 99));
 
-        LobbySession teamless = LobbySession.For([1, 2]);
+        LobbySession teamless = Lobby(teams: false, 1, 2);
         Assert.Equal(SwapResult.NONE, teamless.RequestSwap(1, 2));
     }
 
     [Fact]
     public void OffersDieWhenTheirPairStopsSpanningTeams()
     {
-        LobbySession lobby = LobbySession.For([1, 2, 3], teamsEnabled: true); // 1/2/1
+        LobbySession lobby = Lobby(teams: true, 1, 2, 3); // 1/2/1
         lobby.RequestSwap(1, 2);
         lobby.RequestSwap(3, 2);
 
@@ -173,7 +179,7 @@ public class LobbySessionTests
     [Fact]
     public void TeamToggleWipesAllOffers()
     {
-        LobbySession lobby = LobbySession.For([1, 2], teamsEnabled: true);
+        LobbySession lobby = Lobby(teams: true, 1, 2);
         lobby.RequestSwap(1, 2);
 
         lobby.SetTeamsEnabled(false);
@@ -189,7 +195,7 @@ public class LobbySessionTests
 
         Assert.False(lobby.SetTeamsEnabled(true));
 
-        lobby.Add(1);
+        lobby.Add(1, Name(1));
         Assert.Equal<Team?>(Team.BLUE, lobby.Players[0].Team);
     }
 }

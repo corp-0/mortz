@@ -22,7 +22,6 @@ public class ChatLineTests
     public void DomainLinesRejectInvalidValuesAtConstruction()
     {
         Assert.Throws<ArgumentException>(() => new ChatLine.Player(1, "Alice", " "));
-        Assert.Throws<ArgumentException>(() => new ChatLine.Player(1, "", "hello"));
         Assert.Throws<ArgumentOutOfRangeException>(
             () => new ChatLine.Player(0, "Alice", "hello"));
         Assert.Throws<ArgumentOutOfRangeException>(

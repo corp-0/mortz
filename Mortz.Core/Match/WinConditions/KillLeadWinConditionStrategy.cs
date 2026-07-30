@@ -16,7 +16,7 @@ public sealed class KillLeadWinConditionStrategy : WinConditionStrategy
     private static Scoreboard.MatchStanding TeamStanding(WinConditionContext context)
     {
         LeadRace race = new(context.Rules.KillLeadTarget);
-        foreach (Team team in Teams.ALL)
+        foreach (Team team in Teams.All)
         {
             race.Offer(new TeamVictor(team), context.TeamKills[team]);
         }

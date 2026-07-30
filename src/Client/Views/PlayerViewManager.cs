@@ -3,8 +3,8 @@ using Chickensoft.Introspection;
 using Godot;
 using Mortz.Client.Audio;
 using Mortz.Client.Chat;
+using Mortz.Client.Roster;
 using Mortz.Core.Match;
-using Mortz.Core.Net;
 using Mortz.Core.Net.Messages;
 using Mortz.Core.Sim;
 using Mortz.Core.Sim.Modifiers;
@@ -30,14 +30,14 @@ public partial class PlayerViewManager : Node2D
     [Dependency]
     private ISfx Sfx => this.DependOn<ISfx>();
 
+    [Dependency]
+    private MatchRoster Roster => this.DependOn<MatchRoster>();
+
     /// <summary>A remote player's rendered feet position this frame (lag probe tap).</summary>
     public event Action<Vector2>? RemotePlaced;
 
     private readonly Dictionary<int, PlayerView> _views = new();
     private readonly HashSet<int> _placed = new();
-    private readonly Dictionary<int, string> _names = new();
-    private readonly Dictionary<int, byte> _skins = new();
-    private readonly Dictionary<int, Team?> _teams = new();
     private readonly HashSet<int> _typing = new();
     private bool _replayActive;
 
@@ -57,16 +57,16 @@ public partial class PlayerViewManager : Node2D
 
     public override void _Notification(int what) => this.Notify(what);
 
-    public void OnReady()
+    public void OnResolved()
     {
-        RosterMsg.Received += OnRoster;
+        Roster.Changed += OnRosterChanged;
         PlayerModifiersMsg.Received += OnPlayerModifiers;
         TypingStateMsg.Received += OnTypingState;
     }
 
     public void OnExitTree()
     {
-        RosterMsg.Received -= OnRoster;
+        Roster.Changed -= OnRosterChanged;
         PlayerModifiersMsg.Received -= OnPlayerModifiers;
         TypingStateMsg.Received -= OnTypingState;
     }
@@ -105,24 +105,13 @@ public partial class PlayerViewManager : Node2D
 
     // Views and rosters race (a view can spawn before the first roster, and
     // rosters keep coming as players join/leave), so names apply in both
-    // directions: at spawn from the dict, and to live views on every roster.
-    private void OnRoster(RosterMsg msg)
+    // directions: at spawn, and to live views on every roster change.
+    private void OnRosterChanged()
     {
-        _names.Clear();
-        _skins.Clear();
-        _teams.Clear();
-        int count = Math.Min(msg.PeerIds.Length, Math.Min(msg.Names.Length, msg.Skins.Length));
-        for (int i = 0; i < count; i++)
-        {
-            _names[(int)msg.PeerIds[i]] = msg.Names[i];
-            _skins[(int)msg.PeerIds[i]] = msg.Skins[i];
-            if (i < msg.Teams.Length)
-                _teams[(int)msg.PeerIds[i]] = TeamWire.FromByte(msg.Teams[i]);
-        }
         foreach ((int peerId, PlayerView view) in _views)
         {
-            view.SetPlayerName(_names.GetValueOrDefault(peerId, ""));
-            view.SetTeam(_teams.GetValueOrDefault(peerId));
+            view.SetPlayerName(Roster.NameOf(peerId));
+            view.SetTeam(Roster.TeamOf(peerId));
         }
     }
 
@@ -140,8 +129,9 @@ public partial class PlayerViewManager : Node2D
     {
         _placed.Add(peerId);
         bool isLocal = peerId == Network.LocalPeerId;
-        if (_skins.TryGetValue(peerId, out byte rosterSkin))
-            state = state with { Skin = rosterSkin };
+        // Snapshots carry no skin on the slot-id path, so the roster is the
+        // only source.
+        state = state with { Skin = Roster.SkinOf(peerId) };
         if (!isLocal)
             RemotePlaced?.Invoke(state.Feet);
         if (!_views.TryGetValue(peerId, out PlayerView? view))
@@ -151,8 +141,8 @@ public partial class PlayerViewManager : Node2D
             view.Configure(_playerStats.GetValueOrDefault(peerId, _stats));
             view.SetIsLocal(isLocal);
             view.SetReplayActive(_replayActive);
-            view.SetPlayerName(_names.GetValueOrDefault(peerId, ""));
-            view.SetTeam(_teams.GetValueOrDefault(peerId));
+            view.SetPlayerName(Roster.NameOf(peerId));
+            view.SetTeam(Roster.TeamOf(peerId));
             if (!isLocal)
                 view.SetTyping(_typing.Contains(peerId));
             AddChild(view);

@@ -1,5 +1,5 @@
 using Godot;
-using Mortz.Core.Net.Messages;
+using Mortz.Core.Net;
 
 namespace Mortz.Client.Stats;
 
@@ -18,29 +18,32 @@ public partial class ClientStats : Node
 
     public override void _Ready()
     {
-        PingUpdateMsg.Received += OnPingUpdate;
-        SessionWinsMsg.Received += OnSessionWins;
+        SessionStatsProtocol.PingsReceived += OnPings;
+        SessionStatsProtocol.WinsReceived += OnWins;
     }
 
     public override void _ExitTree()
     {
-        PingUpdateMsg.Received -= OnPingUpdate;
-        SessionWinsMsg.Received -= OnSessionWins;
+        SessionStatsProtocol.PingsReceived -= OnPings;
+        SessionStatsProtocol.WinsReceived -= OnWins;
     }
 
-    private void OnPingUpdate(PingUpdateMsg message) =>
-        Replace(_pings, message.PeerIds, message.PingsMs);
-
-    private void OnSessionWins(SessionWinsMsg message) =>
-        Replace(_wins, message.PeerIds, message.Wins);
-
-    private void Replace(Dictionary<long, int> table, long[] peerIds, int[] values)
+    private void OnPings(IReadOnlyList<PeerPing> pings)
     {
-        table.Clear();
-        int count = Math.Min(peerIds.Length, values.Length);
-        for (int i = 0; i < count; i++)
+        _pings.Clear();
+        foreach (PeerPing ping in pings)
         {
-            table[peerIds[i]] = values[i];
+            _pings[ping.PeerId] = ping.PingMs;
+        }
+        Changed?.Invoke();
+    }
+
+    private void OnWins(IReadOnlyList<PeerWins> wins)
+    {
+        _wins.Clear();
+        foreach (PeerWins win in wins)
+        {
+            _wins[win.PeerId] = win.Wins;
         }
         Changed?.Invoke();
     }

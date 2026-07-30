@@ -62,11 +62,8 @@ public static class ChatProtocol
         switch (Kind: message.MsgKind, message.TextFormat)
         {
             case (ChatMsgKind.PLAYER, ChatTextFormat.MARKDOWN)
-                when ValidPeer(message.SenderId, message.SenderName):
-                line = new ChatLine.Player(
-                    message.SenderId,
-                    message.SenderName,
-                    message.Text);
+                when TrySender(message, out string? playerName):
+                line = new ChatLine.Player(message.SenderId, playerName, message.Text);
                 return true;
             case (ChatMsgKind.SYSTEM, ChatTextFormat.PLAIN)
                 when ValidSystem(message):
@@ -77,17 +74,20 @@ public static class ChatProtocol
                 line = ChatLine.System.FromTrustedBbCode(message.Text);
                 return true;
             case (ChatMsgKind.ROLL, ChatTextFormat.PLAIN)
-                when ValidPeer(message.SenderId, message.SenderName) &&
+                when TrySender(message, out string? rollerName) &&
                      DiceRoll.TryParse(message.Text, out int value):
-                line = new ChatLine.Roll(message.SenderId, message.SenderName, value);
+                line = new ChatLine.Roll(message.SenderId, rollerName, value);
                 return true;
             default:
                 return false;
         }
     }
 
-    private static bool ValidPeer(long senderId, string senderName) =>
-        senderId > 0 && !string.IsNullOrWhiteSpace(senderName);
+    private static bool TrySender(ChatMsg message, [NotNullWhen(true)] out string? name)
+    {
+        name = message.SenderName;
+        return message.SenderId > 0;
+    }
 
     private static bool ValidSystem(ChatMsg message) =>
         message is { SenderId: 0, SenderName: "Server" };

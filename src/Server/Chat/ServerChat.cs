@@ -52,7 +52,7 @@ public partial class ServerChat : Node, IServerAdminAuthorizer
             return;
         _admin = new AdminAuthenticator(Config.AdminPassword);
         Network.PeerJoined += OnPeerJoined;
-        Network.PeerLeft += OnPeerLeft;
+        Session.PlayerLeft += OnPeerLeft;
         ChatSendMsg.Received += OnChatSend;
         RollRequestMsg.Received += OnRollRequest;
         TypingMsg.Received += OnTyping;
@@ -67,7 +67,7 @@ public partial class ServerChat : Node, IServerAdminAuthorizer
         if (!_subscribed)
             return;
         Network.PeerJoined -= OnPeerJoined;
-        Network.PeerLeft -= OnPeerLeft;
+        Session.PlayerLeft -= OnPeerLeft;
         ChatSendMsg.Received -= OnChatSend;
         RollRequestMsg.Received -= OnRollRequest;
         TypingMsg.Received -= OnTyping;
@@ -91,14 +91,14 @@ public partial class ServerChat : Node, IServerAdminAuthorizer
         ChatProtocol.Broadcast(new ChatLine.System(joinedText));
     }
 
-    private void OnPeerLeft(long peerId)
+    private void OnPeerLeft(long peerId, string playerName)
     {
         _chatPolicy.Remove(peerId);
         _admin.Remove(peerId);
         if (_typing.Remove(peerId))
             new TypingStateMsg(peerId, false).Broadcast();
         RichText leftText = new RichText()
-            .Add(Session.PlayerName(peerId), new Style().Bold())
+            .Add(playerName, new Style().Bold())
             .Add(" left the game.");
         ChatProtocol.Broadcast(new ChatLine.System(leftText));
     }

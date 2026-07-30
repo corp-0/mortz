@@ -10,14 +10,13 @@ internal sealed class PlayerDirectory
 
     public int Count => _names.Count;
     public IEnumerable<long> PeerIds => _names.Keys;
+    public IReadOnlyDictionary<long, string> Named => _names;
 
     public bool Contains(long peerId) => _names.ContainsKey(peerId);
 
     public string Add(long peerId, string requestedName)
     {
-        string name = PlayerNameSanitizer.Sanitize(requestedName);
-        if (name.Length == 0)
-            name = $"Player {peerId}";
+        string name = ForRequested(requestedName, peerId);
         _names[peerId] = name;
         return name;
     }
@@ -25,5 +24,11 @@ internal sealed class PlayerDirectory
     public void Remove(long peerId) => _names.Remove(peerId);
 
     public string Name(long peerId) =>
-        _names.TryGetValue(peerId, out string? name) ? name : peerId.ToString();
+        _names.TryGetValue(peerId, out string? name) ? name : $"<unknown {peerId}>";
+
+    private static string ForRequested(string? requested, long peerId)
+    {
+        string sanitized = PlayerNameSanitizer.Sanitize(requested);
+        return sanitized.Length > 0 ? sanitized : $"Player {peerId}";
+    }
 }

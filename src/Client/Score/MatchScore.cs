@@ -1,5 +1,6 @@
 using Godot;
 using Mortz.Core.Match;
+using Mortz.Core.Net;
 using Mortz.Core.Net.Messages;
 
 namespace Mortz.Client.Score;
@@ -22,28 +23,26 @@ public partial class MatchScore : Node
 
     public override void _Ready()
     {
-        ScoreSyncMsg.Received += OnScoreSync;
+        ScoreProtocol.Received += OnScoreSync;
         EliminationMsg.Received += OnElimination;
     }
 
     public override void _ExitTree()
     {
-        ScoreSyncMsg.Received -= OnScoreSync;
+        ScoreProtocol.Received -= OnScoreSync;
         EliminationMsg.Received -= OnElimination;
     }
 
-    private void OnScoreSync(ScoreSyncMsg message)
+    private void OnScoreSync(ScoreSync sync)
     {
         _kills.Clear();
         _deaths.Clear();
-        int count = Math.Min(message.PeerIds.Length,
-            Math.Min(message.Kills.Length, message.Deaths.Length));
-        for (int i = 0; i < count; i++)
+        foreach (ScoreRow row in sync.Rows)
         {
-            _kills[message.PeerIds[i]] = message.Kills[i];
-            _deaths[message.PeerIds[i]] = message.Deaths[i];
+            _kills[row.PeerId] = row.Kills;
+            _deaths[row.PeerId] = row.Deaths;
         }
-        _teamKills = new TeamKills(message.BlueKills, message.RedKills);
+        _teamKills = sync.TeamKills;
         Changed?.Invoke();
     }
 

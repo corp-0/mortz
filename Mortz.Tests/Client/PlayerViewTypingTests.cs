@@ -3,6 +3,7 @@ using Godot;
 using Mortz.Client.Audio;
 using Mortz.Client.Chat;
 using Mortz.Client.Match;
+using Mortz.Client.Roster;
 using Mortz.Client.Views;
 using Mortz.Core.Match;
 using Mortz.Core.Net.Messages;
@@ -21,6 +22,7 @@ public class PlayerViewTypingTests : NodeServiceTest
         _manager = TakeManagerFromGameViewScene();
         _manager.FakeDependency<INetwork>(new FakeNetwork { LocalPeerId = 1 });
         _manager.FakeDependency<ISfx>(new NullSfx());
+        _manager.FakeDependency(Host(new MatchRoster()));
         Host(_manager);
         _manager.Configure(new Physics());
     }

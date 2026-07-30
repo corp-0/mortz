@@ -6,7 +6,7 @@ public sealed class KillsWinConditionStrategy : WinConditionStrategy
     {
         if (context.Rules.Teams)
         {
-            foreach (Team team in Teams.ALL)
+            foreach (Team team in Teams.All)
             {
                 if (context.TeamKills[team] >= context.Rules.KillTarget)
                     return new TeamVictor(team);
@@ -28,7 +28,7 @@ public sealed class KillsWinConditionStrategy : WinConditionStrategy
         Victor? leader = null;
         if (context.Rules.Teams)
         {
-            foreach (Team team in Teams.ALL)
+            foreach (Team team in Teams.All)
             {
                 if (context.TeamKills[team] <= best)
                     continue;

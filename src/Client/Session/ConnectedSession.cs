@@ -16,19 +16,19 @@ public partial class ConnectedSession : Node,
     IProvide<MatchSetup>,
     IProvide<ClientStats>,
     IProvide<MatchScore>,
-    IProvide<ClientRoster>,
+    IProvide<MatchRoster>,
     IProvide<ClientAdmin>
 {
     [Export] private MatchSetup _matchSetup = null!;
     [Export] private ClientStats _clientStats = null!;
     [Export] private MatchScore _matchScore = null!;
-    [Export] private ClientRoster _clientRoster = null!;
+    [Export] private MatchRoster _matchRoster = null!;
     [Export] private ClientAdmin _clientAdmin = null!;
 
     MatchSetup IProvide<MatchSetup>.Value() => _matchSetup;
     ClientStats IProvide<ClientStats>.Value() => _clientStats;
     MatchScore IProvide<MatchScore>.Value() => _matchScore;
-    ClientRoster IProvide<ClientRoster>.Value() => _clientRoster;
+    MatchRoster IProvide<MatchRoster>.Value() => _matchRoster;
     ClientAdmin IProvide<ClientAdmin>.Value() => _clientAdmin;
 
     public override void _Notification(int what) => this.Notify(what);

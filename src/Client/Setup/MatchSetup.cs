@@ -5,18 +5,10 @@ using Mortz.Core.Net.Messages;
 
 namespace Mortz.Client.Setup;
 
-/// <summary>
-/// The canonical match setup as the server knows it: parsed rules, selected
-/// map and catalog, lobby roster with teams. UI reads values here and
-/// re-renders on the events; events fire on actual value transitions, never
-/// once per message. The Welcome config keeps Rules honest for a late joiner,
-/// and every lobby broadcast triggers a settings request, closing the
-/// snapshot race on lobby entry.
-/// </summary>
+/// <summary>Server-owned lobby state for the UI to read. Events fire when a
+/// value changes, not once per message.</summary>
 public partial class MatchSetup : Node
 {
-    private readonly List<ContentOption> _mapOptions = [];
-    private readonly List<ContentOption> _modeOptions = [];
     private readonly List<LobbyMember> _members = [];
     private readonly List<SwapOffer> _swapOffers = [];
     private byte[] _configBytes;
@@ -35,22 +27,14 @@ public partial class MatchSetup : Node
     /// <summary>A pending swap offer appeared, resolved, or expired.</summary>
     public event Action? SwapOffersChanged;
 
-    /// <summary>False until the first valid server settings arrive.</summary>
-    public bool HasServerState { get; private set; }
+    /// <summary>Null until the first valid server settings arrive; a welcome
+    /// carries no catalogs, so it never produces one.</summary>
+    public LobbySelection? Selection { get; private set; }
 
     public MatchConfig Config { get; private set; } = new();
 
-    public string MapId { get; private set; } = "";
-    public string MapHash { get; private set; } = "";
-    public IReadOnlyList<ContentOption> MapOptions => _mapOptions;
-
-    /// <summary>The mode whose identity keys currently match, "" when none do.</summary>
-    public string ModeId { get; private set; } = "";
-
-    public IReadOnlyList<ContentOption> ModeOptions => _modeOptions;
-
-    /// <summary>Empty while the last received server settings were valid.</summary>
-    public string SettingsError { get; private set; } = "";
+    /// <summary>Null while the last received server settings were valid.</summary>
+    public string? SettingsError { get; private set; }
 
     public IReadOnlyList<LobbyMember> Members => _members;
     public IReadOnlyList<SwapOffer> SwapOffers => _swapOffers;
@@ -61,96 +45,45 @@ public partial class MatchSetup : Node
 
     public override void _Ready()
     {
-        LobbySettingsMsg.Received += ApplySettings;
-        LobbyStateMsg.Received += OnLobbyState;
+        LobbySettingsProtocol.Received += ApplySettings;
+        LobbySettingsProtocol.Rejected += OnSettingsRejected;
+        RosterProtocol.LobbyRosterReceived += OnLobbyRoster;
         WelcomeMsg.Received += ApplyWelcome;
     }
 
     public override void _ExitTree()
     {
-        LobbySettingsMsg.Received -= ApplySettings;
-        LobbyStateMsg.Received -= OnLobbyState;
+        LobbySettingsProtocol.Received -= ApplySettings;
+        LobbySettingsProtocol.Rejected -= OnSettingsRejected;
+        RosterProtocol.LobbyRosterReceived -= OnLobbyRoster;
         WelcomeMsg.Received -= ApplyWelcome;
     }
 
-    private void OnLobbyState(LobbyStateMsg message)
+    private void OnLobbyRoster(LobbyRoster roster)
     {
-        ApplyLobbyState(message);
+        ApplyMembers(roster.Members);
+        ApplyOffers(roster.Offers);
         new LobbySettingsRequestMsg().SendToServer();
     }
 
-    private void ApplySettings(LobbySettingsMsg message)
+    private void ApplySettings(LobbySettings settings)
     {
-        if (message.MapIds.Length != message.MapNames.Length ||
-            message.MapIds.Length > NetConfig.MAX_LOBBY_MAPS)
-        {
-            SetError("Server sent an invalid map catalog.");
-            return;
-        }
-        if (message.ModeIds.Length != message.ModeNames.Length ||
-            message.ModeIds.Length > NetConfig.MAX_LOBBY_MODES)
-        {
-            SetError("Server sent an invalid mode catalog.");
-            return;
-        }
-
-        MatchConfig config;
-        try
-        {
-            config = MatchConfig.FromBytes(message.Config);
-        }
-        catch (Exception exception) when (exception is IOException or InvalidDataException)
-        {
-            SetError("Server sent invalid match settings.");
-            return;
-        }
-
-        bool settingsChanged = !HasServerState || SettingsError != "" ||
-                               MapId != message.MapId || MapHash != message.MapHash ||
-                               ModeId != message.ModeId ||
-                               CatalogChanged(_mapOptions, message.MapIds, message.MapNames) ||
-                               CatalogChanged(_modeOptions, message.ModeIds, message.ModeNames);
-        HasServerState = true;
-        SettingsError = "";
-        MapId = message.MapId;
-        MapHash = message.MapHash;
-        ModeId = message.ModeId;
-        _mapOptions.Clear();
-        for (int i = 0; i < message.MapIds.Length; i++)
-        {
-            _mapOptions.Add(new ContentOption(message.MapIds[i], message.MapNames[i]));
-        }
-        _modeOptions.Clear();
-        for (int i = 0; i < message.ModeIds.Length; i++)
-        {
-            _modeOptions.Add(new ContentOption(message.ModeIds[i], message.ModeNames[i]));
-        }
-        ApplyConfig(config, settingsChanged);
+        // Deconstructed so a new LobbySettings member breaks this line instead
+        // of slipping past change detection.
+        (LobbySelection selection, MatchConfig config) = settings;
+        bool selectionChanged = SettingsError != null || Selection != selection;
+        SettingsError = null;
+        Selection = selection;
+        ApplyConfig(config, selectionChanged);
     }
 
-    private void ApplyLobbyState(LobbyStateMsg message)
+    private void OnSettingsRejected(LobbySettingsRejectReason reason) => SetError(reason switch
     {
-        int count = Math.Min(message.PeerIds.Length,
-            Math.Min(message.Names.Length, message.ReadyFlags.Length));
-        LobbyMember[] members = new LobbyMember[count];
-        for (int i = 0; i < count; i++)
-        {
-            Team? team = i < message.Teams.Length
-                ? TeamWire.FromByte(message.Teams[i])
-                : null;
-            members[i] = new LobbyMember(message.PeerIds[i], message.Names[i],
-                message.ReadyFlags[i] != 0, team);
-        }
-        ApplyMembers(members);
-
-        int offerCount = Math.Min(message.SwapFrom.Length, message.SwapTo.Length);
-        SwapOffer[] offers = new SwapOffer[offerCount];
-        for (int i = 0; i < offerCount; i++)
-        {
-            offers[i] = new SwapOffer(message.SwapFrom[i], message.SwapTo[i]);
-        }
-        ApplyOffers(offers);
-    }
+        LobbySettingsRejectReason.MAP_CATALOG => "Server sent an invalid map catalog.",
+        LobbySettingsRejectReason.MODE_CATALOG => "Server sent an invalid mode catalog.",
+        LobbySettingsRejectReason.CONFIG => "Server sent invalid match settings.",
+        _ => throw new ArgumentOutOfRangeException(nameof(reason)),
+    });
 
     private void ApplyOffers(IReadOnlyList<SwapOffer> offers)
     {
@@ -161,8 +94,9 @@ public partial class MatchSetup : Node
         SwapOffersChanged?.Invoke();
     }
 
-    /// <summary>Mid-match canonical rules and map for players who never saw
-    /// the lobby broadcast; the catalog stays whatever it was.</summary>
+    /// <summary>Mid-match rules for a player who never saw a lobby broadcast.
+    /// It carries no catalogs, so it sets no Selection; the match screen gets
+    /// its map from ClientMatchBootstrap.</summary>
     private void ApplyWelcome(WelcomeMsg message)
     {
         MatchConfig config;
@@ -175,12 +109,7 @@ public partial class MatchSetup : Node
             return; // the session controller rejects the welcome itself
         }
 
-        bool settingsChanged = !HasServerState ||
-                               MapId != message.MapId || MapHash != message.MapHash;
-        HasServerState = true;
-        MapId = message.MapId;
-        MapHash = message.MapHash;
-        ApplyConfig(config, settingsChanged);
+        ApplyConfig(config, raiseSettings: false);
     }
 
     private void ApplyConfig(MatchConfig config, bool raiseSettings)
@@ -213,7 +142,7 @@ public partial class MatchSetup : Node
             TeamsChanged?.Invoke();
     }
 
-    private static LobbyMember WithoutTeam(LobbyMember member) => member with { Team = null };
+    private static LobbyMember WithoutTeam(LobbyMember member) => member.OnTeam(null);
 
     /// <summary>Only real assignments count, so joins and leaves in a
     /// teamless lobby never read as team movement.</summary>
@@ -224,18 +153,6 @@ public partial class MatchSetup : Node
             if (member.Team is Team team)
                 yield return new TeamAssignment(member.PeerId, team);
         }
-    }
-
-    private static bool CatalogChanged(List<ContentOption> options, string[] ids, string[] names)
-    {
-        if (options.Count != ids.Length)
-            return true;
-        for (int i = 0; i < ids.Length; i++)
-        {
-            if (options[i].Id != ids[i] || options[i].Name != names[i])
-                return true;
-        }
-        return false;
     }
 
     private void SetError(string error)

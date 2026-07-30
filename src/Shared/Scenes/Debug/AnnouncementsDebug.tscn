@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://oagrjsoi773j"]
 
 [ext_resource type="Script" uid="uid://d2mvuyqfyv0a7" path="res://src/Client/Debug/AnnouncementsDebug.cs" id="1_host"]
-[ext_resource type="Script" uid="uid://ooyj4qa2sesu" path="res://src/Client/Roster/ClientRoster.cs" id="2_roster"]
+[ext_resource type="Script" uid="uid://ooyj4qa2sesu" path="res://src/Client/Roster/MatchRoster.cs" id="2_roster"]
 [ext_resource type="Script" uid="uid://d2se7ahca8huk" path="res://src/Client/Admin/ClientAdmin.cs" id="3_admin"]
 [ext_resource type="Script" uid="uid://b7xyv1173ixe1" path="res://src/Client/Chat/ClientChat.cs" id="4_chat"]
 [ext_resource type="Script" uid="uid://b46f55d4mmx7l" path="res://src/Client/Audio/Sfx.cs" id="5_sfx"]
@@ -19,12 +19,12 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_host")
-_roster = NodePath("ClientRoster")
+_roster = NodePath("MatchRoster")
 _admin = NodePath("ClientAdmin")
 _chat = NodePath("ClientChat")
 _sfx = NodePath("Sfx")
 
-[node name="ClientRoster" type="Node" parent="." unique_id=674686940]
+[node name="MatchRoster" type="Node" parent="." unique_id=674686940]
 script = ExtResource("2_roster")
 
 [node name="ClientAdmin" type="Node" parent="." unique_id=2097850461]

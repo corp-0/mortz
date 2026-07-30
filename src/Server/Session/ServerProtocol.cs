@@ -37,54 +37,42 @@ internal sealed class ServerProtocol
         _printNetStats = printNetStats;
     }
 
-    public void BroadcastLobby(LobbySession lobby)
-    {
-        IReadOnlyList<LobbyPlayer> players = lobby.Players;
-        IReadOnlyList<SwapOffer> offers = lobby.SwapOffers;
-        new LobbyStateMsg(
-            players.Select(player => player.PeerId).ToArray(),
-            players.Select(player => _players.Name(player.PeerId)).ToArray(),
-            players.Select(player => player.Ready ? (byte)1 : (byte)0).ToArray(),
-            players.Select(player => TeamWire.ToByte(player.Team)).ToArray(),
-            offers.Select(offer => offer.From).ToArray(),
-            offers.Select(offer => offer.To).ToArray())
-            .Broadcast();
-    }
+    public void BroadcastLobby(LobbySession lobby) =>
+        RosterProtocol.BroadcastLobbyRoster(new LobbyRoster(lobby.Players, lobby.SwapOffers));
 
     public void BroadcastPings()
     {
-        (long PeerId, int PingMs)[] pings = _network.PeerPingsMs();
+        PeerPing[] pings = _network.PeerPingsMs()
+            .Select(ping => new PeerPing(ping.PeerId, ping.PingMs))
+            .ToArray();
         if (pings.Length == 0)
             return;
-        new PingUpdateMsg(
-            pings.Select(ping => ping.PeerId).ToArray(),
-            pings.Select(ping => ping.PingMs).ToArray())
-            .Broadcast();
+        SessionStatsProtocol.BroadcastPings(pings);
     }
 
-    public void BroadcastWins(WinTracker wins) => WinsMessage(wins).Broadcast();
+    public void BroadcastWins(WinTracker wins) => SessionStatsProtocol.BroadcastWins(Wins(wins));
 
-    public void SendWins(long peerId, WinTracker wins) => WinsMessage(wins).SendTo(peerId);
+    public void SendWins(long peerId, WinTracker wins) =>
+        SessionStatsProtocol.SendWinsTo(peerId, Wins(wins));
 
     public void BroadcastRoster(MatchSession match)
     {
-        long[] peerIds = _players.PeerIds
-            .Where(peerId => match.World.Players.ContainsKey((int)peerId))
-            .ToArray();
-        new RosterMsg(
-            peerIds,
-            peerIds.Select(_players.Name).ToArray(),
-            peerIds.Select(peerId => match.World.Players[(int)peerId].Skin).ToArray(),
-            peerIds.Select(peerId => TeamWire.ToByte(match.World.Players[(int)peerId].Team))
-                .ToArray(),
-            peerIds.Select(peerId => match.World.Players[(int)peerId].NetSlot).ToArray())
-            .Broadcast();
+        List<RosterEntry> entries = [];
+        foreach (long peerId in _players.PeerIds)
+        {
+            if (!match.World.Players.TryGetValue((int)peerId, out PlayerState player))
+                continue;
+            entries.Add(new RosterEntry(peerId, _players.Name(peerId),
+                player.Skin, player.Team, new NetSlot(player.NetSlot)));
+        }
+        RosterSnapshot snapshot = new(entries);
+        RosterProtocol.BroadcastMatchRoster(snapshot);
         // Modifier lists ride with every roster; clients resolve them through
         // the same StatsPipeline, so both sides stay bit-identical.
-        foreach (long peerId in peerIds)
+        foreach (RosterEntry entry in snapshot.Entries)
         {
-            new PlayerModifiersMsg(peerId,
-                ModifierWire.Serialize(match.World.Modifiers((int)peerId))).Broadcast();
+            new PlayerModifiersMsg(entry.PeerId,
+                ModifierWire.Serialize(match.World.Modifiers((int)entry.PeerId))).Broadcast();
         }
     }
 
@@ -259,12 +247,10 @@ internal sealed class ServerProtocol
     private static void SendScores(long peerId, MatchSession match)
     {
         Scoreboard scores = match.Scores;
-        new ScoreSyncMsg(
-            scores.Rows.Keys.Select(id => (long)id).ToArray(),
-            scores.Rows.Values.Select(row => row.Kills).ToArray(),
-            scores.Rows.Values.Select(row => row.Deaths).ToArray(),
-            scores.TeamKills.Blue,
-            scores.TeamKills.Red).SendTo(peerId);
+        ScoreRow[] rows = scores.Rows
+            .Select(pair => new ScoreRow(pair.Key, pair.Value.Kills, pair.Value.Deaths))
+            .ToArray();
+        ScoreProtocol.SendTo(peerId, new ScoreSync(rows, scores.TeamKills));
     }
 
     private void SendLiveMortars(long peerId, MatchSession match)
@@ -281,11 +267,9 @@ internal sealed class ServerProtocol
         }
     }
 
-    private SessionWinsMsg WinsMessage(WinTracker wins)
-    {
-        long[] peerIds = _players.PeerIds.ToArray();
-        return new SessionWinsMsg(peerIds, peerIds.Select(wins.Wins).ToArray());
-    }
+    private PeerWins[] Wins(WinTracker wins) => _players.PeerIds
+        .Select(peerId => new PeerWins(peerId, wins.Wins(peerId)))
+        .ToArray();
 
     private static void BroadcastCarve(Explosion explosion) =>
         new CarveMsg(PackCoordinate(explosion.X), PackCoordinate(explosion.Y),

@@ -14,7 +14,7 @@ namespace Mortz.Client.Announcements;
 public partial class AnnouncementDirector : Node, IAnnouncementDirector
 {
     [Dependency]
-    private ClientRoster Roster => this.DependOn<ClientRoster>();
+    private MatchRoster Roster => this.DependOn<MatchRoster>();
 
     private readonly List<GameEventMsg> _pending = new();
 

@@ -1,38 +1,26 @@
+using Chickensoft.AutoInject;
+using Chickensoft.Introspection;
 using Godot;
+using Mortz.Client.Roster;
 using Mortz.Core.Match;
 using Mortz.Core.Net;
-using Mortz.Core.Net.Messages;
 
 namespace Mortz.Client.Match;
 
 /// <summary>Mode-independent winner banner shown during the victory lap.</summary>
+[Meta(typeof(IAutoNode))]
 public partial class WinnerBanner : Control
 {
     [Export] private Label _winnerLabel = null!;
 
-    private readonly Dictionary<long, string> _names = new();
+    [Dependency]
+    private MatchRoster Roster => this.DependOn<MatchRoster>();
 
-    public override void _Ready()
-    {
-        RosterMsg.Received += OnRoster;
-        MatchProtocol.MatchEnded += OnMatchEnd;
-    }
+    public override void _Notification(int what) => this.Notify(what);
 
-    public override void _ExitTree()
-    {
-        RosterMsg.Received -= OnRoster;
-        MatchProtocol.MatchEnded -= OnMatchEnd;
-    }
+    public void OnResolved() => MatchProtocol.MatchEnded += OnMatchEnd;
 
-    private void OnRoster(RosterMsg msg)
-    {
-        _names.Clear();
-        int count = Math.Min(msg.PeerIds.Length, msg.Names.Length);
-        for (int i = 0; i < count; i++)
-        {
-            _names[msg.PeerIds[i]] = msg.Names[i];
-        }
-    }
+    public void OnExitTree() => MatchProtocol.MatchEnded -= OnMatchEnd;
 
     private void OnMatchEnd(Victor winner)
     {
@@ -43,10 +31,7 @@ public partial class WinnerBanner : Control
     private string Describe(Victor winner) => winner switch
     {
         TeamVictor team => Teams.Name(team.Team),
-        PlayerVictor player => Name(player.PeerId),
+        PlayerVictor player => Roster.NameOf(player.PeerId),
         _ => throw new ArgumentOutOfRangeException(nameof(winner)),
     };
-
-    private new string Name(long peerId) =>
-        _names.TryGetValue(peerId, out string? name) ? name : $"Player {peerId}";
 }

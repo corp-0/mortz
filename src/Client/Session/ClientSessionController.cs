@@ -93,7 +93,7 @@ public partial class ClientSessionController : Node, ISessionExit,
         Network.Connected += OnConnected;
         Network.ConnectionFailed += OnConnectionFailed;
         Network.Disconnected += OnDisconnected;
-        LobbyStateMsg.Received += OnLobbyState;
+        RosterProtocol.LobbyRosterReceived += OnLobbyRoster;
         WelcomeMsg.Received += OnWelcome;
         TerrainChunkMsg.Received += OnTerrainChunk;
         _subscribed = true;
@@ -106,7 +106,7 @@ public partial class ClientSessionController : Node, ISessionExit,
         Network.Connected -= OnConnected;
         Network.ConnectionFailed -= OnConnectionFailed;
         Network.Disconnected -= OnDisconnected;
-        LobbyStateMsg.Received -= OnLobbyState;
+        RosterProtocol.LobbyRosterReceived -= OnLobbyRoster;
         WelcomeMsg.Received -= OnWelcome;
         TerrainChunkMsg.Received -= OnTerrainChunk;
         _subscribed = false;
@@ -159,7 +159,7 @@ public partial class ClientSessionController : Node, ISessionExit,
             new SetReadyMsg(true).SendToServer();
     }
 
-    private void OnLobbyState(LobbyStateMsg message)
+    private void OnLobbyRoster(LobbyRoster roster)
     {
         bool returningFromMatch = _session.Stage is
             ClientSessionStage.LOADING_MATCH or ClientSessionStage.PLAYING;

@@ -1,3 +1,4 @@
+using Mortz.Core.Net;
 using Mortz.Core.Sim;
 
 namespace Mortz.Core.Replication;
@@ -12,8 +13,10 @@ public sealed record Snapshot(int Tick, PlayerState[] Players, MortarState[] Mor
 
     public byte[] SerializeFor(int localPeerId) => SnapshotWire.Serialize(this, localPeerId);
 
-    public static Snapshot Deserialize(byte[] data) => SnapshotWire.Deserialize(data, peersBySlot: null);
+    public static Snapshot Deserialize(byte[] data) => SnapshotWire.Deserialize(data, slots: null);
 
-    public static Snapshot Deserialize(byte[] data, IReadOnlyDictionary<byte, int>? peersBySlot) =>
-        SnapshotWire.Deserialize(data, peersBySlot);
+    /// <summary>Live client path: remote players ride as net slots, so the
+    /// roster resolves them back to peer ids.</summary>
+    public static Snapshot Deserialize(byte[] data, IPeerSlots slots) =>
+        SnapshotWire.Deserialize(data, slots);
 }

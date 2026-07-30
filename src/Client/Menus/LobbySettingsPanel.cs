@@ -7,6 +7,7 @@ using Mortz.Client.Setup;
 using Mortz.Client.Ui;
 using Mortz.Core.Admin;
 using Mortz.Core.Match;
+using Mortz.Core.Net;
 using Mortz.Core.Net.Messages;
 using Mortz.Shared;
 
@@ -27,7 +28,7 @@ public partial class LobbySettingsPanel : PanelContainer
     private MatchConfig _config = new();
     private bool _applyingState;
     // UpdateEditing also runs before Setup resolves.
-    private bool _hasServerState;
+    private LobbySelection? _selection;
     private bool _subscribed;
     private string _previewMapId = "";
     private string _previewMapHash = "";
@@ -68,63 +69,61 @@ public partial class LobbySettingsPanel : PanelContainer
 
     private void OnSetupChanged()
     {
-        _hasServerState = Setup.HasServerState;
-        if (Setup.SettingsError != "")
+        _selection = Setup.Selection;
+        if (Setup.SettingsError is { } error)
         {
-            _mapStatus.Text = Setup.SettingsError;
+            _mapStatus.Text = error;
             return;
         }
-        if (!_hasServerState)
+        if (_selection is not { } selection)
         {
             UpdateEditing(Admin.IsAdmin);
             return;
         }
 
         _config = Setup.CopyConfig();
-        ApplyMapOptions(Setup.MapId, Setup.MapOptions);
-        ApplyModeOptions(Setup.ModeId, Setup.ModeOptions);
+        ApplyMapOptions(selection);
+        ApplyModeOptions(selection);
         _rulesSheet.UpdateModel(_config.Rules);
         _physicsSheet.UpdateModel(_config.Physics);
         UpdateEditing(Admin.IsAdmin);
-        UpdatePreview(Setup.MapId, Setup.MapHash);
+        UpdatePreview(selection);
     }
 
-    private void ApplyMapOptions(string selectedMap, IReadOnlyList<ContentOption> options)
+    private void ApplyMapOptions(LobbySelection selection)
     {
         _applyingState = true;
         _mapPicker.Clear();
         _mapIds.Clear();
         int selected = -1;
-        foreach (ContentOption option in options)
+        foreach (ContentOption option in selection.Maps.Options)
         {
-            if (string.IsNullOrWhiteSpace(option.Id))
-                continue;
-            if (option.Id == selectedMap)
+            if (option.Id == selection.MapId)
                 selected = _mapIds.Count;
             _mapIds.Add(option.Id);
-            _mapPicker.AddItem(string.IsNullOrWhiteSpace(option.Name) ? option.Id : option.Name);
+            _mapPicker.AddItem(option.Name);
         }
         if (selected >= 0)
             _mapPicker.Select(selected);
         _applyingState = false;
     }
 
-    private void ApplyModeOptions(string selectedMode, IReadOnlyList<ContentOption> options)
+    /// <summary>A null mode means no official mode matches the config, which is
+    /// what the disabled Custom item is for.</summary>
+    private void ApplyModeOptions(LobbySelection selection)
     {
         _applyingState = true;
         _modePicker.Clear();
         _modeIds.Clear();
         int selected = -1;
-        foreach (ContentOption option in options)
+        foreach (ContentOption option in selection.Modes.Options)
         {
-            if (string.IsNullOrWhiteSpace(option.Id))
-                continue;
-            if (option.Id == selectedMode)
+            if (option.Id == selection.ModeId)
                 selected = _modeIds.Count;
             _modeIds.Add(option.Id);
-            _modePicker.AddItem(string.IsNullOrWhiteSpace(option.Name) ? option.Id : option.Name);
+            _modePicker.AddItem(option.Name);
         }
-        if (selected < 0)
+        if (selection.ModeId == null)
         {
             selected = _modePicker.ItemCount;
             _modePicker.AddItem("Custom");
@@ -174,23 +173,24 @@ public partial class LobbySettingsPanel : PanelContainer
         }
     }
 
-    private void UpdatePreview(string mapId, string mapHash)
+    private void UpdatePreview(LobbySelection selection)
     {
-        if (_previewMapId == mapId && _previewMapHash == mapHash)
+        if (_previewMapId == selection.MapId && _previewMapHash == selection.MapHash)
             return;
-        _previewMapId = mapId;
-        _previewMapHash = mapHash;
-        MapPackage? map = GameContent.Load()?.LoadMap(mapId);
+        _previewMapId = selection.MapId;
+        _previewMapHash = selection.MapHash;
+        MapPackage? map = GameContent.Load()?.LoadMap(selection.MapId);
         if (map == null)
         {
             _mapPreview.Texture = null;
-            _mapStatus.Text = $"Map '{mapId}' is not installed locally; preview unavailable.";
+            _mapStatus.Text =
+                $"Map '{selection.MapId}' is not installed locally; preview unavailable.";
             return;
         }
 
         Image combined = ComposePreview(map);
         _mapPreview.Texture = ImageTexture.CreateFromImage(combined);
-        string mismatch = StringComparer.Ordinal.Equals(map.Hash, mapHash)
+        string mismatch = StringComparer.Ordinal.Equals(map.Hash, selection.MapHash)
             ? ""
             : ", local package differs from server";
         _mapStatus.Text = $"{map.DisplayName} - {map.Width}x{map.Height} - " +
@@ -201,7 +201,7 @@ public partial class LobbySettingsPanel : PanelContainer
 
     private void UpdateEditing(bool isAdmin)
     {
-        bool canEdit = isAdmin && _hasServerState;
+        bool canEdit = isAdmin && _selection != null;
         _modePicker.Disabled = !canEdit;
         _mapPicker.Disabled = !canEdit;
         _rulesSheet.SetEditable(canEdit);

@@ -4,6 +4,7 @@ using Godot;
 using Mortz.Client.Announcements;
 using Mortz.Client.Chat;
 using Mortz.Client.Replay;
+using Mortz.Client.Roster;
 using Mortz.Client.Views;
 using Mortz.Core.Match;
 using Mortz.Core.Net;
@@ -37,6 +38,9 @@ public partial class GameView : Node2D,
     [Dependency]
     private INetwork Network => this.DependOn<INetwork>();
 
+    [Dependency]
+    private MatchRoster Roster => this.DependOn<MatchRoster>();
+
     IAnnouncementDirector IProvide<IAnnouncementDirector>.Value() => _announcements;
     ClientChat IProvide<ClientChat>.Value() => _chat;
     GameMap IProvide<GameMap>.Value() => _gameMap;
@@ -49,7 +53,6 @@ public partial class GameView : Node2D,
     private readonly SnapshotInterpolator _interpolator = new();
     private GameMap _gameMap = null!;
     private Physics _config = null!;
-    private readonly Dictionary<byte, int> _peersBySlot = new();
 
     public int NewestSnapshotTick => _interpolator.NewestTick;
     public float RenderTick => _interpolator.RenderTick;
@@ -77,7 +80,6 @@ public partial class GameView : Node2D,
     public void OnResolved()
     {
         Network.SnapshotReceived += OnSnapshotReceived;
-        RosterMsg.Received += OnRoster;
         PlayerModifiersMsg.Received += OnPlayerModifiers;
         this.Provide();
     }
@@ -85,7 +87,6 @@ public partial class GameView : Node2D,
     public void OnExitTree()
     {
         Network.SnapshotReceived -= OnSnapshotReceived;
-        RosterMsg.Received -= OnRoster;
         PlayerModifiersMsg.Received -= OnPlayerModifiers;
     }
 
@@ -94,7 +95,7 @@ public partial class GameView : Node2D,
         Snapshot snapshot;
         try
         {
-            snapshot = Snapshot.Deserialize(data, _peersBySlot);
+            snapshot = Snapshot.Deserialize(data, Roster.Table);
         }
         catch (InvalidDataException)
         {
@@ -123,17 +124,6 @@ public partial class GameView : Node2D,
         }
         _hud.Configure(StatsPipeline.Resolve(_config, modifiers));
         _localPlayer.SetModifiers(modifiers);
-    }
-
-    private void OnRoster(RosterMsg msg)
-    {
-        _peersBySlot.Clear();
-        int count = Math.Min(msg.PeerIds.Length, msg.Slots.Length);
-        for (int i = 0; i < count; i++)
-        {
-            if (msg.Slots[i] is > 0 and <= NetConfig.MAX_PLAYERS)
-                _peersBySlot[msg.Slots[i]] = (int)msg.PeerIds[i];
-        }
     }
 
     public override void _Process(double delta)

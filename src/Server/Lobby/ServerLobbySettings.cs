@@ -30,14 +30,12 @@ public interface IServerLobbySettings
 [Meta(typeof(IAutoNode))]
 public partial class ServerLobbySettings : Node, IServerLobbySettings
 {
-    private sealed record MapOption(string Id, string Name);
-
     private sealed record ModeOption(string Id, GameModeManifest Manifest)
     {
         public string Name => Manifest.Name;
     }
 
-    private readonly Dictionary<string, MapOption> _maps = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, ContentOption> _maps = new(StringComparer.Ordinal);
     private readonly List<ModeOption> _modes = [];
     private bool _subscribed;
 
@@ -89,9 +87,10 @@ public partial class ServerLobbySettings : Node, IServerLobbySettings
         _subscribed = false;
     }
 
-    public void SendTo(long peerId) => CreateState().SendTo(peerId);
+    public void SendTo(long peerId) =>
+        LobbySettingsProtocol.Encode(CreateState()).SendTo(peerId);
 
-    public void Broadcast() => CreateState().Broadcast();
+    public void Broadcast() => LobbySettingsProtocol.Encode(CreateState()).Broadcast();
 
     private void OnSettingsRequest(long sender, LobbySettingsRequestMsg message)
     {
@@ -106,7 +105,7 @@ public partial class ServerLobbySettings : Node, IServerLobbySettings
                      .OrderBy(pair => pair.Value.Winner.Manifest.Name, StringComparer.Ordinal)
                      .ThenBy(pair => pair.Key, StringComparer.Ordinal))
         {
-            _maps[id] = new MapOption(id, resolved.Winner.Manifest.Name);
+            _maps[id] = new ContentOption(id, resolved.Winner.Manifest.Name);
         }
         foreach ((string id, ResolvedContent<GameModeManifest> resolved) in catalog.Modes
                      .OrderBy(pair => pair.Value.Winner.Manifest.Name, StringComparer.Ordinal)
@@ -117,7 +116,7 @@ public partial class ServerLobbySettings : Node, IServerLobbySettings
             _modes.Add(new ModeOption(id, manifest));
         }
         if (!_maps.ContainsKey(Map.MapId))
-            _maps[Map.MapId] = new MapOption(Map.MapId, Map.DisplayName);
+            _maps[Map.MapId] = new ContentOption(Map.MapId, Map.DisplayName);
     }
 
     private ModeOption? CurrentMode()
@@ -243,15 +242,15 @@ public partial class ServerLobbySettings : Node, IServerLobbySettings
     private bool CanMutate(long sender) =>
         _subscribed && Session.IsLobby && Session.ContainsPlayer(sender);
 
-    private LobbySettingsMsg CreateState()
+    private LobbySettings CreateState()
     {
-        List<MapOption> options = _maps.Values
+        List<ContentOption> options = _maps.Values
             .OrderBy(option => option.Name, StringComparer.Ordinal)
             .ThenBy(option => option.Id, StringComparer.Ordinal)
             .ToList();
         if (options.Count > NetConfig.MAX_LOBBY_MAPS)
         {
-            MapOption selected = _maps[Map.MapId];
+            ContentOption selected = _maps[Map.MapId];
             options = options.Take(NetConfig.MAX_LOBBY_MAPS - 1)
                 .Append(selected)
                 .DistinctBy(option => option.Id, StringComparer.Ordinal)
@@ -259,14 +258,13 @@ public partial class ServerLobbySettings : Node, IServerLobbySettings
                 .ThenBy(option => option.Id, StringComparer.Ordinal)
                 .ToList();
         }
-        return new LobbySettingsMsg(
-            Map.MapId,
-            Map.Hash,
-            options.Select(option => option.Id).ToArray(),
-            options.Select(option => option.Name).ToArray(),
-            _modes.Select(mode => mode.Id).ToArray(),
-            _modes.Select(mode => mode.Name).ToArray(),
-            CurrentMode()?.Id ?? "",
-            Config.ToBytes());
+        return new LobbySettings(
+            new LobbySelection(
+                Map.MapId,
+                Map.Hash,
+                new LobbyCatalog(options),
+                new LobbyCatalog(_modes.Select(mode => new ContentOption(mode.Id, mode.Name))),
+                CurrentMode()?.Id),
+            Config);
     }
 }

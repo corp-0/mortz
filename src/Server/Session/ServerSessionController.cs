@@ -23,6 +23,9 @@ public interface IServerSession
     int PlayerCount { get; }
     bool ContainsPlayer(long peerId);
     string PlayerName(long peerId);
+
+    /// <summary>Raised while the name is still known, before the directory drops it.</summary>
+    event Action<long, string>? PlayerLeft;
 }
 
 /// <summary>Owns lobby/match state, simulation, and the gameplay wire protocol.</summary>
@@ -53,6 +56,8 @@ public partial class ServerSessionController : Node, IServerSession
     public int PlayerCount => _players.Count;
     public bool ContainsPlayer(long peerId) => _players.Contains(peerId);
     public string PlayerName(long peerId) => _players.Name(peerId);
+
+    public event Action<long, string>? PlayerLeft;
 
     public override void _Notification(int what) => this.Notify(what);
 
@@ -124,7 +129,7 @@ public partial class ServerSessionController : Node, IServerSession
 
         LobbySession lobby = _lobby!;
         lobby.SetTeamsEnabled(LobbySettings.Config.Rules.Teams);
-        lobby.Add(peerId);
+        lobby.Add(peerId, name);
         GD.Print($"[server] player {peerId} '{name}' entered lobby ({lobby.Count} waiting)");
         _protocol.BroadcastLobby(lobby);
         LobbySettings.SendTo(peerId);
@@ -132,6 +137,7 @@ public partial class ServerSessionController : Node, IServerSession
 
     private void OnPeerLeft(long peerId)
     {
+        PlayerLeft?.Invoke(peerId, _players.Name(peerId));
         _players.Remove(peerId);
         _wins.Remove(peerId);
         if (_match is MatchSession match)
@@ -224,9 +230,9 @@ public partial class ServerSessionController : Node, IServerSession
         _match = match;
         _lobby = null;
         GD.Print($"[server] all {lobby.Count} player(s) ready, starting match");
-        foreach (LobbyPlayer player in lobby.Players)
+        foreach (LobbyMember member in lobby.Players)
         {
-            AddToMatch(player.PeerId, match, player.Team);
+            AddToMatch(member.PeerId, match, member.Team);
         }
         _protocol.BroadcastRoster(match);
     }
@@ -257,7 +263,7 @@ public partial class ServerSessionController : Node, IServerSession
 
     private void ReturnToLobby(MatchSession completedMatch)
     {
-        _lobby = LobbySession.For(_players.PeerIds, LobbySettings.Config.Rules.Teams);
+        _lobby = LobbySession.For(_players.Named, LobbySettings.Config.Rules.Teams);
         _match = null;
         GD.Print($"[server] back to lobby ({completedMatch.World.Players.Count} player(s))");
         _protocol.BroadcastLobby(_lobby);

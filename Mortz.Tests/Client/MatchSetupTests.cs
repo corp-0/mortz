@@ -1,6 +1,7 @@
 using Godot;
 using Mortz.Client.Setup;
 using Mortz.Core.Match;
+using Mortz.Core.Net;
 using Mortz.Core.Net.Messages;
 using Mortz.Core.Terrain;
 using Mortz.Net;
@@ -27,11 +28,12 @@ public class MatchSetupTests : NodeServiceTest
 
         Settings(new MatchConfig { Rules = new ModeRules { Teams = true, KillTarget = 5 } }).Broadcast();
 
-        Assert.True(setup.HasServerState);
+        Assert.NotNull(setup.Selection);
         Assert.True(setup.Config.Rules.Teams);
         Assert.Equal(5, setup.Config.Rules.KillTarget);
-        Assert.Equal("castlewars", setup.MapId);
-        Assert.Equal([new ContentOption("castlewars", "Castle Wars")], setup.MapOptions);
+        LobbySelection selection = setup.Selection!;
+        Assert.Equal("castlewars", selection.MapId);
+        Assert.Equal([new ContentOption("castlewars", "Castle Wars")], selection.Maps.Options);
         Assert.Equal((1, 1, 1), (config, teams, settings));
 
         Settings(new MatchConfig { Rules = new ModeRules { Teams = true, KillTarget = 5 } }).Broadcast();
@@ -53,19 +55,39 @@ public class MatchSetupTests : NodeServiceTest
         int settings = 0;
         setup.SettingsChanged += () => settings++;
 
-        Assert.Equal("deathmatch", setup.ModeId);
+        LobbySelection selection = setup.Selection!;
+        Assert.Equal("deathmatch", selection.ModeId);
         Assert.Equal([
             new ContentOption("deathmatch", "Deathmatch"),
             new ContentOption("teamdeathmatch", "Team Deathmatch"),
-        ], setup.ModeOptions);
+        ], selection.Modes.Options);
 
         // same rules, no longer matching a preset server-side
         new LobbySettingsMsg("castlewars", "hash", ["castlewars"], ["Castle Wars"],
             ["deathmatch", "teamdeathmatch"], ["Deathmatch", "Team Deathmatch"],
             "", config.ToBytes()).Broadcast();
 
-        Assert.Equal("", setup.ModeId);
+        Assert.Null(setup.Selection!.ModeId);
         Assert.Equal(1, settings);
+    }
+
+    [Fact]
+    public void ACatalogOnlyChangeRaisesSettings()
+    {
+        MatchSetup setup = Host(new MatchSetup());
+        MatchConfig config = new();
+        new LobbySettingsMsg("castlewars", "hash", ["castlewars"], ["Castle Wars"],
+            ["deathmatch"], ["Deathmatch"], "deathmatch", config.ToBytes()).Broadcast();
+        int settings = 0;
+        setup.SettingsChanged += () => settings++;
+
+        // same map, mode and config, one more map on offer
+        new LobbySettingsMsg("castlewars", "hash", ["castlewars", "arena"],
+            ["Castle Wars", "Arena"], ["deathmatch"], ["Deathmatch"], "deathmatch",
+            config.ToBytes()).Broadcast();
+
+        Assert.Equal(1, settings);
+        Assert.Equal(2, setup.Selection!.Maps.Options.Count);
     }
 
     [Fact]
@@ -93,7 +115,7 @@ public class MatchSetupTests : NodeServiceTest
 
         Assert.Equal("Server sent an invalid map catalog.", setup.SettingsError);
         Assert.Equal(7, setup.Config.Rules.KillTarget);
-        Assert.True(setup.HasServerState);
+        Assert.NotNull(setup.Selection);
         Assert.Equal(1, settings);
 
         new LobbySettingsMsg("x", "h", ["a"], ["A"], [], [], "", [1, 2, 3]).Broadcast();
@@ -101,7 +123,7 @@ public class MatchSetupTests : NodeServiceTest
         Assert.Equal(2, settings);
 
         Settings(new MatchConfig { Rules = new ModeRules { KillTarget = 7 } }).Broadcast();
-        Assert.Equal("", setup.SettingsError);
+        Assert.Null(setup.SettingsError);
         Assert.Equal(3, settings);
     }
 
@@ -150,7 +172,7 @@ public class MatchSetupTests : NodeServiceTest
     }
 
     [Fact]
-    public void WelcomeCarriesTheFrozenRulesForLateJoiners()
+    public void WelcomeCarriesTheFrozenRulesButNoCatalog()
     {
         MatchSetup setup = Host(new MatchSetup());
         int teams = 0;
@@ -159,9 +181,8 @@ public class MatchSetupTests : NodeServiceTest
         new WelcomeMsg("arena", "abc", new MatchConfig { Rules = new ModeRules { Teams = true } }.ToBytes(),
             (byte)TerrainSyncEncoding.CARVE_LOG, 1, 10, 1).SendTo(1);
 
-        Assert.True(setup.HasServerState);
+        Assert.Null(setup.Selection);
         Assert.True(setup.Config.Rules.Teams);
-        Assert.Equal("arena", setup.MapId);
         Assert.Equal(1, teams);
     }
 
@@ -173,6 +194,6 @@ public class MatchSetupTests : NodeServiceTest
 
         Settings(new MatchConfig()).Broadcast();
 
-        Assert.False(setup.HasServerState);
+        Assert.Null(setup.Selection);
     }
 }

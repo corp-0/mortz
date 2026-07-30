@@ -36,7 +36,7 @@ internal static class SnapshotWire
         return stream.ToArray();
     }
 
-    public static Snapshot Deserialize(byte[] data, IReadOnlyDictionary<byte, int>? peersBySlot)
+    public static Snapshot Deserialize(byte[] data, IPeerSlots? slots)
     {
         using MemoryStream stream = new(data, writable: false);
         using BinaryReader reader = new(stream);
@@ -49,7 +49,7 @@ internal static class SnapshotWire
         PlayerState[] players = new PlayerState[count];
         for (int i = 0; i < count; i++)
         {
-            players[i] = ReadPlayer(reader, slotIds, peersBySlot);
+            players[i] = ReadPlayer(reader, slotIds, slots);
         }
         MortarState[] mortars = ReadMortars(reader);
         if (stream.Position != stream.Length)
@@ -110,15 +110,17 @@ internal static class SnapshotWire
             writer.Write(Quantize(player.RopeLength));
     }
 
-    private static PlayerState ReadPlayer(BinaryReader reader, bool slotIds,
-        IReadOnlyDictionary<byte, int>? peersBySlot)
+    private static PlayerState ReadPlayer(BinaryReader reader, bool slotIds, IPeerSlots? slots)
     {
         byte slot = slotIds ? reader.ReadByte() : (byte)0;
         int peerId;
         if (slotIds)
         {
-            if (peersBySlot == null || !peersBySlot.TryGetValue(slot, out peerId))
+            if (!NetSlot.TryFrom(slot, out NetSlot netSlot))
+                throw new InvalidDataException($"Invalid snapshot player slot {slot}.");
+            if (slots?.PeerInSlot(netSlot) is not long resolved)
                 throw new InvalidDataException($"Unknown snapshot player slot {slot}.");
+            peerId = (int)resolved;
         }
         else
             peerId = reader.ReadInt32();

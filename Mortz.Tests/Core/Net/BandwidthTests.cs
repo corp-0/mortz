@@ -20,8 +20,11 @@ public class BandwidthTests
 
         Snapshot snapshot = world.TakeSnapshot(includeMortars: false);
         byte[] data = snapshot.SerializeFor(localPeerId: 1);
-        Dictionary<byte, int> peersBySlot = snapshot.Players.ToDictionary(p => p.NetSlot, p => p.PeerId);
-        Snapshot restored = Snapshot.Deserialize(data, peersBySlot);
+        RosterSnapshot roster = new([.. snapshot.Players
+            .Select(p => new RosterEntry(p.PeerId, $"Player {p.PeerId}",
+                p.Skin, p.Team, new NetSlot(p.NetSlot)))
+        ]);
+        Snapshot restored = Snapshot.Deserialize(data, roster);
 
         // 4 tick + 1 count/format + 29 local + 7*14 remote + 2 mortar count.
         Assert.Equal(134, data.Length);

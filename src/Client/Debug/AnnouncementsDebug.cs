@@ -18,7 +18,7 @@ namespace Mortz.Client.Debug;
 [Meta(typeof(IAutoNode))]
 public partial class AnnouncementsDebug : Control,
     IProvide<IAnnouncementDirector>,
-    IProvide<ClientRoster>,
+    IProvide<MatchRoster>,
     IProvide<ClientAdmin>,
     IProvide<ClientChat>,
     IProvide<INetwork>,
@@ -32,13 +32,13 @@ public partial class AnnouncementsDebug : Control,
     private readonly FakeNetwork _network = new();
     private readonly FakeSessionExit _sessionExit = new();
 
-    [Export] private ClientRoster _roster = null!;
+    [Export] private MatchRoster _roster = null!;
     [Export] private ClientAdmin _admin = null!;
     [Export] private ClientChat _chat = null!;
     [Export] private Sfx _sfx = null!;
 
     IAnnouncementDirector IProvide<IAnnouncementDirector>.Value() => _director;
-    ClientRoster IProvide<ClientRoster>.Value() => _roster;
+    MatchRoster IProvide<MatchRoster>.Value() => _roster;
     ClientAdmin IProvide<ClientAdmin>.Value() => _admin;
     ClientChat IProvide<ClientChat>.Value() => _chat;
     INetwork IProvide<INetwork>.Value() => _network;
