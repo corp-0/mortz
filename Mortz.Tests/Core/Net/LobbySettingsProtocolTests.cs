@@ -10,7 +10,7 @@ namespace Mortz.Tests.Core.Net;
 [Collection("NetTransport")]
 public class LobbySettingsProtocolTests : IDisposable
 {
-    private const long SENDER = 42;
+    private const int SENDER = 42;
 
     private readonly NetTransport.SendDelegate _original = NetTransport.Send;
 

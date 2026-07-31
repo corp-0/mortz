@@ -12,6 +12,6 @@ public readonly partial record struct MatchPointMsg(
     bool Active,
     WinCondition Kind,
     byte Remaining,
-    long LeaderId = 0,
+    int LeaderId = 0,
     bool LeaderIsTeam = false
 );

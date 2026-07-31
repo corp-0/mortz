@@ -1,5 +1,6 @@
 using Godot;
 using Mortz.Core.Net;
+using Mortz.Core.Net.Messages;
 
 namespace Mortz.Client.Stats;
 
@@ -8,30 +9,30 @@ namespace Mortz.Client.Stats;
 /// next message.</summary>
 public partial class ClientStats : Node
 {
-    private readonly Dictionary<long, int> _pings = [];
-    private readonly Dictionary<long, int> _wins = [];
+    private readonly Dictionary<int, int> _pings = [];
+    private readonly Dictionary<int, int> _wins = [];
 
     public event Action? Changed;
 
-    public int? PingMs(long peerId) => _pings.TryGetValue(peerId, out int ping) ? ping : null;
-    public int Wins(long peerId) => _wins.GetValueOrDefault(peerId);
+    public int? PingMs(int peerId) => _pings.TryGetValue(peerId, out int ping) ? ping : null;
+    public int Wins(int peerId) => _wins.GetValueOrDefault(peerId);
 
     public override void _Ready()
     {
-        SessionStatsProtocol.PingsReceived += OnPings;
+        PingUpdateMsg.Received += OnPings;
         SessionStatsProtocol.WinsReceived += OnWins;
     }
 
     public override void _ExitTree()
     {
-        SessionStatsProtocol.PingsReceived -= OnPings;
+        PingUpdateMsg.Received -= OnPings;
         SessionStatsProtocol.WinsReceived -= OnWins;
     }
 
-    private void OnPings(IReadOnlyList<PeerPing> pings)
+    private void OnPings(PingUpdateMsg message)
     {
         _pings.Clear();
-        foreach (PeerPing ping in pings)
+        foreach (PeerPing ping in message.Pings)
         {
             _pings[ping.PeerId] = ping.PingMs;
         }

@@ -7,9 +7,9 @@ namespace Mortz.Tests.Client.Announcements;
 
 public class GameAnnouncerTests
 {
-    private const long KILLER = 7;
-    private const long VICTIM = 8;
-    private const long STRANGER = 99;
+    private const int KILLER = 7;
+    private const int VICTIM = 8;
+    private const int STRANGER = 99;
 
     [Fact]
     public void FirstBloodIsGlobal()

@@ -17,9 +17,9 @@ public partial class NetworkManager : Node, INetwork
     public const string AUTOLOAD_PATH = "/root/NetworkManager";
 
     /// <summary>Server side: a peer connected AND passed the protocol/schema check.</summary>
-    [Signal] public delegate void PeerJoinedEventHandler(long peerId, string playerName);
-    [Signal] public delegate void PeerLeftEventHandler(long peerId);
-    [Signal] public delegate void InputsReceivedEventHandler(long peerId, byte[] packet);
+    [Signal] public delegate void PeerJoinedEventHandler(int peerId, string playerName);
+    [Signal] public delegate void PeerLeftEventHandler(int peerId);
+    [Signal] public delegate void InputsReceivedEventHandler(int peerId, byte[] packet);
 
     /// <summary>Client side.</summary>
     public event Action? Connected;
@@ -41,8 +41,8 @@ public partial class NetworkManager : Node, INetwork
     private int _fakeLagMs;
     private readonly Queue<(ulong Due, byte[] Packet)> _delayedInputs = new();
     private readonly Queue<(ulong Due, byte[] Data, int Ack)> _delayedSnapshots = new();
-    private readonly Queue<(ulong Due, int MsgId, byte[] Payload, long Target, NetChannel Channel)> _delayedOutMsgs = new();
-    private readonly Queue<(ulong Due, int MsgId, long Sender, byte[] Payload)> _delayedInMsgs = new();
+    private readonly Queue<(ulong Due, int MsgId, byte[] Payload, int Target, NetChannel Channel)> _delayedOutMsgs = new();
+    private readonly Queue<(ulong Due, int MsgId, int Sender, byte[] Payload)> _delayedInMsgs = new();
 
     public bool IsServer => Multiplayer.MultiplayerPeer != null && Multiplayer.IsServer();
 
@@ -97,21 +97,24 @@ public partial class NetworkManager : Node, INetwork
         TransportReset?.Invoke();
     }
 
+    // Godot hands these ids over as long, the rest of the code uses int.
     private void OnPeerConnected(long id)
     {
+        int peerId = (int)id;
         // Server waits for Hello before considering the peer part of the game.
         if (IsServer)
-            _admission.Connected(id, Time.GetTicksMsec());
-        GD.Print($"[net] peer {id} connected");
+            _admission.Connected(peerId, Time.GetTicksMsec());
+        GD.Print($"[net] peer {peerId} connected");
     }
 
     private void OnPeerDisconnected(long id)
     {
-        GD.Print($"[net] peer {id} disconnected");
-        _inputLimiter.Remove(id);
-        _messageLimiter.Remove(id);
-        if (_admission.Remove(id))
-            EmitSignal(SignalName.PeerLeft, id);
+        int peerId = (int)id;
+        GD.Print($"[net] peer {peerId} disconnected");
+        _inputLimiter.Remove(peerId);
+        _messageLimiter.Remove(peerId);
+        if (_admission.Remove(peerId))
+            EmitSignal(SignalName.PeerLeft, peerId);
     }
 
     // ---- validation bootstrap ----
@@ -123,18 +126,18 @@ public partial class NetworkManager : Node, INetwork
     private void Hello(int protocolVersion, ulong schemaHash, string playerName)
     {
         if (!IsServer) return;
-        long sender = Multiplayer.GetRemoteSenderId();
+        int sender = Multiplayer.GetRemoteSenderId();
         if (protocolVersion != NetConfig.PROTOCOL_VERSION || schemaHash != NetRegistry.SCHEMA_HASH)
         {
             GD.Print($"[net] peer {sender} rejected: protocol {protocolVersion}/{schemaHash:X16} " +
                      $"!= {NetConfig.PROTOCOL_VERSION}/{NetRegistry.SCHEMA_HASH:X16}");
-            Multiplayer.MultiplayerPeer.DisconnectPeer((int)sender);
+            Multiplayer.MultiplayerPeer.DisconnectPeer(sender);
             return;
         }
         if (!_admission.TryValidate(sender))
         {
             GD.Print($"[net] peer {sender} rejected: duplicate or unsolicited Hello");
-            Multiplayer.MultiplayerPeer.DisconnectPeer((int)sender);
+            Multiplayer.MultiplayerPeer.DisconnectPeer(sender);
             return;
         }
         EmitSignal(SignalName.PeerJoined, sender, PlayerNameSanitizer.Sanitize(playerName));
@@ -142,7 +145,7 @@ public partial class NetworkManager : Node, INetwork
 
     // ---- message envelope (everything generated rides here) ----
 
-    private void SendEnvelope(ushort msgId, byte[] payload, long target, NetChannel channel)
+    private void SendEnvelope(ushort msgId, byte[] payload, int target, NetChannel channel)
     {
         if (payload.Length > NetConfig.MAX_ENVELOPE_BYTES)
         {
@@ -157,12 +160,12 @@ public partial class NetworkManager : Node, INetwork
         SendEnvelopeNow(msgId, payload, target, channel);
     }
 
-    private void SendEnvelopeNow(int msgId, byte[] payload, long target, NetChannel channel)
+    private void SendEnvelopeNow(int msgId, byte[] payload, int target, NetChannel channel)
     {
         StringName endpoint = channel == NetChannel.RELIABLE ? MethodName.MsgReliable : MethodName.MsgUnreliable;
         if (target == NetTransport.BROADCAST)
         {
-            foreach (long peer in _admission.ValidatedPeers)
+            foreach (int peer in _admission.ValidatedPeers)
             {
                 RpcId(peer, endpoint, msgId, payload);
             }
@@ -181,7 +184,7 @@ public partial class NetworkManager : Node, INetwork
 
     private void ReceiveEnvelope(int msgId, byte[] payload)
     {
-        long sender = Multiplayer.GetRemoteSenderId();
+        int sender = Multiplayer.GetRemoteSenderId();
         if (payload.Length > NetConfig.MAX_ENVELOPE_BYTES || msgId is < 0 or > ushort.MaxValue)
             return;
         if (IsServer)
@@ -202,7 +205,7 @@ public partial class NetworkManager : Node, INetwork
         Dispatch(msgId, sender, payload);
     }
 
-    private void Dispatch(int msgId, long sender, byte[] payload)
+    private void Dispatch(int msgId, int sender, byte[] payload)
     {
         if (!NetRegistry.Dispatch((ushort)msgId, sender, payload, IsServer))
             GD.Print($"[net] dropped message id {msgId} from peer {sender} (unknown or wrong direction)");
@@ -222,7 +225,7 @@ public partial class NetworkManager : Node, INetwork
     private void SubmitInputs(byte[] packet)
     {
         if (!IsServer) return;
-        long sender = Multiplayer.GetRemoteSenderId();
+        int sender = Multiplayer.GetRemoteSenderId();
         if (!_admission.IsValidated(sender) ||
             !_inputLimiter.Allow(sender, Time.GetTicksMsec()))
             return;
@@ -234,10 +237,10 @@ public partial class NetworkManager : Node, INetwork
 
     /// <summary>Each peer gets a snapshot with its own full prediction record;
     /// other players are compact render-only records.</summary>
-    public int BroadcastSnapshot(Func<long, byte[]> dataFor, Func<long, int> ackFor)
+    public int BroadcastSnapshot(Func<int, byte[]> dataFor, Func<int, int> ackFor)
     {
         int payloadBytes = 0;
-        foreach (long peer in _admission.ValidatedPeers)
+        foreach (int peer in _admission.ValidatedPeers)
         {
             byte[] data = dataFor(peer);
             payloadBytes += data.Length + sizeof(int); // app payload incl. ack
@@ -257,12 +260,12 @@ public partial class NetworkManager : Node, INetwork
 
     /// <summary>Server side: ENet's smoothed round-trip time per validated peer.
     /// Transport-level, so `--fake-lag` does not show up in it.</summary>
-    public (long PeerId, int PingMs)[] PeerPingsMs()
+    public PeerPing[] PeerPingsMs()
     {
         if (Multiplayer.MultiplayerPeer is not ENetMultiplayerPeer enet)
             return [];
         return _admission.ValidatedPeers
-            .Select(peerId => (peerId, (int)enet.GetPeer((int)peerId)
+            .Select(peerId => new PeerPing(peerId, (int)enet.GetPeer(peerId)
                 .GetStatistic(ENetPacketPeer.PeerStatistic.RoundTripTime)))
             .ToArray();
     }
@@ -287,10 +290,10 @@ public partial class NetworkManager : Node, INetwork
         ulong now = Time.GetTicksMsec();
         if (IsServer)
         {
-            foreach (long peerId in _admission.Expire(now))
+            foreach (int peerId in _admission.Expire(now))
             {
                 GD.Print($"[net] peer {peerId} rejected: Hello timeout");
-                Multiplayer.MultiplayerPeer.DisconnectPeer((int)peerId);
+                Multiplayer.MultiplayerPeer.DisconnectPeer(peerId);
             }
         }
         if (_fakeLagMs <= 0)
@@ -306,12 +309,12 @@ public partial class NetworkManager : Node, INetwork
         }
         while (_delayedOutMsgs.Count > 0 && _delayedOutMsgs.Peek().Due <= now)
         {
-            (ulong _, int msgId, byte[] payload, long target, NetChannel channel) = _delayedOutMsgs.Dequeue();
+            (ulong _, int msgId, byte[] payload, int target, NetChannel channel) = _delayedOutMsgs.Dequeue();
             SendEnvelopeNow(msgId, payload, target, channel);
         }
         while (_delayedInMsgs.Count > 0 && _delayedInMsgs.Peek().Due <= now)
         {
-            (ulong _, int msgId, long sender, byte[] payload) = _delayedInMsgs.Dequeue();
+            (ulong _, int msgId, int sender, byte[] payload) = _delayedInMsgs.Dequeue();
             Dispatch(msgId, sender, payload);
         }
     }

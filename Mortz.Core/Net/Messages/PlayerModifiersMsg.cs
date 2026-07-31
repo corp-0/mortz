@@ -6,4 +6,4 @@ namespace Mortz.Core.Net.Messages;
 /// the same StatsPipeline as the server, so views and prediction stay
 /// bit-identical with the sim.</summary>
 [NetMessage(NetChannel.RELIABLE, NetDirection.SERVER_TO_CLIENT)]
-public readonly partial record struct PlayerModifiersMsg(long PeerId, byte[] Modifiers);
+public readonly partial record struct PlayerModifiersMsg(int PeerId, byte[] Modifiers);

@@ -118,9 +118,9 @@ internal static class SnapshotWire
         {
             if (!NetSlot.TryFrom(slot, out NetSlot netSlot))
                 throw new InvalidDataException($"Invalid snapshot player slot {slot}.");
-            if (slots?.PeerInSlot(netSlot) is not long resolved)
+            if (slots?.PeerInSlot(netSlot) is not int resolved)
                 throw new InvalidDataException($"Unknown snapshot player slot {slot}.");
-            peerId = (int)resolved;
+            peerId = resolved;
         }
         else
             peerId = reader.ReadInt32();

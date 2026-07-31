@@ -11,7 +11,7 @@ public sealed class PeerRateLimiter
 
     private readonly double _capacity;
     private readonly double _tokensPerMs;
-    private readonly Dictionary<long, Bucket> _buckets = new();
+    private readonly Dictionary<int, Bucket> _buckets = new();
 
     public PeerRateLimiter(double capacity, double tokensPerSecond)
     {
@@ -23,7 +23,7 @@ public sealed class PeerRateLimiter
         _tokensPerMs = tokensPerSecond / 1000d;
     }
 
-    public bool Allow(long peerId, ulong nowMs, double cost = 1)
+    public bool Allow(int peerId, ulong nowMs, double cost = 1)
     {
         if (!double.IsFinite(cost) || cost <= 0 || cost > _capacity)
             return false;
@@ -45,6 +45,6 @@ public sealed class PeerRateLimiter
         return true;
     }
 
-    public void Remove(long peerId) => _buckets.Remove(peerId);
+    public void Remove(int peerId) => _buckets.Remove(peerId);
     public void Reset() => _buckets.Clear();
 }

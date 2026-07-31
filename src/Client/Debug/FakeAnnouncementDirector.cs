@@ -22,8 +22,8 @@ public sealed class FakeAnnouncementDirector : IAnnouncementDirector
         MatchPointChanged?.Invoke(MatchPoint);
     }
 
-    private static string DebugName(long id) => $"Player {id}";
+    private static string DebugName(int id) => $"Player {id}";
 
     /// <summary>Nobody has a side in the debug scene.</summary>
-    private static Team? DebugTeam(long id) => null;
+    private static Team? DebugTeam(int id) => null;
 }

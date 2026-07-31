@@ -6,7 +6,7 @@ namespace Mortz.Tests.Core.Net;
 
 public class RosterSnapshotTests
 {
-    private static RosterEntry Row(long peerId, byte slot) =>
+    private static RosterEntry Row(int peerId, byte slot) =>
         new(peerId, $"P{peerId}", 0, null, new NetSlot(slot));
 
     [Fact]

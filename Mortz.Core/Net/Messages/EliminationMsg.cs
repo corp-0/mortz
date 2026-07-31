@@ -17,12 +17,12 @@ public enum EliminationFlags : byte
 /// suicide handed the kill to, 0 when nobody got it.</summary>
 [NetMessage(NetChannel.RELIABLE, NetDirection.SERVER_TO_CLIENT)]
 public readonly partial record struct EliminationMsg(
-    long KillerId,
-    long VictimId,
+    int KillerId,
+    int VictimId,
     EliminationFlags Flags,
     int KillerKills,
     int VictimDeaths,
-    long RewardedId,
+    int RewardedId,
     int RewardedKills,
     int BlueKills,
     int RedKills);

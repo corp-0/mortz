@@ -21,11 +21,11 @@ public interface IServerSession
 {
     bool IsLobby { get; }
     int PlayerCount { get; }
-    bool ContainsPlayer(long peerId);
-    string PlayerName(long peerId);
+    bool ContainsPlayer(int peerId);
+    string PlayerName(int peerId);
 
     /// <summary>Raised while the name is still known, before the directory drops it.</summary>
-    event Action<long, string>? PlayerLeft;
+    event Action<int, string>? PlayerLeft;
 }
 
 /// <summary>Owns lobby/match state, simulation, and the gameplay wire protocol.</summary>
@@ -54,10 +54,10 @@ public partial class ServerSessionController : Node, IServerSession
 
     public bool IsLobby => _lobby != null;
     public int PlayerCount => _players.Count;
-    public bool ContainsPlayer(long peerId) => _players.Contains(peerId);
-    public string PlayerName(long peerId) => _players.Name(peerId);
+    public bool ContainsPlayer(int peerId) => _players.Contains(peerId);
+    public string PlayerName(int peerId) => _players.Name(peerId);
 
-    public event Action<long, string>? PlayerLeft;
+    public event Action<int, string>? PlayerLeft;
 
     public override void _Notification(int what) => this.Notify(what);
 
@@ -116,7 +116,7 @@ public partial class ServerSessionController : Node, IServerSession
         _subscribed = true;
     }
 
-    private void OnPeerJoined(long peerId, string requestedName)
+    private void OnPeerJoined(int peerId, string requestedName)
     {
         string name = _players.Add(peerId, requestedName);
         _protocol.SendWins(peerId, _wins);
@@ -135,14 +135,14 @@ public partial class ServerSessionController : Node, IServerSession
         LobbySettings.SendTo(peerId);
     }
 
-    private void OnPeerLeft(long peerId)
+    private void OnPeerLeft(int peerId)
     {
         PlayerLeft?.Invoke(peerId, _players.Name(peerId));
         _players.Remove(peerId);
         _wins.Remove(peerId);
         if (_match is MatchSession match)
         {
-            match.RemovePlayer((int)peerId);
+            match.RemovePlayer(peerId);
             GD.Print($"[server] player {peerId} left ({match.World.Players.Count} in game)");
             _protocol.BroadcastRoster(match);
             return;
@@ -156,7 +156,7 @@ public partial class ServerSessionController : Node, IServerSession
         TryStartMatch();
     }
 
-    private void OnTeamJoinRequest(long sender, TeamJoinRequestMsg message)
+    private void OnTeamJoinRequest(int sender, TeamJoinRequestMsg message)
     {
         if (_lobby is not LobbySession lobby || TeamWire.FromByte(message.Team) is not Team team ||
             !lobby.TrySetTeam(sender, team))
@@ -165,7 +165,7 @@ public partial class ServerSessionController : Node, IServerSession
         _protocol.BroadcastLobby(lobby);
     }
 
-    private void OnTeamSwapRequest(long sender, TeamSwapRequestMsg message)
+    private void OnTeamSwapRequest(int sender, TeamSwapRequestMsg message)
     {
         if (_lobby is not LobbySession lobby)
             return;
@@ -191,7 +191,7 @@ public partial class ServerSessionController : Node, IServerSession
         _protocol.BroadcastLobby(lobby);
     }
 
-    private void OnSetReady(long sender, SetReadyMsg message)
+    private void OnSetReady(int sender, SetReadyMsg message)
     {
         if (_lobby is not LobbySession lobby || !lobby.SetReady(sender, message.Ready))
             return;
@@ -200,7 +200,7 @@ public partial class ServerSessionController : Node, IServerSession
         TryStartMatch();
     }
 
-    private void OnEndMatchRequest(long sender, EndMatchRequestMsg message)
+    private void OnEndMatchRequest(int sender, EndMatchRequestMsg message)
     {
         if (!Admin.TryAuthorize(sender, message.Sequence, AdminAction.END_MATCH,
                 [], message.Tag))
@@ -237,13 +237,13 @@ public partial class ServerSessionController : Node, IServerSession
         _protocol.BroadcastRoster(match);
     }
 
-    private void AddToMatch(long peerId, MatchSession match, Team? lobbyTeam = null)
+    private void AddToMatch(int peerId, MatchSession match, Team? lobbyTeam = null)
     {
         MapPackage map = LobbySettings.Map;
         if (map.SpawnPoints.Length > 0 && match.World.Players.Count >= map.SpawnPoints.Length)
             GD.PushWarning($"[server] map '{map.MapId}' only has {map.SpawnPoints.Length} spawn " +
                            $"point(s) for {match.World.Players.Count + 1} players, so some will share one");
-        Team? team = match.AddPlayer((int)peerId, lobbyTeam);
+        Team? team = match.AddPlayer(peerId, lobbyTeam);
         _protocol.SyncPlayer(peerId, match);
         string onTeam = team is Team assigned ? $" on {Teams.Name(assigned)}" : "";
         GD.Print($"[server] player {peerId} joined " +
@@ -270,7 +270,7 @@ public partial class ServerSessionController : Node, IServerSession
         LobbySettings.Broadcast();
     }
 
-    private void OnInputsReceived(long peerId, byte[] packet)
+    private void OnInputsReceived(int peerId, byte[] packet)
     {
         if (_match is not MatchSession match ||
             !InputPacket.TryDecode(packet, out List<(int Seq, PlayerInput Input)> inputs))
@@ -278,7 +278,7 @@ public partial class ServerSessionController : Node, IServerSession
         _protocol.RecordInputPayload(packet.Length);
         foreach ((int sequence, PlayerInput input) in inputs)
         {
-            match.EnqueueInput((int)peerId, sequence, input);
+            match.EnqueueInput(peerId, sequence, input);
         }
     }
 }

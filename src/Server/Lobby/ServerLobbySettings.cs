@@ -23,7 +23,7 @@ public interface IServerLobbySettings
 
     string ModeName { get; }
 
-    void SendTo(long peerId);
+    void SendTo(int peerId);
     void Broadcast();
 }
 
@@ -87,12 +87,12 @@ public partial class ServerLobbySettings : Node, IServerLobbySettings
         _subscribed = false;
     }
 
-    public void SendTo(long peerId) =>
+    public void SendTo(int peerId) =>
         LobbySettingsProtocol.Encode(CreateState()).SendTo(peerId);
 
     public void Broadcast() => LobbySettingsProtocol.Encode(CreateState()).Broadcast();
 
-    private void OnSettingsRequest(long sender, LobbySettingsRequestMsg message)
+    private void OnSettingsRequest(int sender, LobbySettingsRequestMsg message)
     {
         if (Session.IsLobby && Session.ContainsPlayer(sender))
             SendTo(sender);
@@ -135,7 +135,7 @@ public partial class ServerLobbySettings : Node, IServerLobbySettings
         return matches[0];
     }
 
-    private void OnRulesUpdate(long sender, LobbyRulesUpdateMsg message)
+    private void OnRulesUpdate(int sender, LobbyRulesUpdateMsg message)
     {
         MatchConfig previous = Config;
         MatchConfig next;
@@ -172,7 +172,7 @@ public partial class ServerLobbySettings : Node, IServerLobbySettings
         }
     }
 
-    private void OnModeUpdate(long sender, LobbyModeUpdateMsg message)
+    private void OnModeUpdate(int sender, LobbyModeUpdateMsg message)
     {
         string previousMode = ModeName;
         byte[] payload = Encoding.UTF8.GetBytes(message.ModeId);
@@ -210,7 +210,7 @@ public partial class ServerLobbySettings : Node, IServerLobbySettings
         }
     }
 
-    private void OnMapUpdate(long sender, LobbyMapUpdateMsg message)
+    private void OnMapUpdate(int sender, LobbyMapUpdateMsg message)
     {
         string previousMap = Map.DisplayName;
         byte[] payload = Encoding.UTF8.GetBytes(message.MapId);
@@ -239,7 +239,7 @@ public partial class ServerLobbySettings : Node, IServerLobbySettings
         GD.Print($"[server] lobby map changed to '{Map.MapId}' by admin {sender}");
     }
 
-    private bool CanMutate(long sender) =>
+    private bool CanMutate(int sender) =>
         _subscribed && Session.IsLobby && Session.ContainsPlayer(sender);
 
     private LobbySettings CreateState()

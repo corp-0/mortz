@@ -57,7 +57,7 @@ public partial class AnnouncementDirector : Node, IAnnouncementDirector
     /// <summary>Folded, priority ordered (ties keep arrival order), names
     /// resolved.</summary>
     internal static Announcement[] Describe(
-        IReadOnlyList<GameEventMsg> events, Func<long, string> name, Func<long, Team?> team) =>
+        IReadOnlyList<GameEventMsg> events, Func<int, string> name, Func<int, Team?> team) =>
         DropCoveredRegularKills(FoldHolyShit(events))
             .OrderBy(e => Priority(e.Kind))
             .Select(e => new Announcement(
@@ -71,7 +71,7 @@ public partial class AnnouncementDirector : Node, IAnnouncementDirector
     private static IReadOnlyList<GameEventMsg> DropCoveredRegularKills(
         IReadOnlyList<GameEventMsg> batch)
     {
-        HashSet<long> actorsWithSpecials = batch
+        HashSet<int> actorsWithSpecials = batch
             .Where(e => ReplacesRegularKill(e.Kind))
             .Select(e => e.ActorId)
             .ToHashSet();
@@ -84,7 +84,7 @@ public partial class AnnouncementDirector : Node, IAnnouncementDirector
     }
 
     internal static MatchPointState Describe(
-        MatchPoint held, Func<long, string> name, Func<long, Team?> team)
+        MatchPoint held, Func<int, string> name, Func<int, Team?> team)
     {
         MatchPointLeader? leader = held.Leader switch
         {
@@ -95,7 +95,7 @@ public partial class AnnouncementDirector : Node, IAnnouncementDirector
         return new MatchPointState(held.Remaining, leader);
     }
 
-    private static Combatant Who(long id, Func<long, string> name, Func<long, Team?> team) =>
+    private static Combatant Who(int id, Func<int, string> name, Func<int, Team?> team) =>
         new(id, name(id), team(id));
 
     /// <summary>Drops an actor's MULTI_KILL into their HOLY_SHIT, which then

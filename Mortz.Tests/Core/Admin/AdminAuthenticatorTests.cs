@@ -8,7 +8,7 @@ namespace Mortz.Tests.Core.Admin;
 public class AdminAuthenticatorTests
 {
     private const string PASSWORD = "correct horse battery staple with entropy";
-    private const long PEER = 77;
+    private const int PEER = 77;
 
     [Fact]
     public void Challenge_AuthenticatesConnectionAndSignedCommandsInOrder()

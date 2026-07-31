@@ -10,7 +10,7 @@ namespace Mortz.Tests.Core.Net;
 [Collection("NetTransport")]
 public class MatchProtocolTests : IDisposable
 {
-    private const long SENDER = 42;
+    private const int SENDER = 42;
 
     private readonly NetTransport.SendDelegate _original = NetTransport.Send;
 
@@ -62,7 +62,7 @@ public class MatchProtocolTests : IDisposable
 
     /// <summary>Malformed messages cannot be built from a Victor, so send them
     /// by hand.</summary>
-    private static Victor? SendRawEnd(bool byTeam, long winnerId)
+    private static Victor? SendRawEnd(bool byTeam, int winnerId)
     {
         UseLoopback();
         Victor? received = null;

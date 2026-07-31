@@ -40,15 +40,15 @@ public static class AdminCrypto
         return challenge;
     }
 
-    public static byte[] ComputeProof(ReadOnlySpan<byte> passwordKey, long peerId,
+    public static byte[] ComputeProof(ReadOnlySpan<byte> passwordKey, int peerId,
         ReadOnlySpan<byte> challenge) =>
         Compute(passwordKey, _proofContext, peerId, challenge);
 
-    public static byte[] DeriveSessionKey(ReadOnlySpan<byte> passwordKey, long peerId,
+    public static byte[] DeriveSessionKey(ReadOnlySpan<byte> passwordKey, int peerId,
         ReadOnlySpan<byte> challenge) =>
         Compute(passwordKey, _sessionContext, peerId, challenge);
 
-    public static byte[] ComputeCommandTag(ReadOnlySpan<byte> sessionKey, long peerId,
+    public static byte[] ComputeCommandTag(ReadOnlySpan<byte> sessionKey, int peerId,
         ulong sequence, byte action, ReadOnlySpan<byte> payload)
     {
         using var stream = new MemoryStream();
@@ -63,7 +63,7 @@ public static class AdminCrypto
     }
 
     private static byte[] Compute(ReadOnlySpan<byte> key, ReadOnlySpan<byte> context,
-        long peerId, ReadOnlySpan<byte> challenge)
+        int peerId, ReadOnlySpan<byte> challenge)
     {
         if (key.Length != KEY_BYTES)
             throw new ArgumentException($"Key must be {KEY_BYTES} bytes.", nameof(key));

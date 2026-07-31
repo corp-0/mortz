@@ -1,3 +1,4 @@
 namespace Mortz.Core.Net;
 
-public readonly record struct PeerPing(long PeerId, int PingMs);
+[NetRow]
+public readonly partial record struct PeerPing(int PeerId, int PingMs);

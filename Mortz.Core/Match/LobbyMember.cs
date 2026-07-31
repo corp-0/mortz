@@ -4,7 +4,7 @@ namespace Mortz.Core.Match;
 /// are off or the seat is not dealt yet.</summary>
 public readonly record struct LobbyMember
 {
-    public LobbyMember(long peerId, string name, bool ready, Team? team)
+    public LobbyMember(int peerId, string name, bool ready, Team? team)
     {
         if (peerId <= 0)
             throw new ArgumentOutOfRangeException(nameof(peerId));
@@ -14,7 +14,7 @@ public readonly record struct LobbyMember
         Team = team;
     }
 
-    public long PeerId { get; }
+    public int PeerId { get; }
     public string Name { get; }
     public bool Ready { get; }
     public Team? Team { get; }

@@ -19,13 +19,13 @@ public static class MatchProtocol
 
     public static void BroadcastMatchEnd(Victor winner) => EncodeMatchEnd(winner).Broadcast();
 
-    public static void SendMatchEndTo(long peerId, Victor winner) =>
+    public static void SendMatchEndTo(int peerId, Victor winner) =>
         EncodeMatchEnd(winner).SendTo(peerId);
 
     public static void BroadcastMatchPoint(WinCondition kind, MatchPoint? state) =>
         EncodeMatchPoint(kind, state).Broadcast();
 
-    public static void SendMatchPointTo(long peerId, WinCondition kind, MatchPoint state) =>
+    public static void SendMatchPointTo(int peerId, WinCondition kind, MatchPoint state) =>
         EncodeMatchPoint(kind, state).SendTo(peerId);
 
     private static MatchEndMsg EncodeMatchEnd(Victor victor) => victor switch
@@ -69,10 +69,10 @@ public static class MatchProtocol
             DecodeVictor(message.LeaderIsTeam, message.LeaderId)));
     }
 
-    private static Victor? DecodeVictor(bool byTeam, long id)
+    private static Victor? DecodeVictor(bool byTeam, int id)
     {
         if (!byTeam)
-            return id is > 0 and <= int.MaxValue ? new PlayerVictor((int)id) : null;
+            return id > 0 ? new PlayerVictor(id) : null;
         if (id is < 0 or > byte.MaxValue)
             return null;
         return TeamWire.FromByte((byte)id) is Team team ? new TeamVictor(team) : null;

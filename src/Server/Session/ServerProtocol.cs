@@ -42,25 +42,23 @@ internal sealed class ServerProtocol
 
     public void BroadcastPings()
     {
-        PeerPing[] pings = _network.PeerPingsMs()
-            .Select(ping => new PeerPing(ping.PeerId, ping.PingMs))
-            .ToArray();
+        PeerPing[] pings = _network.PeerPingsMs();
         if (pings.Length == 0)
             return;
-        SessionStatsProtocol.BroadcastPings(pings);
+        new PingUpdateMsg(pings).Broadcast();
     }
 
     public void BroadcastWins(WinTracker wins) => SessionStatsProtocol.BroadcastWins(Wins(wins));
 
-    public void SendWins(long peerId, WinTracker wins) =>
+    public void SendWins(int peerId, WinTracker wins) =>
         SessionStatsProtocol.SendWinsTo(peerId, Wins(wins));
 
     public void BroadcastRoster(MatchSession match)
     {
         List<RosterEntry> entries = [];
-        foreach (long peerId in _players.PeerIds)
+        foreach (int peerId in _players.PeerIds)
         {
-            if (!match.World.Players.TryGetValue((int)peerId, out PlayerState player))
+            if (!match.World.Players.TryGetValue(peerId, out PlayerState player))
                 continue;
             entries.Add(new RosterEntry(peerId, _players.Name(peerId),
                 player.Skin, player.Team, new NetSlot(player.NetSlot)));
@@ -72,11 +70,11 @@ internal sealed class ServerProtocol
         foreach (RosterEntry entry in snapshot.Entries)
         {
             new PlayerModifiersMsg(entry.PeerId,
-                ModifierWire.Serialize(match.World.Modifiers((int)entry.PeerId))).Broadcast();
+                ModifierWire.Serialize(match.World.Modifiers(entry.PeerId))).Broadcast();
         }
     }
 
-    public void SyncPlayer(long peerId, MatchSession match)
+    public void SyncPlayer(int peerId, MatchSession match)
     {
         SendWelcome(peerId, match);
         SendScores(peerId, match);
@@ -170,8 +168,8 @@ internal sealed class ServerProtocol
     {
         Snapshot snapshot = match.World.TakeSnapshot(includeMortars: false);
         _snapshotPayloadBytes += _network.BroadcastSnapshot(
-            peerId => snapshot.SerializeFor((int)peerId),
-            peerId => match.World.Players.TryGetValue((int)peerId, out PlayerState player)
+            peerId => snapshot.SerializeFor(peerId),
+            peerId => match.World.Players.TryGetValue(peerId, out PlayerState player)
                 ? player.LastInputSeq
                 : -1);
     }
@@ -221,7 +219,7 @@ internal sealed class ServerProtocol
         _ => throw new ArgumentOutOfRangeException(nameof(victor)),
     };
 
-    private void SendWelcome(long peerId, MatchSession match)
+    private void SendWelcome(int peerId, MatchSession match)
     {
         MapPackage map = _settings.Map;
         TerrainSyncPayload terrain = match.TerrainHistory.Build(match.World.Terrain);
@@ -244,7 +242,7 @@ internal sealed class ServerProtocol
                  $"{match.TerrainHistory.CarveCount} carve(s)");
     }
 
-    private static void SendScores(long peerId, MatchSession match)
+    private static void SendScores(int peerId, MatchSession match)
     {
         Scoreboard scores = match.Scores;
         ScoreRow[] rows = scores.Rows
@@ -253,7 +251,7 @@ internal sealed class ServerProtocol
         ScoreProtocol.SendTo(peerId, new ScoreSync(rows, scores.TeamKills));
     }
 
-    private void SendLiveMortars(long peerId, MatchSession match)
+    private void SendLiveMortars(int peerId, MatchSession match)
     {
         if (match.World.Mortars.Count == 0)
             return;

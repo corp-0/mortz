@@ -10,8 +10,8 @@ namespace Mortz.Core.Net.Messages;
 [NetMessage(NetChannel.RELIABLE, NetDirection.SERVER_TO_CLIENT)]
 public readonly partial record struct GameEventMsg(
     GameEventKind Kind,
-    long ActorId,
-    long VictimId,
+    int ActorId,
+    int VictimId,
     byte Magnitude,
     byte Detail = 0
 );

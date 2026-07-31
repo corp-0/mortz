@@ -12,14 +12,14 @@ public partial class MatchRoster : Node
 
     public RosterSnapshot Table { get; private set; } = RosterSnapshot.EMPTY;
 
-    public string NameOf(long peerId) =>
+    public string NameOf(int peerId) =>
         Table.TryFind(peerId, out RosterEntry entry) ? entry.Name : Unknown(peerId);
 
     /// <summary>Null when the player is unknown or teams are off.</summary>
-    public Team? TeamOf(long peerId) =>
+    public Team? TeamOf(int peerId) =>
         Table.TryFind(peerId, out RosterEntry entry) ? entry.Team : null;
 
-    public byte SkinOf(long peerId) =>
+    public byte SkinOf(int peerId) =>
         Table.TryFind(peerId, out RosterEntry entry) ? entry.Skin : (byte)0;
 
     public override void _Ready() => RosterProtocol.MatchRosterReceived += OnRoster;
@@ -33,5 +33,5 @@ public partial class MatchRoster : Node
     }
 
     // Deliberately unlike a real name so a lookup miss cannot pass for one.
-    private static string Unknown(long peerId) => $"<unknown {peerId}>";
+    private static string Unknown(int peerId) => $"<unknown {peerId}>";
 }

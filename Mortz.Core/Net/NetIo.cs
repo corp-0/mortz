@@ -42,6 +42,16 @@ public static class NetIo
         }
     }
 
+    public static void WriteRows<T>(this BinaryWriter w, T[] v)
+        where T : struct, INetRow<T>
+    {
+        w.Write(v.Length);
+        foreach (T row in v)
+        {
+            T.WriteTo(w, in row);
+        }
+    }
+
     public static void Write(this BinaryWriter w, Vec2 v)
     {
         w.Write(v.X);
@@ -88,7 +98,26 @@ public static class NetIo
         return v;
     }
 
+    /// <summary>A row is at least one byte, so the scalar arrays' element cap holds here too.</summary>
+    public static T[] ReadRows<T>(this BinaryReader r)
+        where T : struct, INetRow<T>
+    {
+        T[] v = new T[ReadArrayLength(r, 1, NetConfig.MAX_ARRAY_ELEMENTS)];
+        for (int i = 0; i < v.Length; i++)
+        {
+            v[i] = T.ReadFrom(r);
+        }
+        return v;
+    }
+
     public static Vec2 ReadVec2(this BinaryReader r) => new(r.ReadSingle(), r.ReadSingle());
+
+    /// <summary>0 means null on the wire.</summary>
+    public static byte? ReadNullableByte(this BinaryReader r)
+    {
+        byte value = r.ReadByte();
+        return value == 0 ? null : value;
+    }
 
     /// <summary>Reads BinaryWriter's 7-bit UTF-8 string format with a byte cap.</summary>
     public static string ReadString(BinaryReader r)

@@ -10,7 +10,7 @@ namespace Mortz.Tests.Core.Net;
 [Collection("NetTransport")]
 public class ScoreProtocolTests : IDisposable
 {
-    private const long PEER = 42;
+    private const int PEER = 42;
 
     private readonly NetTransport.SendDelegate _original = NetTransport.Send;
 

@@ -21,14 +21,14 @@ public abstract record ChatLine
 
     public sealed record Player : Remote
     {
-        public Player(long senderId, string senderName, string text)
+        public Player(int senderId, string senderName, string text)
         {
             SenderId = RequirePeerId(senderId);
             SenderName = senderName;
             Text = RequireText(text);
         }
 
-        public long SenderId { get; }
+        public int SenderId { get; }
         public string SenderName { get; }
         public override string Text { get; }
 
@@ -61,7 +61,7 @@ public abstract record ChatLine
 
     public sealed record Roll : Remote
     {
-        public Roll(long senderId, string senderName, int value)
+        public Roll(int senderId, string senderName, int value)
         {
             if (value is < DiceRoll.MIN or > DiceRoll.MAX)
                 throw new ArgumentOutOfRangeException(nameof(value));
@@ -70,7 +70,7 @@ public abstract record ChatLine
             Value = value;
         }
 
-        public long SenderId { get; }
+        public int SenderId { get; }
         public string SenderName { get; }
         public int Value { get; }
         public override string Text => Value.ToString();
@@ -104,7 +104,7 @@ public abstract record ChatLine
         return text;
     }
 
-    private static long RequirePeerId(long peerId)
+    private static int RequirePeerId(int peerId)
     {
         if (peerId <= 0)
             throw new ArgumentOutOfRangeException(nameof(peerId));

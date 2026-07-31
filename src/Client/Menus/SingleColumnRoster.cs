@@ -54,7 +54,7 @@ public partial class SingleColumnRoster : ScrollContainer
         {
             child.Free();
         }
-        long localId = Network.LocalPeerId;
+        int localId = Network.LocalPeerId;
         foreach (LobbyMember member in Setup.Members)
         {
             _players.AddChild(RosterSlots.BuildSlot(member, Stats, localId));

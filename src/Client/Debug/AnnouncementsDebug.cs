@@ -25,8 +25,8 @@ public partial class AnnouncementsDebug : Control,
     IProvide<ISessionExit>,
     IProvide<ISfx>
 {
-    private const long KILLER = 1;
-    private const long VICTIM = 2;
+    private const int KILLER = 1;
+    private const int VICTIM = 2;
 
     private readonly FakeAnnouncementDirector _director = new();
     private readonly FakeNetwork _network = new();

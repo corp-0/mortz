@@ -11,14 +11,14 @@ namespace Mortz.Client.Score;
 /// patch the affected rows afterwards.</summary>
 public partial class MatchScore : Node
 {
-    private readonly Dictionary<long, int> _kills = [];
-    private readonly Dictionary<long, int> _deaths = [];
+    private readonly Dictionary<int, int> _kills = [];
+    private readonly Dictionary<int, int> _deaths = [];
     private TeamKills _teamKills;
 
     public event Action? Changed;
 
-    public int Kills(long peerId) => _kills.GetValueOrDefault(peerId);
-    public int Deaths(long peerId) => _deaths.GetValueOrDefault(peerId);
+    public int Kills(int peerId) => _kills.GetValueOrDefault(peerId);
+    public int Deaths(int peerId) => _deaths.GetValueOrDefault(peerId);
     public int TeamKills(Team team) => _teamKills[team];
 
     public override void _Ready()

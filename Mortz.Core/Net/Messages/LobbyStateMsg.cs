@@ -5,5 +5,10 @@ namespace Mortz.Core.Net.Messages;
 /// plus the pending swap offers as From/To pairs.</summary>
 [NetMessage(NetChannel.RELIABLE, NetDirection.SERVER_TO_CLIENT)]
 public readonly partial record struct LobbyStateMsg(
-    long[] PeerIds, string[] Names, byte[] ReadyFlags, byte[] Teams,
-    long[] SwapFrom, long[] SwapTo);
+    int[] PeerIds,
+    string[] Names,
+    byte[] ReadyFlags,
+    byte[] Teams,
+    int[] SwapFrom,
+    int[] SwapTo
+);

@@ -20,7 +20,7 @@ public sealed class AdminAuthenticator : IDisposable
     // so we can only derive inside Verify.
     private readonly byte[]? _passwordUtf8;
     private readonly ulong _challengeTimeoutMs;
-    private readonly Dictionary<long, Session> _sessions = new();
+    private readonly Dictionary<int, Session> _sessions = new();
     private readonly PeerRateLimiter _attemptLimiter = new(capacity: 3, tokensPerSecond: 0.05);
 
     public AdminAuthenticator(string password,
@@ -35,7 +35,7 @@ public sealed class AdminAuthenticator : IDisposable
 
     public bool Enabled => _passwordUtf8 != null;
 
-    public void Connected(long peerId, ReadOnlySpan<byte> sessionId)
+    public void Connected(int peerId, ReadOnlySpan<byte> sessionId)
     {
         if (sessionId.Length != AdminCrypto.SESSION_ID_BYTES)
             throw new ArgumentException($"Session id must be {AdminCrypto.SESSION_ID_BYTES} bytes.", nameof(sessionId));
@@ -43,7 +43,7 @@ public sealed class AdminAuthenticator : IDisposable
         _sessions.Add(peerId, new Session(sessionId.ToArray()));
     }
 
-    public AdminChallengeResult Begin(long peerId, ulong nowMs, ReadOnlySpan<byte> nonce,
+    public AdminChallengeResult Begin(int peerId, ulong nowMs, ReadOnlySpan<byte> nonce,
         out byte[] challenge)
     {
         challenge = [];
@@ -63,7 +63,7 @@ public sealed class AdminAuthenticator : IDisposable
         return AdminChallengeResult.STARTED;
     }
 
-    public AdminProofResult Verify(long peerId, ulong nowMs, ReadOnlySpan<byte> proof)
+    public AdminProofResult Verify(int peerId, ulong nowMs, ReadOnlySpan<byte> proof)
     {
         if (!Enabled)
             return AdminProofResult.DISABLED;
@@ -112,10 +112,10 @@ public sealed class AdminAuthenticator : IDisposable
         }
     }
 
-    public bool IsAdmin(long peerId) =>
+    public bool IsAdmin(int peerId) =>
         _sessions.TryGetValue(peerId, out Session? session) && session.AdminKey != null;
 
-    public bool VerifyCommand(long peerId, ulong sequence, byte action,
+    public bool VerifyCommand(int peerId, ulong sequence, byte action,
         ReadOnlySpan<byte> payload, ReadOnlySpan<byte> tag)
     {
         if (!_sessions.TryGetValue(peerId, out Session? session) || session.AdminKey == null ||
@@ -135,7 +135,7 @@ public sealed class AdminAuthenticator : IDisposable
         }
     }
 
-    public void Remove(long peerId)
+    public void Remove(int peerId)
     {
         _attemptLimiter.Remove(peerId);
         if (!_sessions.Remove(peerId, out Session? session))
@@ -147,7 +147,7 @@ public sealed class AdminAuthenticator : IDisposable
 
     public void Reset()
     {
-        foreach (long peerId in _sessions.Keys.ToArray())
+        foreach (int peerId in _sessions.Keys.ToArray())
         {
             Remove(peerId);
         }

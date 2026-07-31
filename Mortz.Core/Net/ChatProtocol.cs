@@ -16,7 +16,7 @@ public static class ChatProtocol
         Encode(line).Broadcast();
     }
 
-    public static void SendTo(long peerId, ChatLine.Remote line)
+    public static void SendTo(int peerId, ChatLine.Remote line)
     {
         ArgumentNullException.ThrowIfNull(line);
         Encode(line).SendTo(peerId);

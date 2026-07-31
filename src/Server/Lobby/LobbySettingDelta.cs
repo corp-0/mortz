@@ -10,7 +10,7 @@ public enum LobbySettingsChangeKind : byte
 public readonly record struct LobbySettingDelta(string Name, string Before, string After);
 
 public readonly record struct LobbySettingsChange(
-    long AdminId,
+    int AdminId,
     LobbySettingsChangeKind Kind,
     IReadOnlyList<LobbySettingDelta> Deltas
 )

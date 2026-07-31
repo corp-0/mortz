@@ -11,6 +11,8 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="2dog.engine" Version="4.7.1.64" />
+    <!-- Not an analyzer here: the generator tests drive it as a library -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.8.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.0" />
     <PackageReference Include="Moq" Version="4.20.72" />
     <PackageReference Include="xunit.v3" Version="3.2.2" />
@@ -23,6 +25,7 @@
     <ProjectReference Include="..\Mortz.csproj" />
     <ProjectReference Include="..\Mortz.Content\Mortz.Content.csproj" />
     <ProjectReference Include="..\Mortz.Core\Mortz.Core.csproj" />
+    <ProjectReference Include="..\Mortz.Net.Gen\Mortz.Net.Gen.csproj" />
     <ProjectReference Include="..\tools\Mortz.Tools.csproj" />
   </ItemGroup>
   <!-- Remove duplicate Godot.SourceGenerators that come from the GodotSharp/Godot.SourceGenerators

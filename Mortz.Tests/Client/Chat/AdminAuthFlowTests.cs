@@ -13,7 +13,7 @@ namespace Mortz.Tests.Client.Chat;
 [Collection("NetTransport")]
 public class AdminAuthFlowTests : IDisposable
 {
-    private const long PEER = 42;
+    private const int PEER = 42;
 
     private readonly NetTransport.SendDelegate _original = NetTransport.Send;
     private ushort _sentId;
@@ -39,7 +39,7 @@ public class AdminAuthFlowTests : IDisposable
         Assert.Equal(NetRegistry.ID_AdminProofMsg, _sentId);
 
         AdminProofMsg receivedProof = default;
-        Action<long, AdminProofMsg> proofHandler = (_, message) => receivedProof = message;
+        Action<int, AdminProofMsg> proofHandler = (_, message) => receivedProof = message;
         AdminProofMsg.Received += proofHandler;
         try
         {

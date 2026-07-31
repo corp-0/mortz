@@ -17,7 +17,7 @@ internal enum ChatTextFormat : byte
 [NetMessage(NetChannel.RELIABLE, NetDirection.SERVER_TO_CLIENT)]
 internal readonly partial record struct ChatMsg(
     ChatMsgKind MsgKind,
-    long SenderId,
+    int SenderId,
     string SenderName,
     string Text,
     ChatTextFormat TextFormat);

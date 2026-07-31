@@ -20,7 +20,7 @@ namespace Mortz.Server.Chat;
 public partial class ServerChat : Node, IServerAdminAuthorizer
 {
     private readonly ChatPolicy _chatPolicy = new();
-    private readonly HashSet<long> _typing = new();
+    private readonly HashSet<int> _typing = new();
     private AdminAuthenticator _admin = null!;
     private bool _subscribed;
 
@@ -42,7 +42,7 @@ public partial class ServerChat : Node, IServerAdminAuthorizer
 
     public void OnExitTree() => Stop();
 
-    public bool TryAuthorize(long peerId, ulong sequence, byte action,
+    public bool TryAuthorize(int peerId, ulong sequence, byte action,
         ReadOnlySpan<byte> payload, ReadOnlySpan<byte> tag) =>
         _subscribed && _admin.VerifyCommand(peerId, sequence, action, payload, tag);
 
@@ -80,7 +80,7 @@ public partial class ServerChat : Node, IServerAdminAuthorizer
         _subscribed = false;
     }
 
-    private void OnPeerJoined(long peerId, string requestedName)
+    private void OnPeerJoined(int peerId, string requestedName)
     {
         if (!Session.ContainsPlayer(peerId)) return;
 
@@ -91,7 +91,7 @@ public partial class ServerChat : Node, IServerAdminAuthorizer
         ChatProtocol.Broadcast(new ChatLine.System(joinedText));
     }
 
-    private void OnPeerLeft(long peerId, string playerName)
+    private void OnPeerLeft(int peerId, string playerName)
     {
         _chatPolicy.Remove(peerId);
         _admin.Remove(peerId);
@@ -104,7 +104,7 @@ public partial class ServerChat : Node, IServerAdminAuthorizer
     }
 
     // Dropping no-op repeats is the flood guard: one broadcast per state flip.
-    private void OnTyping(long sender, TypingMsg message)
+    private void OnTyping(int sender, TypingMsg message)
     {
         if (!Session.ContainsPlayer(sender))
             return;
@@ -113,7 +113,7 @@ public partial class ServerChat : Node, IServerAdminAuthorizer
             new TypingStateMsg(sender, message.IsTyping).Broadcast();
     }
 
-    private void OnChatSend(long sender, ChatSendMsg message)
+    private void OnChatSend(int sender, ChatSendMsg message)
     {
         if (!Session.ContainsPlayer(sender))
             return;
@@ -139,7 +139,7 @@ public partial class ServerChat : Node, IServerAdminAuthorizer
     }
 
     // Silent when rate limited, same as chat: replying would amplify spam.
-    private void OnRollRequest(long sender, RollRequestMsg message)
+    private void OnRollRequest(int sender, RollRequestMsg message)
     {
         if (!Session.ContainsPlayer(sender) ||
             !_chatPolicy.TryAcceptRoll(sender, Time.GetTicksMsec()))
@@ -149,7 +149,7 @@ public partial class ServerChat : Node, IServerAdminAuthorizer
             new ChatLine.Roll(sender, Session.PlayerName(sender), value));
     }
 
-    private void OnAdminAuthRequest(long sender, AdminAuthRequestMsg message)
+    private void OnAdminAuthRequest(int sender, AdminAuthRequestMsg message)
     {
         if (!Session.IsLobby || !Session.ContainsPlayer(sender))
         {
@@ -176,7 +176,7 @@ public partial class ServerChat : Node, IServerAdminAuthorizer
         new AdminStateMsg(false, status).SendTo(sender);
     }
 
-    private void OnAdminProof(long sender, AdminProofMsg message)
+    private void OnAdminProof(int sender, AdminProofMsg message)
     {
         if (!Session.IsLobby || !Session.ContainsPlayer(sender))
         {
@@ -220,6 +220,6 @@ public partial class ServerChat : Node, IServerAdminAuthorizer
         }
     }
 
-    private static void SendPrivateSystem(long peerId, string text) =>
+    private static void SendPrivateSystem(int peerId, string text) =>
         ChatProtocol.SendTo(peerId, new ChatLine.System(text));
 }

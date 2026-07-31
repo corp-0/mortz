@@ -75,7 +75,7 @@ public partial class PlayerViewManager : Node2D
     // broadcast lands. The local player polls ChatInputGuard in Place instead.
     private void OnTypingState(TypingStateMsg msg)
     {
-        int peerId = (int)msg.PeerId;
+        int peerId = msg.PeerId;
         if (msg.IsTyping)
             _typing.Add(peerId);
         else
@@ -98,8 +98,8 @@ public partial class PlayerViewManager : Node2D
             GD.PrintErr($"[client] dropped malformed modifiers for peer {msg.PeerId}");
             return;
         }
-        _playerStats[(int)msg.PeerId] = stats;
-        if (_views.TryGetValue((int)msg.PeerId, out PlayerView? view))
+        _playerStats[msg.PeerId] = stats;
+        if (_views.TryGetValue(msg.PeerId, out PlayerView? view))
             view.Configure(stats);
     }
 

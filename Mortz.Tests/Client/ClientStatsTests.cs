@@ -1,5 +1,6 @@
 using Godot;
 using Mortz.Client.Stats;
+using Mortz.Core.Net;
 using Mortz.Core.Net.Messages;
 using Mortz.Net;
 using Xunit;
@@ -16,7 +17,7 @@ public class ClientStatsTests : NodeServiceTest
         int changes = 0;
         stats.Changed += () => changes++;
 
-        new PingUpdateMsg([7, 8], [42, 108]).Broadcast();
+        new PingUpdateMsg([new PeerPing(7, 42), new PeerPing(8, 108)]).Broadcast();
         new SessionWinsMsg([7, 8], [3, 0]).Broadcast();
 
         Assert.Equal(42, stats.PingMs(7));
@@ -32,8 +33,8 @@ public class ClientStatsTests : NodeServiceTest
     {
         ClientStats stats = Host(new ClientStats());
 
-        new PingUpdateMsg([7, 8], [42, 108]).Broadcast();
-        new PingUpdateMsg([8], [90]).Broadcast();
+        new PingUpdateMsg([new PeerPing(7, 42), new PeerPing(8, 108)]).Broadcast();
+        new PingUpdateMsg([new PeerPing(8, 90)]).Broadcast();
 
         Assert.Null(stats.PingMs(7));
         Assert.Equal(90, stats.PingMs(8));
@@ -45,7 +46,7 @@ public class ClientStatsTests : NodeServiceTest
         ClientStats stats = Host(new ClientStats());
         stats.GetParent<Node>().RemoveChild(stats);
 
-        new PingUpdateMsg([7], [42]).Broadcast();
+        new PingUpdateMsg([new PeerPing(7, 42)]).Broadcast();
 
         Assert.Null(stats.PingMs(7));
     }

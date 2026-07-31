@@ -4,5 +4,5 @@ namespace Mortz.Core.Net;
 /// allocation free.</summary>
 public interface IPeerSlots
 {
-    long? PeerInSlot(NetSlot slot);
+    int? PeerInSlot(NetSlot slot);
 }

@@ -18,7 +18,7 @@ namespace Mortz.Tests.Core.Net;
 [Collection("NetTransport")]
 public class NetMessageTests : IDisposable
 {
-    private const long SENDER = 42;
+    private const int SENDER = 42;
 
     private readonly NetTransport.SendDelegate _original = NetTransport.Send;
 
@@ -38,17 +38,69 @@ public class NetMessageTests : IDisposable
         RosterMsg.Received += handler;
         try
         {
-            new RosterMsg([1, 77890011223], ["Gilles", "Player 2"], [3, 7], [1, 2], [1, 2]).Broadcast();
+            new RosterMsg([1, 1789001122], ["Gilles", "Player 2"], [3, 7], [1, 2], [1, 2]).Broadcast();
         }
         finally
         {
             RosterMsg.Received -= handler;
         }
-        Assert.Equal([1, 77890011223], received.PeerIds);
+        Assert.Equal([1, 1789001122], received.PeerIds);
         Assert.Equal(["Gilles", "Player 2"], received.Names);
         Assert.Equal([3, 7], received.Skins);
         Assert.Equal([1, 2], received.Teams);
         Assert.Equal([1, 2], received.Slots);
+    }
+
+    [Fact]
+    public void PingUpdateMsg_RoundTripsARowArray()
+    {
+        UseLoopback(receiverIsServer: false);
+        PingUpdateMsg received = default;
+        Action<PingUpdateMsg> handler = m => received = m;
+        PingUpdateMsg.Received += handler;
+        try
+        {
+            new PingUpdateMsg([new PeerPing(11, 30), new PeerPing(1789001122, 120)]).Broadcast();
+        }
+        finally
+        {
+            PingUpdateMsg.Received -= handler;
+        }
+        Assert.Equal([new PeerPing(11, 30), new PeerPing(1789001122, 120)], received.Pings);
+    }
+
+    [Fact]
+    public void PingUpdateMsg_RoundTripsAnEmptyTable()
+    {
+        UseLoopback(receiverIsServer: false);
+        PingUpdateMsg received = new([new PeerPing(1, 1)]);
+        Action<PingUpdateMsg> handler = m => received = m;
+        PingUpdateMsg.Received += handler;
+        try
+        {
+            new PingUpdateMsg([]).Broadcast();
+        }
+        finally
+        {
+            PingUpdateMsg.Received -= handler;
+        }
+        Assert.Empty(received.Pings);
+    }
+
+    [Fact]
+    public void Dispatch_RejectsNegativeHugeAndTruncatedRowCounts()
+    {
+        Assert.False(NetRegistry.Dispatch(NetRegistry.ID_PingUpdateMsg, SENDER,
+            Bytes(w => w.Write(-1)), isServer: false));
+        Assert.False(NetRegistry.Dispatch(NetRegistry.ID_PingUpdateMsg, SENDER,
+            Bytes(w => w.Write(NetConfig.MAX_ARRAY_ELEMENTS + 1)), isServer: false));
+        // Two rows promised, one delivered.
+        Assert.False(NetRegistry.Dispatch(NetRegistry.ID_PingUpdateMsg, SENDER,
+            Bytes(w => { w.Write(2); w.Write(11); w.Write(30); }), isServer: false));
+        // One row promised, two delivered: trailing bytes.
+        Assert.False(NetRegistry.Dispatch(NetRegistry.ID_PingUpdateMsg, SENDER,
+            Bytes(w => { w.Write(1); w.Write(11); w.Write(30); w.Write(22); w.Write(40); }),
+            isServer: false));
     }
 
     [Fact]
@@ -61,13 +113,13 @@ public class NetMessageTests : IDisposable
         PlayerModifiersMsg.Received += handler;
         try
         {
-            new PlayerModifiersMsg(77890011223, blob).Broadcast();
+            new PlayerModifiersMsg(1789001122, blob).Broadcast();
         }
         finally
         {
             PlayerModifiersMsg.Received -= handler;
         }
-        Assert.Equal(77890011223, received.PeerId);
+        Assert.Equal(1789001122, received.PeerId);
         StatsModifier got = Assert.Single(ModifierWire.Deserialize(received.Modifiers));
         Assert.Equal(ModifierId.WATER, got.Id);
         Assert.Equal(Modifiers.Water.Changes, got.Changes);
@@ -236,7 +288,7 @@ public class NetMessageTests : IDisposable
         EliminationMsg.Received += handler;
         try
         {
-            new EliminationMsg(123456789012, 42,
+            new EliminationMsg(1234567890, 42,
                 EliminationFlags.FIRST_BLOOD | EliminationFlags.OWNED,
                 -2, 7, 9, 4, 5, 3).Broadcast();
         }
@@ -244,7 +296,7 @@ public class NetMessageTests : IDisposable
         {
             EliminationMsg.Received -= handler;
         }
-        Assert.Equal(new EliminationMsg(123456789012, 42,
+        Assert.Equal(new EliminationMsg(1234567890, 42,
             EliminationFlags.FIRST_BLOOD | EliminationFlags.OWNED,
             -2, 7, 9, 4, 5, 3), received);
     }
@@ -323,10 +375,10 @@ public class NetMessageTests : IDisposable
     public void ClientToServerMsgs_RoundTrip_WithSender()
     {
         UseLoopback(receiverIsServer: true);
-        (long Sender, bool Ready) ready = default;
-        (long Sender, byte Team) join = default;
-        Action<long, SetReadyMsg> readyHandler = (s, m) => ready = (s, m.Ready);
-        Action<long, TeamJoinRequestMsg> joinHandler = (s, m) => join = (s, m.Team);
+        (int Sender, bool Ready) ready = default;
+        (int Sender, byte Team) join = default;
+        Action<int, SetReadyMsg> readyHandler = (s, m) => ready = (s, m.Ready);
+        Action<int, TeamJoinRequestMsg> joinHandler = (s, m) => join = (s, m.Team);
         SetReadyMsg.Received += readyHandler;
         TeamJoinRequestMsg.Received += joinHandler;
         try
@@ -347,12 +399,12 @@ public class NetMessageTests : IDisposable
     public void ChatAndAdminClientMessages_RoundTrip_WithTransportSender()
     {
         UseLoopback(receiverIsServer: true);
-        (long Sender, string Text) chat = default;
-        long requestSender = 0;
-        (long Sender, byte[] Proof) proof = default;
-        Action<long, ChatSendMsg> chatHandler = (sender, message) => chat = (sender, message.Text);
-        Action<long, AdminAuthRequestMsg> requestHandler = (sender, _) => requestSender = sender;
-        Action<long, AdminProofMsg> proofHandler = (sender, message) => proof = (sender, message.Proof);
+        (int Sender, string Text) chat = default;
+        int requestSender = 0;
+        (int Sender, byte[] Proof) proof = default;
+        Action<int, ChatSendMsg> chatHandler = (sender, message) => chat = (sender, message.Text);
+        Action<int, AdminAuthRequestMsg> requestHandler = (sender, _) => requestSender = sender;
+        Action<int, AdminProofMsg> proofHandler = (sender, message) => proof = (sender, message.Proof);
         ChatSendMsg.Received += chatHandler;
         AdminAuthRequestMsg.Received += requestHandler;
         AdminProofMsg.Received += proofHandler;
@@ -378,11 +430,11 @@ public class NetMessageTests : IDisposable
     public void SignedLobbyUpdates_RoundTrip_WithUnsignedSequenceBitsIntact()
     {
         UseLoopback(receiverIsServer: true);
-        (long Sender, LobbyRulesUpdateMsg Message) rules = default;
-        (long Sender, LobbyMapUpdateMsg Message) map = default;
-        Action<long, LobbyRulesUpdateMsg> rulesHandler =
+        (int Sender, LobbyRulesUpdateMsg Message) rules = default;
+        (int Sender, LobbyMapUpdateMsg Message) map = default;
+        Action<int, LobbyRulesUpdateMsg> rulesHandler =
             (sender, message) => rules = (sender, message);
-        Action<long, LobbyMapUpdateMsg> mapHandler =
+        Action<int, LobbyMapUpdateMsg> mapHandler =
             (sender, message) => map = (sender, message);
         LobbyRulesUpdateMsg.Received += rulesHandler;
         LobbyMapUpdateMsg.Received += mapHandler;
@@ -411,8 +463,8 @@ public class NetMessageTests : IDisposable
     public void LobbySettingsRequest_RoundTrips_WithTransportSender()
     {
         UseLoopback(receiverIsServer: true);
-        long sender = 0;
-        Action<long, LobbySettingsRequestMsg> handler = (peerId, _) => sender = peerId;
+        int sender = 0;
+        Action<int, LobbySettingsRequestMsg> handler = (peerId, _) => sender = peerId;
         LobbySettingsRequestMsg.Received += handler;
         try
         {
@@ -429,8 +481,8 @@ public class NetMessageTests : IDisposable
     public void RollRequestMsg_RoundTrips()
     {
         UseLoopback(receiverIsServer: true);
-        long sender = 0;
-        Action<long, RollRequestMsg> handler = (peerId, _) => sender = peerId;
+        int sender = 0;
+        Action<int, RollRequestMsg> handler = (peerId, _) => sender = peerId;
         RollRequestMsg.Received += handler;
         try
         {
@@ -451,7 +503,7 @@ public class NetMessageTests : IDisposable
         NetTransport.Send = (_, payload, _, _) => captured = payload;
         bool raised = false;
         Action<RosterMsg> rosterHandler = _ => raised = true;
-        Action<long, SetReadyMsg> readyHandler = (_, _) => raised = true;
+        Action<int, SetReadyMsg> readyHandler = (_, _) => raised = true;
         RosterMsg.Received += rosterHandler;
         SetReadyMsg.Received += readyHandler;
         try
@@ -496,15 +548,15 @@ public class NetMessageTests : IDisposable
         ];
 
         int raised = 0;
-        Action<long, SetReadyMsg> ready = (_, _) => raised++;
-        Action<long, ChatSendMsg> chat = (_, _) => raised++;
-        Action<long, AdminAuthRequestMsg> request = (_, _) => raised++;
-        Action<long, AdminProofMsg> proof = (_, _) => raised++;
-        Action<long, LobbyRulesUpdateMsg> rules = (_, _) => raised++;
-        Action<long, LobbyMapUpdateMsg> map = (_, _) => raised++;
-        Action<long, LobbySettingsRequestMsg> settingsRequest = (_, _) => raised++;
-        Action<long, TeamJoinRequestMsg> teamJoin = (_, _) => raised++;
-        Action<long, TeamSwapRequestMsg> teamSwap = (_, _) => raised++;
+        Action<int, SetReadyMsg> ready = (_, _) => raised++;
+        Action<int, ChatSendMsg> chat = (_, _) => raised++;
+        Action<int, AdminAuthRequestMsg> request = (_, _) => raised++;
+        Action<int, AdminProofMsg> proof = (_, _) => raised++;
+        Action<int, LobbyRulesUpdateMsg> rules = (_, _) => raised++;
+        Action<int, LobbyMapUpdateMsg> map = (_, _) => raised++;
+        Action<int, LobbySettingsRequestMsg> settingsRequest = (_, _) => raised++;
+        Action<int, TeamJoinRequestMsg> teamJoin = (_, _) => raised++;
+        Action<int, TeamSwapRequestMsg> teamSwap = (_, _) => raised++;
         SetReadyMsg.Received += ready;
         ChatSendMsg.Received += chat;
         AdminAuthRequestMsg.Received += request;

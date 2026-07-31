@@ -18,9 +18,9 @@ internal enum SwapResult
 /// off clears every assignment.</summary>
 internal sealed class LobbySession
 {
-    private readonly SortedDictionary<long, LobbyMember> _seats = new();
+    private readonly SortedDictionary<int, LobbyMember> _seats = new();
     // Pending swap offers, one outgoing per player.
-    private readonly SortedDictionary<long, long> _offers = new();
+    private readonly SortedDictionary<int, int> _offers = new();
     private bool _teamsEnabled;
 
     public int Count => _seats.Count;
@@ -29,11 +29,11 @@ internal sealed class LobbySession
     // A copy, not a projection: SetTeamsEnabled rewrites while callers iterate.
     public IReadOnlyList<LobbyMember> Players => _seats.Values.ToArray();
 
-    public void Add(long peerId, string name) =>
+    public void Add(int peerId, string name) =>
         _seats[peerId] = new LobbyMember(peerId, name, false,
             _teamsEnabled ? SmallestTeam() : null);
 
-    public bool Remove(long peerId)
+    public bool Remove(int peerId)
     {
         if (!_seats.Remove(peerId))
             return false;
@@ -42,7 +42,7 @@ internal sealed class LobbySession
         return true;
     }
 
-    public bool SetReady(long peerId, bool ready)
+    public bool SetReady(int peerId, bool ready)
     {
         if (!_seats.TryGetValue(peerId, out LobbyMember seat))
             return false;
@@ -52,7 +52,7 @@ internal sealed class LobbySession
 
     /// <summary>A player's own move onto a team, granted only while that team
     /// has a free slot.</summary>
-    public bool TrySetTeam(long peerId, Team team)
+    public bool TrySetTeam(int peerId, Team team)
     {
         if (!_teamsEnabled ||
             !_seats.TryGetValue(peerId, out LobbyMember seat) ||
@@ -71,16 +71,16 @@ internal sealed class LobbySession
 
     /// <summary>One outstanding offer per player. Repeating an offer cancels
     /// it; offering to someone already offering back executes the swap.</summary>
-    public SwapResult RequestSwap(long from, long to)
+    public SwapResult RequestSwap(int from, int to)
     {
         if (!CrossTeam(from, to))
             return SwapResult.NONE;
-        if (_offers.TryGetValue(from, out long current) && current == to)
+        if (_offers.TryGetValue(from, out int current) && current == to)
         {
             _offers.Remove(from);
             return SwapResult.CANCELLED;
         }
-        if (_offers.TryGetValue(to, out long reciprocal) && reciprocal == from)
+        if (_offers.TryGetValue(to, out int reciprocal) && reciprocal == from)
         {
             LobbyMember a = _seats[from];
             LobbyMember b = _seats[to];
@@ -94,7 +94,7 @@ internal sealed class LobbySession
         return SwapResult.OFFERED;
     }
 
-    private bool CrossTeam(long from, long to) =>
+    private bool CrossTeam(int from, int to) =>
         _teamsEnabled && from != to &&
         _seats.TryGetValue(from, out LobbyMember a) &&
         _seats.TryGetValue(to, out LobbyMember b) &&
@@ -103,7 +103,7 @@ internal sealed class LobbySession
     /// <summary>Offers only survive while their pair still spans both teams.</summary>
     private void PruneOffers()
     {
-        foreach ((long from, long to) in _offers.ToArray())
+        foreach ((int from, int to) in _offers.ToArray())
         {
             if (!CrossTeam(from, to))
                 _offers.Remove(from);
@@ -119,7 +119,7 @@ internal sealed class LobbySession
         _teamsEnabled = enabled;
         _offers.Clear(); // fresh assignment wipes manual arrangements
         int next = 0;
-        foreach (long peerId in _seats.Keys.ToArray())
+        foreach (int peerId in _seats.Keys.ToArray())
         {
             Team? team = enabled ? Teams.Deal(next) : null;
             _seats[peerId] = _seats[peerId].OnTeam(team);
@@ -131,11 +131,11 @@ internal sealed class LobbySession
     private Team SmallestTeam() =>
         Teams.Smallest(_seats.Values.Select(seat => seat.Team));
 
-    public static LobbySession For(IReadOnlyDictionary<long, string> players,
+    public static LobbySession For(IReadOnlyDictionary<int, string> players,
         bool teamsEnabled = false)
     {
         LobbySession lobby = new() { _teamsEnabled = teamsEnabled };
-        foreach ((long peerId, string name) in players)
+        foreach ((int peerId, string name) in players)
         {
             lobby.Add(peerId, name);
         }

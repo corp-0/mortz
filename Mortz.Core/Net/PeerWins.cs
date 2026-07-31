@@ -1,3 +1,3 @@
 namespace Mortz.Core.Net;
 
-public readonly record struct PeerWins(long PeerId, int Wins);
+public readonly record struct PeerWins(int PeerId, int Wins);

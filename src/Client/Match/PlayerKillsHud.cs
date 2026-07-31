@@ -42,7 +42,7 @@ public partial class PlayerKillsHud : Control
     {
         if (!IsInsideTree())
             return;
-        long localId = Network.LocalPeerId;
+        int localId = Network.LocalPeerId;
         _scoreLabel.Text = $"K {Score.Kills(localId)} / D {Score.Deaths(localId)}";
     }
 }

@@ -31,7 +31,7 @@ public sealed class AdminAuthFlow
     /// <summary>Answers the server challenge with a proof; false when no
     /// authentication is pending or the challenge is malformed (pending
     /// secrets are dropped either way).</summary>
-    public bool TryAnswerChallenge(long localPeerId, AdminChallengeMsg message)
+    public bool TryAnswerChallenge(int localPeerId, AdminChallengeMsg message)
     {
         if (_pendingPassword == null || localPeerId == 0 ||
             message.Challenge.Length != AdminCrypto.CHALLENGE_BYTES)
@@ -71,7 +71,7 @@ public sealed class AdminAuthFlow
 
     /// <summary>Creates the proof for a future privileged mutation. The caller
     /// serializes this sequence, action, payload, and tag into its action message.</summary>
-    public bool TrySign(long localPeerId, byte action, ReadOnlySpan<byte> payload,
+    public bool TrySign(int localPeerId, byte action, ReadOnlySpan<byte> payload,
         out ulong sequence, out byte[] tag)
     {
         sequence = 0;

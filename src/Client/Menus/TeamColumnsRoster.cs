@@ -78,7 +78,7 @@ public partial class TeamColumnsRoster : ScrollContainer
                 child.Free();
             }
         }
-        long localId = Network.LocalPeerId;
+        int localId = Network.LocalPeerId;
         Team? localTeam = null;
         foreach (LobbyMember member in Setup.Members)
         {
@@ -107,7 +107,7 @@ public partial class TeamColumnsRoster : ScrollContainer
 
     /// <summary>Offer, cancel, or accept a trade with this opponent; one
     /// message covers all three (mutual offers execute the swap).</summary>
-    private Button SwapButton(long peerId, long localId)
+    private Button SwapButton(int peerId, int localId)
     {
         bool outgoing = Setup.SwapOffers.Contains(new SwapOffer(localId, peerId));
         bool incoming = Setup.SwapOffers.Contains(new SwapOffer(peerId, localId));

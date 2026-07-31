@@ -7,8 +7,8 @@ public sealed class RosterSnapshot : IPeerSlots
 {
     public static readonly RosterSnapshot EMPTY = new([]);
 
-    private readonly Dictionary<long, RosterEntry> _byPeer;
-    private readonly Dictionary<byte, long> _bySlot;
+    private readonly Dictionary<int, RosterEntry> _byPeer;
+    private readonly Dictionary<byte, int> _bySlot;
 
     public RosterSnapshot(IReadOnlyList<RosterEntry> entries)
     {
@@ -20,7 +20,7 @@ public sealed class RosterSnapshot : IPeerSlots
     }
 
     private RosterSnapshot(IReadOnlyList<RosterEntry> entries,
-        Dictionary<long, RosterEntry> byPeer, Dictionary<byte, long> bySlot)
+        Dictionary<int, RosterEntry> byPeer, Dictionary<byte, int> bySlot)
     {
         Entries = [.. entries];
         _byPeer = byPeer;
@@ -29,28 +29,28 @@ public sealed class RosterSnapshot : IPeerSlots
 
     public IReadOnlyList<RosterEntry> Entries { get; }
 
-    public bool TryFind(long peerId, out RosterEntry entry) =>
+    public bool TryFind(int peerId, out RosterEntry entry) =>
         _byPeer.TryGetValue(peerId, out entry);
 
-    public long? PeerInSlot(NetSlot slot) =>
-        _bySlot.TryGetValue(slot.Value, out long peerId) ? peerId : null;
+    public int? PeerInSlot(NetSlot slot) =>
+        _bySlot.TryGetValue(slot.Value, out int peerId) ? peerId : null;
 
     /// <summary>Wire path: a bad table is dropped, not thrown.</summary>
     public static bool TryFrom(IReadOnlyList<RosterEntry> entries,
         [NotNullWhen(true)] out RosterSnapshot? snapshot)
     {
-        snapshot = Index(entries, out Dictionary<long, RosterEntry> byPeer,
-            out Dictionary<byte, long> bySlot)
+        snapshot = Index(entries, out Dictionary<int, RosterEntry> byPeer,
+            out Dictionary<byte, int> bySlot)
             ? new RosterSnapshot(entries, byPeer, bySlot)
             : null;
         return snapshot != null;
     }
 
     private static bool Index(IReadOnlyList<RosterEntry> entries,
-        out Dictionary<long, RosterEntry> byPeer, out Dictionary<byte, long> bySlot)
+        out Dictionary<int, RosterEntry> byPeer, out Dictionary<byte, int> bySlot)
     {
-        byPeer = new Dictionary<long, RosterEntry>(entries.Count);
-        bySlot = new Dictionary<byte, long>(entries.Count);
+        byPeer = new Dictionary<int, RosterEntry>(entries.Count);
+        bySlot = new Dictionary<byte, int>(entries.Count);
         if (entries.Count > NetConfig.MAX_PLAYERS)
             return false;
         foreach (RosterEntry entry in entries)

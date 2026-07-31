@@ -6,10 +6,10 @@ namespace Mortz.Tests.Server;
 
 public class LobbySessionTests
 {
-    private static string Name(long peerId) => $"Player {peerId}";
+    private static string Name(int peerId) => $"Player {peerId}";
 
-    private static LobbySession Lobby(bool teams, params long[] peers) =>
-        LobbySession.For(new SortedDictionary<long, string>(
+    private static LobbySession Lobby(bool teams, params int[] peers) =>
+        LobbySession.For(new SortedDictionary<int, string>(
             peers.ToDictionary(peer => peer, Name)), teams);
 
     [Fact]
@@ -23,7 +23,7 @@ public class LobbySessionTests
         Assert.True(lobby.SetReady(3, true));
 
         Assert.True(lobby.CanStart);
-        Assert.Equal([1L, 3L], lobby.Players.Select(player => player.PeerId));
+        Assert.Equal([1, 3], lobby.Players.Select(player => player.PeerId));
     }
 
     [Fact]
@@ -69,7 +69,7 @@ public class LobbySessionTests
 
         Assert.Equal<Team?>([Team.RED, Team.BLUE, Team.BLUE, Team.RED],
             lobby.Players.Select(player => player.Team));
-        Assert.Equal([2L, 3L, 4L, 5L], lobby.Players.Select(player => player.PeerId));
+        Assert.Equal([2, 3, 4, 5], lobby.Players.Select(player => player.PeerId));
     }
 
     [Fact]

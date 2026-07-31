@@ -74,7 +74,7 @@ public partial class GameAnnouncer : Node
     }
 
     /// <summary>The lines to speak for one priority-ordered batch.</summary>
-    internal static List<Cue> Plan(IReadOnlyList<Announcement> batch, long localId)
+    internal static List<Cue> Plan(IReadOnlyList<Announcement> batch, int localId)
     {
         List<Cue> cues = new();
         bool hasBurst = batch.Any(a =>

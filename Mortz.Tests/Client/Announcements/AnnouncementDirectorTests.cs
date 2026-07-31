@@ -7,12 +7,12 @@ namespace Mortz.Tests.Client.Announcements;
 
 public class AnnouncementDirectorTests
 {
-    private const long KILLER = 7;
-    private const long VICTIM = 8;
+    private const int KILLER = 7;
+    private const int VICTIM = 8;
 
-    private static string NameOf(long peerId) => peerId == KILLER ? "p1" : "p2";
+    private static string NameOf(int peerId) => peerId == KILLER ? "p1" : "p2";
 
-    private static Team? TeamOf(long peerId) => peerId == KILLER ? Team.BLUE : Team.RED;
+    private static Team? TeamOf(int peerId) => peerId == KILLER ? Team.BLUE : Team.RED;
 
     [Fact]
     public void DescribeResolvesBothCombatants()

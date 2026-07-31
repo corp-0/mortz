@@ -9,7 +9,7 @@ public static class ScoreProtocol
 
     public static event Action<ScoreSync>? Received;
 
-    public static void SendTo(long peerId, ScoreSync sync) => Encode(sync).SendTo(peerId);
+    public static void SendTo(int peerId, ScoreSync sync) => Encode(sync).SendTo(peerId);
 
     private static ScoreSyncMsg Encode(ScoreSync sync)
     {

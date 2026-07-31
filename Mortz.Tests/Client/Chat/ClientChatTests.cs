@@ -165,7 +165,7 @@ public class ClientChatTests : NodeServiceTest
 
     private static byte[] ChatPayload(
         byte kind,
-        long senderId,
+        int senderId,
         string senderName,
         string text,
         byte format)
