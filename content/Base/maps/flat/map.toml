@@ -1,0 +1,35 @@
+format_version = 1
+name = "Flat"
+suggested_players = 8
+
+[[spawn_points]]
+x = 128
+y = 656
+
+[[spawn_points]]
+x = 274
+y = 656
+
+[[spawn_points]]
+x = 420
+y = 656
+
+[[spawn_points]]
+x = 566
+y = 656
+
+[[spawn_points]]
+x = 714
+y = 656
+
+[[spawn_points]]
+x = 860
+y = 656
+
+[[spawn_points]]
+x = 1006
+y = 656
+
+[[spawn_points]]
+x = 1152
+y = 656
