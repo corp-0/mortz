@@ -1,11 +1,11 @@
 using Mortz.Core.Chat.Commands;
-using Mortz.Core.Net.Messages;
+using Mortz.Core.Net.Chat;
 
 namespace Mortz.Client.Chat.Commands;
 
 [ChatCommand("roll", Usage = "/roll",
     Description = "Roll a number from 1 to 100 for everyone to see.")]
-internal sealed class RollChatCommand : ClientChatCommand
+public sealed class RollChatCommand : ClientChatCommand
 {
     public override bool TryBind(IReadOnlyList<string> arguments, out string error)
     {

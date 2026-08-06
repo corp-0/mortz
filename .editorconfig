@@ -16,6 +16,10 @@ indent_size = 4
 # .globalconfig does not work as a substitute.
 dotnet_diagnostic.IDE1006.severity = warning
 
+# Unused usings.
+dotnet_diagnostic.IDE0005.severity = warning
+dotnet_diagnostic.EnableGenerateDocumentationFile.severity = none
+
 # Constants are SCREAMING_SNAKE_CASE (Godot convention), not .NET PascalCase
 dotnet_naming_rule.constants_screaming_snake.symbols = constants
 dotnet_naming_rule.constants_screaming_snake.style = screaming_snake

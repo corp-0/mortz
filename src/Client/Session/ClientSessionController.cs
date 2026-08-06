@@ -5,9 +5,12 @@ using Mortz.Client.Match;
 using Mortz.Client.Menus;
 using Mortz.Client.Settings;
 using Mortz.Core.Net;
-using Mortz.Core.Net.Messages;
+using Mortz.Core.Net.Lobby;
+using Mortz.Core.Net.Sim;
 using Mortz.Net;
 using Mortz.Shared;
+using Mortz.Shared.Logging;
+using Serilog;
 
 namespace Mortz.Client.Session;
 
@@ -15,8 +18,13 @@ namespace Mortz.Client.Session;
 /// one client.</summary>
 [Meta(typeof(IAutoNode))]
 public partial class ClientSessionController : Node, ISessionExit,
+    IHandle<PhaseLoadMsg>,
+    IHandle<WelcomeMsg>,
+    IHandle<TerrainChunkMsg>,
     IProvide<ISessionExit>, IProvide<ClientSettings>
 {
+    private static readonly ILogger _log = MortzLog.For("client");
+
     private const int CONNECT_RETRIES = 5;
 
     [Export] private PackedScene _gameViewScene = null!;
@@ -27,13 +35,12 @@ public partial class ClientSessionController : Node, ISessionExit,
     private readonly ClientConnectionAttempt _connection = new(CONNECT_RETRIES);
     private readonly ClientSession _session = new();
     private ClientSettings _settings = new();
-    private ClientMatchBootstrap? _pendingMatch;
+    private PendingMatchEntry? _pendingMatch;
     private ConnectedSession? _connectedSession;
     private GameView? _gameView;
     private Lobby? _lobby;
     private MainMenu? _menu;
     private bool _spawnedLocalServer;
-    private bool _autoReady;
     private bool _subscribed;
 
     [Dependency]
@@ -58,9 +65,15 @@ public partial class ClientSessionController : Node, ISessionExit,
         string? autoConnect = CmdArgs.GetValue("--connect");
         if (autoConnect == null)
             return;
-        _autoReady = true;
         string playerName = CmdArgs.GetValue("--name") ?? _settings.PlayerName;
-        StartConnecting(autoConnect, CmdArgs.GetInt("--port", NetConfig.DEFAULT_PORT), playerName);
+        int skin = CmdArgs.GetInt("--skin", _settings.Skin);
+        if (!ClientSettings.IsValidSkin(skin))
+        {
+            _log.Error("invalid --skin {Skin}, using 0", skin);
+            skin = 0;
+        }
+        StartConnecting(autoConnect, CmdArgs.GetInt("--port", NetConfig.DEFAULT_PORT),
+            playerName, skin);
     }
 
     public void OnExitTree()
@@ -70,19 +83,20 @@ public partial class ClientSessionController : Node, ISessionExit,
         ServerLauncher.Kill();
     }
 
-    public void OnHostRequested(int port, string playerName, string adminPassword, string serverName)
+    public void OnHostRequested(int port, string playerName, string adminPassword,
+        string serverName, int skin = 0, bool allowJoinInProgress = true)
     {
-        if (!ServerLauncher.Spawn(port, adminPassword, serverName))
+        if (!ServerLauncher.Spawn(port, adminPassword, serverName, allowJoinInProgress))
         {
             _menu?.SetStatus("Failed to start local server.");
             return;
         }
         _spawnedLocalServer = true;
-        StartConnecting("127.0.0.1", port, playerName);
+        StartConnecting("127.0.0.1", port, playerName, skin);
     }
 
-    public void OnJoinRequested(string address, int port, string playerName) =>
-        StartConnecting(address, port, playerName);
+    public void OnJoinRequested(string address, int port, string playerName, int skin = 0) =>
+        StartConnecting(address, port, playerName, skin);
 
     public void OnReadyToggled(bool ready) => new SetReadyMsg(ready).SendToServer();
 
@@ -93,9 +107,7 @@ public partial class ClientSessionController : Node, ISessionExit,
         Network.Connected += OnConnected;
         Network.ConnectionFailed += OnConnectionFailed;
         Network.Disconnected += OnDisconnected;
-        RosterProtocol.LobbyRosterReceived += OnLobbyRoster;
-        WelcomeMsg.Received += OnWelcome;
-        TerrainChunkMsg.Received += OnTerrainChunk;
+        Network.Router.Add(this);
         _subscribed = true;
     }
 
@@ -106,19 +118,18 @@ public partial class ClientSessionController : Node, ISessionExit,
         Network.Connected -= OnConnected;
         Network.ConnectionFailed -= OnConnectionFailed;
         Network.Disconnected -= OnDisconnected;
-        RosterProtocol.LobbyRosterReceived -= OnLobbyRoster;
-        WelcomeMsg.Received -= OnWelcome;
-        TerrainChunkMsg.Received -= OnTerrainChunk;
+        Network.Router.Remove(this);
         _subscribed = false;
     }
 
-    private void StartConnecting(string address, int port, string playerName)
+    private void StartConnecting(string address, int port, string playerName, int skin)
     {
-        _connection.Start(address, port, playerName);
-        _session.BeginConnecting();
+        if (!_session.TryBeginConnecting())
+            return;
+        _connection.Start(address, port, playerName, skin);
         _pendingMatch = null;
         _menu?.SetStatus($"Connecting to {address}:{port}...");
-        GD.Print($"[client] connecting to {address}:{port}");
+        _log.Information("connecting to {Address}:{Port}", address, port);
         TryConnect();
     }
 
@@ -144,22 +155,20 @@ public partial class ClientSessionController : Node, ISessionExit,
             return;
         }
 
-        GD.Print("[client] connection failed");
+        _log.Information("connection failed");
         ReturnToMenu("Connection failed.", stopLocalServer: true);
     }
 
     private void OnConnected()
     {
         _connection.Connected();
-        GD.Print($"[client] connected, peer id {Network.LocalPeerId}");
+        _log.Information("connected, peer id {PeerId}", Network.LocalPeerId);
         CreateConnectedSession();
-        Network.SendHello(_connection.PlayerName);
+        Network.SendHello(_connection.PlayerName, _connection.Skin);
         _menu?.SetStatus("Entering lobby...");
-        if (_autoReady)
-            new SetReadyMsg(true).SendToServer();
     }
 
-    private void OnLobbyRoster(LobbyRoster roster)
+    public void Handle(in PhaseLoadMsg message)
     {
         bool returningFromMatch = _session.Stage is
             ClientSessionStage.LOADING_MATCH or ClientSessionStage.PLAYING;
@@ -169,31 +178,29 @@ public partial class ClientSessionController : Node, ISessionExit,
         {
             DisposeGameView();
             _pendingMatch = null;
-            if (_autoReady)
-                new SetReadyMsg(true).SendToServer();
         }
         DisposeMenu();
-        CreateLobby();
+        CreateLobby(message.Generation);
     }
 
-    private void OnWelcome(WelcomeMsg message)
+    public void Handle(in WelcomeMsg message)
     {
         if (!_session.TryBeginMatchLoad())
             return;
-        if (!ClientMatchBootstrap.TryCreate(message, out ClientMatchBootstrap? bootstrap,
+        if (!PendingMatchEntry.TryCreate(message, out PendingMatchEntry? bootstrap,
                 out string error))
         {
             RejectWelcome(error);
             return;
         }
 
-        GD.Print($"[client] map '{bootstrap!.Map.DisplayName}' verified");
+        _log.Information("map '{Map}' verified", bootstrap!.Map.DisplayName);
         _pendingMatch = bootstrap;
     }
 
-    private void OnTerrainChunk(TerrainChunkMsg message)
+    public void Handle(in TerrainChunkMsg message)
     {
-        if (_pendingMatch is not ClientMatchBootstrap pending)
+        if (_pendingMatch is not PendingMatchEntry pending)
             return;
         TerrainChunkResult result = pending.Terrain.Accept(message);
         if (result.State is TerrainChunkState.IGNORED or TerrainChunkState.WAITING)
@@ -207,15 +214,41 @@ public partial class ClientSessionController : Node, ISessionExit,
         EnterMatch(pending, result.Data!);
     }
 
-    private void EnterMatch(ClientMatchBootstrap bootstrap, byte[] terrainData)
+    private void EnterMatch(PendingMatchEntry entry, byte[] terrainData)
     {
         if (_connectedSession == null || !_session.TryEnterMatch())
+            return;
+#if TOOLS
+        if (Mortz.Shared.E2E.E2ELaunch.ScreenLoadDelayMs > 0)
+        {
+            DelayMatchEntry(entry, terrainData);
+            return;
+        }
+#endif
+        MountMatch(entry, terrainData);
+    }
+
+#if TOOLS
+    private async void DelayMatchEntry(PendingMatchEntry entry, byte[] terrainData)
+    {
+        await ToSignal(GetTree().CreateTimer(
+            Mortz.Shared.E2E.E2ELaunch.ScreenLoadDelayMs / 1000.0),
+            SceneTreeTimer.SignalName.Timeout);
+        if (_pendingMatch == entry && _connectedSession != null)
+            MountMatch(entry, terrainData);
+    }
+#endif
+
+    private void MountMatch(PendingMatchEntry entry, byte[] terrainData)
+    {
+        if (_connectedSession is not ConnectedSession connectedSession)
             return;
         GameView gameView = _gameViewScene.Instantiate<GameView>();
         try
         {
-            gameView.Initialize(bootstrap.Map, bootstrap.Terrain.Config,
-                bootstrap.Terrain.Encoding, terrainData);
+            gameView.Initialize(entry.Generation, entry.Map, entry.Terrain.Config,
+                entry.Terrain.Encoding, terrainData, entry.Participation,
+                entry.InitialSnapshot, entry.InitialSnapshotAck);
         }
         catch (IOException exception)
         {
@@ -224,21 +257,26 @@ public partial class ClientSessionController : Node, ISessionExit,
             return;
         }
 
+        // Joining straight into a running match never passes through the lobby,
+        // so this is the only place that unmounts the menu on that path.
+        DisposeMenu();
         DisposeLobby();
+        DisposeGameView();
+        connectedSession.Players.OpenMatch();
         _gameView = gameView;
-        _connectedSession.AddChild(gameView);
+        connectedSession.AddChild(gameView);
         _pendingMatch = null;
     }
 
     private void RejectWelcome(string reason)
     {
-        GD.PrintErr($"[client] {reason} Disconnecting.");
+        _log.Error("{Reason} Disconnecting.", reason);
         ReturnToMenu(reason, stopLocalServer: true);
     }
 
     private void OnDisconnected()
     {
-        GD.Print("[client] disconnected from server");
+        _log.Information("disconnected from server");
         ReturnToMenu("Disconnected.", stopLocalServer: true);
     }
 
@@ -277,7 +315,7 @@ public partial class ClientSessionController : Node, ISessionExit,
 
     private void DisposeMenu()
     {
-        _menu?.QueueFree();
+        Detach(_menu);
         _menu = null;
     }
 
@@ -291,28 +329,67 @@ public partial class ClientSessionController : Node, ISessionExit,
 
     private void DisposeConnectedSession()
     {
-        _connectedSession?.QueueFree();
+        Detach(_connectedSession);
         _connectedSession = null;
     }
 
-    private void CreateLobby()
+    private void CreateLobby(int generation)
     {
         if (_lobby != null || _connectedSession == null)
             return;
+#if TOOLS
+        if (Mortz.Shared.E2E.E2ELaunch.ScreenLoadDelayMs > 0)
+        {
+            DelayLobbyEntry(generation);
+            return;
+        }
+#endif
+        MountLobby(generation);
+    }
+
+#if TOOLS
+    private async void DelayLobbyEntry(int generation)
+    {
+        await ToSignal(GetTree().CreateTimer(
+            Mortz.Shared.E2E.E2ELaunch.ScreenLoadDelayMs / 1000.0),
+            SceneTreeTimer.SignalName.Timeout);
+        if (_lobby == null && _connectedSession != null &&
+            _session.Stage == ClientSessionStage.LOBBY)
+            MountLobby(generation);
+    }
+#endif
+
+    private void MountLobby(int generation)
+    {
+        if (_connectedSession is not ConnectedSession connectedSession)
+            return;
         _lobby = _lobbyScene.Instantiate<Lobby>();
+        _lobby.Initialize(generation);
         _lobby.ReadyToggled += OnReadyToggled;
-        _connectedSession.AddChild(_lobby);
+        connectedSession.AddChild(_lobby);
     }
 
     private void DisposeLobby()
     {
-        _lobby?.QueueFree();
+        Detach(_lobby);
         _lobby = null;
     }
 
     private void DisposeGameView()
     {
-        _gameView?.QueueFree();
+        Detach(_gameView);
         _gameView = null;
+    }
+
+    // QueueFree alone defers the exit to end of frame, so a dying screen's
+    // handlers would stay routed alongside the next screen's. Detach first so
+    // router membership changes with the transition; QueueFree still frees
+    // the node safely at frame end.
+    private static void Detach(Node? node)
+    {
+        if (node == null)
+            return;
+        node.GetParent()?.RemoveChild(node);
+        node.QueueFree();
     }
 }

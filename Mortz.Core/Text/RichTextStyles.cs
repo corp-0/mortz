@@ -66,7 +66,7 @@ public sealed class ColorStyle : IRichTextStyle
 
     public ColorStyle(RichTextColor color) => _color = Hex(color);
 
-    internal static string Hex(RichTextColor color) => color switch
+    public static string Hex(RichTextColor color) => color switch
     {
         RichTextColor.BLACK => "#000000",
         RichTextColor.BLUE => "#0000ff",
@@ -104,7 +104,7 @@ public sealed class ColorStyle : IRichTextStyle
 
     public string Apply(string escapedText) => $"[color={_color}]{escapedText}[/color]";
 
-    internal static bool IsHexColor(string value)
+    public static bool IsHexColor(string value)
     {
         if (value[0] != '#' || value.Length is not (4 or 5 or 7 or 9))
             return false;

@@ -1,31 +1,25 @@
 [gd_scene format=3 uid="uid://wf7xp36uxmws"]
 
 [ext_resource type="Script" uid="uid://yybh100y5emt" path="res://src/Server/ServerMain.cs" id="1_smain"]
-[ext_resource type="Script" uid="uid://bkg4l4yasixyj" path="res://src/Server/Chat/ServerChat.cs" id="2_chat"]
 [ext_resource type="Script" uid="uid://co0rsoejny0ud" path="res://src/Server/Hosting/ServerHost.cs" id="3_host"]
-[ext_resource type="Script" uid="uid://cx8tip4e2hdek" path="res://src/Server/Session/ServerSessionController.cs" id="4_session"]
-[ext_resource type="Script" uid="uid://ba4y2j3vh3tmu" path="res://src/Server/Lobby/ServerLobbySettings.cs" id="5_settings"]
+[ext_resource type="Script" uid="uid://cx066excf8hnm" path="res://src/Server/Pump/ServerPump.cs" id="4_pump"]
 [ext_resource type="Script" uid="uid://bjffpcrjkrwj6" path="res://src/Server/Query/ServerQueryResponder.cs" id="6_query"]
 
-[node name="ServerMain" type="Node" unique_id=1699106039 node_paths=PackedStringArray("_host", "_session", "_chat", "_lobbySettings")]
+[node name="ServerMain" type="Node" unique_id=1699106039 node_paths=PackedStringArray("_host", "_pump", "_query")]
 script = ExtResource("1_smain")
 _host = NodePath("Host")
-_session = NodePath("Session")
-_chat = NodePath("Chat")
-_lobbySettings = NodePath("LobbySettings")
+_pump = NodePath("Pump")
+_query = NodePath("Query")
 
 [node name="Host" type="Node" parent="." unique_id=573842423]
 script = ExtResource("3_host")
 _defaultMap = "duel"
 
-[node name="Session" type="Node" parent="." unique_id=853542824]
-script = ExtResource("4_session")
+[node name="Pump" type="Node" parent="." unique_id=853542824 node_paths=PackedStringArray("_host")]
+script = ExtResource("4_pump")
+_host = NodePath("../Host")
 
-[node name="Chat" type="Node" parent="." unique_id=1162415252]
-script = ExtResource("2_chat")
-
-[node name="LobbySettings" type="Node" parent="." unique_id=952775275]
-script = ExtResource("5_settings")
-
-[node name="Query" type="Node" parent="." unique_id=1408552391]
+[node name="Query" type="Node" parent="." unique_id=1408552391 node_paths=PackedStringArray("_host", "_pump")]
 script = ExtResource("6_query")
+_host = NodePath("../Host")
+_pump = NodePath("../Pump")

@@ -1,6 +1,9 @@
 using Mortz.Core.Match;
+using Mortz.Core.Match.Scoring;
+using Mortz.Core.Match.Teams;
 using Mortz.Core.Net;
-using Mortz.Core.Net.Messages;
+using Mortz.Core.Net.Match;
+using Mortz.Tests.Net;
 using Xunit;
 
 namespace Mortz.Tests.Core.Net;
@@ -10,102 +13,72 @@ namespace Mortz.Tests.Core.Net;
 [Collection("NetTransport")]
 public class MatchProtocolTests : IDisposable
 {
-    private const int SENDER = 42;
-
     private readonly NetTransport.SendDelegate _original = NetTransport.Send;
 
     public void Dispose() => NetTransport.Send = _original;
 
-    private static void UseLoopback() =>
-        NetTransport.Send = (id, payload, _, _) =>
-            Assert.True(NetRegistry.Dispatch(id, SENDER, payload, isServer: false));
-
-    private static Victor? BroadcastEnd(Victor winner)
+    private static NetRouter UseLoopback()
     {
-        UseLoopback();
-        Victor? received = null;
-        Action<Victor> handler = victor => received = victor;
-        MatchProtocol.MatchEnded += handler;
-        try
-        {
-            MatchProtocol.BroadcastMatchEnd(winner);
-        }
-        finally
-        {
-            MatchProtocol.MatchEnded -= handler;
-        }
-        return received;
+        NetRouter router = new();
+        NetTransport.Send = (id, payload, _, _) => Assert.True(router.Dispatch(id, payload));
+        return router;
     }
 
-    private static MatchPoint? BroadcastMatchPoint(MatchPoint? state)
+    private static Victor? BroadcastEnd(Victor winner) =>
+        SendRawEnd(MatchProtocol.Encode(winner));
+
+    private static MatchPoint? BroadcastMatchPoint(MatchPoint? state) =>
+        SendRawMatchPoint(MatchProtocol.Encode(WinCondition.KILLS, state));
+
+    /// <summary>Malformed messages cannot be built from a Victor, so raw
+    /// messages send by hand.</summary>
+    private static Victor? SendRawEnd(MatchEndMsg message)
     {
-        UseLoopback();
-        MatchPoint? received = null;
-        bool raised = false;
-        Action<MatchPoint?> handler = point =>
-        {
-            received = point;
-            raised = true;
-        };
-        MatchProtocol.MatchPointChanged += handler;
-        try
-        {
-            MatchProtocol.BroadcastMatchPoint(WinCondition.KILLS, state);
-        }
-        finally
-        {
-            MatchProtocol.MatchPointChanged -= handler;
-        }
-        Assert.True(raised, "the transition must reach consumers");
-        return received;
+        NetRouter router = UseLoopback();
+        ClientProbe<MatchEndMsg> probe = new();
+        router.Add(probe);
+        message.Broadcast();
+        MatchEndMsg received = Assert.Single(probe.Messages);
+        return MatchProtocol.TryDecode(received, out Victor? winner) ? winner : null;
     }
 
-    /// <summary>Malformed messages cannot be built from a Victor, so send them
-    /// by hand.</summary>
-    private static Victor? SendRawEnd(bool byTeam, int winnerId)
+    private static MatchPoint? SendRawMatchPoint(MatchPointMsg message)
     {
-        UseLoopback();
-        Victor? received = null;
-        Action<Victor> handler = victor => received = victor;
-        MatchProtocol.MatchEnded += handler;
-        try
-        {
-            new MatchEndMsg(byTeam, winnerId).Broadcast();
-        }
-        finally
-        {
-            MatchProtocol.MatchEnded -= handler;
-        }
-        return received;
+        NetRouter router = UseLoopback();
+        ClientProbe<MatchPointMsg> probe = new();
+        router.Add(probe);
+        message.Broadcast();
+        // The transition must reach consumers even when it carries no state.
+        return MatchProtocol.Decode(Assert.Single(probe.Messages));
     }
 
     [Fact]
     public void APlayerWinnerRoundTrips() =>
-        Assert.Equal(new PlayerVictor(778900112), BroadcastEnd(new PlayerVictor(778900112)));
+        Assert.Equal(new Victor.Player(778900112), BroadcastEnd(new Victor.Player(778900112)));
 
     [Fact]
     public void ATeamWinnerRoundTrips()
     {
-        Assert.Equal(new TeamVictor(Team.BLUE), BroadcastEnd(new TeamVictor(Team.BLUE)));
-        Assert.Equal(new TeamVictor(Team.RED), BroadcastEnd(new TeamVictor(Team.RED)));
+        Assert.Equal(new Victor.Team(Team.BLUE), BroadcastEnd(new Victor.Team(Team.BLUE)));
+        Assert.Equal(new Victor.Team(Team.RED), BroadcastEnd(new Victor.Team(Team.RED)));
     }
 
     [Fact]
     public void AWinnerNobodyCanNameIsDropped()
     {
-        Assert.Null(SendRawEnd(byTeam: false, winnerId: 0));
-        Assert.Null(SendRawEnd(byTeam: true, winnerId: 9));
+        Assert.Null(SendRawEnd(new MatchEndMsg(ByTeam: false, WinnerId: 0)));
+        Assert.Null(SendRawEnd(new MatchEndMsg(ByTeam: true, WinnerId: 9)));
     }
 
     [Fact]
     public void MatchPointWithAPlayerLeaderRoundTrips() =>
-        Assert.Equal(new MatchPoint(3, new PlayerVictor(7)),
-            BroadcastMatchPoint(new MatchPoint(3, new PlayerVictor(7))));
+        Assert.Equal(new MatchPoint(3, new Victor.Player(7)),
+            BroadcastMatchPoint(new MatchPoint(3, new Victor.Player(7))));
 
     [Fact]
     public void MatchPointWithATeamLeaderRoundTrips() =>
-        Assert.Equal(new MatchPoint(1, new TeamVictor(Team.RED)),
-            BroadcastMatchPoint(new MatchPoint(1, new TeamVictor(Team.RED))));
+        Assert.Equal(new MatchPoint(1, new Victor.Team(Team.RED)),
+            BroadcastMatchPoint(new MatchPoint(1, new Victor.Team(Team.RED))));
 
     [Fact]
     public void MatchPointWithoutALeaderRoundTrips() =>
@@ -115,40 +88,15 @@ public class MatchProtocolTests : IDisposable
     public void ALapseArrivesAsNoState() => Assert.Null(BroadcastMatchPoint(null));
 
     [Fact]
-    public void ALeaderNobodyCanNameKeepsTheStateAndLosesTheName()
-    {
-        UseLoopback();
-        MatchPoint? received = null;
-        Action<MatchPoint?> handler = point => received = point;
-        MatchProtocol.MatchPointChanged += handler;
-        try
-        {
-            new MatchPointMsg(true, WinCondition.KILLS, 4, 9, LeaderIsTeam: true).Broadcast();
-        }
-        finally
-        {
-            MatchProtocol.MatchPointChanged -= handler;
-        }
-        Assert.Equal(new MatchPoint(4, null), received);
-    }
+    public void ALeaderNobodyCanNameKeepsTheStateAndLosesTheName() =>
+        Assert.Equal(new MatchPoint(4, null),
+            SendRawMatchPoint(new MatchPointMsg(true, WinCondition.KILLS, 4, 9,
+                LeaderIsTeam: true)));
 
     /// <summary>A zero would trip MatchPoint's own check, so the decoder
     /// clamps it.</summary>
     [Fact]
-    public void AnImpossibleRemainingIsSanitizedNotThrown()
-    {
-        UseLoopback();
-        MatchPoint? received = null;
-        Action<MatchPoint?> handler = point => received = point;
-        MatchProtocol.MatchPointChanged += handler;
-        try
-        {
-            new MatchPointMsg(true, WinCondition.KILLS, 0).Broadcast();
-        }
-        finally
-        {
-            MatchProtocol.MatchPointChanged -= handler;
-        }
-        Assert.Equal(new MatchPoint(1, null), received);
-    }
+    public void AnImpossibleRemainingIsSanitizedNotThrown() =>
+        Assert.Equal(new MatchPoint(1, null),
+            SendRawMatchPoint(new MatchPointMsg(true, WinCondition.KILLS, 0)));
 }

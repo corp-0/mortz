@@ -4,6 +4,7 @@ using Godot;
 using Mortz.Client.Score;
 using Mortz.Client.Ui;
 using Mortz.Core.Match;
+using Mortz.Core.Match.Teams;
 
 namespace Mortz.Client.Match;
 

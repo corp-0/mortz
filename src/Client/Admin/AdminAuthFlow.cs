@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using Mortz.Core.Admin;
-using Mortz.Core.Net.Messages;
+using Mortz.Core.Net.Admin;
 
 namespace Mortz.Client.Admin;
 

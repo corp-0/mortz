@@ -1,5 +1,4 @@
 using System.Collections.Frozen;
-using System.Collections.Immutable;
 using JetBrains.Annotations;
 
 namespace Mortz.Content;
@@ -13,18 +12,15 @@ public sealed record ContentDefinition<TManifest>(
     string ManifestPath,
     ContentPackDefinition SourcePack);
 
-public sealed class ResolvedContent<TManifest>
+public sealed class ResolvedContent<TManifest>(ContentDefinition<TManifest>[] overrideChain)
 {
-    internal ResolvedContent(ImmutableArray<ContentDefinition<TManifest>> overrideChain) =>
-        OverrideChain = overrideChain;
-
-    public ImmutableArray<ContentDefinition<TManifest>> OverrideChain { get; }
+    public ContentDefinition<TManifest>[] OverrideChain { get; } = overrideChain;
     public ContentDefinition<TManifest> Winner => OverrideChain[^1];
 }
 
 public sealed class ContentCatalogResult
 {
-    internal ContentCatalogResult(ContentCatalog? catalog, IReadOnlyList<ContentDiagnostic> diagnostics)
+    public ContentCatalogResult(ContentCatalog? catalog, IReadOnlyList<ContentDiagnostic> diagnostics)
     {
         Catalog = catalog;
         Diagnostics = diagnostics;
@@ -45,13 +41,13 @@ public sealed class ContentCatalog
         Dictionary<string, ResolvedContent<GameModeManifest>> modes)
     {
         RootPath = rootPath;
-        Packs = packs.ToImmutableArray();
+        Packs = packs.ToArray();
         _maps = maps.ToFrozenDictionary(StringComparer.Ordinal);
         _modes = modes.ToFrozenDictionary(StringComparer.Ordinal);
     }
 
     [UsedImplicitly] public string RootPath { get; }
-    public ImmutableArray<ContentPackDefinition> Packs { get; }
+    public ContentPackDefinition[] Packs { get; }
     public IReadOnlyDictionary<string, ResolvedContent<MapManifest>> Maps => _maps;
     public IReadOnlyDictionary<string, ResolvedContent<GameModeManifest>> Modes => _modes;
 
@@ -89,7 +85,7 @@ public sealed class ContentCatalog
                 string manifestPath = Path.Combine(directory, "content_pack.toml");
                 if (!File.Exists(manifestPath))
                     continue;
-                ContentReadResult<ContentPackManifest> read = ContentManifestReader.ReadPackFile(manifestPath);
+                ContentReadResult<ContentPackManifest> read = TomlModel.ReadFile<ContentPackManifest>(manifestPath);
                 diagnostics.AddRange(read.Diagnostics);
                 if (read.Value is ContentPackManifest manifest)
                     packs.Add(new ContentPackDefinition(manifest, Path.GetFullPath(directory)));
@@ -120,14 +116,15 @@ public sealed class ContentCatalog
         Dictionary<string, ResolvedContent<GameModeManifest>> modes = new(StringComparer.Ordinal);
         foreach (ContentPackDefinition pack in packs)
         {
-            Discover(pack, "map", ContentManifestReader.ReadMapFile, maps, diagnostics);
-            Discover(pack, "mode", ContentManifestReader.ReadModeFile, modes, diagnostics);
+            Discover(pack, "map", TomlModel.ReadFile<MapManifest>, maps, diagnostics);
+            Discover(pack, "mode", TomlModel.ReadFile<GameModeManifest>,
+                modes, diagnostics);
         }
 
         return new ContentCatalogResult(new ContentCatalog(root, packs, maps, modes), diagnostics);
     }
 
-    /// <summary>Content kinds live at &lt;pack&gt;/&lt;kind&gt;s/&lt;id&gt;/&lt;kind&gt;.toml.</summary>
+    // Maps live at <pack>/maps/<id>/map.toml; modes use the same layout.
     private static void Discover<TManifest>(ContentPackDefinition pack, string kind,
         Func<string, ContentReadResult<TManifest>> readManifest,
         Dictionary<string, ResolvedContent<TManifest>> definitions,
@@ -153,7 +150,7 @@ public sealed class ContentCatalog
         foreach (string directory in directories)
         {
             string id = Path.GetFileName(directory);
-            if (!ContentManifestReader.IsLogicalId(id))
+            if (!ContentId.IsValid(id))
             {
                 Error(diagnostics, directory,
                     $"{kind} directory '{id}' is not a valid logical ID (use lowercase letters, digits, '_' or '-')");

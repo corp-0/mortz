@@ -1,7 +1,9 @@
 using System.Collections.Immutable;
 using Godot;
 using Mortz.Core.Sim;
+using Mortz.Core.Sim.Modifiers;
 using Mortz.Core.Terrain;
+using Mortz.Server.Content;
 
 namespace Mortz.Shared;
 
@@ -19,10 +21,24 @@ public sealed class MapPackage
     public required int Width { get; init; }
     public required int Height { get; init; }
     public required ImmutableArray<Vec2> SpawnPoints { get; init; }
+    public required MapZones Zones { get; init; }
     public required Image Background { get; init; }
     public required Image Solid { get; init; }
     public required Image Destructible { get; init; }
-    internal TerrainMask InitialTerrain { get; init; } = null!;
+    public TerrainMask InitialTerrain { get; init; } = null!;
 
     public TerrainMask BuildMask() => InitialTerrain.Copy();
+
+    /// <summary>The engine-free half, for the dedicated server: no Image survives.</summary>
+    public MapSnapshot ToSnapshot() => new()
+    {
+        MapId = MapId,
+        DisplayName = DisplayName,
+        Hash = Hash,
+        Width = Width,
+        Height = Height,
+        SpawnPoints = SpawnPoints,
+        Zones = Zones,
+        InitialTerrain = InitialTerrain,
+    };
 }

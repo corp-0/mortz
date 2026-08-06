@@ -3,7 +3,8 @@ using System.Text;
 using Mortz.Client.Admin;
 using Mortz.Core.Admin;
 using Mortz.Core.Net;
-using Mortz.Core.Net.Messages;
+using Mortz.Core.Net.Admin;
+using Mortz.Tests.Core.Net;
 using Xunit;
 
 namespace Mortz.Tests.Client.Chat;
@@ -38,18 +39,12 @@ public class AdminAuthFlowTests : IDisposable
         Assert.True(flow.TryAnswerChallenge(PEER, new AdminChallengeMsg(challenge)));
         Assert.Equal(NetRegistry.ID_AdminProofMsg, _sentId);
 
-        AdminProofMsg receivedProof = default;
-        Action<int, AdminProofMsg> proofHandler = (_, message) => receivedProof = message;
-        AdminProofMsg.Received += proofHandler;
-        try
-        {
-            Assert.True(NetRegistry.Dispatch(NetRegistry.ID_AdminProofMsg, PEER,
-                _sentPayload, isServer: true));
-        }
-        finally
-        {
-            AdminProofMsg.Received -= proofHandler;
-        }
+        NetRouter<int> router = new();
+        Probe<AdminProofMsg> proofProbe = new();
+        router.Add(proofProbe);
+        Assert.True(router.Dispatch(NetRegistry.ID_AdminProofMsg, PEER, _sentPayload));
+        AdminProofMsg receivedProof = Assert.Single(proofProbe.Deliveries).Message;
+
         byte[] passwordKey = AdminCrypto.DerivePasswordKey(
             Encoding.UTF8.GetBytes(PASSWORD), challenge);
         Assert.Equal(AdminCrypto.ComputeProof(passwordKey, PEER, challenge),

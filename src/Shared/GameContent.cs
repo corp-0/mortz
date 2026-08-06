@@ -1,5 +1,6 @@
-using Godot;
 using Mortz.Content;
+using Mortz.Shared.Logging;
+using Serilog;
 
 namespace Mortz.Shared;
 
@@ -8,6 +9,8 @@ namespace Mortz.Shared;
 /// time so content installed while the game runs shows up.</summary>
 public sealed class GameContent
 {
+    private static readonly ILogger _log = MortzLog.For("content");
+
     private GameContent(ContentCatalog catalog) => Catalog = catalog;
 
     public ContentCatalog Catalog { get; }
@@ -26,7 +29,7 @@ public sealed class GameContent
     {
         if (!Catalog.TryGetMap(mapId, out ResolvedContent<MapManifest>? resolved) || resolved == null)
         {
-            GD.PrintErr($"[content] logical map '{mapId}' was not found");
+            _log.Error("logical map '{MapId}' was not found", mapId);
             return null;
         }
         MapPackageLoadResult result = MapPackageLoader.Load(resolved.Winner);
@@ -39,9 +42,9 @@ public sealed class GameContent
         foreach (ContentDiagnostic diagnostic in diagnostics)
         {
             if (diagnostic.Severity == ContentDiagnosticSeverity.ERROR)
-                GD.PrintErr($"[content] {diagnostic}");
+                _log.Error("{Diagnostic}", diagnostic);
             else
-                GD.PushWarning($"[content] {diagnostic}");
+                _log.Warning("{Diagnostic}", diagnostic);
         }
     }
 }

@@ -5,6 +5,8 @@ using Mortz.Client.Match;
 using Mortz.Core.Sim;
 using Mortz.Net;
 using Mortz.Shared;
+using Mortz.Shared.Logging;
+using Serilog;
 
 namespace Mortz.Client.Diagnostics;
 
@@ -16,6 +18,8 @@ namespace Mortz.Client.Diagnostics;
 [Meta(typeof(IAutoNode))]
 public partial class NetStatsProbe : Node
 {
+    private static readonly ILogger _log = MortzLog.For("stats");
+
     [Export] private GameView _gameView = null!;
     [Export] private LocalPlayerController _localPlayer = null!;
 
@@ -86,10 +90,13 @@ public partial class NetStatsProbe : Node
         double snapAge = _lastSnapshotMsec > 0 ? Time.GetTicksMsec() - _lastSnapshotMsec : -1;
         double rttAvg = _rttCount > 0 ? _rttSum / _rttCount : -1;
         float corrAvg = _corrCount > 0 ? _corrSum / _corrCount : 0;
-        GD.Print($"[stats] unix={Time.GetUnixTimeFromSystem():F3} seq={_localPlayer.NextSeq} " +
-                 $"newest={newest} renderTick={_gameView.RenderTick:F1} interp={interpTicks:F1}tk " +
-                 $"snapAge={snapAge:F0}ms rtt={rttAvg:F0}avg/{_rttMax:F0}max ms corr={corrAvg:F2}px " +
-                 $"up={sent:F0}B/{sentPk:F0}pk down={recv:F0}B/{recvPk:F0}pk");
+        _log.Information(
+            "unix={Unix:F3} seq={Seq} newest={Newest} renderTick={RenderTick:F1} " +
+            "interp={Interp:F1}tk snapAge={SnapAge:F0}ms rtt={RttAvg:F0}avg/{RttMax:F0}max ms " +
+            "corr={Correction:F2}px up={SentBytes:F0}B/{SentPackets:F0}pk " +
+            "down={RecvBytes:F0}B/{RecvPackets:F0}pk",
+            Time.GetUnixTimeFromSystem(), _localPlayer.NextSeq, newest, _gameView.RenderTick,
+            interpTicks, snapAge, rttAvg, _rttMax, corrAvg, sent, sentPk, recv, recvPk);
         _rttSum = 0; _rttMax = 0; _rttCount = 0;
         _corrSum = 0; _corrCount = 0;
     }

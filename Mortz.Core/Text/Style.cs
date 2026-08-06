@@ -32,7 +32,7 @@ public sealed class Style
         return this;
     }
 
-    internal string Apply(string bbcode)
+    public string Apply(string bbcode)
     {
         string styled = bbcode;
         foreach (IRichTextStyle style in _styles)

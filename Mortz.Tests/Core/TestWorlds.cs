@@ -1,4 +1,5 @@
 using Mortz.Core.Match;
+using Mortz.Core.Match.Configuration;
 using Mortz.Core.Sim;
 using Mortz.Core.Terrain;
 
@@ -18,9 +19,9 @@ public static class TestWorlds
     /// <summary>For tests that shoot the moment they spawn, which spawn protection would block.</summary>
     public static readonly MatchConfig NoSpawnProtectionConfig = new()
     {
-        Physics = new Physics { SpawnImmunity = 0 },
+        Rules = new ModeRules { SpawnImmunity = 0 },
     };
-    public static readonly PlayerStats Stats = PlayerStats.Resolve(ProductionConfig.Physics);
+    public static readonly PlayerStats Stats = PlayerStats.Resolve(ProductionConfig);
 
     public static TerrainMask Flat(
         Func<int, int, bool>? extraSolid = null,

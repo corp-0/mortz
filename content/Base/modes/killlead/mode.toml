@@ -1,7 +1,6 @@
 format_version = 1
 name = "Kill Lead"
 description = "Free for all. First player to lead the field by the target wins."
-identity = ["rules.teams", "rules.win_condition"]
 
 [rules]
 teams = false

@@ -1,6 +1,7 @@
 using Mortz.Core.Match;
 using Mortz.Core.Sim;
 using Xunit;
+using Combat = Mortz.Core.Match.Configuration.Combat;
 
 namespace Mortz.Tests.Core.Sim;
 
@@ -11,7 +12,7 @@ public class BlastSimTests
 
     private const float CORE = SimConfig.MORTAR_CARVE_RADIUS * SimConfig.BLAST_CORE_FRACTION;
     private const float RIM = SimConfig.MORTAR_CARVE_RADIUS;
-    private static readonly Physics _cfg = TestWorlds.NoSpawnProtectionConfig.Physics;
+    private static readonly Combat _cfg = TestWorlds.NoSpawnProtectionConfig.Combat;
 
     [Fact]
     public void BlastOnBodyCenter_DealsFullDamage()

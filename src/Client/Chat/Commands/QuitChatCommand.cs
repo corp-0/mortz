@@ -3,7 +3,7 @@ using Mortz.Core.Chat.Commands;
 namespace Mortz.Client.Chat.Commands;
 
 [ChatCommand("quit", Usage = "/quit", Description = "Disconnect from the server.")]
-internal sealed class QuitChatCommand : ClientChatCommand
+public sealed class QuitChatCommand : ClientChatCommand
 {
     public override bool TryBind(IReadOnlyList<string> arguments, out string error)
     {

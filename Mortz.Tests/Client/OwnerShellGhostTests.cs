@@ -32,10 +32,10 @@ public class OwnerShellGhostTests
         TerrainMask clientTerrain = TestWorlds.Flat();
         SimWorld server = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         server.AddPlayer(LOCAL_ID);
-        Predictor predictor = new Predictor(clientTerrain, TestWorlds.NoSpawnProtectionConfig.Physics);
+        Predictor predictor = new Predictor(clientTerrain, TestWorlds.NoSpawnProtectionConfig);
         predictor.Reconcile(server.Players[LOCAL_ID], -1);
         MortarReplicaSet replicas = new MortarReplicaSet(
-            clientTerrain, TestWorlds.NoSpawnProtectionConfig.Physics);
+            clientTerrain, TestWorlds.NoSpawnProtectionConfig.Combat);
 
         // Wire delays, in client ticks. Client tick t and server tick t are
         // simulated in the same loop iteration; the one-way delay on each leg

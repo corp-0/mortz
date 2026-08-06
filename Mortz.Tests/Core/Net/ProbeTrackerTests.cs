@@ -9,7 +9,8 @@ public class ProbeTrackerTests
 
     private static ServerInfo Sample() =>
         new("Gilles' Box", "Teams", "castlewars", Players: 3, MaxPlayers: 8,
-            InLobby: true, GamePort: 7777, ProtocolVersion: 32, SchemaHash: 0xFEEDUL);
+            InLobby: true, AllowJoinInProgress: true, GamePort: 7777,
+            ProtocolVersion: 32, SchemaHash: 0xFEEDUL);
 
     private static ProbeTracker Sequenced(params uint[] nonces)
     {

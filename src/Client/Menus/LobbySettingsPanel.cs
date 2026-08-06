@@ -7,8 +7,9 @@ using Mortz.Client.Setup;
 using Mortz.Client.Ui;
 using Mortz.Core.Admin;
 using Mortz.Core.Match;
+using Mortz.Core.Match.Configuration;
 using Mortz.Core.Net;
-using Mortz.Core.Net.Messages;
+using Mortz.Core.Net.Lobby;
 using Mortz.Shared;
 
 namespace Mortz.Client.Menus;
@@ -22,6 +23,7 @@ public partial class LobbySettingsPanel : PanelContainer
     [Export] private Label _mapStatus = null!;
     [Export] private UiPropertySheet _rulesSheet = null!;
     [Export] private UiPropertySheet _physicsSheet = null!;
+    [Export] private UiPropertySheet _combatSheet = null!;
 
     private readonly List<string> _mapIds = [];
     private readonly List<string> _modeIds = [];
@@ -45,6 +47,7 @@ public partial class LobbySettingsPanel : PanelContainer
         _modePicker.ItemSelected += OnModeSelected;
         _rulesSheet.Build(ModeRulesUiMetadata.Categories, _config.Rules, OnConfigEdited);
         _physicsSheet.Build(PhysicsUiMetadata.Categories, _config.Physics, OnConfigEdited);
+        _combatSheet.Build(CombatUiMetadata.Categories, _config.Combat, OnConfigEdited);
         UpdateEditing(isAdmin: false);
     }
 
@@ -86,6 +89,7 @@ public partial class LobbySettingsPanel : PanelContainer
         ApplyModeOptions(selection);
         _rulesSheet.UpdateModel(_config.Rules);
         _physicsSheet.UpdateModel(_config.Physics);
+        _combatSheet.UpdateModel(_config.Combat);
         UpdateEditing(Admin.IsAdmin);
         UpdatePreview(selection);
     }
@@ -206,10 +210,11 @@ public partial class LobbySettingsPanel : PanelContainer
         _mapPicker.Disabled = !canEdit;
         _rulesSheet.SetEditable(canEdit);
         _physicsSheet.SetEditable(canEdit);
+        _combatSheet.SetEditable(canEdit);
     }
 
     // BlendRect requires matching formats.
-    internal static Image ComposePreview(MapPackage map)
+    public static Image ComposePreview(MapPackage map)
     {
         Image combined = (Image)map.Background.Duplicate();
         combined.Convert(Image.Format.Rgba8);

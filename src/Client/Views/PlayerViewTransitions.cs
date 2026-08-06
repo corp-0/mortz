@@ -3,7 +3,7 @@ namespace Mortz.Client.Views;
 /// <summary>Edge detection for one-shot presentation effects. Keeping this
 /// separate from scene mutation makes prediction reconciliation rules explicit
 /// and testable.</summary>
-internal static class PlayerViewTransitions
+public static class PlayerViewTransitions
 {
     private const int LOCAL_DASH_CORRECTION_SLACK = 5;
 

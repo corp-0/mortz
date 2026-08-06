@@ -2,52 +2,43 @@ using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
 using Mortz.Net;
-using Mortz.Server.Chat;
 using Mortz.Server.Hosting;
-using Mortz.Server.Lobby;
-using Mortz.Server.Session;
+using Mortz.Server.Pump;
+using Mortz.Server.Query;
 
 namespace Mortz.Server;
 
 /// <summary>Composition root for the dedicated-server scene.</summary>
 [Meta(typeof(IAutoNode))]
-public partial class ServerMain : Node,
-    IProvide<NetworkManager>,
-    IProvide<ServerBootConfig>,
-    IProvide<IServerIdentity>,
-    IProvide<IServerSession>,
-    IProvide<IServerAdminAuthorizer>,
-    IProvide<IServerLobbySettings>
+public partial class ServerMain : Node, IProvide<NetworkManager>
 {
     [Export] private ServerHost _host = null!;
-    [Export] private ServerSessionController _session = null!;
-    [Export] private ServerChat _chat = null!;
-    [Export] private ServerLobbySettings _lobbySettings = null!;
+    [Export] private ServerPump _pump = null!;
+    [Export] private ServerQueryResponder _query = null!;
 
     private NetworkManager _network = null!;
-    private ServerBootConfig _config = null!;
 
     NetworkManager IProvide<NetworkManager>.Value() => _network;
-    ServerBootConfig IProvide<ServerBootConfig>.Value() => _config;
-    IServerIdentity IProvide<IServerIdentity>.Value() => _config;
-    IServerSession IProvide<IServerSession>.Value() => _session;
-    IServerAdminAuthorizer IProvide<IServerAdminAuthorizer>.Value() => _chat;
-    IServerLobbySettings IProvide<IServerLobbySettings>.Value() => _lobbySettings;
 
     public override void _Notification(int what) => this.Notify(what);
 
+    partial void NotifyE2EListening();
+
     public void OnReady()
     {
-        if (_host.Config is not ServerBootConfig config)
+        if (_host.Load == null)
         {
             GetTree().Quit(1);
             return;
         }
 
-        _config = config;
         _network = GetNode<NetworkManager>(NetworkManager.AUTOLOAD_PATH);
         this.Provide();
         if (!_host.Listen(_network))
+        {
             GetTree().Quit(1);
+            return;
+        }
+        NotifyE2EListening();
     }
 }

@@ -1,4 +1,5 @@
 using Mortz.Core.Net;
+using Mortz.Core.Net.Lobby;
 using Xunit;
 
 namespace Mortz.Tests.Core.Net;

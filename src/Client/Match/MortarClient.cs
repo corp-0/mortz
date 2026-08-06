@@ -4,17 +4,27 @@ using Godot;
 using Mortz.Client.Audio;
 using Mortz.Client.Replay;
 using Mortz.Client.Views;
-using Mortz.Core.Match;
-using Mortz.Core.Net.Messages;
+using Mortz.Core.Net;
+using Mortz.Core.Net.Sim;
 using Mortz.Core.Replication;
 using Mortz.Core.Sim;
+using Mortz.Core.Sim.Modifiers;
 using Mortz.Net;
+using Mortz.Shared.Logging;
+using Serilog;
+using Combat = Mortz.Core.Match.Configuration.Combat;
 
 namespace Mortz.Client.Match;
 
 [Meta(typeof(IAutoNode))]
-public partial class MortarClient : Node
+public partial class MortarClient : Node,
+    IHandle<CarveMsg>,
+    IHandle<ShellRetireMsg>,
+    IHandle<MortarLifecycleMsg>,
+    IHandle<MortarCorrectionMsg>
 {
+    private static readonly ILogger _log = MortzLog.For("client");
+
     [Export] private LocalPlayerController _localPlayer = null!;
     [Export] private MortarViewManager _views = null!;
     [Export] private FinalKillReplay _finalKillReplay = null!;
@@ -28,6 +38,11 @@ public partial class MortarClient : Node
     [Dependency]
     private GameMap Map => this.DependOn<GameMap>();
 
+    [Dependency]
+    private NetRouter Router => this.DependOn<NetRouter>();
+
+    private NetRouter? _routed;
+
     public override void _Notification(int what) => this.Notify(what);
 
     // Successive parries climb a pentatonic scale, louder each step since
@@ -38,32 +53,30 @@ public partial class MortarClient : Node
     private const float PARRY_GAIN_DB_PER_STEP = 1f;
 
     private MortarReplicaSet _remoteMortars = null!;
-    private Physics _config = null!;
+    private Combat _config = null!;
+    private MapZones _zones = MapZones.None;
     private Func<int> _newestSnapshotTick = null!;
     private readonly Dictionary<ushort, int> _parriesByMortar = new();
 
     /// <summary>Must be called before entering the tree.</summary>
-    public void Initialize(Physics config, Func<int> newestSnapshotTick)
+    public void Initialize(Combat config, MapZones zones, Func<int> newestSnapshotTick)
     {
         _config = config;
+        _zones = zones;
         _newestSnapshotTick = newestSnapshotTick;
     }
 
     public void OnResolved()
     {
-        _remoteMortars = new MortarReplicaSet(Map.Mask, _config);
-        CarveMsg.Received += OnCarve;
-        ShellRetireMsg.Received += OnShellRetire;
-        MortarLifecycleMsg.Received += OnMortarLifecycle;
-        MortarCorrectionMsg.Received += OnMortarCorrection;
+        _remoteMortars = new MortarReplicaSet(Map.Mask, _config, _zones);
+        _routed = Router;
+        _routed.Add(this);
     }
 
     public void OnExitTree()
     {
-        CarveMsg.Received -= OnCarve;
-        ShellRetireMsg.Received -= OnShellRetire;
-        MortarLifecycleMsg.Received -= OnMortarLifecycle;
-        MortarCorrectionMsg.Received -= OnMortarCorrection;
+        _routed?.Remove(this);
+        _routed = null;
     }
 
     public override void _PhysicsProcess(double delta)
@@ -80,31 +93,31 @@ public partial class MortarClient : Node
         return remote;
     }
 
-    // Retire the predicted copy so it can't fly on and carve a ghost.
-    // Deflected shells carry -1 and are skipped.
-    private void OnCarve(CarveMsg msg)
+    // Retire the predicted copy so it can't fly on and carve a ghost; deflected
+    // shells carry -1 and are skipped.
+    public void Handle(in CarveMsg msg)
     {
         if (msg.SpawnSeq >= 0 && msg.OwnerId == Network.LocalPeerId &&
             _localPlayer.RetireShell(msg.SpawnSeq))
-            GD.Print($"[client] retired shell seq {msg.SpawnSeq} (authoritative explosion)");
+            _log.Information("retired shell seq {Seq} (authoritative explosion)", msg.SpawnSeq);
     }
 
     // Reverts the carve too, in case the impact was queued but never reached
-    // GameMap. Overlaps with the deflect path below; both are idempotent.
-    private void OnShellRetire(ShellRetireMsg msg)
+    // GameMap; overlaps with the deflect path below, both are idempotent.
+    public void Handle(in ShellRetireMsg msg)
     {
         bool hadPrediction = _localPlayer.RetireShell(msg.SpawnSeq);
         bool hadCarve = Map.RevertPredictedCarve(msg.SpawnSeq);
         if (hadPrediction || hadCarve)
-            GD.Print($"[client] retired shell seq {msg.SpawnSeq} (reliable server event)");
+            _log.Information("retired shell seq {Seq} (reliable server event)", msg.SpawnSeq);
     }
 
-    private void OnMortarLifecycle(MortarLifecycleMsg msg)
+    public void Handle(in MortarLifecycleMsg msg)
     {
         if (!MortarWire.TryReadLifecycle(msg.Events, out int tick,
                 out List<SimWorld.MortarEvent> events))
         {
-            GD.PrintErr("[client] dropped malformed mortar lifecycle batch");
+            _log.Error("dropped malformed mortar lifecycle batch");
             return;
         }
         foreach (SimWorld.MortarEvent e in events)
@@ -147,7 +160,7 @@ public partial class MortarClient : Node
         bool hadShell = _localPlayer.RetireShell(state.SpawnSeq);
         bool hadCarve = Map.RevertPredictedCarve(state.SpawnSeq);
         if (hadShell || hadCarve)
-            GD.Print($"[client] retired shell seq {state.SpawnSeq} (deflected)");
+            _log.Information("retired shell seq {Seq} (deflected)", state.SpawnSeq);
     }
 
     private void RetireEndedMortar(ushort id)
@@ -159,9 +172,9 @@ public partial class MortarClient : Node
         _localPlayer.ForgetCompleted(state.SpawnSeq);
     }
 
-    private void OnMortarCorrection(MortarCorrectionMsg msg)
+    public void Handle(in MortarCorrectionMsg msg)
     {
         if (!_remoteMortars.Correct(msg.States, msg.Tick, _newestSnapshotTick()))
-            GD.PrintErr("[client] dropped malformed mortar correction");
+            _log.Error("dropped malformed mortar correction");
     }
 }

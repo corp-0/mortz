@@ -1,5 +1,6 @@
-using Mortz.Core.Match;
+using Mortz.Core.Sim.Modifiers;
 using Mortz.Core.Terrain;
+using Combat = Mortz.Core.Match.Configuration.Combat;
 
 namespace Mortz.Core.Sim;
 
@@ -10,14 +11,17 @@ namespace Mortz.Core.Sim;
 /// </summary>
 public static class MortarSim
 {
-    public static MortarOutcome Tick(ref MortarState m, TerrainMask terrain, Physics cfg, float dt)
+    public static MortarOutcome Tick(ref MortarState m, TerrainMask terrain, Combat cfg, float dt,
+        MapZones? zones = null)
     {
         if (++m.AgeTicks >= SimConfig.MORTAR_MAX_LIFETIME_TICKS)
             return MortarOutcome.EXPLODED;
 
+        float gravity = SituationEffects.ResolveFirstZoneStat(m.Position,
+            zones ?? MapZones.None, Stat.MORTAR_GRAVITY, cfg.MortarGravity);
         m.Velocity = m.Velocity with
         {
-            Y = MathF.Min(m.Velocity.Y + cfg.MortarGravity * dt, cfg.MortarMaxFall),
+            Y = MathF.Min(m.Velocity.Y + gravity * dt, cfg.MortarMaxFall),
         };
 
         const float SUB_STEP = 4f;

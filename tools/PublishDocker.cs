@@ -2,7 +2,7 @@ using System.Diagnostics;
 
 namespace Mortz.Tools;
 
-internal static class PublishDocker
+public static class PublishDocker
 {
     private const string IMAGE = "ghcr.io/corp-0/mortz-server";
 

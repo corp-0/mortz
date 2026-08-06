@@ -59,7 +59,7 @@ public sealed class RichText
 
     public RichText AddOnNewLine(string? text) => Add("\n").Add(text);
 
-    internal static RichText FromTrustedBbCode(string bbcode) => new RichText().AppendRaw(bbcode);
+    public static RichText FromTrustedBbCode(string bbcode) => new RichText().AppendRaw(bbcode);
 
     private RichText AppendRaw(string bbcode)
     {
@@ -67,7 +67,7 @@ public sealed class RichText
         return this;
     }
 
-    internal static string Escape(string? text)
+    public static string Escape(string? text)
     {
         if (string.IsNullOrEmpty(text))
             return "";

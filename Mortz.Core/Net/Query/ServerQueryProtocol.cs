@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using System.Text;
+using Mortz.Core.Net.Names;
 
 namespace Mortz.Core.Net.Query;
 
@@ -10,7 +11,7 @@ public static class ServerQueryProtocol
 {
     /// <summary>Bumped only for query datagram changes, separate from
     /// NetConfig.PROTOCOL_VERSION.</summary>
-    public const byte VERSION = 1;
+    public const byte VERSION = 2;
 
     /// <summary>Direct connect relies on this: players type the port they
     /// would join, not the query port.</summary>
@@ -63,6 +64,7 @@ public static class ServerQueryProtocol
         writer.Write((byte)Math.Clamp(info.Players, 0, byte.MaxValue));
         writer.Write((byte)Math.Clamp(info.MaxPlayers, 0, byte.MaxValue));
         writer.Write(info.InLobby);
+        writer.Write(info.AllowJoinInProgress);
         writer.Write(SafeName.Sanitize(info.Name, MAX_TEXT_LENGTH));
         writer.Write(SafeName.Sanitize(info.Mode, MAX_TEXT_LENGTH));
         writer.Write(SafeName.Sanitize(info.Map, MAX_TEXT_LENGTH));
@@ -86,11 +88,12 @@ public static class ServerQueryProtocol
             int players = reader.ReadByte();
             int maxPlayers = reader.ReadByte();
             bool inLobby = reader.ReadBoolean();
+            bool allowJoinInProgress = reader.ReadBoolean();
             string name = ReadText(reader);
             string mode = ReadText(reader);
             string map = ReadText(reader);
             reply = new ServerQueryReply(nonce, new ServerInfo(name, mode, map, players,
-                maxPlayers, inLobby, gamePort, protocolVersion, schemaHash));
+                maxPlayers, inLobby, allowJoinInProgress, gamePort, protocolVersion, schemaHash));
             return true;
         }
         catch (Exception exception) when (exception is EndOfStreamException or IOException)

@@ -1,12 +1,12 @@
 using Mortz.Core.Admin;
 using Mortz.Core.Chat.Commands;
-using Mortz.Core.Net.Messages;
+using Mortz.Core.Net.Match;
 
 namespace Mortz.Client.Chat.Commands;
 
 [ChatCommand("endmatch", Usage = "/endmatch",
     Description = "End the current match and return everyone to the lobby (admin only).")]
-internal sealed class EndMatchChatCommand : ClientChatCommand
+public sealed class EndMatchChatCommand : ClientChatCommand
 {
     public override bool TryBind(IReadOnlyList<string> arguments, out string error)
     {

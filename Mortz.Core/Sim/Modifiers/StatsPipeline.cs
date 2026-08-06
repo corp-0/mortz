@@ -1,4 +1,5 @@
 using Mortz.Core.Match;
+using Mortz.Core.Match.Configuration;
 
 namespace Mortz.Core.Sim.Modifiers;
 
@@ -14,18 +15,18 @@ namespace Mortz.Core.Sim.Modifiers;
 /// </summary>
 public static partial class StatsPipeline
 {
-    public static PlayerStats Resolve(Physics cfg, IReadOnlyList<StatsModifier> modifiers)
+    public static PlayerStats Resolve(MatchConfig cfg, IReadOnlyList<StatsModifier> modifiers)
     {
         if (modifiers.Count == 0)
             return PlayerStats.Resolve(cfg);
-        Physics modified = Physics.FromBytes(cfg.ToBytes());
+        MatchConfig modified = MatchConfig.FromBytes(cfg.ToBytes());
         Apply(modified, modifiers, StatOp.ADD);
         Apply(modified, modifiers, StatOp.MUL);
         modified.Clamp();
         return PlayerStats.Resolve(modified);
     }
 
-    private static void Apply(Physics cfg, IReadOnlyList<StatsModifier> modifiers, StatOp phase)
+    private static void Apply(MatchConfig cfg, IReadOnlyList<StatsModifier> modifiers, StatOp phase)
     {
         foreach (StatsModifier modifier in modifiers)
         {

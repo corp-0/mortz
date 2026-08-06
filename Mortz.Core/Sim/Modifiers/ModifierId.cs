@@ -7,4 +7,7 @@ public enum ModifierId : byte
     ICE,
     WATER,
     SPECIAL,
+    /// <summary>Map zone effects; computed from map data on both sides, so
+    /// every zone shares this one id instead of replicating or persisting.</summary>
+    ZONE,
 }

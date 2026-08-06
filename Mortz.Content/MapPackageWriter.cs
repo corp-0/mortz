@@ -7,17 +7,14 @@ public sealed record MapPackageWriteRequest(
     ReadOnlyMemory<byte> SolidPng,
     ReadOnlyMemory<byte> DestructiblePng);
 
-/// <summary>Writes the whole package off to the side, then swaps the finished
-/// directory in and puts the old one back if anything goes wrong. Nothing is
-/// edited in place, so a reader can catch the rename and fail, but it can never
-/// read half of one map and half of another.</summary>
+/// <summary>Replaces a map package without exposing a half-written one.</summary>
 public static class MapPackageWriter
 {
     public static void Write(string mapsDirectory, MapPackageWriteRequest request)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(mapsDirectory);
         ArgumentNullException.ThrowIfNull(request);
-        if (!ContentManifestReader.IsLogicalId(request.MapId))
+        if (!ContentId.IsValid(request.MapId))
             throw new ArgumentException("map ID is not a valid logical ID", nameof(request));
         if (request.BackgroundPng.IsEmpty || request.SolidPng.IsEmpty || request.DestructiblePng.IsEmpty)
             throw new ArgumentException("all three PNG layers are required", nameof(request));
@@ -40,7 +37,7 @@ public static class MapPackageWriter
             File.WriteAllBytes(Path.Combine(staging, "solid.png"), request.SolidPng.ToArray());
             File.WriteAllBytes(Path.Combine(staging, "destructible.png"), request.DestructiblePng.ToArray());
             File.WriteAllText(Path.Combine(staging, "map.toml"),
-                ContentManifestReader.WriteMap(request.Manifest));
+                TomlModel.Write(request.Manifest));
 
             if (Directory.Exists(target))
             {

@@ -14,7 +14,7 @@ public readonly record struct ChatCommandName
     public string Value { get; }
     public override string ToString() => Value;
 
-    internal static bool TryCreate(string value, out ChatCommandName name)
+    public static bool TryCreate(string value, out ChatCommandName name)
     {
         if (!TryNormalize(value, out string normalized))
         {

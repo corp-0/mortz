@@ -2,16 +2,16 @@ using System.Net;
 using Godot;
 using Mortz.Core.Net;
 using Mortz.Core.Net.Query;
+using Mortz.Shared.Logging;
+using Serilog;
 
 namespace Mortz.Client.Servers;
 
-/// <summary>
-/// Sockets and DNS around ProbeTracker, which decides what a datagram means.
-/// Every target goes out at once, so a list of dead entries costs one
-/// timeout, not one per entry.
-/// </summary>
+/// <summary>Sockets and DNS around ProbeTracker, which decides what a datagram means.</summary>
 public partial class ServerProbe : Node
 {
+    private static readonly ILogger _log = MortzLog.For("browser");
+
     private const int MAX_PACKETS_PER_FRAME = 64;
 
     private readonly ProbeTracker _tracker = new();
@@ -34,7 +34,7 @@ public partial class ServerProbe : Node
         Error error = socket.Bind(0);
         if (error != Error.Ok)
         {
-            GD.PrintErr($"[browser] no query socket: {error}");
+            _log.Error("no query socket: {Error}", error);
             socket.Dispose();
             return;
         }

@@ -2,11 +2,20 @@ namespace Mortz.Client.Session;
 
 /// <summary>The client's coarse session lifecycle. It replaces combinations
 /// of visibility and nullable fields as the authority for legal message effects.</summary>
-internal sealed class ClientSession
+public sealed class ClientSession
 {
     public ClientSessionStage Stage { get; private set; } = ClientSessionStage.MENU;
 
-    public void BeginConnecting() => Stage = ClientSessionStage.CONNECTING;
+    /// <summary>False once the server has admitted us: a second attempt would
+    /// drop the peer with no teardown and leave the live session parented.
+    /// Retargeting while still connecting stays legal.</summary>
+    public bool TryBeginConnecting()
+    {
+        if (Stage is not (ClientSessionStage.MENU or ClientSessionStage.CONNECTING))
+            return false;
+        Stage = ClientSessionStage.CONNECTING;
+        return true;
+    }
 
     public bool TryEnterLobby()
     {

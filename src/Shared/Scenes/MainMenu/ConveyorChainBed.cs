@@ -1,10 +1,14 @@
 using Godot;
+using Mortz.Shared.Logging;
+using Serilog;
 
 namespace Mortz.Shared.Scenes.MainMenu;
 
 [Tool]
 public partial class ConveyorChainBed : MultiMeshInstance3D
 {
+    private static readonly ILogger _log = MortzLog.For("client");
+
     [Export] private PackedScene _chainScene = null!;
     [Export] private int _columns = 14;
     [Export] private int _rows = 5;
@@ -22,7 +26,7 @@ public partial class ConveyorChainBed : MultiMeshInstance3D
         if (source?.Mesh is null)
         {
             sourceRoot.Free();
-            GD.PushError("Conveyor chain scene has no MeshInstance3D.");
+            _log.Error("conveyor chain scene has no MeshInstance3D");
             return;
         }
 

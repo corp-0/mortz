@@ -27,7 +27,6 @@ public static class PlayerSim
         if (p.ParryTicks > 0)
             p.ParryTicks--;
 
-        // Horizontal drive.
         float target = input.MoveDir * stats.MaxRunSpeed;
         float rate;
         if (input.MoveDir != 0)

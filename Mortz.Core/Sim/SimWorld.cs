@@ -1,5 +1,6 @@
 using Mortz.Core.Input;
-using Mortz.Core.Match;
+using Mortz.Core.Match.Configuration;
+using Mortz.Core.Match.Teams;
 using Mortz.Core.Net;
 using Mortz.Core.Replication;
 using Mortz.Core.Sim.Modifiers;
@@ -26,6 +27,7 @@ public sealed class SimWorld
     public int Tick { get; private set; }
     public TerrainMask Terrain { get; }
     public MatchConfig Config { get; }
+    public MapZones Zones { get; }
 
     // Sorted for deterministic iteration order.
     private readonly SortedDictionary<int, PlayerState> _players = new();
@@ -35,6 +37,7 @@ public sealed class SimWorld
     private readonly SortedDictionary<int, PlayerStats> _stats = new();
     private readonly SortedDictionary<int, List<StatsModifier>> _modifiers = new();
     private readonly SortedDictionary<int, Situations> _situations = new();
+    private readonly SortedDictionary<int, ulong> _zoneMasks = new();
     private readonly SortedDictionary<int, PlayerStats> _effective = new();
     private readonly SortedDictionary<int, byte> _netSlots = new();
     private readonly Vec2[] _spawnPoints;
@@ -46,10 +49,8 @@ public sealed class SimWorld
     private readonly List<ShellRetirement> _shellRetirements = new();
     private readonly List<MortarEvent> _mortarEvents = new();
     private readonly List<Death> _deaths = new();
+    private readonly List<PendingDamage> _pendingDamage = new();
     private ushort _nextMortarId;
-
-    // Only drawn from at AddPlayer; a fixed seed keeps tests reproducible.
-    private readonly Random _rng;
 
     public IReadOnlyDictionary<int, PlayerState> Players => _players;
     public IReadOnlyDictionary<int, PlayerStats> Stats => _stats;
@@ -67,30 +68,33 @@ public sealed class SimWorld
     /// <summary>Deaths from the last Step.</summary>
     public IReadOnlyList<Death> Deaths => _deaths;
 
-    public SimWorld(TerrainMask terrain, MatchConfig config, int seed = 0,
-        IReadOnlyList<Vec2>? spawnPoints = null)
+    public SimWorld(TerrainMask terrain, MatchConfig config,
+        IReadOnlyList<Vec2>? spawnPoints = null, MapZones? zones = null)
     {
         Terrain = terrain;
         Config = config;
-        _rng = new Random(seed);
         _spawnPoints = spawnPoints?.ToArray() ?? [];
+        Zones = zones ?? MapZones.None;
     }
 
-    public void AddPlayer(int peerId, Team? team = null)
+    public void AddPlayer(int peerId, Team? team = null, byte skin = 0)
     {
         if (team != null && !Config.Rules.Teams)
             throw new ArgumentException("Team assignment with the Teams rule off.", nameof(team));
+        if (skin >= SimConfig.SKIN_COUNT)
+            throw new ArgumentOutOfRangeException(nameof(skin));
         byte slot = Enumerable.Range(1, NetConfig.MAX_PLAYERS)
             .Select(i => (byte)i)
             .First(i => !_netSlots.ContainsValue(i));
         _netSlots[peerId] = slot;
         _modifiers[peerId] = [];
         _situations[peerId] = Situations.NONE;
-        _stats[peerId] = PlayerStats.Resolve(Config.Physics);
+        _zoneMasks[peerId] = 0;
+        _stats[peerId] = PlayerStats.Resolve(Config);
         _effective[peerId] = _stats[peerId];
         _players[peerId] = FreshState(peerId, lastInputSeq: -1) with
         {
-            Skin = (byte)_rng.Next(SimConfig.SKIN_COUNT),
+            Skin = skin,
             Team = team,
         };
         _inputs[peerId] = new InputQueue();
@@ -120,27 +124,32 @@ public sealed class SimWorld
 
     private void RecomputeStats(int peerId)
     {
-        _stats[peerId] = StatsPipeline.Resolve(Config.Physics, _modifiers[peerId]);
-        _effective[peerId] = Compose(peerId, _situations[peerId]);
+        _stats[peerId] = StatsPipeline.Resolve(Config, _modifiers[peerId]);
+        _effective[peerId] = Compose(peerId, _situations[peerId], _zoneMasks[peerId]);
     }
 
-    private PlayerStats Compose(int peerId, Situations flags)
+    /// <summary>Persistent (sorted by id), then situations (flag order), then
+    /// zones (declaration order); the Predictor must compose identically.</summary>
+    private PlayerStats Compose(int peerId, Situations flags, ulong zoneMask)
     {
-        if (flags == Situations.NONE)
+        if (flags == Situations.NONE && zoneMask == 0)
             return _stats[peerId];
         List<StatsModifier> all = new(_modifiers[peerId]);
         SituationEffects.AppendModifiers(flags, all);
-        return StatsPipeline.Resolve(Config.Physics, all);
+        SituationEffects.AppendZoneModifiers(zoneMask, Zones, all);
+        return StatsPipeline.Resolve(Config, all);
     }
 
     /// <summary>Recomputes only when the situation flips, not every tick.</summary>
     private PlayerStats EffectiveStats(int id, in PlayerState state, in PlayerInput input)
     {
         Situations flags = SituationEffects.Detect(state, Terrain, input);
-        if (flags != _situations[id])
+        ulong zoneMask = SituationEffects.DetectZones(state, Zones);
+        if (flags != _situations[id] || zoneMask != _zoneMasks[id])
         {
             _situations[id] = flags;
-            _effective[id] = Compose(id, flags);
+            _zoneMasks[id] = zoneMask;
+            _effective[id] = Compose(id, flags, zoneMask);
         }
         return _effective[id];
     }
@@ -158,8 +167,8 @@ public sealed class SimWorld
             JumpsLeft = stats.TotalJumps,
             Ammo = stats.MaxAmmo,
             Health = stats.MaxHealth,
-            SpawnImmunityTicks = (byte)Config.Physics.SpawnImmunityTicks,
-            SpawnImmunityFireThroughSeq = lastInputSeq + Config.Physics.SpawnImmunityTicks,
+            SpawnImmunityTicks = (byte)Config.Rules.SpawnImmunityTicks,
+            SpawnImmunityFireThroughSeq = lastInputSeq + Config.Rules.SpawnImmunityTicks,
             LastInputSeq = lastInputSeq,
         };
     }
@@ -190,6 +199,7 @@ public sealed class SimWorld
         _stats.Remove(peerId);
         _modifiers.Remove(peerId);
         _situations.Remove(peerId);
+        _zoneMasks.Remove(peerId);
         _effective.Remove(peerId);
         _netSlots.Remove(peerId);
     }
@@ -199,6 +209,36 @@ public sealed class SimWorld
         if (_inputs.TryGetValue(peerId, out InputQueue? queue))
             queue.Enqueue(seq, input);
     }
+
+    /// <summary>
+    /// Immediate, not queued: touches no per-tick output list, so calling this
+    /// before a Step means that tick simulates from the new position. Player
+    /// must already exist and be alive.
+    /// </summary>
+    public void Teleport(int peerId, Vec2 position)
+    {
+        PlayerState player = _players[peerId];
+        _players[peerId] = player with
+        {
+            Position = position,
+            Velocity = Vec2.Zero,
+            Grounded = PlayerSim.OnGround(Terrain, position),
+            DashCooldown = 0,
+            Rope = RopeMode.NONE,
+            RopePoint = Vec2.Zero,
+            RopeVelocity = Vec2.Zero,
+            RopeLength = 0,
+        };
+    }
+
+    /// <summary>
+    /// Queued, not immediate: Step clears the output lists first, so a Death
+    /// added now would be wiped before it's ever scored. Runs inside the next
+    /// Step through the same clamp-and-kill path as blast damage, spawn
+    /// immunity included, and credits the kill to the victim (a suicide).
+    /// </summary>
+    public void QueueDamage(int peerId, int amount) =>
+        _pendingDamage.Add(new PendingDamage(peerId, amount));
 
     /// <summary>Diagnostics: input backlog in ticks.</summary>
     public int PendingInputs(int peerId) =>
@@ -245,7 +285,7 @@ public sealed class SimWorld
                 foreach ((int seq, PlayerInput consumed) in queue.Consumed)
                 {
                     if (WeaponSim.Tick(ref state, consumed, prevButtons, stats, seq))
-                        SpawnMortar(WeaponSim.NewShell(_nextMortarId++, seq, state, consumed, Config.Physics));
+                        SpawnMortar(WeaponSim.NewShell(_nextMortarId++, seq, state, consumed, Config.Combat));
                     prevButtons = consumed.Buttons;
                 }
                 state.PrevButtons = queue.RawAppliedInput.Buttons;
@@ -265,8 +305,30 @@ public sealed class SimWorld
             Explode(forced);
         }
         _forcedMortarExplosions.Clear();
+        ApplyQueuedDamage();
         StepMortars();
         Tick++;
+    }
+
+    private void ApplyQueuedDamage()
+    {
+        foreach (PendingDamage pending in _pendingDamage)
+        {
+            if (pending.Amount <= 0 ||
+                !_players.TryGetValue(pending.PeerId, out PlayerState player) ||
+                !CombatEligibility.CanTakeDamage(player))
+                continue;
+            if (pending.Amount >= player.Health)
+            {
+                _deaths.Add(new Death(pending.PeerId, BodyCenter(player),
+                    KillerId: pending.PeerId, Owned: false, ShellId: -1));
+                _players[pending.PeerId] = Corpse(player);
+                continue;
+            }
+            player.Health = (byte)(player.Health - pending.Amount);
+            _players[pending.PeerId] = player;
+        }
+        _pendingDamage.Clear();
     }
 
     private void SpawnMortar(MortarState mortar)
@@ -287,7 +349,8 @@ public sealed class SimWorld
         for (int i = _mortars.Count - 1; i >= 0; i--)
         {
             MortarState m = _mortars[i];
-            MortarOutcome outcome = MortarSim.Tick(ref m, Terrain, Config.Physics, SimConfig.DT);
+            MortarOutcome outcome = MortarSim.Tick(
+                ref m, Terrain, Config.Combat, SimConfig.DT, Zones);
             if (outcome == MortarOutcome.FLYING)
                 TryDeflect(ref m);
             if (outcome == MortarOutcome.FLYING && DirectHit(m))
@@ -357,19 +420,19 @@ public sealed class SimWorld
     private void Explode(in MortarState m)
     {
         Vec2 at = m.Position;
-        Terrain.CarveCircle((int)at.X, (int)at.Y, Config.Physics.MortarCarveRadius);
+        Terrain.CarveCircle((int)at.X, (int)at.Y, Config.Combat.MortarCarveRadius);
         // A deflected shell keeps the shooter's seq for retirement, but its
         // carve matches no prediction: broadcast -1.
         int carveSeq = m.Deflected ? -1 : m.SpawnSeq;
         _explosions.Add(new Explosion((int)at.X, (int)at.Y,
-            Config.Physics.MortarCarveRadius, m.OwnerId, carveSeq));
+            Config.Combat.MortarCarveRadius, m.OwnerId, carveSeq));
 
         foreach (int id in _players.Keys.ToArray())
         {
             PlayerState p = _players[id];
             if (!CombatEligibility.CanTakeDamage(p))
                 continue;
-            int damage = BlastSim.Damage(p, at, Config.Physics);
+            int damage = BlastSim.Damage(p, at, Config.Combat);
             if (damage == 0 || SparedByFriendlyFire(p, m.OwnerId))
                 continue;
             if (damage >= p.Health)
@@ -398,7 +461,7 @@ public sealed class SimWorld
         Velocity = Vec2.Zero,
         Health = 0,
         Rope = RopeMode.NONE,
-        RespawnTicks = (byte)Config.Physics.RespawnDelayTicks,
+        RespawnTicks = (ushort)Math.Max(1, Config.Rules.RespawnDelayTicks),
         SpawnImmunityTicks = 0,
     };
 

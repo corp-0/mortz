@@ -6,6 +6,18 @@ namespace Mortz.Tests.Client;
 public class ClientConnectionAttemptTests
 {
     [Fact]
+    public void AttemptKeepsTheSelectedSkinAcrossRetries()
+    {
+        ClientConnectionAttempt attempt = new(maxRetries: 2);
+
+        attempt.Start("server", 7777, "player", skin: 24);
+        ConnectionFailure failure = attempt.Failed();
+        Assert.True(attempt.BeginScheduledRetry(failure.Generation));
+
+        Assert.Equal(24, attempt.Skin);
+    }
+
+    [Fact]
     public void DelayedRetryCannotRunAfterANewerAttemptStarts()
     {
         ClientConnectionAttempt attempt = new(maxRetries: 2);

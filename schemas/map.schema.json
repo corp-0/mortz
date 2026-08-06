@@ -1,0 +1,256 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "format_version": {
+      "type": "integer",
+      "minimum": -2147483648,
+      "maximum": 2147483647,
+      "const": 1
+    },
+    "name": {
+      "type": "string"
+    },
+    "suggested_players": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 2147483647
+    },
+    "spawn_points": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "x": {
+            "type": "integer",
+            "minimum": -2147483648,
+            "maximum": 2147483647
+          },
+          "y": {
+            "type": "integer",
+            "minimum": -2147483648,
+            "maximum": 2147483647
+          }
+        },
+        "required": [
+          "x",
+          "y"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "zones": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]*$"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "uniqueItems": true
+          },
+          "shape": {
+            "oneOf": [
+              {
+                "allOf": [
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "rect",
+                          "circle"
+                        ]
+                      },
+                      "x": {
+                        "type": "integer",
+                        "minimum": -2147483648,
+                        "maximum": 2147483647
+                      },
+                      "y": {
+                        "type": "integer",
+                        "minimum": -2147483648,
+                        "maximum": 2147483647
+                      },
+                      "width": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 2147483647
+                      },
+                      "height": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 2147483647
+                      },
+                      "radius": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 2147483647
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "x",
+                      "y"
+                    ]
+                  },
+                  {
+                    "properties": {
+                      "type": {
+                        "const": "rect"
+                      },
+                      "radius": false
+                    },
+                    "required": [
+                      "width",
+                      "height"
+                    ]
+                  }
+                ]
+              },
+              {
+                "allOf": [
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "rect",
+                          "circle"
+                        ]
+                      },
+                      "x": {
+                        "type": "integer",
+                        "minimum": -2147483648,
+                        "maximum": 2147483647
+                      },
+                      "y": {
+                        "type": "integer",
+                        "minimum": -2147483648,
+                        "maximum": 2147483647
+                      },
+                      "width": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 2147483647
+                      },
+                      "height": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 2147483647
+                      },
+                      "radius": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 2147483647
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "x",
+                      "y"
+                    ]
+                  },
+                  {
+                    "properties": {
+                      "type": {
+                        "const": "circle"
+                      },
+                      "width": false,
+                      "height": false
+                    },
+                    "required": [
+                      "radius"
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "effects": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "stat": {
+                  "type": "string",
+                  "enum": [
+                    "mortar_gravity",
+                    "max_ammo",
+                    "reload_per_shell",
+                    "parry_radius",
+                    "parry_window",
+                    "parry_cooldown",
+                    "max_health",
+                    "max_run_speed",
+                    "ground_accel",
+                    "ground_friction",
+                    "air_accel",
+                    "gravity",
+                    "max_fall_speed",
+                    "total_jumps",
+                    "jump_speed",
+                    "air_jump_speed",
+                    "wall_slide_max_fall",
+                    "wall_jump_speed_y",
+                    "wall_jump_kick_x",
+                    "coyote_base",
+                    "coyote_bonus_per_100_speed",
+                    "coyote_max",
+                    "dash_speed",
+                    "dash_cooldown",
+                    "rope_speed",
+                    "rope_max_range",
+                    "rope_pull_accel",
+                    "rope_shorten_speed",
+                    "rope_release_cooldown",
+                    "rope_miss_cooldown"
+                  ]
+                },
+                "op": {
+                  "type": "string",
+                  "enum": [
+                    "add",
+                    "mul"
+                  ]
+                },
+                "value": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "stat",
+                "op",
+                "value"
+              ]
+            }
+          }
+        },
+        "required": [
+          "name",
+          "shape"
+        ]
+      }
+    }
+  },
+  "required": [
+    "format_version",
+    "name",
+    "suggested_players"
+  ],
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Mortz map"
+}

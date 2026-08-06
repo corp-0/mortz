@@ -33,17 +33,21 @@ public sealed class SnapshotBuffer
     /// </summary>
     public InterpolatedState? Sample(float renderTick)
     {
-        if (_snapshots.Count < 2) return null;
+        if (_snapshots.Count == 0) return null;
 
         // Find the pair bracketing renderTick; clamp to the buffered range.
-        Snapshot older = _snapshots[0], newer = _snapshots[1];
-        for (int i = _snapshots.Count - 1; i >= 1; i--)
+        Snapshot older = _snapshots[0], newer = _snapshots[0];
+        if (_snapshots.Count > 1)
         {
-            if (_snapshots[i - 1].Tick <= renderTick)
+            newer = _snapshots[1];
+            for (int i = _snapshots.Count - 1; i >= 1; i--)
             {
-                older = _snapshots[i - 1];
-                newer = _snapshots[i];
-                break;
+                if (_snapshots[i - 1].Tick <= renderTick)
+                {
+                    older = _snapshots[i - 1];
+                    newer = _snapshots[i];
+                    break;
+                }
             }
         }
 

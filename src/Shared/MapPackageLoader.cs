@@ -62,6 +62,7 @@ public static class MapPackageLoader
             Width = solid.GetWidth(),
             Height = solid.GetHeight(),
             SpawnPoints = spawnPoints,
+            Zones = MapZoneDefs.Compile(source.Manifest.Zones),
             Background = background,
             Solid = solid,
             Destructible = destructible,

@@ -1,12 +1,14 @@
 using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
+using Mortz.Client.Players;
 using Mortz.Client.Setup;
 using Mortz.Client.Stats;
 using Mortz.Client.Ui;
 using Mortz.Core.Match;
-using Mortz.Core.Net;
-using Mortz.Core.Net.Messages;
+using Mortz.Core.Match.Teams;
+using Mortz.Core.Net.Lobby;
+using Mortz.Core.Net.Roster;
 using Mortz.Net;
 
 namespace Mortz.Client.Menus;
@@ -27,10 +29,16 @@ public partial class TeamColumnsRoster : ScrollContainer
     private bool _subscribed;
 
     [Dependency]
+    public ClientPlayers Players => this.DependOn<ClientPlayers>();
+
+    [Dependency]
     public MatchSetup Setup => this.DependOn<MatchSetup>();
 
     [Dependency]
-    public ClientStats Stats => this.DependOn<ClientStats>();
+    public Pings Pings => this.DependOn<Pings>();
+
+    [Dependency]
+    public SessionWins Wins => this.DependOn<SessionWins>();
 
     [Dependency]
     private INetwork Network => this.DependOn<INetwork>();
@@ -45,10 +53,10 @@ public partial class TeamColumnsRoster : ScrollContainer
 
     public void OnResolved()
     {
-        Setup.RosterChanged += Render;
-        Setup.TeamsChanged += Render;
+        Players.Changed += Render;
         Setup.SwapOffersChanged += Render;
-        Stats.Changed += Render;
+        Pings.Changed += Render;
+        Wins.Changed += Render;
         _subscribed = true;
         Render();
     }
@@ -57,15 +65,14 @@ public partial class TeamColumnsRoster : ScrollContainer
     {
         if (!_subscribed)
             return;
-        Setup.RosterChanged -= Render;
-        Setup.TeamsChanged -= Render;
+        Players.Changed -= Render;
         Setup.SwapOffersChanged -= Render;
-        Stats.Changed -= Render;
+        Pings.Changed -= Render;
+        Wins.Changed -= Render;
         _subscribed = false;
     }
 
-    // Skips the swap's own in-flight event; frees immediately so same-frame
-    // re-renders never stack dying slots.
+    // Frees immediately so same-frame re-renders never stack dying slots.
     private void Render()
     {
         if (!IsInsideTree())
@@ -79,28 +86,24 @@ public partial class TeamColumnsRoster : ScrollContainer
             }
         }
         int localId = Network.LocalPeerId;
-        Team? localTeam = null;
-        foreach (LobbyMember member in Setup.Members)
+        Team? localTeam = Players.Find(localId)?.Team;
+        foreach (ClientPlayer player in Players)
         {
-            if (member.PeerId == localId)
-                localTeam = member.Team;
-        }
-        foreach (LobbyMember member in Setup.Members)
-        {
-            VBoxContainer column = member.Team switch
+            VBoxContainer column = player.Team switch
             {
                 Team.BLUE => _team1Slots,
                 Team.RED => _team2Slots,
                 _ => _unassigned,
             };
-            bool acrossTheDivide = localTeam != null && member.Team != null &&
-                                   member.Team != localTeam;
-            column.AddChild(RosterSlots.BuildSlot(member, Stats, localId,
-                acrossTheDivide ? SwapButton(member.PeerId, localId) : null,
+            bool acrossTheDivide = localTeam != null && player.Team != null &&
+                                   player.Team != localTeam;
+            column.AddChild(RosterSlots.BuildSlot(
+                player, Wins.Of(player), Pings.Of(player), localId,
+                acrossTheDivide ? SwapButton(player.PeerId, localId) : null,
                 compact: true));
         }
 
-        int capacity = TeamRules.SlotsPerTeam(Setup.Members.Count);
+        int capacity = TeamRules.SlotsPerTeam(Players.Count);
         AddEmptySlots(_team1Slots, Team.BLUE, capacity, localTeam);
         AddEmptySlots(_team2Slots, Team.RED, capacity, localTeam);
     }

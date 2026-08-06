@@ -1,10 +1,11 @@
 namespace Mortz.Client.Session;
 
-/// <summary>One logical connection attempt. Generations make delayed retries
-/// harmless after a new attempt, successful connection, or disconnect.</summary>
-internal sealed class ClientConnectionAttempt
+/// <summary>Tracks one connection attempt and its retry budget.
+/// Generation tokens prevent scheduled retries from starting after the
+/// attempt has been replaced, connected, or cancelled.</summary>
+public sealed class ClientConnectionAttempt(int maxRetries)
 {
-    private readonly int _maxRetries;
+    private readonly int _maxRetries = Math.Max(0, maxRetries);
     private int _generation;
     private int _retriesLeft;
     private bool _active;
@@ -13,16 +14,15 @@ internal sealed class ClientConnectionAttempt
     public string Address { get; private set; } = "";
     public int Port { get; private set; }
     public string PlayerName { get; private set; } = "";
+    public int Skin { get; private set; }
 
-    public ClientConnectionAttempt(int maxRetries) =>
-        _maxRetries = Math.Max(0, maxRetries);
-
-    public void Start(string address, int port, string playerName)
+    public void Start(string address, int port, string playerName, int skin = 0)
     {
         _generation++;
         Address = address;
         Port = port;
         PlayerName = playerName;
+        Skin = skin;
         _retriesLeft = _maxRetries;
         _retryScheduled = false;
         _active = true;

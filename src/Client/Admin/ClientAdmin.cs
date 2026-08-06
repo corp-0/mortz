@@ -1,7 +1,8 @@
 using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
-using Mortz.Core.Net.Messages;
+using Mortz.Core.Net;
+using Mortz.Core.Net.Admin;
 using Mortz.Net;
 
 namespace Mortz.Client.Admin;
@@ -10,7 +11,9 @@ namespace Mortz.Client.Admin;
 /// signs privileged actions. Human-readable progress goes out as status lines;
 /// chat displays them but owns none of this.</summary>
 [Meta(typeof(IAutoNode))]
-public partial class ClientAdmin : Node
+public partial class ClientAdmin : Node,
+    IHandle<AdminChallengeMsg>,
+    IHandle<AdminStateMsg>
 {
     private readonly AdminAuthFlow _flow = new();
     private bool _subscribed;
@@ -22,12 +25,14 @@ public partial class ClientAdmin : Node
     [Dependency]
     private INetwork Network => this.DependOn<INetwork>();
 
+    [Dependency]
+    private NetRouter Router => this.DependOn<NetRouter>();
+
     public override void _Notification(int what) => this.Notify(what);
 
     public void OnResolved()
     {
-        AdminChallengeMsg.Received += OnChallenge;
-        AdminStateMsg.Received += OnState;
+        Router.Add(this);
         _subscribed = true;
     }
 
@@ -35,8 +40,7 @@ public partial class ClientAdmin : Node
     {
         if (!_subscribed)
             return;
-        AdminChallengeMsg.Received -= OnChallenge;
-        AdminStateMsg.Received -= OnState;
+        Router.Remove(this);
         _subscribed = false;
     }
 
@@ -58,13 +62,13 @@ public partial class ClientAdmin : Node
         out ulong sequence, out byte[] tag) =>
         _flow.TrySign(Network.LocalPeerId, action, payload, out sequence, out tag);
 
-    private void OnChallenge(AdminChallengeMsg message)
+    public void Handle(in AdminChallengeMsg message)
     {
         if (!_flow.TryAnswerChallenge(Network.LocalPeerId, message))
             StatusLine?.Invoke("Invalid admin challenge.");
     }
 
-    private void OnState(AdminStateMsg message)
+    public void Handle(in AdminStateMsg message)
     {
         bool wasAdmin = IsAdmin;
         _flow.ApplyState(message);

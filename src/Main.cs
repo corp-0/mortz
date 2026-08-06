@@ -1,13 +1,11 @@
 using Godot;
 using Mortz.Shared;
+using Mortz.Shared.Logging;
 
 namespace Mortz;
 
-/// <summary>
-/// Boot gate. Decides once, at startup, whether this process is a dedicated
-/// server or a game client; the two never mix. Exported server builds carry
-/// the "dedicated_server" feature tag; dev runs use the --server user arg.
-/// </summary>
+/// <summary>Boot gate: decides once, at startup, whether this process is a
+/// dedicated server or a game client.</summary>
 public partial class Main : Node
 {
     [Export] private PackedScene _clientScene = null!;
@@ -15,11 +13,13 @@ public partial class Main : Node
 
     public override void _Ready()
     {
-        bool serverMode = OS.HasFeature("dedicated_server") || CmdArgs.HasFlag("--server");
+        bool serverMode = RunMode.IsDedicatedServer;
         if (!serverMode && !CmdArgs.HasFlag("--windowed") && !OS.HasFeature("editor"))
             GoFullScreen();
         AddChild((serverMode ? _serverScene : _clientScene).Instantiate());
     }
+
+    public override void _ExitTree() => MortzLog.Flush();
 
     private static void GoFullScreen()
     {

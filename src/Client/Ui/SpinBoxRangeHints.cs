@@ -4,7 +4,7 @@ using Mortz.Core.Ui;
 namespace Mortz.Client.Ui;
 
 /// <summary>Missing hints keep the SpinBox's scene defaults.</summary>
-internal static class SpinBoxRangeHints
+public static class SpinBoxRangeHints
 {
     public static void ApplyRangeHints(this SpinBox spinBox, IUiPropertyDescriptor descriptor)
     {

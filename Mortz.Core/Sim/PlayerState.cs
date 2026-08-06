@@ -1,4 +1,5 @@
 using Mortz.Core.Match;
+using Mortz.Core.Match.Teams;
 
 namespace Mortz.Core.Sim;
 
@@ -57,7 +58,7 @@ public record struct PlayerState
     /// <summary>Ticks until respawn; nonzero = dead. A dead body is frozen:
     /// PlayerSim and WeaponSim no-op on it, blasts skip it, shells fly
     /// through. Only the server counts it down.</summary>
-    public byte RespawnTicks;
+    public ushort RespawnTicks;
 
     /// <summary>Ticks of spawn protection; nonzero = can't shoot, can't be
     /// hurt. PlayerSim counts it down so prediction and server agree on the

@@ -4,7 +4,9 @@ using Godot;
 using Mortz.Client.Audio;
 using Mortz.Client.Match;
 using Mortz.Client.Replay;
-using Mortz.Core.Net.Messages;
+using Mortz.Core.Net;
+using Mortz.Core.Net.Match;
+using Mortz.Core.Net.Sim;
 
 namespace Mortz.Client.Effects;
 
@@ -14,7 +16,9 @@ namespace Mortz.Client.Effects;
 /// nodes. Listens to GameMap for carve visuals and to the network for deaths.
 /// </summary>
 [Meta(typeof(IAutoNode))]
-public partial class EffectsSpawner : Node2D
+public partial class EffectsSpawner : Node2D,
+    IHandle<DeathMsg>,
+    IHandle<FinalKillMsg>
 {
     private Node2D _liveEffects = null!;
     private Node2D _replayEffects = null!;
@@ -29,18 +33,20 @@ public partial class EffectsSpawner : Node2D
     [Dependency]
     private ISfx Sfx => this.DependOn<ISfx>();
 
+    [Dependency]
+    private NetRouter Router => this.DependOn<NetRouter>();
+
     public override void _Notification(int what) => this.Notify(what);
 
     public void OnReady()
     {
         _liveEffects = NewContainer("LiveEffects");
         _replayEffects = NewContainer("ReplayEffects");
-        DeathMsg.Received += OnDeath;
-        FinalKillMsg.Received += OnFinalKill;
     }
 
     public void OnResolved()
     {
+        Router.Add(this);
         Map.Exploded += OnExploded;
         Map.GroundRemoved += OnGroundRemoved;
         _subscribedToMap = true;
@@ -48,10 +54,9 @@ public partial class EffectsSpawner : Node2D
 
     public void OnExitTree()
     {
-        DeathMsg.Received -= OnDeath;
-        FinalKillMsg.Received -= OnFinalKill;
         if (!_subscribedToMap)
             return;
+        Router.Remove(this);
         Map.Exploded -= OnExploded;
         Map.GroundRemoved -= OnGroundRemoved;
         _subscribedToMap = false;
@@ -76,7 +81,7 @@ public partial class EffectsSpawner : Node2D
         _liveEffects.AddChild(CarveBurst.Create(center, debris));
     }
 
-    private void OnDeath(DeathMsg msg)
+    public void Handle(in DeathMsg msg)
     {
         if (_finalKill is FinalKillMsg final && msg.PeerId == final.VictimId)
             return;
@@ -85,7 +90,7 @@ public partial class EffectsSpawner : Node2D
             new Vector2(msg.X, msg.Y), Map.Mask, Map.Blood.Paint));
     }
 
-    private void OnFinalKill(FinalKillMsg msg)
+    public void Handle(in FinalKillMsg msg)
     {
         _finalKill = msg;
         _replayDebris = [];

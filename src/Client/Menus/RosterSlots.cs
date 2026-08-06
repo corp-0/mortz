@@ -1,18 +1,16 @@
 using Godot;
-using Mortz.Client.Setup;
-using Mortz.Client.Stats;
-using Mortz.Core.Match;
+using Mortz.Client.Players;
 
 namespace Mortz.Client.Menus;
 
 /// <summary>Builds the shared lobby player-slot row (name, session wins, ping,
 /// ready state) so every roster layout renders identical slots.</summary>
-internal static class RosterSlots
+public static class RosterSlots
 {
-    public static Control BuildSlot(LobbyMember member, ClientStats stats, int localId,
+    public static Control BuildSlot(ClientPlayer player, int wins, int? pingMs, int localId,
         Control? action = null, bool compact = false)
     {
-        string self = member.PeerId == localId ? " (you)" : "";
+        string self = player.PeerId == localId ? " (you)" : "";
         PanelContainer slot = new() { CustomMinimumSize = new Vector2(0, 44) };
         StyleBoxFlat background = new()
         {
@@ -37,26 +35,25 @@ internal static class RosterSlots
         // Keeps some name visible even when the fixed-width stats fill the row.
         row.AddChild(new Label
         {
-            Text = $"{member.Name}{self}",
+            Text = $"{player.Name}{self}",
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
             CustomMinimumSize = new Vector2(80, 0),
         });
-        int wins = stats.Wins(member.PeerId);
-        string ping = stats.PingMs(member.PeerId) is int pingMs ? $"{pingMs} ms" : "... ms";
+        string ping = pingMs is int ms ? $"{ms} ms" : "... ms";
         if (compact)
         {
             row.AddChild(StatLabel($"{wins}W", new Color("fbbf24"), 30));
             row.AddChild(StatLabel("●",
-                member.Ready ? new Color("86efac") : new Color("94a3b8"), 0));
-            slot.TooltipText = $"{member.Name}{self}\n{ping}";
+                player.Ready ? new Color("86efac") : new Color("94a3b8"), 0));
+            slot.TooltipText = $"{player.Name}{self}\n{ping}";
         }
         else
         {
             row.AddChild(StatLabel(wins == 1 ? "1 WIN" : $"{wins} WINS", new Color("fbbf24"), 64));
             row.AddChild(StatLabel(ping, new Color("64748b"), 64));
-            row.AddChild(StatLabel(member.Ready ? "READY" : "WAITING",
-                member.Ready ? new Color("86efac") : new Color("94a3b8"), 80));
+            row.AddChild(StatLabel(player.Ready ? "READY" : "WAITING",
+                player.Ready ? new Color("86efac") : new Color("94a3b8"), 80));
         }
         if (action != null)
             row.AddChild(action);

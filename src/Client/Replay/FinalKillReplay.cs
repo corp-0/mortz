@@ -3,8 +3,10 @@ using Chickensoft.Introspection;
 using Godot;
 using Mortz.Client.Effects;
 using Mortz.Client.Match;
+using Mortz.Client.Spectating;
 using Mortz.Client.Views;
-using Mortz.Core.Net.Messages;
+using Mortz.Core.Net;
+using Mortz.Core.Net.Match;
 using Mortz.Core.Replication;
 using Mortz.Core.Sim;
 using Mortz.Net;
@@ -14,7 +16,7 @@ namespace Mortz.Client.Replay;
 /// <summary>Owns the final-kill cinematic: event handling, render history,
 /// freeze state, playback, camera, temporary terrain, effects, and hold.</summary>
 [Meta(typeof(IAutoNode))]
-public partial class FinalKillReplay : Node
+public partial class FinalKillReplay : Node, IHandle<FinalKillMsg>
 {
     private const float IMPACT_HOLD_SECONDS = 0.12f;
     private const float REPLAY_ZOOM = 1.65f;
@@ -25,12 +27,16 @@ public partial class FinalKillReplay : Node
     [Dependency]
     private GameMap Map => this.DependOn<GameMap>();
 
+    [Dependency]
+    private NetRouter Router => this.DependOn<NetRouter>();
+
     [Export] private EffectsSpawner _effects = null!;
     [Export] private RopeOverlay _ropes = null!;
     [Export] private LocalPlayerController _localPlayer = null!;
     [Export] private PlayerViewManager _players = null!;
     [Export] private MortarViewManager _mortars = null!;
     [Export] private Camera2D _replayCamera = null!;
+    [Export] private SpectatorController _spectator = null!;
 
     private readonly ReplayHistory _history = new();
     private FinalKillMsg? _pendingFinalKill;
@@ -46,20 +52,27 @@ public partial class FinalKillReplay : Node
     private Vector2 _cameraStartOffset;
     private float _cameraStartRotation;
 
-    internal bool MatchFrozen => _matchFrozen;
+    public bool MatchFrozen => _matchFrozen;
+
+    private NetRouter? _routed;
 
     public override void _Notification(int what) => this.Notify(what);
 
-    public override void _Ready() => FinalKillMsg.Received += OnFinalKill;
+    public void OnResolved()
+    {
+        _routed = Router;
+        _routed.Add(this);
+    }
 
     public override void _ExitTree()
     {
-        FinalKillMsg.Received -= OnFinalKill;
+        _routed?.Remove(this);
+        _routed = null;
         ClientClock.Reset();
         _replayCamera.Enabled = false;
     }
 
-    internal void Record(
+    public void Record(
         float tick,
         IReadOnlyList<ReplayPlayer> players,
         IReadOnlyList<RenderMortar> remoteMortars,
@@ -84,7 +97,7 @@ public partial class FinalKillReplay : Node
     }
 
     /// <summary>Advances replay work. True means live rendering stays frozen.</summary>
-    internal bool ConsumeFrame(float delta)
+    public bool ConsumeFrame(float delta)
     {
         if (_pendingFinalKill is FinalKillMsg finalKill)
         {
@@ -96,12 +109,13 @@ public partial class FinalKillReplay : Node
         return _matchFrozen;
     }
 
-    private void OnFinalKill(FinalKillMsg msg)
+    public void Handle(in FinalKillMsg msg)
     {
         if (_matchFrozen)
             return;
         _matchFrozen = true;
         _localPlayer.Frozen = true;
+        _spectator.SetReplayActive(true);
         _pendingFinalKill = msg;
     }
 

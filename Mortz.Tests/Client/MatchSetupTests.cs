@@ -1,11 +1,18 @@
 using Godot;
 using Mortz.Client.Setup;
 using Mortz.Core.Match;
+using Mortz.Core.Match.Configuration;
+using Mortz.Core.Match.Participation;
+using Mortz.Core.Match.Teams;
 using Mortz.Core.Net;
-using Mortz.Core.Net.Messages;
+using Mortz.Core.Net.Lobby;
+using Mortz.Core.Net.Sim;
+using Mortz.Core.Replication;
 using Mortz.Core.Terrain;
 using Mortz.Net;
+using Mortz.Tests.Net;
 using Xunit;
+using ModeRules = Mortz.Core.Match.Configuration.ModeRules;
 
 namespace Mortz.Tests.Client;
 
@@ -20,7 +27,7 @@ public class MatchSetupTests : NodeServiceTest
     [Fact]
     public void SettingsApplyAndEventsFireOnTransitionsOnly()
     {
-        MatchSetup setup = Host(new MatchSetup());
+        MatchSetup setup = HostRouted(new MatchSetup());
         int config = 0, teams = 0, settings = 0;
         setup.ConfigChanged += () => config++;
         setup.TeamsChanged += () => teams++;
@@ -46,7 +53,7 @@ public class MatchSetupTests : NodeServiceTest
     [Fact]
     public void ModeCatalogAppliesAndDerivedModeFlipRaisesSettings()
     {
-        MatchSetup setup = Host(new MatchSetup());
+        MatchSetup setup = HostRouted(new MatchSetup());
         MatchConfig config = new();
 
         new LobbySettingsMsg("castlewars", "hash", ["castlewars"], ["Castle Wars"],
@@ -74,7 +81,7 @@ public class MatchSetupTests : NodeServiceTest
     [Fact]
     public void ACatalogOnlyChangeRaisesSettings()
     {
-        MatchSetup setup = Host(new MatchSetup());
+        MatchSetup setup = HostRouted(new MatchSetup());
         MatchConfig config = new();
         new LobbySettingsMsg("castlewars", "hash", ["castlewars"], ["Castle Wars"],
             ["deathmatch"], ["Deathmatch"], "deathmatch", config.ToBytes()).Broadcast();
@@ -93,7 +100,7 @@ public class MatchSetupTests : NodeServiceTest
     [Fact]
     public void CopyConfigGivesEditorsAnIndependentConfig()
     {
-        MatchSetup setup = Host(new MatchSetup());
+        MatchSetup setup = HostRouted(new MatchSetup());
         Settings(new MatchConfig { Rules = new ModeRules { KillTarget = 9 } }).Broadcast();
 
         MatchConfig copy = setup.CopyConfig();
@@ -105,7 +112,7 @@ public class MatchSetupTests : NodeServiceTest
     [Fact]
     public void InvalidServerSettingsSurfaceAnErrorAndKeepState()
     {
-        MatchSetup setup = Host(new MatchSetup());
+        MatchSetup setup = HostRouted(new MatchSetup());
         Settings(new MatchConfig { Rules = new ModeRules { KillTarget = 7 } }).Broadcast();
         int settings = 0;
         setup.SettingsChanged += () => settings++;
@@ -128,45 +135,25 @@ public class MatchSetupTests : NodeServiceTest
     }
 
     [Fact]
-    public void LobbyStateSplitsRosterAndTeamEvents()
-    {
-        MatchSetup setup = Host(new MatchSetup());
-        int roster = 0, teams = 0;
-        setup.RosterChanged += () => roster++;
-        setup.TeamsChanged += () => teams++;
-
-        new LobbyStateMsg([1, 2], ["A", "B"], [1, 0], [0, 0], [], []).Broadcast();
-        Assert.Equal((1, 0), (roster, teams));
-        Assert.Equal([
-            new LobbyMember(1, "A", true, null),
-            new LobbyMember(2, "B", false, null),
-        ], setup.Members);
-
-        new LobbyStateMsg([1, 2], ["A", "B"], [1, 0], [0, 0], [], []).Broadcast();
-        Assert.Equal((1, 0), (roster, teams));
-
-        new LobbyStateMsg([1, 2], ["A", "B"], [1, 0], [1, 2], [], []).Broadcast();
-        Assert.Equal((1, 1), (roster, teams));
-
-        new LobbyStateMsg([1, 2], ["A", "B"], [1, 1], [1, 2], [], []).Broadcast();
-        Assert.Equal((2, 1), (roster, teams));
-    }
-
-    [Fact]
     public void SwapOffersRideTheLobbyStateAndFireOnTransitionsOnly()
     {
-        MatchSetup setup = Host(new MatchSetup());
+        MatchSetup setup = HostRouted(new MatchSetup());
         int offers = 0;
         setup.SwapOffersChanged += () => offers++;
 
-        new LobbyStateMsg([1, 2], ["A", "B"], [0, 0], [1, 2], [1], [2]).Broadcast();
+        LobbyMember[] members =
+        [
+            new LobbyMember(1, "A", false, Team.BLUE),
+            new LobbyMember(2, "B", false, Team.RED),
+        ];
+        new LobbyStateMsg(members, [new SwapOffer(1, 2)]).Broadcast();
         Assert.Equal([new SwapOffer(1, 2)], setup.SwapOffers);
         Assert.Equal(1, offers);
 
-        new LobbyStateMsg([1, 2], ["A", "B"], [0, 0], [1, 2], [1], [2]).Broadcast();
+        new LobbyStateMsg(members, [new SwapOffer(1, 2)]).Broadcast();
         Assert.Equal(1, offers);
 
-        new LobbyStateMsg([1, 2], ["A", "B"], [0, 0], [2, 1], [], []).Broadcast();
+        new LobbyStateMsg(members, []).Broadcast();
         Assert.Empty(setup.SwapOffers);
         Assert.Equal(2, offers);
     }
@@ -174,12 +161,14 @@ public class MatchSetupTests : NodeServiceTest
     [Fact]
     public void WelcomeCarriesTheFrozenRulesButNoCatalog()
     {
-        MatchSetup setup = Host(new MatchSetup());
+        MatchSetup setup = HostRouted(new MatchSetup());
         int teams = 0;
         setup.TeamsChanged += () => teams++;
 
         new WelcomeMsg("arena", "abc", new MatchConfig { Rules = new ModeRules { Teams = true } }.ToBytes(),
-            (byte)TerrainSyncEncoding.CARVE_LOG, 1, 10, 1).SendTo(1);
+            (byte)TerrainSyncEncoding.CARVE_LOG, 1, 10, 1,
+            MatchSeat.PLAYER, MatchActivity.ACTIVE, SpectateReason.NONE, -1,
+            new Snapshot(0, [], []).SerializeFor(1), -1).SendTo(1);
 
         Assert.Null(setup.Selection);
         Assert.True(setup.Config.Rules.Teams);
@@ -189,7 +178,7 @@ public class MatchSetupTests : NodeServiceTest
     [Fact]
     public void NodeOutsideTheTreeIgnoresTraffic()
     {
-        MatchSetup setup = Host(new MatchSetup());
+        MatchSetup setup = HostRouted(new MatchSetup());
         setup.GetParent<Node>().RemoveChild(setup);
 
         Settings(new MatchConfig()).Broadcast();

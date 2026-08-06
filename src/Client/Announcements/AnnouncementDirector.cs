@@ -1,22 +1,32 @@
 using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
-using Mortz.Client.Roster;
+using Mortz.Client.Players;
 using Mortz.Core.Match;
+using Mortz.Core.Match.Events;
+using Mortz.Core.Match.Scoring;
+using Mortz.Core.Match.Teams;
 using Mortz.Core.Net;
-using Mortz.Core.Net.Messages;
+using Mortz.Core.Net.Match;
 
 namespace Mortz.Client.Announcements;
 
 /// <summary>Turns one render frame's game events into announcements. Keeps the
 /// match-point state for late subscribers.</summary>
 [Meta(typeof(IAutoNode))]
-public partial class AnnouncementDirector : Node, IAnnouncementDirector
+public partial class AnnouncementDirector : Node, IAnnouncementDirector,
+    IHandle<GameEventMsg>,
+    IHandle<MatchPointMsg>
 {
     [Dependency]
-    private MatchRoster Roster => this.DependOn<MatchRoster>();
+    private ClientPlayers Players => this.DependOn<ClientPlayers>();
+
+    [Dependency]
+    private NetRouter Router => this.DependOn<NetRouter>();
 
     private readonly List<GameEventMsg> _pending = new();
+
+    private NetRouter? _routed;
 
     public event Action<IReadOnlyList<Announcement>>? BatchReady;
     public event Action<MatchPointState?>? MatchPointChanged;
@@ -25,38 +35,39 @@ public partial class AnnouncementDirector : Node, IAnnouncementDirector
 
     public override void _Notification(int what) => this.Notify(what);
 
-    public void OnReady()
+    public void OnResolved()
     {
-        GameEventMsg.Received += OnGameEvent;
-        MatchProtocol.MatchPointChanged += OnMatchPoint;
+        _routed = Router;
+        _routed.Add(this);
     }
 
     public void OnExitTree()
     {
-        GameEventMsg.Received -= OnGameEvent;
-        MatchProtocol.MatchPointChanged -= OnMatchPoint;
+        _routed?.Remove(this);
+        _routed = null;
     }
 
     public override void _Process(double delta)
     {
         if (_pending.Count == 0)
             return;
-        Announcement[] batch = Describe(_pending, Roster.NameOf, Roster.TeamOf);
+        Announcement[] batch = Describe(_pending, Players.NameOf, Players.TeamOf);
         _pending.Clear();
         BatchReady?.Invoke(batch);
     }
 
-    private void OnGameEvent(GameEventMsg msg) => _pending.Add(msg);
+    public void Handle(in GameEventMsg msg) => _pending.Add(msg);
 
-    private void OnMatchPoint(MatchPoint? state)
+    public void Handle(in MatchPointMsg msg)
     {
-        MatchPoint = state is MatchPoint held ? Describe(held, Roster.NameOf, Roster.TeamOf) : null;
+        MatchPoint? state = MatchProtocol.Decode(msg);
+        MatchPoint = state is MatchPoint held ? Describe(held, Players.NameOf, Players.TeamOf) : null;
         MatchPointChanged?.Invoke(MatchPoint);
     }
 
     /// <summary>Folded, priority ordered (ties keep arrival order), names
     /// resolved.</summary>
-    internal static Announcement[] Describe(
+    public static Announcement[] Describe(
         IReadOnlyList<GameEventMsg> events, Func<int, string> name, Func<int, Team?> team) =>
         DropCoveredRegularKills(FoldHolyShit(events))
             .OrderBy(e => Priority(e.Kind))
@@ -83,13 +94,13 @@ public partial class AnnouncementDirector : Node, IAnnouncementDirector
             .ToArray();
     }
 
-    internal static MatchPointState Describe(
+    public static MatchPointState Describe(
         MatchPoint held, Func<int, string> name, Func<int, Team?> team)
     {
         MatchPointLeader? leader = held.Leader switch
         {
-            TeamVictor victor => new MatchPointLeader(Teams.Name(victor.Team), victor.Team),
-            PlayerVictor victor => new MatchPointLeader(name(victor.PeerId), team(victor.PeerId)),
+            Victor.Team victor => new MatchPointLeader(Teams.Name(victor.Value), victor.Value),
+            Victor.Player victor => new MatchPointLeader(name(victor.PeerId), team(victor.PeerId)),
             _ => null,
         };
         return new MatchPointState(held.Remaining, leader);

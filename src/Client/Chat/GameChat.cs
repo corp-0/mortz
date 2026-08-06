@@ -1,7 +1,7 @@
 using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
-using Mortz.Core.Net.Messages;
+using Mortz.Core.Net.Chat;
 
 namespace Mortz.Client.Chat;
 
@@ -111,7 +111,7 @@ public partial class GameChat : Control
         }
     }
 
-    internal static float ClosedAlpha(float ageSeconds)
+    public static float ClosedAlpha(float ageSeconds)
     {
         if (ageSeconds <= LINE_LIFETIME)
             return 1f;

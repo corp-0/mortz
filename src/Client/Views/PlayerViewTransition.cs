@@ -1,7 +1,7 @@
 namespace Mortz.Client.Views;
 
 [Flags]
-internal enum PlayerViewTransition
+public enum PlayerViewTransition
 {
     NONE = 0,
     PARRY_RAISED = 1 << 0,

@@ -1,9 +1,12 @@
 using Mortz.Core.Match;
+using Mortz.Core.Match.Configuration;
 using Mortz.Core.Net;
+using Mortz.Core.Net.Roster;
 using Mortz.Core.Replication;
 using Mortz.Core.Sim;
 using Mortz.Core.Terrain;
 using Xunit;
+using Combat = Mortz.Core.Match.Configuration.Combat;
 
 namespace Mortz.Tests.Core.Net;
 
@@ -22,12 +25,12 @@ public class BandwidthTests
         byte[] data = snapshot.SerializeFor(localPeerId: 1);
         RosterSnapshot roster = new([.. snapshot.Players
             .Select(p => new RosterEntry(p.PeerId, $"Player {p.PeerId}",
-                p.Skin, p.Team, new NetSlot(p.NetSlot)))
+                p.Skin, p.Team, p.NetSlot))
         ]);
         Snapshot restored = Snapshot.Deserialize(data, roster);
 
         // 4 tick + 1 count/format + 29 local + 7*14 remote + 2 mortar count.
-        Assert.Equal(134, data.Length);
+        Assert.Equal(142, data.Length);
         Assert.Equal(8, restored.Players.Length);
         Assert.Equal(0, restored.Players[0].Skin); // static value comes from RosterMsg
         Assert.Equal(snapshot.Players[0].PrevButtons, restored.Players[0].PrevButtons);
@@ -129,7 +132,7 @@ public class BandwidthTests
     [Fact]
     public void MortarReplica_RendersOnPresentGameplayTimeline()
     {
-        Physics config = new() { MortarGravity = 0 };
+        Combat config = new() { MortarGravity = 0 };
         config.Clamp();
         MortarReplicaSet replicas = new(
             new TerrainMask(2_000, 1_000, (_, _) => false, (_, _) => false), config);
@@ -148,7 +151,7 @@ public class BandwidthTests
     [Fact]
     public void MortarReplica_IgnoresStaleCorrectionsAndAppliesFreshImmediately()
     {
-        Physics config = new() { MortarGravity = 0 };
+        Combat config = new() { MortarGravity = 0 };
         config.Clamp();
         MortarReplicaSet replicas = new(
             new TerrainMask(2_000, 1_000, (_, _) => false, (_, _) => false), config);
@@ -167,7 +170,7 @@ public class BandwidthTests
     [Fact]
     public void MortarReplica_CorrectionOrderingSurvivesTickWrap()
     {
-        Physics config = new() { MortarGravity = 0 };
+        Combat config = new() { MortarGravity = 0 };
         config.Clamp();
         MortarReplicaSet replicas = new(
             new TerrainMask(2_000, 1_000, (_, _) => false, (_, _) => false), config);
@@ -186,7 +189,7 @@ public class BandwidthTests
     [Fact]
     public void MortarReplica_AuthoritativeEndRemovesImmediately()
     {
-        Physics config = new() { MortarGravity = 0 };
+        Combat config = new() { MortarGravity = 0 };
         config.Clamp();
         MortarReplicaSet replicas = new(
             new TerrainMask(2_000, 1_000, (_, _) => false, (_, _) => false), config);
@@ -206,7 +209,7 @@ public class BandwidthTests
     public void ZeroGravityStationaryShell_StillExpires()
     {
         TerrainMask empty = new(100, 100, (_, _) => false, (_, _) => false);
-        Physics config = new() { MortarGravity = 0 };
+        Combat config = new() { MortarGravity = 0 };
         config.Clamp();
         MortarState shell = new() { Position = new Vec2(50, -10) };
 
@@ -222,11 +225,11 @@ public class BandwidthTests
     {
         MatchConfig config = new()
         {
-            Physics = new Physics
+            Rules = new ModeRules { SpawnImmunity = 0 },
+            Combat = new Combat
             {
                 MortarMaxAmmo = 30,
                 MortarGravity = 0,
-                SpawnImmunity = 0,
             },
         };
         config.Clamp();

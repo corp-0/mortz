@@ -12,6 +12,7 @@ public class ServerListTests
     private static ServerInfo Info(int protocolVersion = NetConfig.PROTOCOL_VERSION,
         ulong schemaHash = 0, string name = "Someone's Server") =>
         new(name, "Kills", "castlewars", Players: 2, MaxPlayers: 8, InLobby: true,
+            AllowJoinInProgress: true,
             GamePort: 7777, protocolVersion,
             schemaHash == 0 ? NetRegistry.SCHEMA_HASH : schemaHash);
 

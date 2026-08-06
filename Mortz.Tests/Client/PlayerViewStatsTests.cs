@@ -2,13 +2,15 @@ using Chickensoft.AutoInject;
 using Godot;
 using Mortz.Client.Audio;
 using Mortz.Client.Match;
-using Mortz.Client.Roster;
+using Mortz.Client.Players;
 using Mortz.Client.Views;
 using Mortz.Core.Match;
-using Mortz.Core.Net.Messages;
+using Mortz.Core.Match.Configuration;
+using Mortz.Core.Net.Sim;
 using Mortz.Core.Sim.Modifiers;
 using Mortz.Net;
 using Mortz.Tests.Core;
+using Mortz.Tests.Net;
 using Xunit;
 using static Mortz.Core.Sim.Modifiers.StatChange;
 
@@ -23,9 +25,11 @@ public class PlayerViewStatsTests : NodeServiceTest
         PlayerViewManager manager = TakeManagerFromGameViewScene();
         manager.FakeDependency<INetwork>(new FakeNetwork());
         manager.FakeDependency<ISfx>(new NullSfx());
-        manager.FakeDependency(Host(new MatchRoster()));
-        Host(manager);
-        manager.Configure(new Physics());
+        ClientPlayers players = HostRouted(new ClientPlayers());
+        players.OpenMatch();
+        manager.FakeDependency(players);
+        HostRouted(manager);
+        manager.Configure(new MatchConfig());
 
         float baseRadius = TestWorlds.Stats.ParryRadius;
         byte[] bigParry = ModifierWire.Serialize(

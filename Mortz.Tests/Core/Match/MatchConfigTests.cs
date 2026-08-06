@@ -1,8 +1,11 @@
 using System.Reflection;
-using Mortz.Core.Match;
+using Mortz.Core.Match.Configuration;
+using Mortz.Core.Match.Scoring;
 using Mortz.Core.Sim;
 using Mortz.Core.Ui;
 using Xunit;
+using ModeRules = Mortz.Core.Match.Configuration.ModeRules;
+using Physics = Mortz.Core.Match.Configuration.Physics;
 
 namespace Mortz.Tests.Core.Match;
 
@@ -13,6 +16,7 @@ public class MatchConfigTests
     {
         AssertMetadataCoversWritableProperties(typeof(ModeRules), ModeRulesUiMetadata.Categories);
         AssertMetadataCoversWritableProperties(typeof(Physics), PhysicsUiMetadata.Categories);
+        AssertMetadataCoversWritableProperties(typeof(Combat), CombatUiMetadata.Categories);
     }
 
     private static void AssertMetadataCoversWritableProperties(
@@ -66,7 +70,7 @@ public class MatchConfigTests
         IUiPropertyDescriptor gravity = PhysicsUiMetadata.Categories
             .SelectMany(category => category.Properties)
             .Single(property => property.Name == nameof(Physics.Gravity));
-        Assert.Equal(100, gravity.Min);
+        Assert.Equal(-8000, gravity.Min);
         Assert.Equal(8000, gravity.Max);
         Assert.Equal(50, gravity.Step);
 
@@ -74,7 +78,7 @@ public class MatchConfigTests
             .SelectMany(category => category.Properties)
             .ToArray();
 
-        // step not stated
+        // No step authored, so the SpinBox keeps its scene default.
         IUiPropertyDescriptor killTarget = ruleDescriptors
             .Single(property => property.Name == nameof(ModeRules.KillTarget));
         Assert.Equal(1, killTarget.Min);
@@ -131,12 +135,14 @@ public class MatchConfigTests
         MatchConfig expected = new();
         ChangeWritableProperties(expected.Rules);
         ChangeWritableProperties(expected.Physics);
+        ChangeWritableProperties(expected.Combat);
         expected.Clamp();
 
         MatchConfig actual = MatchConfig.FromBytes(expected.ToBytes());
 
         AssertWritablePropertiesEqual(expected.Rules, actual.Rules);
         AssertWritablePropertiesEqual(expected.Physics, actual.Physics);
+        AssertWritablePropertiesEqual(expected.Combat, actual.Combat);
     }
 
     private static IEnumerable<PropertyInfo> WritableProperties(Type owner) =>
@@ -172,20 +178,20 @@ public class MatchConfigTests
     {
         MatchConfig sent = new()
         {
+            Rules = new ModeRules { SpawnImmunity = 2.25f },
             Physics = new Physics
             {
                 Gravity = 750,
-                MortarMaxAmmo = 8,
                 GroundFriction = 0,
-                SpawnImmunity = 2.25f,
             },
+            Combat = new Combat { MortarMaxAmmo = 8 },
         };
         MatchConfig got = MatchConfig.FromBytes(sent.ToBytes());
 
         Assert.Equal(750, got.Physics.Gravity);
-        Assert.Equal(8, got.Physics.MortarMaxAmmo);
+        Assert.Equal(8, got.Combat.MortarMaxAmmo);
         Assert.Equal(0, got.Physics.GroundFriction);
-        Assert.Equal(2.25f, got.Physics.SpawnImmunity);
+        Assert.Equal(2.25f, got.Rules.SpawnImmunity);
         Assert.Equal(SimConfig.MAX_RUN_SPEED, got.Physics.MaxRunSpeed);
     }
 
@@ -202,22 +208,22 @@ public class MatchConfigTests
     {
         MatchConfig hostile = new()
         {
-            Physics = new Physics
+            Rules = new ModeRules { SpawnImmunity = 999 },
+            Physics = new Physics { Gravity = float.NaN },
+            Combat = new Combat
             {
-                Gravity = float.NaN,
                 MortarCarveRadius = 100000,
                 MaxHealth = 9999,
                 MortarReloadPerShell = -3,
-                SpawnImmunity = 999,
             },
         };
         MatchConfig got = MatchConfig.FromBytes(hostile.ToBytes());
 
-        Assert.Equal(100, got.Physics.Gravity);
-        Assert.Equal(128, got.Physics.MortarCarveRadius);
-        Assert.Equal(250, got.Physics.MaxHealth);
-        Assert.Equal(0.1f, got.Physics.MortarReloadPerShell);
-        Assert.Equal(4, got.Physics.SpawnImmunity);
+        Assert.Equal(-8000, got.Physics.Gravity);
+        Assert.Equal(128, got.Combat.MortarCarveRadius);
+        Assert.Equal(250, got.Combat.MaxHealth);
+        Assert.Equal(0.1f, got.Combat.MortarReloadPerShell);
+        Assert.Equal(4, got.Rules.SpawnImmunity);
     }
 
     [Fact]
@@ -270,15 +276,15 @@ public class MatchConfigTests
         Assert.Equal(ConfigKeyResult.APPLIED, rules.TryApplyKey("kill_target", 30L, out _));
         Assert.Equal(ConfigKeyResult.APPLIED, rules.TryApplyKey("kill_lead_target", 4L, out _));
         Assert.Equal(ConfigKeyResult.APPLIED, physics.TryApplyKey("gravity", 600L, out _));
-        Assert.Equal(ConfigKeyResult.APPLIED, physics.TryApplyKey("spawn_immunity", 2.5, out _));
+        Assert.Equal(ConfigKeyResult.APPLIED, rules.TryApplyKey("spawn_immunity", 2.5, out _));
 
         Assert.True(rules.Teams);
         Assert.Equal(WinCondition.KILLS, rules.WinCondition);
         Assert.Equal(30, rules.KillTarget);
         Assert.Equal(4, rules.KillLeadTarget);
         Assert.Equal(600, physics.Gravity);
-        Assert.Equal(2.5f, physics.SpawnImmunity);
-        Assert.Equal(150, physics.SpawnImmunityTicks);
+        Assert.Equal(2.5f, rules.SpawnImmunity);
+        Assert.Equal(150, rules.SpawnImmunityTicks);
         Assert.True(rules.FriendlyFire);
     }
 
@@ -303,7 +309,7 @@ public class MatchConfigTests
     [Fact]
     public void DefaultResolvedStats_MatchTheSimConfigConsts()
     {
-        PlayerStats stats = PlayerStats.Resolve(new Physics());
+        PlayerStats stats = PlayerStats.Resolve(new MatchConfig());
 
         Assert.Equal(SimConfig.MAX_RUN_SPEED, stats.MaxRunSpeed);
         Assert.Equal(SimConfig.TOTAL_JUMPS, stats.TotalJumps);
@@ -313,23 +319,32 @@ public class MatchConfigTests
         Assert.Equal(SimConfig.MAX_HEALTH, stats.MaxHealth);
         Assert.Equal(SimConfig.PARRY_WINDOW_TICKS, stats.ParryWindowTicks);
         Assert.Equal(SimConfig.PARRY_COOLDOWN_TICKS, stats.ParryCooldownTicks);
-        Assert.Equal(SimConfig.SPAWN_IMMUNITY, new Physics().SpawnImmunity);
-        Assert.Equal(SimConfig.SPAWN_IMMUNITY_TICKS, new Physics().SpawnImmunityTicks);
+        Assert.Equal(SimConfig.SPAWN_IMMUNITY, new ModeRules().SpawnImmunity);
+        Assert.Equal(SimConfig.SPAWN_IMMUNITY_TICKS, new ModeRules().SpawnImmunityTicks);
     }
 
     [Fact]
-    public void ClampedTickValues_FitTheByteCountersInPlayerState()
+    public void ClampedTickValues_FitTheirPlayerStateCounters()
     {
-        Physics maxed = new()
+        MatchConfig maxed = new()
         {
-            DashCooldown = 999,
-            RopeMissCooldown = 999,
-            MortarReloadPerShell = 999,
-            RespawnDelay = 999,
-            SpawnImmunity = 999,
-            CoyoteMax = 999,
-            ParryWindow = 999,
-            ParryCooldown = 999,
+            Rules = new ModeRules
+            {
+                RespawnDelay = 999,
+                SpawnImmunity = 999,
+            },
+            Physics = new Physics
+            {
+                DashCooldown = 999,
+                RopeMissCooldown = 999,
+                CoyoteMax = 999,
+            },
+            Combat = new Combat
+            {
+                MortarReloadPerShell = 999,
+                ParryWindow = 999,
+                ParryCooldown = 999,
+            },
         };
         maxed.Clamp();
         PlayerStats stats = PlayerStats.Resolve(maxed);
@@ -338,8 +353,8 @@ public class MatchConfigTests
         Assert.InRange(stats.RopeMissCooldownTicks, 1, 255);
         Assert.InRange(stats.ReloadPerShellTicks, 1, 255);
         Assert.InRange(stats.CoyoteMaxTicks, 1, 255);
-        Assert.InRange(maxed.RespawnDelayTicks, 1, 255);
-        Assert.InRange(maxed.SpawnImmunityTicks, 1, 255);
+        Assert.InRange(maxed.Rules.RespawnDelayTicks, 1, ushort.MaxValue);
+        Assert.InRange(maxed.Rules.SpawnImmunityTicks, 1, 255);
         Assert.InRange(stats.ParryWindowTicks, 1, 255);
         Assert.InRange(stats.ParryCooldownTicks, 1, ushort.MaxValue);
     }

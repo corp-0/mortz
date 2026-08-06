@@ -2,23 +2,25 @@ using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
 using Mortz.Core.Input;
+using Mortz.Core.Match;
+using Mortz.Core.Match.Participation;
 using Mortz.Core.Net;
 using Mortz.Core.Replication;
 using Mortz.Core.Sim;
 using Mortz.Core.Sim.Modifiers;
 using Mortz.Net;
+using Mortz.Shared.Logging;
+using Serilog;
 
 namespace Mortz.Client.Match;
 
-/// <summary>
-/// The locally predicted player: samples input every sim tick, feeds the
-/// Predictor, ships input packets to the server and reconciles the prediction
-/// against incoming snapshots. Small corrections ease in over a few frames
-/// (CorrectionOffset), teleport-scale ones snap.
-/// </summary>
+/// <summary>The locally predicted player: samples input, feeds the Predictor, ships
+/// input packets, and reconciles against incoming snapshots.</summary>
 [Meta(typeof(IAutoNode))]
 public partial class LocalPlayerController : Node2D
 {
+    private static readonly ILogger _log = MortzLog.For("client");
+
     /// <summary>How fast reconciliation corrections blend away (per second).</summary>
     private const float CORRECTION_DECAY = 10f;
     /// <summary>Corrections beyond this (respawn after a death pit) snap
@@ -40,6 +42,7 @@ public partial class LocalPlayerController : Node2D
     private Predictor _predictor = null!;
     private Vector2 _correctionOffset;
     private byte _aim;
+    private MatchParticipation _participation = MatchParticipation.Active;
 
     [Dependency]
     private INetwork Network => this.DependOn<INetwork>();
@@ -54,7 +57,14 @@ public partial class LocalPlayerController : Node2D
     public bool Frozen { get; set; }
 
     /// <summary>Must be called right after instantiating, before entering the tree.</summary>
-    public void Initialize(Predictor predictor) => _predictor = predictor;
+    public void Initialize(Predictor predictor, MatchParticipation participation)
+    {
+        _predictor = predictor;
+        _participation = participation;
+    }
+
+    public void SetParticipation(MatchParticipation participation) =>
+        _participation = participation;
 
     public override void _Notification(int what) => this.Notify(what);
 
@@ -65,12 +75,14 @@ public partial class LocalPlayerController : Node2D
 
     public override void _PhysicsProcess(double delta)
     {
-        if (Frozen)
+        if (Frozen || _participation.Seat == MatchSeat.SPECTATOR)
             return;
 
-        InputButtons buttons = InputSampler.Sample();
+        InputButtons buttons = _participation.Activity == MatchActivity.ACTIVE
+            ? InputSampler.Sample()
+            : InputButtons.NONE;
 
-        if (_predictor.Initialized)
+        if (_predictor.Initialized && _participation.Activity == MatchActivity.ACTIVE)
         {
             Vector2 toMouse = GetGlobalMousePosition() - BodyCenter();
             if (toMouse.LengthSquared() > 1)
@@ -105,7 +117,7 @@ public partial class LocalPlayerController : Node2D
             if (player.PeerId != localId)
                 continue;
             if (!_predictor.Initialized)
-                GD.Print("[client] prediction initialized");
+                _log.Information("prediction initialized");
             Vec2 correction = _predictor.Reconcile(player, ack, snapshot.Tick);
             if (correction.Length() > SNAP_DISTANCE)
                 _correctionOffset = Vector2.Zero;

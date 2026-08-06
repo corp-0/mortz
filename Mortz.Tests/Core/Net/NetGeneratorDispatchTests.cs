@@ -42,15 +42,25 @@ public class NetGeneratorDispatchTests
         [NetMessage(NetChannel.RELIABLE, NetDirection.SERVER_TO_CLIENT)]
         public readonly partial record struct TintMsg(Tint? Colour, Pair[] Pairs);
 
+        public sealed class TintHandler : IHandle<TintMsg>
+        {
+            public void Handle(in TintMsg message)
+            {
+                Probe.Record(message);
+            }
+        }
+
         public static class Probe
         {
             public const int NO_TINT = -1;
+
+            private static readonly NetRouter _router = new();
 
             private static int _tint = NO_TINT;
             private static int _pairs = -1;
             private static bool _throwOnReceive;
 
-            static Probe() => TintMsg.Received += OnReceived;
+            static Probe() => _router.Add(new TintHandler());
 
             public static void Reset()
             {
@@ -66,24 +76,24 @@ public class NetGeneratorDispatchTests
             public static int Pairs() => _pairs;
 
             public static bool Dispatch(byte[] payload) =>
-                NetRegistry.Dispatch(NetRegistry.ID_TintMsg, 7, payload, false);
+                _router.Dispatch(NetRegistry.ID_TintMsg, payload);
 
             public static byte[] Encode(int tint) =>
                 TintMsg.Serialize(new TintMsg(ToTint(tint), []));
+
+            public static void Record(TintMsg message)
+            {
+                _tint = ToInt(message.Colour);
+                _pairs = message.Pairs.Length;
+                if (_throwOnReceive)
+                    throw new ArgumentException("subscriber boom");
+            }
 
             private static Tint? ToTint(int tint)
             {
                 if (tint == NO_TINT)
                     return null;
                 return (Tint)tint;
-            }
-
-            private static void OnReceived(TintMsg message)
-            {
-                _tint = ToInt(message.Colour);
-                _pairs = message.Pairs.Length;
-                if (_throwOnReceive)
-                    throw new ArgumentException("subscriber boom");
             }
 
             private static int ToInt(Tint? tint)

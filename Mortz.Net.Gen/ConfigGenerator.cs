@@ -10,9 +10,12 @@ namespace Mortz.Net.Gen;
 [Generator]
 public sealed class ConfigGenerator : IIncrementalGenerator
 {
-    private const string PLAYER_STAT_ATTRIBUTE = "Mortz.Core.Match.PlayerStatAttribute";
-    private const string MATCH_RULE_ATTRIBUTE = "Mortz.Core.Match.MatchRuleAttribute";
+    private const string PLAYER_STAT_ATTRIBUTE = "Mortz.Core.Match.Configuration.PlayerStatAttribute";
+    private const string MATCH_RULE_ATTRIBUTE = "Mortz.Core.Match.Configuration.MatchRuleAttribute";
+    private const string ZONE_STAT_ATTRIBUTE = "Mortz.Core.Match.Configuration.ZoneStatAttribute";
     private const string TICK_RATE_TYPE = "Mortz.Core.Sim.SimConfig";
+    // MatchConfig must expose each [PlayerStat] owner type as a property named after that type.
+    private const string MATCH_CONFIG = "global::Mortz.Core.Match.Configuration.MatchConfig";
 
     private static readonly DiagnosticDescriptor _invalidRange = new(
         "MZ3001", "Invalid clamp range",
@@ -48,9 +51,10 @@ public sealed class ConfigGenerator : IIncrementalGenerator
     {
         STAT,
         RULE,
+        ZONE_STAT,
     }
 
-    // Mirrors Mortz.Core.Match.StatConvert; the generator cannot reference it.
+    // Mirrors Mortz.Core.Match.Configuration.StatConvert; the generator cannot reference it.
     private enum Convert
     {
         RAW = 0,
@@ -92,11 +96,16 @@ public sealed class ConfigGenerator : IIncrementalGenerator
                 static (node, _) => node is PropertyDeclarationSyntax,
                 static (ctx, _) => Extract(ctx, FieldKind.RULE))
             .Collect();
+        IncrementalValueProvider<ImmutableArray<FieldModel>> zoneStats = context.SyntaxProvider
+            .ForAttributeWithMetadataName(
+                ZONE_STAT_ATTRIBUTE,
+                static (node, _) => node is PropertyDeclarationSyntax,
+                static (ctx, _) => Extract(ctx, FieldKind.ZONE_STAT))
+            .Collect();
 
-        IncrementalValueProvider<(ImmutableArray<FieldModel> Left, ImmutableArray<FieldModel> Right)>
-            combined = stats.Combine(rules);
+        IncrementalValueProvider<((ImmutableArray<FieldModel> Left, ImmutableArray<FieldModel> Right) Left, ImmutableArray<FieldModel> Right)> combined = stats.Combine(rules).Combine(zoneStats);
         context.RegisterSourceOutput(combined, static (spc, models) =>
-            Emit(spc, models.Left, models.Right));
+            Emit(spc, models.Left.Left, models.Left.Right, models.Right));
     }
 
     private static FieldModel Extract(GeneratorAttributeSyntaxContext ctx, FieldKind kind)
@@ -120,8 +129,19 @@ public sealed class ConfigGenerator : IIncrementalGenerator
                 "the property must be public, non-static, with public get and set"));
 
         AttributeData attr = ctx.Attributes[0];
-        float min = (float)(attr.ConstructorArguments[0].Value ?? float.NaN);
-        float max = (float)(attr.ConstructorArguments[1].Value ?? float.NaN);
+        AttributeData? rangeContract = kind == FieldKind.ZONE_STAT
+            ? symbol.GetAttributes().FirstOrDefault(candidate =>
+                candidate.AttributeClass?.ToDisplayString() == MATCH_RULE_ATTRIBUTE)
+            : attr;
+        if (rangeContract == null)
+            diagnostics.Add(Diagnostic.Create(_misuse, location, name,
+                "[ZoneStat] requires [MatchRule] on the same property"));
+        float min = rangeContract == null
+            ? float.NaN
+            : (float)(rangeContract.ConstructorArguments[0].Value ?? float.NaN);
+        float max = rangeContract == null
+            ? float.NaN
+            : (float)(rangeContract.ConstructorArguments[1].Value ?? float.NaN);
         Convert conv = kind == FieldKind.STAT
             ? (Convert)(byte)(attr.ConstructorArguments[2].Value ?? (byte)0)
             : Convert.RAW;
@@ -184,6 +204,12 @@ public sealed class ConfigGenerator : IIncrementalGenerator
         }
 
         bool numeric = type is "float" or "int";
+        if (kind == FieldKind.ZONE_STAT && !numeric)
+        {
+            diagnostics.Add(Diagnostic.Create(_typeMismatch, location, name,
+                $"zone stats must be float or int, not {type}"));
+            return;
+        }
         if (!numeric && type != "bool" && !isEnum)
             diagnostics.Add(Diagnostic.Create(_typeMismatch, location, name,
                 $"rules must be float, int, bool, or an enum, not {type}"));
@@ -225,13 +251,14 @@ public sealed class ConfigGenerator : IIncrementalGenerator
     }
 
     private static void Emit(SourceProductionContext spc,
-        ImmutableArray<FieldModel> stats, ImmutableArray<FieldModel> rules)
+        ImmutableArray<FieldModel> stats, ImmutableArray<FieldModel> rules,
+        ImmutableArray<FieldModel> zoneStats)
     {
-        foreach (Diagnostic d in stats.Concat(rules).SelectMany(m => m.Diagnostics))
+        foreach (Diagnostic d in stats.Concat(rules).Concat(zoneStats).SelectMany(m => m.Diagnostics))
         {
             spc.ReportDiagnostic(d);
         }
-        if (stats.Concat(rules).Any(m => !m.Diagnostics.IsEmpty))
+        if (stats.Concat(rules).Concat(zoneStats).Any(m => !m.Diagnostics.IsEmpty))
             return;
 
         FieldModel[] valid = stats.Concat(rules)
@@ -242,7 +269,11 @@ public sealed class ConfigGenerator : IIncrementalGenerator
             return;
 
         var seen = new HashSet<string>();
-        foreach (FieldModel m in valid.Where(m => m.Kind == FieldKind.STAT))
+        FieldModel[] modifierFields = stats.Concat(zoneStats)
+            .OrderBy(m => m.FilePath, StringComparer.Ordinal)
+            .ThenBy(m => m.SpanStart)
+            .ToArray();
+        foreach (FieldModel m in modifierFields)
         {
             if (!seen.Add(ToScreamingSnake(m.StatName)))
             {
@@ -261,20 +292,14 @@ public sealed class ConfigGenerator : IIncrementalGenerator
         FieldModel[] statFields = valid.Where(m => m.Kind == FieldKind.STAT).ToArray();
         if (statFields.Length == 0)
             return;
-        if (statFields.Select(m => m.Owner).Distinct().Count() > 1)
-        {
-            spc.ReportDiagnostic(Diagnostic.Create(_misuse, Location.None, statFields[0].Name,
-                "all [PlayerStat] properties must share a single containing type"));
-            return;
-        }
         spc.AddSource("Stat.g.cs",
-            SourceText.From(EmitStatEnum(statFields),
+            SourceText.From(EmitStatEnum(modifierFields),
                 Encoding.UTF8));
         spc.AddSource("PlayerStats.g.cs",
             SourceText.From(EmitPlayerStats(statFields),
                 Encoding.UTF8));
         spc.AddSource("StatsPipeline.g.cs",
-            SourceText.From(EmitPipeline(statFields),
+            SourceText.From(EmitPipeline(modifierFields),
                 Encoding.UTF8));
     }
 
@@ -309,7 +334,6 @@ public sealed class ConfigGenerator : IIncrementalGenerator
         sb.AppendLine();
         sb.AppendLine("namespace Mortz.Core.Sim;");
         sb.AppendLine();
-        string owner = $"global::{stats[0].Owner}";
         sb.AppendLine("public sealed class PlayerStats");
         sb.AppendLine("{");
         foreach (FieldModel m in stats)
@@ -317,20 +341,21 @@ public sealed class ConfigGenerator : IIncrementalGenerator
             sb.AppendLine($"    public readonly {StatsFieldType(m)} {StatsFieldName(m)};");
         }
         sb.AppendLine();
-        sb.AppendLine($"    public static PlayerStats Resolve({owner} cfg) =>");
+        sb.AppendLine($"    public static PlayerStats Resolve({MATCH_CONFIG} cfg) =>");
         sb.AppendLine("        new PlayerStats(cfg);");
         sb.AppendLine();
-        sb.AppendLine($"    private PlayerStats({owner} cfg)");
+        sb.AppendLine($"    private PlayerStats({MATCH_CONFIG} cfg)");
         sb.AppendLine("    {");
         foreach (FieldModel m in stats)
         {
+            string source = $"cfg.{m.OwnerName}.{m.Name}";
             string value = m.Conv switch
             {
-                Convert.TICKS_INT => $"Ticks(cfg.{m.Name})",
-                Convert.TICKS_BYTE => $"(byte)Ticks(cfg.{m.Name})",
-                Convert.TICKS_USHORT => $"(ushort)Ticks(cfg.{m.Name})",
-                Convert.COUNT_BYTE => $"(byte)cfg.{m.Name}",
-                _ => $"cfg.{m.Name}",
+                Convert.TICKS_INT => $"Ticks({source})",
+                Convert.TICKS_BYTE => $"(byte)Ticks({source})",
+                Convert.TICKS_USHORT => $"(ushort)Ticks({source})",
+                Convert.COUNT_BYTE => $"(byte){source}",
+                _ => source,
             };
             sb.AppendLine($"        {StatsFieldName(m)} = {value};");
         }
@@ -350,19 +375,18 @@ public sealed class ConfigGenerator : IIncrementalGenerator
         sb.AppendLine();
         sb.AppendLine("namespace Mortz.Core.Sim.Modifiers;");
         sb.AppendLine();
-        string owner = $"global::{stats[0].Owner}";
         sb.AppendLine("public static partial class StatsPipeline");
         sb.AppendLine("{");
-        sb.AppendLine($"    private static float Get({owner} c, Stat stat) => stat switch");
+        sb.AppendLine($"    private static float Get({MATCH_CONFIG} c, Stat stat) => stat switch");
         sb.AppendLine("    {");
         foreach (FieldModel m in stats)
         {
-            sb.AppendLine($"        Stat.{ToScreamingSnake(m.StatName)} => c.{m.Name},");
+            sb.AppendLine($"        Stat.{ToScreamingSnake(m.StatName)} => c.{m.OwnerName}.{m.Name},");
         }
         sb.AppendLine("        _ => throw new global::System.ArgumentOutOfRangeException(nameof(stat)),");
         sb.AppendLine("    };");
         sb.AppendLine();
-        sb.AppendLine($"    private static void Set({owner} c, Stat stat, float value)");
+        sb.AppendLine($"    private static void Set({MATCH_CONFIG} c, Stat stat, float value)");
         sb.AppendLine("    {");
         sb.AppendLine("        int rounded = (int)global::System.MathF.Round(value);");
         sb.AppendLine("        switch (stat)");
@@ -370,11 +394,21 @@ public sealed class ConfigGenerator : IIncrementalGenerator
         foreach (FieldModel m in stats)
         {
             string assigned = m.Type == "int" ? "rounded" : "value";
-            sb.AppendLine($"            case Stat.{ToScreamingSnake(m.StatName)}: c.{m.Name} = {assigned}; break;");
+            sb.AppendLine($"            case Stat.{ToScreamingSnake(m.StatName)}: c.{m.OwnerName}.{m.Name} = {assigned}; break;");
         }
         sb.AppendLine("            default: throw new global::System.ArgumentOutOfRangeException(nameof(stat));");
         sb.AppendLine("        }");
         sb.AppendLine("    }");
+        sb.AppendLine();
+        sb.AppendLine("    public static float Clamp(Stat stat, float value) => stat switch");
+        sb.AppendLine("    {");
+        foreach (FieldModel m in stats)
+        {
+            if (!float.IsNaN(m.Min) && !float.IsNaN(m.Max))
+                sb.AppendLine($"        Stat.{ToScreamingSnake(m.StatName)} => global::System.Math.Clamp(value, {F(m.Min)}, {F(m.Max)}),");
+        }
+        sb.AppendLine("        _ => value,");
+        sb.AppendLine("    };");
         sb.AppendLine("}");
         return sb.ToString();
     }
@@ -406,7 +440,7 @@ public sealed class ConfigGenerator : IIncrementalGenerator
         sb.AppendLine();
         sb.AppendLine($"namespace {fields[0].OwnerNamespace};");
         sb.AppendLine();
-        sb.AppendLine($"public sealed partial class {name}");
+        sb.AppendLine($"public sealed partial class {name} : global::Mortz.Core.Match.Configuration.IConfigSection");
         sb.AppendLine("{");
         sb.AppendLine("    public void Clamp()");
         sb.AppendLine("    {");
@@ -469,7 +503,7 @@ public sealed class ConfigGenerator : IIncrementalGenerator
 
     private static void EmitApplier(StringBuilder sb, FieldModel[] fields)
     {
-        sb.AppendLine("    public global::Mortz.Core.Match.ConfigKeyResult TryApplyKey(string key, object? value, out string error)");
+        sb.AppendLine("    public global::Mortz.Core.Match.Configuration.ConfigKeyResult TryApplyKey(string key, object? value, out string error)");
         sb.AppendLine("    {");
         sb.AppendLine("        error = \"\";");
         sb.AppendLine("        switch (key)");
@@ -487,7 +521,7 @@ public sealed class ConfigGenerator : IIncrementalGenerator
                 sb.AppendLine($"                    global::System.Enum.IsDefined(e{m.Name}))");
                 sb.AppendLine("                {");
                 sb.AppendLine($"                    {m.Name} = e{m.Name};");
-                sb.AppendLine("                    return global::Mortz.Core.Match.ConfigKeyResult.APPLIED;");
+                sb.AppendLine("                    return global::Mortz.Core.Match.Configuration.ConfigKeyResult.APPLIED;");
                 sb.AppendLine("                }");
                 sb.AppendLine($"                error = \"'{key}' must be one of: {values}\";");
             }
@@ -496,7 +530,7 @@ public sealed class ConfigGenerator : IIncrementalGenerator
                 sb.AppendLine($"                if (value is bool b{m.Name})");
                 sb.AppendLine("                {");
                 sb.AppendLine($"                    {m.Name} = b{m.Name};");
-                sb.AppendLine("                    return global::Mortz.Core.Match.ConfigKeyResult.APPLIED;");
+                sb.AppendLine("                    return global::Mortz.Core.Match.Configuration.ConfigKeyResult.APPLIED;");
                 sb.AppendLine("                }");
                 sb.AppendLine($"                error = \"'{key}' must be a boolean\";");
             }
@@ -505,7 +539,7 @@ public sealed class ConfigGenerator : IIncrementalGenerator
                 sb.AppendLine($"                if (value is long l{m.Name} && l{m.Name} is >= int.MinValue and <= int.MaxValue)");
                 sb.AppendLine("                {");
                 sb.AppendLine($"                    {m.Name} = (int)l{m.Name};");
-                sb.AppendLine("                    return global::Mortz.Core.Match.ConfigKeyResult.APPLIED;");
+                sb.AppendLine("                    return global::Mortz.Core.Match.Configuration.ConfigKeyResult.APPLIED;");
                 sb.AppendLine("                }");
                 sb.AppendLine($"                error = \"'{key}' must be a 32-bit integer\";");
             }
@@ -514,20 +548,20 @@ public sealed class ConfigGenerator : IIncrementalGenerator
                 sb.AppendLine($"                if (value is double d{m.Name})");
                 sb.AppendLine("                {");
                 sb.AppendLine($"                    {m.Name} = (float)d{m.Name};");
-                sb.AppendLine("                    return global::Mortz.Core.Match.ConfigKeyResult.APPLIED;");
+                sb.AppendLine("                    return global::Mortz.Core.Match.Configuration.ConfigKeyResult.APPLIED;");
                 sb.AppendLine("                }");
                 sb.AppendLine($"                if (value is long i{m.Name})");
                 sb.AppendLine("                {");
                 sb.AppendLine($"                    {m.Name} = i{m.Name};");
-                sb.AppendLine("                    return global::Mortz.Core.Match.ConfigKeyResult.APPLIED;");
+                sb.AppendLine("                    return global::Mortz.Core.Match.Configuration.ConfigKeyResult.APPLIED;");
                 sb.AppendLine("                }");
                 sb.AppendLine($"                error = \"'{key}' must be a number\";");
             }
-            sb.AppendLine("                return global::Mortz.Core.Match.ConfigKeyResult.INVALID_VALUE;");
+            sb.AppendLine("                return global::Mortz.Core.Match.Configuration.ConfigKeyResult.INVALID_VALUE;");
         }
         sb.AppendLine("            default:");
         sb.AppendLine("                error = $\"unknown key '{key}'\";");
-        sb.AppendLine("                return global::Mortz.Core.Match.ConfigKeyResult.UNKNOWN_KEY;");
+        sb.AppendLine("                return global::Mortz.Core.Match.Configuration.ConfigKeyResult.UNKNOWN_KEY;");
         sb.AppendLine("        }");
         sb.AppendLine("    }");
     }

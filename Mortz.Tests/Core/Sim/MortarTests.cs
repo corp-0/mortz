@@ -1,4 +1,5 @@
 using Mortz.Core.Match;
+using Mortz.Core.Match.Configuration;
 using Mortz.Core.Replication;
 using Mortz.Core.Sim;
 using Mortz.Core.Terrain;
@@ -265,11 +266,11 @@ public class MortarTests
     {
         MatchConfig config = new()
         {
-            Physics = new Physics
+            Rules = new ModeRules { SpawnImmunity = 0 },
+            Combat = new Combat
             {
                 MortarSpeed = 100,
                 MortarGravity = 0,
-                SpawnImmunity = 0,
             },
         };
         config.Clamp();

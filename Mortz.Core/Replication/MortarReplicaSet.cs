@@ -1,6 +1,7 @@
-using Mortz.Core.Match;
 using Mortz.Core.Sim;
+using Mortz.Core.Sim.Modifiers;
 using Mortz.Core.Terrain;
+using Combat = Mortz.Core.Match.Configuration.Combat;
 
 namespace Mortz.Core.Replication;
 
@@ -11,14 +12,16 @@ public sealed class MortarReplicaSet
     private readonly Dictionary<ushort, MortarState> _states = new();
     private readonly HashSet<ushort> _stopped = new();
     private readonly TerrainMask _terrain;
-    private readonly Physics _config;
+    private readonly Combat _config;
+    private readonly MapZones _zones;
     private bool _hasCorrection;
     private int _lastCorrectionTick;
 
-    public MortarReplicaSet(TerrainMask terrain, Physics config)
+    public MortarReplicaSet(TerrainMask terrain, Combat config, MapZones? zones = null)
     {
         _terrain = terrain;
         _config = config;
+        _zones = zones ?? MapZones.None;
     }
 
     public int Count => _states.Count;
@@ -80,7 +83,8 @@ public sealed class MortarReplicaSet
             MortarState state = _states[id];
             if (!_stopped.Contains(id))
             {
-                MortarOutcome outcome = MortarSim.Tick(ref state, _terrain, _config, SimConfig.DT);
+                MortarOutcome outcome = MortarSim.Tick(
+                    ref state, _terrain, _config, SimConfig.DT, _zones);
                 // End is authoritative. If local quantization reaches terrain a
                 // tick early, freeze at contact until End or the next correction
                 // instead of making the shell disappear permanently.
@@ -103,7 +107,8 @@ public sealed class MortarReplicaSet
     {
         for (int i = 0; i < ticks; i++)
         {
-            if (MortarSim.Tick(ref state, _terrain, _config, SimConfig.DT) != MortarOutcome.FLYING)
+            if (MortarSim.Tick(ref state, _terrain, _config, SimConfig.DT, _zones) !=
+                MortarOutcome.FLYING)
                 return false;
         }
         return true;

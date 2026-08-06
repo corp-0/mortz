@@ -3,7 +3,8 @@ using Chickensoft.Introspection;
 using Godot;
 using Mortz.Client.Chat;
 using Mortz.Client.Ui;
-using Mortz.Core.Match;
+using Mortz.Core.Match.Events;
+using Mortz.Core.Match.Teams;
 using Mortz.Core.Text;
 
 namespace Mortz.Client.Announcements;

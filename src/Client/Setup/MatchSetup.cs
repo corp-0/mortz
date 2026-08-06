@@ -1,28 +1,33 @@
+using Chickensoft.AutoInject;
+using Chickensoft.Introspection;
 using Godot;
 using Mortz.Core.Match;
+using Mortz.Core.Match.Configuration;
 using Mortz.Core.Net;
-using Mortz.Core.Net.Messages;
+using Mortz.Core.Net.Lobby;
+using Mortz.Core.Net.Sim;
 
 namespace Mortz.Client.Setup;
 
 /// <summary>Server-owned lobby state for the UI to read. Events fire when a
 /// value changes, not once per message.</summary>
-public partial class MatchSetup : Node
+[Meta(typeof(IAutoNode))]
+public partial class MatchSetup : Node,
+    IHandle<LobbySettingsMsg>,
+    IHandle<LobbyStateMsg>,
+    IHandle<WelcomeMsg>
 {
-    private readonly List<LobbyMember> _members = [];
     private readonly List<SwapOffer> _swapOffers = [];
     private byte[] _configBytes;
 
     public event Action? ConfigChanged;
 
-    /// <summary>The Teams rule toggled or a lobby team assignment moved.</summary>
+    /// <summary>The Teams rule toggled. Assignment moves are identity and
+    /// arrive through ClientPlayers.Changed.</summary>
     public event Action? TeamsChanged;
 
     /// <summary>The selected map, catalog, rules, or settings error changed.</summary>
     public event Action? SettingsChanged;
-
-    /// <summary>Lobby membership, a name, or a ready state changed.</summary>
-    public event Action? RosterChanged;
 
     /// <summary>A pending swap offer appeared, resolved, or expired.</summary>
     public event Action? SwapOffersChanged;
@@ -36,35 +41,41 @@ public partial class MatchSetup : Node
     /// <summary>Null while the last received server settings were valid.</summary>
     public string? SettingsError { get; private set; }
 
-    public IReadOnlyList<LobbyMember> Members => _members;
     public IReadOnlyList<SwapOffer> SwapOffers => _swapOffers;
 
     public MatchSetup() => _configBytes = Config.ToBytes();
 
     public MatchConfig CopyConfig() => MatchConfig.FromBytes(_configBytes);
 
-    public override void _Ready()
+    [Dependency]
+    private NetRouter Router => this.DependOn<NetRouter>();
+
+    private NetRouter? _routed;
+
+    public override void _Notification(int what) => this.Notify(what);
+
+    public void OnResolved()
     {
-        LobbySettingsProtocol.Received += ApplySettings;
-        LobbySettingsProtocol.Rejected += OnSettingsRejected;
-        RosterProtocol.LobbyRosterReceived += OnLobbyRoster;
-        WelcomeMsg.Received += ApplyWelcome;
+        _routed = Router;
+        _routed.Add(this);
     }
 
-    public override void _ExitTree()
+    public void OnExitTree()
     {
-        LobbySettingsProtocol.Received -= ApplySettings;
-        LobbySettingsProtocol.Rejected -= OnSettingsRejected;
-        RosterProtocol.LobbyRosterReceived -= OnLobbyRoster;
-        WelcomeMsg.Received -= ApplyWelcome;
+        _routed?.Remove(this);
+        _routed = null;
     }
 
-    private void OnLobbyRoster(LobbyRoster roster)
+    public void Handle(in LobbySettingsMsg message)
     {
-        ApplyMembers(roster.Members);
-        ApplyOffers(roster.Offers);
-        new LobbySettingsRequestMsg().SendToServer();
+        if (LobbySettingsProtocol.TryDecode(message, out LobbySettings? settings,
+                out LobbySettingsRejectReason reason))
+            ApplySettings(settings);
+        else
+            OnSettingsRejected(reason);
     }
+
+    public void Handle(in LobbyStateMsg message) => ApplyOffers(message.Offers);
 
     private void ApplySettings(LobbySettings settings)
     {
@@ -97,7 +108,7 @@ public partial class MatchSetup : Node
     /// <summary>Mid-match rules for a player who never saw a lobby broadcast.
     /// It carries no catalogs, so it sets no Selection; the match screen gets
     /// its map from ClientMatchBootstrap.</summary>
-    private void ApplyWelcome(WelcomeMsg message)
+    public void Handle(in WelcomeMsg message)
     {
         MatchConfig config;
         try
@@ -125,34 +136,6 @@ public partial class MatchSetup : Node
             TeamsChanged?.Invoke();
         if (raiseSettings || configChanged)
             SettingsChanged?.Invoke();
-    }
-
-    private void ApplyMembers(IReadOnlyList<LobbyMember> members)
-    {
-        bool rosterChanged = !members.Select(WithoutTeam).SequenceEqual(
-            _members.Select(WithoutTeam));
-        bool teamsMoved = !Assignments(members).SequenceEqual(Assignments(_members));
-        if (!rosterChanged && !teamsMoved)
-            return;
-        _members.Clear();
-        _members.AddRange(members);
-        if (rosterChanged)
-            RosterChanged?.Invoke();
-        if (teamsMoved)
-            TeamsChanged?.Invoke();
-    }
-
-    private static LobbyMember WithoutTeam(LobbyMember member) => member.OnTeam(null);
-
-    /// <summary>Only real assignments count, so joins and leaves in a
-    /// teamless lobby never read as team movement.</summary>
-    private static IEnumerable<TeamAssignment> Assignments(IEnumerable<LobbyMember> members)
-    {
-        foreach (LobbyMember member in members)
-        {
-            if (member.Team is Team team)
-                yield return new TeamAssignment(member.PeerId, team);
-        }
     }
 
     private void SetError(string error)

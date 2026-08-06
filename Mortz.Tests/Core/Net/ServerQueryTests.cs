@@ -8,7 +8,8 @@ public class ServerQueryTests
 {
     private static ServerInfo Sample(string name = "Gilles' Box") =>
         new(name, "Teams - Team Kills", "castlewars", Players: 3, MaxPlayers: 8,
-            InLobby: true, GamePort: 7777, ProtocolVersion: 32, SchemaHash: 0xDEADBEEFCAFEUL);
+            InLobby: true, AllowJoinInProgress: true, GamePort: 7777,
+            ProtocolVersion: 32, SchemaHash: 0xDEADBEEFCAFEUL);
 
     [Fact]
     public void Request_RoundTripsNonceAndIsPadded()
@@ -74,6 +75,7 @@ public class ServerQueryTests
         writer.Write((ushort)7777);
         writer.Write((byte)3);
         writer.Write((byte)8);
+        writer.Write(true);
         writer.Write(true);
         writer.Write(name);
         writer.Write(mode);

@@ -1,0 +1,280 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "format_version": {
+      "type": "integer",
+      "minimum": -2147483648,
+      "maximum": 2147483647,
+      "const": 1
+    },
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "identity": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "rules": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "teams": {
+          "type": "boolean"
+        },
+        "win_condition": {
+          "type": "string",
+          "enum": [
+            "kills",
+            "kill_lead"
+          ]
+        },
+        "kill_target": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 999
+        },
+        "kill_lead_target": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 999
+        },
+        "friendly_fire": {
+          "type": "boolean"
+        },
+        "suicide_penalty": {
+          "type": "string",
+          "enum": [
+            "none",
+            "kill_no_negative",
+            "kill",
+            "reward_closest_enemy"
+          ]
+        },
+        "spectate_during_respawn": {
+          "type": "boolean"
+        },
+        "respawn_delay": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 60
+        },
+        "spawn_immunity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 4
+        }
+      }
+    },
+    "physics": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "max_run_speed": {
+          "type": "number",
+          "minimum": 40,
+          "maximum": 2000
+        },
+        "ground_accel": {
+          "type": "number",
+          "minimum": 200,
+          "maximum": 50000
+        },
+        "ground_friction": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 50000
+        },
+        "air_accel": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 50000
+        },
+        "gravity": {
+          "type": "number",
+          "minimum": -8000,
+          "maximum": 8000
+        },
+        "max_fall_speed": {
+          "type": "number",
+          "minimum": 100,
+          "maximum": 4000
+        },
+        "total_jumps": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        },
+        "jump_speed": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3000
+        },
+        "air_jump_speed": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3000
+        },
+        "wall_slide_max_fall": {
+          "type": "number",
+          "minimum": 20,
+          "maximum": 4000
+        },
+        "wall_jump_speed_y": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3000
+        },
+        "wall_jump_kick_x": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3000
+        },
+        "coyote_base": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 0.5
+        },
+        "coyote_bonus_per100_speed": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 0.2
+        },
+        "coyote_max": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "dash_speed": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3000
+        },
+        "dash_cooldown": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 4
+        },
+        "rope_speed": {
+          "type": "number",
+          "minimum": 200,
+          "maximum": 5000
+        },
+        "rope_max_range": {
+          "type": "number",
+          "minimum": 50,
+          "maximum": 2000
+        },
+        "rope_pull_accel": {
+          "type": "number",
+          "minimum": 200,
+          "maximum": 20000
+        },
+        "rope_shorten_speed": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "rope_release_cooldown": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 4
+        },
+        "rope_miss_cooldown": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 4
+        }
+      }
+    },
+    "combat": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mortar_speed": {
+          "type": "number",
+          "minimum": 100,
+          "maximum": 4000
+        },
+        "mortar_inherit": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "mortar_gravity": {
+          "type": "number",
+          "minimum": -8000,
+          "maximum": 8000
+        },
+        "mortar_max_fall": {
+          "type": "number",
+          "minimum": 100,
+          "maximum": 4000
+        },
+        "mortar_carve_radius": {
+          "type": "integer",
+          "minimum": 8,
+          "maximum": 128
+        },
+        "mortar_max_ammo": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30
+        },
+        "mortar_reload_per_shell": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 4
+        },
+        "parry_radius": {
+          "type": "number",
+          "minimum": 8,
+          "maximum": 200
+        },
+        "parry_window": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 4
+        },
+        "parry_cooldown": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 120
+        },
+        "max_health": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 250
+        },
+        "mortar_damage": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 250
+        },
+        "blast_core_fraction": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "blast_edge_damage": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 250
+        }
+      }
+    }
+  },
+  "required": [
+    "format_version",
+    "name"
+  ],
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Mortz game mode"
+}

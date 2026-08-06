@@ -1,4 +1,5 @@
 using Mortz.Core.Match;
+using Combat = Mortz.Core.Match.Configuration.Combat;
 
 namespace Mortz.Core.Sim;
 
@@ -9,7 +10,7 @@ namespace Mortz.Core.Sim;
 /// </summary>
 public static class BlastSim
 {
-    public static int Damage(in PlayerState p, Vec2 center, Physics cfg)
+    public static int Damage(in PlayerState p, Vec2 center, Combat cfg)
     {
         float d = DistanceToBody(p, center);
         float core = cfg.MortarCarveRadius * cfg.BlastCoreFraction;

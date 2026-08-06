@@ -34,7 +34,7 @@ public class SpawnPointTests
     [Fact]
     public void AuthoredPoints_AreHandedOutByNetSlot_AndCycleWhenTheyRunOut()
     {
-        SimWorld world = new(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig, seed: 1, _authored);
+        SimWorld world = new(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig, _authored);
 
         world.AddPlayer(99);
         world.AddPlayer(7);
@@ -55,7 +55,7 @@ public class SpawnPointTests
             solid: (x, _) => x < TestWorlds.WALL_LEFT || x >= TestWorlds.WALL_RIGHT,
             destructible: (_, y) => y >= TestWorlds.FLOOR_Y);
         Vec2 spawn = new(100, TestWorlds.FLOOR_Y);
-        SimWorld world = new(terrain, TestWorlds.NoSpawnProtectionConfig, seed: 1, [spawn]);
+        SimWorld world = new(terrain, TestWorlds.NoSpawnProtectionConfig, [spawn]);
         world.AddPlayer(1);
 
         int sequence = 0;
@@ -77,7 +77,7 @@ public class SpawnPointTests
     [Fact]
     public void MapWithoutPoints_FallsBackToTheColumnSearch()
     {
-        SimWorld world = new(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig, seed: 1);
+        SimWorld world = new(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
 
         world.AddPlayer(1);
         world.AddPlayer(2);

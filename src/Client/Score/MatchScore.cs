@@ -1,62 +1,87 @@
+using Chickensoft.AutoInject;
+using Chickensoft.Introspection;
 using Godot;
+using Mortz.Client.Players;
 using Mortz.Core.Match;
+using Mortz.Core.Match.Scoring;
+using Mortz.Core.Match.Teams;
 using Mortz.Core.Net;
-using Mortz.Core.Net.Messages;
+using Mortz.Core.Net.Match;
+using Mortz.Core.Net.Score;
 
 namespace Mortz.Client.Score;
 
-/// <summary>Connected-session tables of the authoritative score stream. The
-/// sync seed replaces everything (it arrives with every match entry, so a new
-/// match or a late join always starts from the server's truth); eliminations
-/// patch the affected rows afterwards.</summary>
-public partial class MatchScore : Node
+/// <summary>Applies the authoritative score stream onto players. The sync seed
+/// replaces everything (it arrives with every match entry, so a new match or a
+/// late join always starts from the server's truth); eliminations patch the
+/// affected players afterwards.</summary>
+[Meta(typeof(IAutoNode))]
+public partial class MatchScore : Node,
+    IHandle<ScoreSyncMsg>,
+    IHandle<EliminationMsg>
 {
-    private readonly Dictionary<int, int> _kills = [];
-    private readonly Dictionary<int, int> _deaths = [];
+    private SessionStateKey<ScoreState> _score;
     private TeamKills _teamKills;
 
     public event Action? Changed;
 
-    public int Kills(int peerId) => _kills.GetValueOrDefault(peerId);
-    public int Deaths(int peerId) => _deaths.GetValueOrDefault(peerId);
+    public int Kills(int peerId) => Players.Find(peerId)?.State(_score).Kills ?? 0;
+    public int Deaths(int peerId) => Players.Find(peerId)?.State(_score).Deaths ?? 0;
     public int TeamKills(Team team) => _teamKills[team];
 
-    public override void _Ready()
+    [Dependency]
+    private ClientPlayers Players => this.DependOn<ClientPlayers>();
+
+    [Dependency]
+    private NetRouter Router => this.DependOn<NetRouter>();
+
+    private NetRouter? _routed;
+
+    public override void _Notification(int what) => this.Notify(what);
+
+    public void OnResolved()
     {
-        ScoreProtocol.Received += OnScoreSync;
-        EliminationMsg.Received += OnElimination;
+        _score = Players.SessionKeys.Claim<ScoreState>();
+        _routed = Router;
+        _routed.Add(this);
     }
 
-    public override void _ExitTree()
+    public void OnExitTree()
     {
-        ScoreProtocol.Received -= OnScoreSync;
-        EliminationMsg.Received -= OnElimination;
+        _routed?.Remove(this);
+        _routed = null;
     }
 
-    private void OnScoreSync(ScoreSync sync)
+    public void Handle(in ScoreSyncMsg message)
     {
-        _kills.Clear();
-        _deaths.Clear();
-        foreach (ScoreRow row in sync.Rows)
+        foreach (ClientPlayer player in Players)
         {
-            _kills[row.PeerId] = row.Kills;
-            _deaths[row.PeerId] = row.Deaths;
+            ScoreState state = player.State(_score);
+            state.Kills = 0;
+            state.Deaths = 0;
         }
-        _teamKills = sync.TeamKills;
+        foreach (ScoreRow row in message.Rows)
+        {
+            ScoreState state = Players.GetOrCreate(row.PeerId).State(_score);
+            state.Kills = row.Kills;
+            state.Deaths = row.Deaths;
+        }
+        _teamKills = new TeamKills(message.BlueKills, message.RedKills);
         Changed?.Invoke();
     }
 
-    private void OnElimination(EliminationMsg message)
+    public void Handle(in EliminationMsg message)
     {
-        _deaths[message.VictimId] = message.VictimDeaths;
+        ScoreState victim = Players.GetOrCreate(message.VictimId).State(_score);
+        victim.Deaths = message.VictimDeaths;
         // On a suicide KillerKills carries the victim's own (possibly
         // penalized) count; otherwise it is the killer's total after the kill.
         if (message.Flags.HasFlag(EliminationFlags.SUICIDE))
-            _kills[message.VictimId] = message.KillerKills;
+            victim.Kills = message.KillerKills;
         else if (message.KillerId != 0)
-            _kills[message.KillerId] = message.KillerKills;
+            Players.GetOrCreate(message.KillerId).State(_score).Kills = message.KillerKills;
         if (message.RewardedId != 0)
-            _kills[message.RewardedId] = message.RewardedKills;
+            Players.GetOrCreate(message.RewardedId).State(_score).Kills = message.RewardedKills;
         _teamKills = new TeamKills(message.BlueKills, message.RedKills);
         Changed?.Invoke();
     }

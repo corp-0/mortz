@@ -1,11 +1,14 @@
 namespace Mortz.Core.Net;
 
-/// <summary>Networking constants shared by client and server.</summary>
 public static class NetConfig
 {
     /// <summary>Bumped on semantic wire changes. Message shape changes are caught
     /// automatically by NetRegistry.SCHEMA_HASH; both ride in Hello.</summary>
-    public const int PROTOCOL_VERSION = 36;
+    public const int PROTOCOL_VERSION = 40;
+
+    public const ulong PHASE_READY_TIMEOUT_MS = 30_000;
+
+    public const int MAX_LOADING_MESSAGES = 256;
 
     public const int DEFAULT_PORT = 7777;
     public const int MAX_PLAYERS = 8;

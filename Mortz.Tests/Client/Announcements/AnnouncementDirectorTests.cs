@@ -1,6 +1,9 @@
 using Mortz.Client.Announcements;
 using Mortz.Core.Match;
-using Mortz.Core.Net.Messages;
+using Mortz.Core.Match.Events;
+using Mortz.Core.Match.Scoring;
+using Mortz.Core.Match.Teams;
+using Mortz.Core.Net.Match;
 using Xunit;
 
 namespace Mortz.Tests.Client.Announcements;
@@ -87,7 +90,7 @@ public class AnnouncementDirectorTests
     public void MatchPointNamesThePlayerLeaderAndWearsTheirTeam()
     {
         MatchPointState state = AnnouncementDirector.Describe(
-            new MatchPoint(3, new PlayerVictor((int)KILLER)), NameOf, TeamOf);
+            new MatchPoint(3, new Victor.Player((int)KILLER)), NameOf, TeamOf);
 
         Assert.Equal(3, state.Remaining);
         Assert.Equal(new MatchPointLeader("p1", Team.BLUE), state.Leader);
@@ -97,7 +100,7 @@ public class AnnouncementDirectorTests
     public void MatchPointNamesTheTeamLeaderAndWearsItself()
     {
         MatchPointState state = AnnouncementDirector.Describe(
-            new MatchPoint(1, new TeamVictor(Team.RED)), NameOf, TeamOf);
+            new MatchPoint(1, new Victor.Team(Team.RED)), NameOf, TeamOf);
 
         Assert.Equal(new MatchPointLeader("Team Red", Team.RED), state.Leader);
     }

@@ -1,6 +1,6 @@
 namespace Mortz.Client.Session;
 
-internal enum TerrainChunkState
+public enum TerrainChunkState
 {
     IGNORED,
     WAITING,

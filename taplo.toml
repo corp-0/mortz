@@ -1,0 +1,23 @@
+[[rule]]
+include = ["content/**/content_pack.toml"]
+
+[rule.schema]
+path = "schemas/content_pack.schema.json"
+
+[[rule]]
+include = ["content/**/maps/**/map.toml"]
+
+[rule.schema]
+path = "schemas/map.schema.json"
+
+[[rule]]
+include = ["content/**/modes/**/mode.toml"]
+
+[rule.schema]
+path = "schemas/mode.schema.json"
+
+[[rule]]
+include = ["**/rulesets/**/*.toml", "**/Rulesets/**/*.toml"]
+
+[rule.schema]
+path = "schemas/ruleset.schema.json"

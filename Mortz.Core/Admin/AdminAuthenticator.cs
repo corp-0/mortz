@@ -4,24 +4,14 @@ using Mortz.Core.Net;
 
 namespace Mortz.Core.Admin;
 
-/// <summary>Connection-bound admin challenge, grant, and privileged-command verifier.</summary>
+/// <summary>Admin challenge, grant, and privileged-command verifier. Holds the
+/// password and the crypto; the caller owns each player's <see cref="AdminSession"/>.</summary>
 public sealed class AdminAuthenticator : IDisposable
 {
-    private sealed class Session(byte[] id)
-    {
-        public readonly byte[] Id = id;
-        public byte[]? Challenge;
-        public ulong ChallengeDeadlineMs;
-        public byte[]? AdminKey;
-        public ulong LastCommandSequence;
-    }
-
     // Raw password, not a key: PBKDF2 is salted with the per-attempt challenge,
     // so we can only derive inside Verify.
     private readonly byte[]? _passwordUtf8;
     private readonly ulong _challengeTimeoutMs;
-    private readonly Dictionary<int, Session> _sessions = new();
-    private readonly PeerRateLimiter _attemptLimiter = new(capacity: 3, tokensPerSecond: 0.05);
 
     public AdminAuthenticator(string password,
         ulong challengeTimeoutMs = NetConfig.ADMIN_CHALLENGE_TIMEOUT_MS)
@@ -35,40 +25,29 @@ public sealed class AdminAuthenticator : IDisposable
 
     public bool Enabled => _passwordUtf8 != null;
 
-    public void Connected(int peerId, ReadOnlySpan<byte> sessionId)
-    {
-        if (sessionId.Length != AdminCrypto.SESSION_ID_BYTES)
-            throw new ArgumentException($"Session id must be {AdminCrypto.SESSION_ID_BYTES} bytes.", nameof(sessionId));
-        Remove(peerId);
-        _sessions.Add(peerId, new Session(sessionId.ToArray()));
-    }
-
-    public AdminChallengeResult Begin(int peerId, ulong nowMs, ReadOnlySpan<byte> nonce,
+    public AdminChallengeResult Begin(AdminSession session, ulong nowMs, ReadOnlySpan<byte> nonce,
         out byte[] challenge)
     {
         challenge = [];
         if (!Enabled)
             return AdminChallengeResult.DISABLED;
-        if (!_sessions.TryGetValue(peerId, out Session? session))
-            return AdminChallengeResult.UNKNOWN_PEER;
-        if (!_attemptLimiter.Allow(peerId, nowMs))
+        if (!session.Attempts.Allow(nowMs))
             return AdminChallengeResult.RATE_LIMITED;
         challenge = AdminCrypto.BuildChallenge(session.Id, nonce);
-        ClearChallenge(session);
+        session.ClearChallenge();
         // A new challenge drops the old grant, otherwise client and server can
         // disagree about which session key is live.
-        ClearAdminKey(session);
+        session.ClearAdminKey();
         session.Challenge = challenge.ToArray();
         session.ChallengeDeadlineMs = SaturatingAdd(nowMs, _challengeTimeoutMs);
         return AdminChallengeResult.STARTED;
     }
 
-    public AdminProofResult Verify(int peerId, ulong nowMs, ReadOnlySpan<byte> proof)
+    public AdminProofResult Verify(AdminSession session, int peerId, ulong nowMs,
+        ReadOnlySpan<byte> proof)
     {
         if (!Enabled)
             return AdminProofResult.DISABLED;
-        if (!_sessions.TryGetValue(peerId, out Session? session))
-            return AdminProofResult.UNKNOWN_PEER;
         if (session.Challenge == null)
             return AdminProofResult.NO_CHALLENGE;
 
@@ -96,7 +75,7 @@ public sealed class AdminAuthenticator : IDisposable
                     CryptographicOperations.ZeroMemory(expected);
                 }
 
-                ClearAdminKey(session);
+                session.ClearAdminKey();
                 session.AdminKey = AdminCrypto.DeriveSessionKey(passwordKey, peerId, challenge);
                 session.LastCommandSequence = 0;
                 return AdminProofResult.ACCEPTED;
@@ -112,16 +91,19 @@ public sealed class AdminAuthenticator : IDisposable
         }
     }
 
-    public bool IsAdmin(int peerId) =>
-        _sessions.TryGetValue(peerId, out Session? session) && session.AdminKey != null;
+    public bool IsAdmin(AdminSession session) => session.AdminKey != null;
 
-    public bool VerifyCommand(int peerId, ulong sequence, byte action,
+    public bool VerifyCommand(AdminSession session, int peerId, ulong sequence, byte action,
         ReadOnlySpan<byte> payload, ReadOnlySpan<byte> tag)
     {
-        if (!_sessions.TryGetValue(peerId, out Session? session) || session.AdminKey == null ||
-            sequence != session.LastCommandSequence + 1 || tag.Length != AdminCrypto.TAG_BYTES)
+        if (session.AdminKey == null || sequence != session.LastCommandSequence + 1 ||
+            tag.Length != AdminCrypto.TAG_BYTES)
+        {
             return false;
-        byte[] expected = AdminCrypto.ComputeCommandTag(session.AdminKey, peerId, sequence, action, payload);
+        }
+
+        byte[] expected = AdminCrypto.ComputeCommandTag(session.AdminKey, peerId, sequence, action,
+            payload);
         try
         {
             if (!CryptographicOperations.FixedTimeEquals(expected, tag))
@@ -135,46 +117,10 @@ public sealed class AdminAuthenticator : IDisposable
         }
     }
 
-    public void Remove(int peerId)
-    {
-        _attemptLimiter.Remove(peerId);
-        if (!_sessions.Remove(peerId, out Session? session))
-            return;
-        ClearChallenge(session);
-        ClearAdminKey(session);
-        CryptographicOperations.ZeroMemory(session.Id);
-    }
-
-    public void Reset()
-    {
-        foreach (int peerId in _sessions.Keys.ToArray())
-        {
-            Remove(peerId);
-        }
-        _attemptLimiter.Reset();
-    }
-
     public void Dispose()
     {
-        Reset();
         if (_passwordUtf8 != null)
             CryptographicOperations.ZeroMemory(_passwordUtf8);
-    }
-
-    private static void ClearChallenge(Session session)
-    {
-        if (session.Challenge != null)
-            CryptographicOperations.ZeroMemory(session.Challenge);
-        session.Challenge = null;
-        session.ChallengeDeadlineMs = 0;
-    }
-
-    private static void ClearAdminKey(Session session)
-    {
-        if (session.AdminKey != null)
-            CryptographicOperations.ZeroMemory(session.AdminKey);
-        session.AdminKey = null;
-        session.LastCommandSequence = 0;
     }
 
     private static ulong SaturatingAdd(ulong left, ulong right) =>

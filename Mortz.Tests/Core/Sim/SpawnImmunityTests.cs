@@ -1,4 +1,5 @@
 using Mortz.Core.Match;
+using Mortz.Core.Match.Configuration;
 using Mortz.Core.Sim;
 using Xunit;
 
@@ -65,7 +66,7 @@ public class SpawnImmunityTests
     {
         MatchConfig config = new()
         {
-            Physics = new Physics { SpawnImmunity = 2f / SimConfig.TICK_RATE },
+            Rules = new ModeRules { SpawnImmunity = 2f / SimConfig.TICK_RATE },
         };
         SimWorld world = new(TestWorlds.Flat(), config,
             spawnPoints: [new Vec2(100, TestWorlds.FLOOR_Y)]);
@@ -120,7 +121,7 @@ public class SpawnImmunityTests
         // Geometry guard: without protection the same blast damages the victim.
         MatchConfig vulnerableConfig = new()
         {
-            Physics = new Physics { SpawnImmunity = 0 },
+            Rules = new ModeRules { SpawnImmunity = 0 },
         };
         SimWorld vulnerableWorld = new(TestWorlds.Flat(), vulnerableConfig, spawnPoints: closeSpawns);
         vulnerableWorld.AddPlayer(1);

@@ -1,4 +1,5 @@
 using Mortz.Core.Match;
+using Mortz.Core.Match.Teams;
 using Mortz.Core.Replication;
 using Mortz.Core.Sim;
 using Mortz.Core.Terrain;
@@ -8,6 +9,17 @@ namespace Mortz.Tests.Core.Sim;
 
 public class SimWorldTests
 {
+    [Fact]
+    public void AddPlayerUsesTheRequestedSkin()
+    {
+        SimWorld world = new(TestWorlds.Flat(), TestWorlds.ProductionConfig);
+
+        world.AddPlayer(1, skin: 24);
+
+        Assert.Equal(24, world.Players[1].Skin);
+        Assert.Throws<ArgumentOutOfRangeException>(() => world.AddPlayer(2, skin: 25));
+    }
+
     [Fact]
     public void ATeamWithTheTeamsRuleOff_IsUnconstructible()
     {

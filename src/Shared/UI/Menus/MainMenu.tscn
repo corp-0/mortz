@@ -43,7 +43,7 @@ _data = {
 &"start_sequence": SubResource("Animation_lt8ac")
 }
 
-[node name="MainMenu" type="Control" unique_id=1489092193 node_paths=PackedStringArray("_backdrop", "_homePanel", "_browser", "_settingsScreen", "_hostPanel", "_serverNameEdit", "_portEdit", "_adminPasswordEdit", "_status", "_player")]
+[node name="MainMenu" type="Control" unique_id=1489092193 node_paths=PackedStringArray("_backdrop", "_homePanel", "_browser", "_settingsScreen", "_hostPanel", "_serverNameEdit", "_portEdit", "_adminPasswordEdit", "_allowJip", "_status", "_player")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -61,6 +61,7 @@ _hostPanel = NodePath("MenuCenter/Menu/HostPanel")
 _serverNameEdit = NodePath("MenuCenter/Menu/HostPanel/ServerNameEdit")
 _portEdit = NodePath("MenuCenter/Menu/HostPanel/PortEdit")
 _adminPasswordEdit = NodePath("MenuCenter/Menu/HostPanel/AdminPasswordEdit")
+_allowJip = NodePath("MenuCenter/Menu/HostPanel/AllowJip")
 _status = NodePath("MenuCenter/Menu/Status")
 _player = NodePath("AnimationPlayer")
 
@@ -143,6 +144,11 @@ custom_minimum_size = Vector2(0, 42)
 layout_mode = 2
 placeholder_text = "Leave blank for none"
 secret = true
+
+[node name="AllowJip" type="CheckButton" parent="MenuCenter/Menu/HostPanel"]
+layout_mode = 2
+button_pressed = true
+text = "Allow players to join matches in progress"
 
 [node name="HostConfirmButton" type="Button" parent="MenuCenter/Menu/HostPanel" unique_id=633111767]
 custom_minimum_size = Vector2(0, 42)

@@ -1,9 +1,13 @@
 using Godot;
+using Mortz.Shared.Logging;
+using Serilog;
 
 namespace Mortz.Client.Menus.MainMenuAmbient;
 
 public partial class MenuBackdrop : Control
 {
+    private static readonly ILogger _log = MortzLog.For("client");
+
     private const string BACKGROUND_SCENE_PATH =
         "res://official/Scenes/MainMenu/MainMenuBackground.tscn";
 
@@ -21,7 +25,7 @@ public partial class MenuBackdrop : Control
         PackedScene? scene = ResourceLoader.Load<PackedScene>(BACKGROUND_SCENE_PATH);
         if (scene is null)
         {
-            GD.PushWarning($"Cannot load menu background from {BACKGROUND_SCENE_PATH}.");
+            _log.Warning("cannot load menu background from {Path}", BACKGROUND_SCENE_PATH);
             return;
         }
 
@@ -29,7 +33,7 @@ public partial class MenuBackdrop : Control
         if (instance is not MainMenuBackground background)
         {
             instance.Free();
-            GD.PushWarning($"Menu background at {BACKGROUND_SCENE_PATH} has an invalid root.");
+            _log.Warning("menu background at {Path} has an invalid root", BACKGROUND_SCENE_PATH);
             return;
         }
 

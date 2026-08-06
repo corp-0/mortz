@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 
 namespace Mortz.Tools;
 
-internal static class Export
+public static class Export
 {
     public static void Run(string[] args)
     {

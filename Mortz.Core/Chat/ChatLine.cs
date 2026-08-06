@@ -4,7 +4,7 @@ namespace Mortz.Core.Chat;
 
 public abstract record ChatLine
 {
-    internal ChatLine()
+    public ChatLine()
     {
     }
 
@@ -14,7 +14,7 @@ public abstract record ChatLine
 
     public abstract record Remote : ChatLine
     {
-        internal Remote()
+        public Remote()
         {
         }
     }
@@ -55,7 +55,7 @@ public abstract record ChatLine
 
         public override RichText Render() => RichText.FromTrustedBbCode(_bbCode);
 
-        internal static System FromTrustedBbCode(string bbCode) =>
+        public static System FromTrustedBbCode(string bbCode) =>
             new(RichText.FromTrustedBbCode(RequireText(bbCode)));
     }
 

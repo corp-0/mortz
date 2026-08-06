@@ -1,6 +1,6 @@
 namespace Mortz.Tools;
 
-internal static class OfficialOverlay
+public static class OfficialOverlay
 {
     private const string DIRECTORY_NAME = "official";
     private const string MARKER_NAME = "official-overlay.toml";

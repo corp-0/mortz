@@ -1,6 +1,9 @@
 using Mortz.Client.Session;
 using Mortz.Core.Match;
-using Mortz.Core.Net.Messages;
+using Mortz.Core.Match.Configuration;
+using Mortz.Core.Match.Participation;
+using Mortz.Core.Net.Sim;
+using Mortz.Core.Replication;
 using Mortz.Core.Terrain;
 using Xunit;
 
@@ -10,7 +13,9 @@ public class TerrainTransferTests
 {
     private static WelcomeMsg Welcome(int bytes = 5, short chunks = 2, byte[]? config = null) =>
         new("map", "hash", config ?? new MatchConfig().ToBytes(),
-            (byte)TerrainSyncEncoding.CARVE_LOG, 17, bytes, chunks);
+            (byte)TerrainSyncEncoding.CARVE_LOG, 17, bytes, chunks,
+            MatchSeat.PLAYER, MatchActivity.ACTIVE, SpectateReason.NONE, -1,
+            new Snapshot(0, [], []).SerializeFor(1), -1);
 
     [Fact]
     public void OutOfOrderChunksProduceTheDeclaredPayload()

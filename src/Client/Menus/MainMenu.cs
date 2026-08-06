@@ -16,11 +16,11 @@ public partial class MainMenu : Control
 {
     [Signal]
     public delegate void HostRequestedEventHandler(int port, string playerName,
-        string adminPassword, string serverName);
+        string adminPassword, string serverName, int skin, bool allowJoinInProgress);
 
     [Signal]
     public delegate void JoinRequestedEventHandler(string address, int port,
-        string playerName);
+        string playerName, int skin);
 
     [Export] private MenuBackdrop _backdrop = null!;
     [Export] private Control _homePanel = null!;
@@ -30,11 +30,21 @@ public partial class MainMenu : Control
     [Export] private LineEdit _serverNameEdit = null!;
     [Export] private LineEdit _portEdit = null!;
     [Export] private LineEdit _adminPasswordEdit = null!;
+    [Export] private CheckButton _allowJip = null!;
     [Export] private Label _status = null!;
     [Export] private AnimationPlayer _player = null!;
 
     [Dependency]
     private ClientSettings Settings => this.DependOn<ClientSettings>();
+
+    private PendingAction _pendingAction;
+
+    private enum PendingAction
+    {
+        NONE,
+        JOIN,
+        HOST,
+    }
 
     public override void _Notification(int what) => this.Notify(what);
 
@@ -43,7 +53,8 @@ public partial class MainMenu : Control
         _portEdit.Text = NetConfig.DEFAULT_PORT.ToString();
         _browser.JoinRequested += OnBrowserJoinRequested;
         _browser.BackRequested += ShowHome;
-        _settingsScreen.BackRequested += ShowHome;
+        _settingsScreen.BackRequested += OnSettingsBackRequested;
+        _settingsScreen.Saved += OnSettingsSaved;
 
         if (_backdrop.HasAnimatedBackground)
         {
@@ -58,7 +69,8 @@ public partial class MainMenu : Control
     {
         _browser.JoinRequested -= OnBrowserJoinRequested;
         _browser.BackRequested -= ShowHome;
-        _settingsScreen.BackRequested -= ShowHome;
+        _settingsScreen.BackRequested -= OnSettingsBackRequested;
+        _settingsScreen.Saved -= OnSettingsSaved;
     }
 
     public override void _Input(InputEvent @event)
@@ -97,24 +109,23 @@ public partial class MainMenu : Control
     public void OnJoinMenuPressed()
     {
         SetStatus("");
-        if (!HasPlayerName())
+        if (!HasIdentity(PendingAction.JOIN))
             return;
-        ShowPanel(_browser);
-        _browser.Open();
+        OpenBrowser();
     }
 
     public void OnHostMenuPressed()
     {
         SetStatus("");
-        if (!HasPlayerName())
+        if (!HasIdentity(PendingAction.HOST))
             return;
-        ShowPanel(_hostPanel);
-        _serverNameEdit.GrabFocus();
+        OpenHostPanel();
     }
 
     public void OnSettingsPressed()
     {
         SetStatus("");
+        _pendingAction = PendingAction.NONE;
         ShowPanel(_settingsScreen);
         _settingsScreen.Open();
     }
@@ -135,18 +146,55 @@ public partial class MainMenu : Control
             return;
         }
         EmitSignal(SignalName.HostRequested, port, Settings.PlayerName,
-            _adminPasswordEdit.Text, _serverNameEdit.Text.Trim());
+            _adminPasswordEdit.Text, _serverNameEdit.Text.Trim(), Settings.Skin,
+            _allowJip.ButtonPressed);
     }
 
     private void OnBrowserJoinRequested(string address, int port) =>
-        EmitSignal(SignalName.JoinRequested, address, port, Settings.PlayerName);
+        EmitSignal(SignalName.JoinRequested, address, port, Settings.PlayerName, Settings.Skin);
 
-    private bool HasPlayerName()
+    private bool HasIdentity(PendingAction action)
     {
-        if (Settings.PlayerName.Length > 0)
+        if (Settings.HasIdentity)
             return true;
+        _pendingAction = action;
         ShowPanel(_settingsScreen);
-        _settingsScreen.Open("Pick a name before you play.");
+        _settingsScreen.Open("Pick your name and skin before you play.");
         return false;
+    }
+
+    private void OnSettingsSaved()
+    {
+        PendingAction action = _pendingAction;
+        _pendingAction = PendingAction.NONE;
+        if (action == PendingAction.JOIN)
+        {
+            OpenBrowser();
+            return;
+        }
+        if (action == PendingAction.HOST)
+        {
+            OpenHostPanel();
+            return;
+        }
+        ShowHome();
+    }
+
+    private void OnSettingsBackRequested()
+    {
+        _pendingAction = PendingAction.NONE;
+        ShowHome();
+    }
+
+    private void OpenBrowser()
+    {
+        ShowPanel(_browser);
+        _browser.Open();
+    }
+
+    private void OpenHostPanel()
+    {
+        ShowPanel(_hostPanel);
+        _serverNameEdit.GrabFocus();
     }
 }

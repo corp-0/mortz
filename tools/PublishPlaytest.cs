@@ -4,13 +4,14 @@ using System.IO.Compression;
 
 namespace Mortz.Tools;
 
-internal static class PublishPlaytest
+public static class PublishPlaytest
 {
     private const string ITCH_TARGET = "gillesgillespie/mortz";
+    private const string USAGE = "usage: dotnet run --project tools -- publish-playtest [--skip-build] [--only itch,steam,docker]";
 
     public static void Run(string[] args)
     {
-        HashSet<string> targets = ParseTargets(args);
+        (HashSet<string> targets, bool skipBuild) = ParseOptions(args);
         bool itch = targets.Contains("itch");
         bool steam = targets.Contains("steam");
         bool docker = targets.Contains("docker");
@@ -21,7 +22,8 @@ internal static class PublishPlaytest
         string steamcmd = steam ? PublishSteam.ResolveSteamCmd() : "";
         string dockerCli = docker ? PublishDocker.ResolveDocker() : "";
 
-        Export.Run(["all", "--require-official"]);
+        if (!skipBuild)
+            Export.Run(["all", "--require-official"]);
 
         string buildDirectory = Path.Combine(root, "build");
         string windowsDirectory = Path.Combine(buildDirectory, "Mortz-win");
@@ -46,29 +48,41 @@ internal static class PublishPlaytest
         RunButler(butler, ["push", linuxDirectory, $"{ITCH_TARGET}:linux"]);
     }
 
-    private static HashSet<string> ParseTargets(string[] args)
+    private static (HashSet<string> Targets, bool SkipBuild) ParseOptions(string[] args)
     {
         HashSet<string> all = ["itch", "steam", "docker"];
-        if (args.Length == 0)
-            return all;
+        HashSet<string>? targets = null;
+        bool skipBuild = false;
 
-        const string USAGE = "usage: dotnet run --project tools -- publish-playtest [--only itch,steam,docker]";
-        if (args.Length != 2 || args[0] != "--only")
-            throw new Exception(USAGE);
+        for (int index = 0; index < args.Length; index++)
+        {
+            switch (args[index])
+            {
+                case "--skip-build" when !skipBuild:
+                    skipBuild = true;
+                    break;
+                case "--only" when targets is null && index + 1 < args.Length:
+                    targets = args[++index]
+                        .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                        .ToHashSet();
+                    if (targets.Count == 0 || !targets.IsSubsetOf(all))
+                        throw new Exception(USAGE);
+                    break;
+                default:
+                    throw new Exception(USAGE);
+            }
+        }
 
-        HashSet<string> targets = args[1].Split(',', StringSplitOptions.RemoveEmptyEntries).ToHashSet();
-        if (targets.Count == 0 || !targets.IsSubsetOf(all))
-            throw new Exception(USAGE);
-        return targets;
+        return (targets ?? all, skipBuild);
     }
 
-    internal static void WriteManifest(string directory, string executable)
+    public static void WriteManifest(string directory, string executable)
     {
         File.WriteAllText(Path.Combine(directory, ".itch.toml"),
             $"[[actions]]\nname = \"play\"\npath = \"{executable}\"\n");
     }
 
-    internal static void CreateArchives(string buildDirectory, string windowsDirectory, string linuxDirectory)
+    public static void CreateArchives(string buildDirectory, string windowsDirectory, string linuxDirectory)
     {
         string windowsArchive = Path.Combine(buildDirectory, "Mortz-win.zip");
         ZipFile.CreateFromDirectory(windowsDirectory, windowsArchive,

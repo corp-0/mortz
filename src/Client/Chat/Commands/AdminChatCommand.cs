@@ -4,7 +4,7 @@ namespace Mortz.Client.Chat.Commands;
 
 [ChatCommand("admin", Usage = "/admin <password>",
     Description = "Authenticate as a lobby admin.", Sensitive = true)]
-internal sealed class AdminChatCommand : ClientChatCommand
+public sealed class AdminChatCommand : ClientChatCommand
 {
     private string _password = "";
 

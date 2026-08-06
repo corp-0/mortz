@@ -8,6 +8,7 @@
     <IsTestProject>true</IsTestProject>
     <GodotProjectDir>..</GodotProjectDir>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <NoWarn>$(NoWarn);EnableGenerateDocumentationFile;MZ2004</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="2dog.engine" Version="4.7.1.64" />
@@ -25,7 +26,9 @@
     <ProjectReference Include="..\Mortz.csproj" />
     <ProjectReference Include="..\Mortz.Content\Mortz.Content.csproj" />
     <ProjectReference Include="..\Mortz.Core\Mortz.Core.csproj" />
+    <ProjectReference Include="..\Mortz.Server\Mortz.Server.csproj" />
     <ProjectReference Include="..\Mortz.Net.Gen\Mortz.Net.Gen.csproj" />
+    <ProjectReference Include="..\Mortz.Net.Gen\Mortz.Net.Gen.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\tools\Mortz.Tools.csproj" />
   </ItemGroup>
   <!-- Remove duplicate Godot.SourceGenerators that come from the GodotSharp/Godot.SourceGenerators

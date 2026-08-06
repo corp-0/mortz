@@ -1,20 +1,17 @@
-using Godot;
+using Mortz.Content;
 using Mortz.Core.Net;
-using Tomlyn;
-using Tomlyn.Model;
-using Tomlyn.Syntax;
+using Mortz.Core.Net.Names;
+using Mortz.Shared.Logging;
+using Serilog;
 
 namespace Mortz.Server.Hosting;
 
-/// <summary>
-/// Dedicated-box settings, read from server.toml in the working directory so
-/// a rented box works without CLI args; a CLI flag overrides its file
-/// counterpart. Machine settings only: match rules come from --ruleset or
-/// --mode and are replicated to clients, while nothing in here ever leaves
-/// the server.
-/// </summary>
+/// <summary>Machine-local dedicated server settings.</summary>
+[TomlModel]
 public sealed class ServerConfig
 {
+    private static readonly ILogger _log = MortzLog.For("server");
+
     private const string FILE_NAME = "server.toml";
 
     public const string DEFAULT_NAME = "Mortz Server";
@@ -23,8 +20,9 @@ public sealed class ServerConfig
     /// over the server settings in the lobby. Empty = no admin access.</summary>
     public string AdminPassword { get; set; } = "";
 
-    /// <summary>What the server calls itself in server browsers.</summary>
     public string Name { get; set; } = DEFAULT_NAME;
+
+    public bool AllowJoinInProgress { get; set; } = true;
 
     /// <summary>Blank or all-invisible names fall back to the default.</summary>
     public static string SanitizeName(string? value)
@@ -43,50 +41,26 @@ public sealed class ServerConfig
         {
             ServerConfig? config = Parse(File.ReadAllText(FILE_NAME));
             if (config != null)
-                GD.Print($"[server] {FILE_NAME} loaded");
+                _log.Information("{File} loaded", FILE_NAME);
             return config;
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
-            GD.PrintErr($"[server] failed to load {FILE_NAME}: {e.Message}");
+            _log.Error(e, "failed to load {File}", FILE_NAME);
             return null;
         }
     }
 
     private static ServerConfig? Parse(string text)
     {
-        DocumentSyntax syntax = Toml.Parse(text, FILE_NAME);
-        if (syntax.HasErrors)
+        ContentReadResult<ServerConfig> result = TomlModel.Read<ServerConfig>(text, FILE_NAME);
+        foreach (ContentDiagnostic diagnostic in result.Diagnostics)
         {
-            foreach (DiagnosticMessage diagnostic in syntax.Diagnostics)
-            {
-                GD.PrintErr($"[server] {FILE_NAME}: {diagnostic.Message}");
-            }
-            return null;
+            if (diagnostic.Severity == ContentDiagnosticSeverity.ERROR)
+                _log.Error("{File}: {Message}", FILE_NAME, diagnostic.Message);
+            else
+                _log.Warning("{File}: {Message}", FILE_NAME, diagnostic.Message);
         }
-
-        TomlTable table = Toml.ToModel(syntax);
-        ServerConfig config = new();
-        bool valid = true;
-        foreach (string key in table.Keys)
-        {
-            switch (key)
-            {
-                case "name" when table[key] is string name:
-                    config.Name = name;
-                    break;
-                case "admin_password" when table[key] is string password:
-                    config.AdminPassword = password;
-                    break;
-                case "name" or "admin_password":
-                    GD.PrintErr($"[server] {FILE_NAME}: '{key}' must be a string");
-                    valid = false;
-                    break;
-                default:
-                    GD.PushWarning($"[server] {FILE_NAME}: unknown key '{key}'");
-                    break;
-            }
-        }
-        return valid ? config : null;
+        return result.Value;
     }
 }

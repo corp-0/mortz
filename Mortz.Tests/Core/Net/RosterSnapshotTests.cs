@@ -1,5 +1,7 @@
 using Mortz.Core.Match;
+using Mortz.Core.Match.Teams;
 using Mortz.Core.Net;
+using Mortz.Core.Net.Roster;
 using Xunit;
 
 namespace Mortz.Tests.Core.Net;
@@ -7,7 +9,7 @@ namespace Mortz.Tests.Core.Net;
 public class RosterSnapshotTests
 {
     private static RosterEntry Row(int peerId, byte slot) =>
-        new(peerId, $"P{peerId}", 0, null, new NetSlot(slot));
+        new(peerId, $"P{peerId}", 0, null, slot);
 
     [Fact]
     public void ASlotHasExactlyOneHolder()
@@ -23,7 +25,7 @@ public class RosterSnapshotTests
     public void APeerIsFoundByItsId()
     {
         RosterSnapshot snapshot = new([new RosterEntry(11, "Alice", 4,
-            Team.RED, new NetSlot(1))]);
+            Team.RED, 1)]);
 
         Assert.True(snapshot.TryFind(11, out RosterEntry entry));
         Assert.Equal("Alice", entry.Name);
@@ -73,8 +75,8 @@ public class RosterSnapshotTests
     [Fact]
     public void TheEmptyTableHoldsNobody()
     {
-        Assert.Empty(RosterSnapshot.EMPTY.Entries);
-        Assert.Null(RosterSnapshot.EMPTY.PeerInSlot(new NetSlot(1)));
-        Assert.False(RosterSnapshot.EMPTY.TryFind(1, out _));
+        Assert.Empty(RosterSnapshot.Empty.Entries);
+        Assert.Null(RosterSnapshot.Empty.PeerInSlot(new NetSlot(1)));
+        Assert.False(RosterSnapshot.Empty.TryFind(1, out _));
     }
 }

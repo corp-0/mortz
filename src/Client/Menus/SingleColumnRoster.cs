@@ -1,9 +1,8 @@
 using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
-using Mortz.Client.Setup;
+using Mortz.Client.Players;
 using Mortz.Client.Stats;
-using Mortz.Core.Match;
 using Mortz.Net;
 
 namespace Mortz.Client.Menus;
@@ -17,10 +16,13 @@ public partial class SingleColumnRoster : ScrollContainer
     private bool _subscribed;
 
     [Dependency]
-    public MatchSetup Setup => this.DependOn<MatchSetup>();
+    public ClientPlayers Players => this.DependOn<ClientPlayers>();
 
     [Dependency]
-    public ClientStats Stats => this.DependOn<ClientStats>();
+    public Pings Pings => this.DependOn<Pings>();
+
+    [Dependency]
+    public SessionWins Wins => this.DependOn<SessionWins>();
 
     [Dependency]
     private INetwork Network => this.DependOn<INetwork>();
@@ -29,8 +31,9 @@ public partial class SingleColumnRoster : ScrollContainer
 
     public void OnResolved()
     {
-        Setup.RosterChanged += Render;
-        Stats.Changed += Render;
+        Players.Changed += Render;
+        Pings.Changed += Render;
+        Wins.Changed += Render;
         _subscribed = true;
         Render();
     }
@@ -39,13 +42,13 @@ public partial class SingleColumnRoster : ScrollContainer
     {
         if (!_subscribed)
             return;
-        Setup.RosterChanged -= Render;
-        Stats.Changed -= Render;
+        Players.Changed -= Render;
+        Pings.Changed -= Render;
+        Wins.Changed -= Render;
         _subscribed = false;
     }
 
-    // Skips the swap's own in-flight event; frees immediately so same-frame
-    // re-renders never stack dying slots.
+    // Frees immediately so same-frame re-renders never stack dying slots.
     private void Render()
     {
         if (!IsInsideTree())
@@ -55,9 +58,10 @@ public partial class SingleColumnRoster : ScrollContainer
             child.Free();
         }
         int localId = Network.LocalPeerId;
-        foreach (LobbyMember member in Setup.Members)
+        foreach (ClientPlayer player in Players)
         {
-            _players.AddChild(RosterSlots.BuildSlot(member, Stats, localId));
+            _players.AddChild(RosterSlots.BuildSlot(
+                player, Wins.Of(player), Pings.Of(player), localId));
         }
     }
 }

@@ -2,6 +2,7 @@ using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
 using Mortz.Client.Chat;
+using Mortz.Core.Net;
 
 namespace Mortz.Client.Menus;
 
@@ -18,12 +19,19 @@ public partial class Lobby : Control, IProvide<ClientChat>
     [Export] private ClientChat _chat = null!;
 
     private bool _localReady;
+    private int _generation;
 
     ClientChat IProvide<ClientChat>.Value() => _chat;
 
     public override void _Notification(int what) => this.Notify(what);
 
-    public void OnResolved() => this.Provide();
+    public void Initialize(int generation) => _generation = generation;
+
+    public void OnResolved()
+    {
+        this.Provide();
+        new PhaseReadyMsg(_generation).SendToServer();
+    }
 
     public void OnReadyPressed()
     {

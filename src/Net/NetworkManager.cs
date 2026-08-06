@@ -1,27 +1,35 @@
 using Godot;
 using Mortz.Core.Input;
 using Mortz.Core.Net;
+using Mortz.Core.Net.Abuse;
+using Mortz.Core.Net.Names;
+using Mortz.Core.Net.Stats;
+using Mortz.Core.Sim;
+using Mortz.Server;
 using Mortz.Shared;
+using Mortz.Shared.Logging;
+using Serilog;
+#if TOOLS
+using Mortz.Shared.E2E;
+#endif
 
 namespace Mortz.Net;
 
-/// <summary>
-/// Autoload owning the ENet peer: connection lifecycle, peer validation
-/// (Hello), and the envelope every generated [NetMessage] rides. The only
-/// bespoke RPCs are the hot path (inputs up, snapshots down) and Hello
-/// itself.
-/// </summary>
+/// <summary>Autoload owning the ENet peer: connection lifecycle, peer validation
+/// (Hello), and the envelope every generated [NetMessage] rides.</summary>
 public partial class NetworkManager : Node, INetwork
 {
+    private static readonly ILogger _log = MortzLog.For("net");
+
     /// <summary>Composition roots resolve the autoload here.</summary>
     public const string AUTOLOAD_PATH = "/root/NetworkManager";
 
     /// <summary>Server side: a peer connected AND passed the protocol/schema check.</summary>
-    [Signal] public delegate void PeerJoinedEventHandler(int peerId, string playerName);
+    [Signal] public delegate void PeerJoinedEventHandler(int peerId, string playerName, int skin);
     [Signal] public delegate void PeerLeftEventHandler(int peerId);
     [Signal] public delegate void InputsReceivedEventHandler(int peerId, byte[] packet);
 
-    /// <summary>Client side.</summary>
+    /// <summary>Client side: the connection lifecycle.</summary>
     public event Action? Connected;
     public event Action? ConnectionFailed;
     public event Action? Disconnected;
@@ -29,11 +37,20 @@ public partial class NetworkManager : Node, INetwork
     /// <summary>ack = newest input sequence the server applied for THIS client.</summary>
     public event Action<byte[], int>? SnapshotReceived;
 
-    private readonly PeerAdmissionState _admission = new();
-    // Normal traffic is ~30 input datagrams/s and only occasional messages.
-    // These bursts tolerate jitter while bounding work from any one peer.
-    private readonly PeerRateLimiter _inputLimiter = new(capacity: 120, tokensPerSecond: 60);
-    private readonly PeerRateLimiter _messageLimiter = new(capacity: 64, tokensPerSecond: 32);
+    /// <summary>Server side: every inbound envelope from a validated peer.</summary>
+    public Action<int, ushort, byte[]>? ServerSink;
+
+    /// <summary>Client side: every server-to-client message lands here, the
+    /// mirror of the server's NetRouter&lt;Player&gt;.</summary>
+    public NetRouter Router { get; } = new();
+
+    private readonly HashSet<int> _undispatched = [];
+
+#if TOOLS
+    private readonly PeerGate _gate = new(rateScale: E2ELaunch.Timescale);
+#else
+    private readonly PeerGate _gate = new();
+#endif
 
     // Artificial latency for netcode testing (client side, `--fake-lag <ms>`):
     // outgoing and incoming packets are each held for half the lag. Covers the
@@ -54,7 +71,7 @@ public partial class NetworkManager : Node, INetwork
         NetTransport.Send = SendEnvelope;
         _fakeLagMs = CmdArgs.GetInt("--fake-lag", 0);
         if (_fakeLagMs > 0)
-            GD.Print($"[net] simulating {_fakeLagMs} ms round-trip latency");
+            _log.Information("simulating {LagMs} ms round-trip latency", _fakeLagMs);
         Multiplayer.PeerConnected += OnPeerConnected;
         Multiplayer.PeerDisconnected += OnPeerDisconnected;
         Multiplayer.ConnectedToServer += () => Connected?.Invoke();
@@ -65,6 +82,11 @@ public partial class NetworkManager : Node, INetwork
     public Error StartServer(int port)
     {
         ENetMultiplayerPeer peer = new ENetMultiplayerPeer();
+#if TOOLS
+        // An E2E server is never reachable from off the machine.
+        if (E2ELaunch.Enabled)
+            peer.SetBindIP("127.0.0.1");
+#endif
         Error err = peer.CreateServer(port, NetConfig.MAX_PLAYERS);
         if (err != Error.Ok)
             return err;
@@ -91,9 +113,7 @@ public partial class NetworkManager : Node, INetwork
     {
         Multiplayer.MultiplayerPeer?.Close();
         Multiplayer.MultiplayerPeer = null;
-        _admission.Reset();
-        _inputLimiter.Reset();
-        _messageLimiter.Reset();
+        _gate.Reset();
         TransportReset?.Invoke();
     }
 
@@ -103,53 +123,58 @@ public partial class NetworkManager : Node, INetwork
         int peerId = (int)id;
         // Server waits for Hello before considering the peer part of the game.
         if (IsServer)
-            _admission.Connected(peerId, Time.GetTicksMsec());
-        GD.Print($"[net] peer {peerId} connected");
+            _gate.Connected(peerId, Time.GetTicksMsec());
+        _log.Information("peer {PeerId} connected", peerId);
     }
 
     private void OnPeerDisconnected(long id)
     {
         int peerId = (int)id;
-        GD.Print($"[net] peer {peerId} disconnected");
-        _inputLimiter.Remove(peerId);
-        _messageLimiter.Remove(peerId);
-        if (_admission.Remove(peerId))
+        _log.Information("peer {PeerId} disconnected", peerId);
+        if (_gate.Remove(peerId))
             EmitSignal(SignalName.PeerLeft, peerId);
     }
 
-    // ---- validation bootstrap ----
-
-    public void SendHello(string playerName) =>
-        RpcId(1, MethodName.Hello, NetConfig.PROTOCOL_VERSION, NetRegistry.SCHEMA_HASH, playerName);
+    public void SendHello(string playerName, int skin) =>
+        RpcId(1, MethodName.Hello, NetConfig.PROTOCOL_VERSION, NetRegistry.SCHEMA_HASH,
+            playerName, skin);
 
     [Rpc(MultiplayerApi.RpcMode.AnyPeer, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
-    private void Hello(int protocolVersion, ulong schemaHash, string playerName)
+    private void Hello(int protocolVersion, ulong schemaHash, string playerName, int skin)
     {
         if (!IsServer) return;
         int sender = Multiplayer.GetRemoteSenderId();
         if (protocolVersion != NetConfig.PROTOCOL_VERSION || schemaHash != NetRegistry.SCHEMA_HASH)
         {
-            GD.Print($"[net] peer {sender} rejected: protocol {protocolVersion}/{schemaHash:X16} " +
-                     $"!= {NetConfig.PROTOCOL_VERSION}/{NetRegistry.SCHEMA_HASH:X16}");
+            _log.Information(
+                "peer {PeerId} rejected: protocol {Protocol}/{Schema:X16} != {OurProtocol}/{OurSchema:X16}",
+                sender, protocolVersion, schemaHash, NetConfig.PROTOCOL_VERSION,
+                NetRegistry.SCHEMA_HASH);
             Multiplayer.MultiplayerPeer.DisconnectPeer(sender);
             return;
         }
-        if (!_admission.TryValidate(sender))
+        if (skin is < 0 or >= SimConfig.SKIN_COUNT)
         {
-            GD.Print($"[net] peer {sender} rejected: duplicate or unsolicited Hello");
+            _log.Information("peer {PeerId} rejected: invalid skin {Skin}", sender, skin);
             Multiplayer.MultiplayerPeer.DisconnectPeer(sender);
             return;
         }
-        EmitSignal(SignalName.PeerJoined, sender, PlayerNameSanitizer.Sanitize(playerName));
+        if (!_gate.TryValidate(sender))
+        {
+            _log.Information("peer {PeerId} rejected: duplicate or unsolicited Hello", sender);
+            Multiplayer.MultiplayerPeer.DisconnectPeer(sender);
+            return;
+        }
+        EmitSignal(SignalName.PeerJoined, sender, PlayerNameSanitizer.Sanitize(playerName), skin);
     }
 
-    // ---- message envelope (everything generated rides here) ----
-
-    private void SendEnvelope(ushort msgId, byte[] payload, int target, NetChannel channel)
+    public void SendEnvelope(ushort msgId, byte[] payload, int target, NetChannel channel)
     {
         if (payload.Length > NetConfig.MAX_ENVELOPE_BYTES)
         {
-            GD.PrintErr($"[net] refused oversized outgoing message id {msgId} ({payload.Length} bytes)");
+            _log.Error("refused oversized outgoing {MessageName} ({Bytes} bytes)",
+                NetRegistry.NameOf(msgId),
+                payload.Length);
             return;
         }
         if (_fakeLagMs > 0)
@@ -165,7 +190,7 @@ public partial class NetworkManager : Node, INetwork
         StringName endpoint = channel == NetChannel.RELIABLE ? MethodName.MsgReliable : MethodName.MsgUnreliable;
         if (target == NetTransport.BROADCAST)
         {
-            foreach (int peer in _admission.ValidatedPeers)
+            foreach (int peer in _gate.ValidatedPeers)
             {
                 RpcId(peer, endpoint, msgId, payload);
             }
@@ -189,8 +214,8 @@ public partial class NetworkManager : Node, INetwork
             return;
         if (IsServer)
         {
-            if (!_admission.IsValidated(sender) ||
-                !_messageLimiter.Allow(sender, Time.GetTicksMsec(), NetAbusePolicy.EnvelopeCost(payload.Length)))
+            if (!_gate.IsValidated(sender) ||
+                !_gate.AllowMessage(sender, Time.GetTicksMsec(), NetAbusePolicy.EnvelopeCost(payload.Length)))
                 return;
         }
         else if (sender != NetTransport.TO_SERVER)
@@ -207,11 +232,19 @@ public partial class NetworkManager : Node, INetwork
 
     private void Dispatch(int msgId, int sender, byte[] payload)
     {
-        if (!NetRegistry.Dispatch((ushort)msgId, sender, payload, IsServer))
-            GD.Print($"[net] dropped message id {msgId} from peer {sender} (unknown or wrong direction)");
+        // The server routes everything through the sink, which logs what it
+        // cannot place; the client routes through its own NetRouter.
+        if (IsServer)
+        {
+            ServerSink?.Invoke(sender, (ushort)msgId, payload);
+            return;
+        }
+        if (Router.Dispatch((ushort)msgId, payload))
+            return;
+        // A client can legitimately race a phase change, so this is noise, not an error.
+        if (_undispatched.Add(msgId))
+            _log.Information("no handler for {MessageName}", NetRegistry.NameOf((ushort)msgId));
     }
-
-    // ---- hot path: inputs up ----
 
     public void SendInputs(byte[] packet)
     {
@@ -226,27 +259,34 @@ public partial class NetworkManager : Node, INetwork
     {
         if (!IsServer) return;
         int sender = Multiplayer.GetRemoteSenderId();
-        if (!_admission.IsValidated(sender) ||
-            !_inputLimiter.Allow(sender, Time.GetTicksMsec()))
+        if (!_gate.IsValidated(sender) ||
+            !_gate.AllowInput(sender, Time.GetTicksMsec()))
             return;
         if (InputPacket.TryDecode(packet, out _))
             EmitSignal(SignalName.InputsReceived, sender, packet);
     }
 
-    // ---- hot path: snapshots down ----
+    /// <summary>Server side: drop a peer without waiting for it to leave.</summary>
+    public void Kick(int peerId) => Multiplayer.MultiplayerPeer.DisconnectPeer(peerId);
 
     /// <summary>Each peer gets a snapshot with its own full prediction record;
     /// other players are compact render-only records.</summary>
     public int BroadcastSnapshot(Func<int, byte[]> dataFor, Func<int, int> ackFor)
     {
         int payloadBytes = 0;
-        foreach (int peer in _admission.ValidatedPeers)
+        foreach (int peer in _gate.ValidatedPeers)
         {
             byte[] data = dataFor(peer);
             payloadBytes += data.Length + sizeof(int); // app payload incl. ack
             RpcId(peer, MethodName.ReceiveSnapshot, data, ackFor(peer));
         }
         return payloadBytes;
+    }
+
+    public int SendSnapshot(int peerId, byte[] data, int ack)
+    {
+        RpcId(peerId, MethodName.ReceiveSnapshot, data, ack);
+        return data.Length + sizeof(int);
     }
 
     [Rpc(TransferMode = MultiplayerPeer.TransferModeEnum.Unreliable)]
@@ -258,13 +298,20 @@ public partial class NetworkManager : Node, INetwork
             SnapshotReceived?.Invoke(data, ack);
     }
 
+    /// <summary>The port ENet actually bound, so `--port 0` can be resolved;
+    /// -1 when there is no ENet host.</summary>
+    public int BoundPort() =>
+        Multiplayer.MultiplayerPeer is ENetMultiplayerPeer { Host: { } host }
+            ? host.GetLocalPort()
+            : -1;
+
     /// <summary>Server side: ENet's smoothed round-trip time per validated peer.
     /// Transport-level, so `--fake-lag` does not show up in it.</summary>
     public PeerPing[] PeerPingsMs()
     {
         if (Multiplayer.MultiplayerPeer is not ENetMultiplayerPeer enet)
             return [];
-        return _admission.ValidatedPeers
+        return _gate.ValidatedPeers
             .Select(peerId => new PeerPing(peerId, (int)enet.GetPeer(peerId)
                 .GetStatistic(ENetPacketPeer.PeerStatistic.RoundTripTime)))
             .ToArray();
@@ -274,11 +321,11 @@ public partial class NetworkManager : Node, INetwork
     /// Wire bytes/packets since the last call, from ENet's own counters, so
     /// the numbers include ENet framing and compression (not IP/UDP headers).
     /// </summary>
-    public (double SentBytes, double RecvBytes, double SentPackets, double RecvPackets) PopWireStats()
+    public WireStats PopWireStats()
     {
         if (Multiplayer.MultiplayerPeer is not ENetMultiplayerPeer { Host: { } host })
             return default;
-        return (
+        return new WireStats(
             host.PopStatistic(ENetConnection.HostStatistic.SentData),
             host.PopStatistic(ENetConnection.HostStatistic.ReceivedData),
             host.PopStatistic(ENetConnection.HostStatistic.SentPackets),
@@ -290,9 +337,9 @@ public partial class NetworkManager : Node, INetwork
         ulong now = Time.GetTicksMsec();
         if (IsServer)
         {
-            foreach (int peerId in _admission.Expire(now))
+            foreach (int peerId in _gate.Expire(now))
             {
-                GD.Print($"[net] peer {peerId} rejected: Hello timeout");
+                _log.Information("peer {PeerId} rejected: Hello timeout", peerId);
                 Multiplayer.MultiplayerPeer.DisconnectPeer(peerId);
             }
         }

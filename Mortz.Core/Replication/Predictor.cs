@@ -1,5 +1,5 @@
 using Mortz.Core.Input;
-using Mortz.Core.Match;
+using Mortz.Core.Match.Configuration;
 using Mortz.Core.Sim;
 using Mortz.Core.Sim.Modifiers;
 using Mortz.Core.Terrain;
@@ -17,13 +17,15 @@ public sealed class Predictor
 {
     private readonly InputHistory _history = new();
     private readonly TerrainMask _terrain;
-    private readonly Physics _cfg;
+    private readonly MatchConfig _cfg;
+    private readonly MapZones _zones;
     // Stats must compose exactly like the server's or every replay
     // mispredicts. _tier1 is config + replicated persistent modifiers;
-    // _effective adds the current situation on top.
+    // _effective adds the current situation and zones on top.
     private IReadOnlyList<StatsModifier> _modifiers = [];
     private PlayerStats _tier1;
     private Situations _flags = Situations.NONE;
+    private ulong _zoneMask;
     private PlayerStats _effective;
     private readonly List<(int SpawnSeq, MortarState Shell)> _shells = new();
     private readonly List<(int SpawnSeq, Vec2 Position)> _impacts = new();
@@ -33,10 +35,11 @@ public sealed class Predictor
     private PlayerState _state;
 
     /// <param name="terrain">The client's mask; carve events mutate it in place.</param>
-    public Predictor(TerrainMask terrain, Physics config)
+    public Predictor(TerrainMask terrain, MatchConfig config, MapZones? zones = null)
     {
         _terrain = terrain;
         _cfg = config;
+        _zones = zones ?? MapZones.None;
         _tier1 = PlayerStats.Resolve(config);
         _effective = _tier1;
     }
@@ -47,27 +50,31 @@ public sealed class Predictor
     {
         _modifiers = modifiers;
         _tier1 = StatsPipeline.Resolve(_cfg, modifiers);
-        _effective = Compose(_flags);
+        _effective = Compose(_flags, _zoneMask);
     }
 
     /// <summary>Recomputes only when the situation flips.</summary>
     private PlayerStats Effective(in PlayerState state, in PlayerInput input)
     {
         Situations flags = SituationEffects.Detect(state, _terrain, input);
-        if (flags != _flags)
+        ulong zoneMask = SituationEffects.DetectZones(state, _zones);
+        if (flags != _flags || zoneMask != _zoneMask)
         {
             _flags = flags;
-            _effective = Compose(flags);
+            _zoneMask = zoneMask;
+            _effective = Compose(flags, zoneMask);
         }
         return _effective;
     }
 
-    private PlayerStats Compose(Situations flags)
+    /// <summary>Mirrors SimWorld.Compose: persistent, situations, zones.</summary>
+    private PlayerStats Compose(Situations flags, ulong zoneMask)
     {
-        if (flags == Situations.NONE)
+        if (flags == Situations.NONE && zoneMask == 0)
             return _tier1;
         List<StatsModifier> all = new(_modifiers);
         SituationEffects.AppendModifiers(flags, all);
+        SituationEffects.AppendZoneModifiers(zoneMask, _zones, all);
         return StatsPipeline.Resolve(_cfg, all);
     }
 
@@ -131,7 +138,7 @@ public sealed class Predictor
             PlayerStats stats = Effective(_state, input);
             _state = PlayerSim.Tick(_state, input, _terrain, stats);
             if (WeaponSim.Tick(ref _state, input, prevButtons, stats, NextSeq))
-                _shells.Add((NextSeq, WeaponSim.NewShell((ushort)NextSeq, NextSeq, _state, input, _cfg)));
+                _shells.Add((NextSeq, WeaponSim.NewShell((ushort)NextSeq, NextSeq, _state, input, _cfg.Combat)));
             StepShells(_shells);
         }
         NextSeq++;
@@ -143,7 +150,8 @@ public sealed class Predictor
         for (int i = shells.Count - 1; i >= 0; i--)
         {
             (int seq, MortarState shell) = shells[i];
-            MortarOutcome outcome = MortarSim.Tick(ref shell, _terrain, _cfg, SimConfig.DT);
+            MortarOutcome outcome = MortarSim.Tick(
+                ref shell, _terrain, _cfg.Combat, SimConfig.DT, _zones);
             if (outcome == MortarOutcome.FLYING)
             {
                 shells[i] = (seq, shell);
@@ -193,7 +201,7 @@ public sealed class Predictor
             // Run the weapon even for a retired shot: its ammo and reload were
             // real, only the shell must not come back.
             if (WeaponSim.Tick(ref state, input, prevButtons, stats, seq) && !_retired.Contains(seq))
-                rebuilt.Add((seq, WeaponSim.NewShell((ushort)seq, seq, state, input, _cfg)));
+                rebuilt.Add((seq, WeaponSim.NewShell((ushort)seq, seq, state, input, _cfg.Combat)));
             StepShells(rebuilt);
         }
         _shells.AddRange(rebuilt);

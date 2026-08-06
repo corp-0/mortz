@@ -2,8 +2,9 @@
 
 [ext_resource type="Script" uid="uid://c8gie3xcpplkw" path="res://src/Client/Menus/SettingsScreen.cs" id="1_settings"]
 [ext_resource type="FontFile" uid="uid://tah7qwxd4iyq" path="res://Assets/Fonts/Metal_Mania/MetalMania-Regular.ttf" id="2_font"]
+[ext_resource type="Texture2D" uid="uid://bixaxn83876w6" path="res://Assets/ScifiCritters4.PNG" id="3_skins"]
 
-[node name="Settings" type="Control" unique_id=1644661506 node_paths=PackedStringArray("_playerNameEdit", "_status")]
+[node name="Settings" type="Control" unique_id=1644661506 node_paths=PackedStringArray("_playerNameEdit", "_skinPreview", "_skinPosition", "_status")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -12,6 +13,9 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_settings")
 _playerNameEdit = NodePath("Center/Panel/Margin/Column/PlayerNameEdit")
+_skinPreview = NodePath("Center/Panel/Margin/Column/SkinPicker/PreviewPanel/PreviewMargin/SkinPreview")
+_skinPosition = NodePath("Center/Panel/Margin/Column/SkinPosition")
+_skinSheet = ExtResource("3_skins")
 _status = NodePath("Center/Panel/Margin/Column/Status")
 
 [node name="Background" type="ColorRect" parent="." unique_id=1541445504]
@@ -33,7 +37,7 @@ grow_horizontal = 2
 grow_vertical = 2
 
 [node name="Panel" type="PanelContainer" parent="Center" unique_id=2015354260]
-custom_minimum_size = Vector2(480, 0)
+custom_minimum_size = Vector2(520, 0)
 layout_mode = 2
 
 [node name="Margin" type="MarginContainer" parent="Center/Panel" unique_id=1241181604]
@@ -64,11 +68,55 @@ layout_mode = 2
 placeholder_text = "The name other players see"
 max_length = 24
 
+[node name="SkinLabel" type="Label" parent="Center/Panel/Margin/Column"]
+layout_mode = 2
+text = "Player skin"
+
+[node name="SkinPicker" type="HBoxContainer" parent="Center/Panel/Margin/Column"]
+layout_mode = 2
+theme_override_constants/separation = 18
+alignment = 1
+
+[node name="Previous" type="Button" parent="Center/Panel/Margin/Column/SkinPicker"]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+theme_override_font_sizes/font_size = 30
+text = "<"
+
+[node name="PreviewPanel" type="PanelContainer" parent="Center/Panel/Margin/Column/SkinPicker"]
+custom_minimum_size = Vector2(184, 184)
+layout_mode = 2
+
+[node name="PreviewMargin" type="MarginContainer" parent="Center/Panel/Margin/Column/SkinPicker/PreviewPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="SkinPreview" type="TextureRect" parent="Center/Panel/Margin/Column/SkinPicker/PreviewPanel/PreviewMargin"]
+texture_filter = 1
+custom_minimum_size = Vector2(160, 160)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Next" type="Button" parent="Center/Panel/Margin/Column/SkinPicker"]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+theme_override_font_sizes/font_size = 30
+text = ">"
+
+[node name="SkinPosition" type="Label" parent="Center/Panel/Margin/Column"]
+layout_mode = 2
+text = "1 / 25"
+horizontal_alignment = 1
+
 [node name="Hint" type="Label" parent="Center/Panel/Margin/Column" unique_id=1385316275]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.62, 0.62, 0.65, 1)
 theme_override_font_sizes/font_size = 13
-text = "Saved on this machine. Steam will handle names later."
+text = "Your name and skin are saved on this machine."
 autowrap_mode = 2
 
 [node name="Status" type="Label" parent="Center/Panel/Margin/Column" unique_id=1729495059]
@@ -88,3 +136,5 @@ text = "Back"
 
 [connection signal="pressed" from="Center/Panel/Margin/Column/SaveButton" to="." method="OnSavePressed"]
 [connection signal="pressed" from="Center/Panel/Margin/Column/BackButton" to="." method="OnBackPressed"]
+[connection signal="pressed" from="Center/Panel/Margin/Column/SkinPicker/Previous" to="." method="OnPreviousSkinPressed"]
+[connection signal="pressed" from="Center/Panel/Margin/Column/SkinPicker/Next" to="." method="OnNextSkinPressed"]

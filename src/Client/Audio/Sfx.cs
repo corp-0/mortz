@@ -1,26 +1,14 @@
 using Godot;
 using Mortz.Client.Replay;
 using Mortz.Extensions;
-using Mortz.Shared;
 
 namespace Mortz.Client.Audio;
 
-public readonly struct SfxHandle
+public readonly struct SfxHandle(Sfx owner, bool spatial, int index, uint generation)
 {
-    private readonly Sfx? _owner;
-    private readonly bool _spatial;
-    private readonly int _index;
-    private readonly uint _generation;
+    private readonly Sfx? _owner = owner;
 
-    internal SfxHandle(Sfx owner, bool spatial, int index, uint generation)
-    {
-        _owner = owner;
-        _spatial = spatial;
-        _index = index;
-        _generation = generation;
-    }
-
-    public void Stop() => _owner?.Stop(_spatial, _index, _generation);
+    public void Stop() => _owner?.Stop(spatial, index, generation);
 }
 
 /// <summary>Sound-effect manager, one per client. Voices come from bounded
@@ -28,10 +16,10 @@ public readonly struct SfxHandle
 /// drops the sound if there is none.</summary>
 public partial class Sfx : Node, ISfx
 {
-    internal const int FLAT_PREWARM = 8;
-    internal const int FLAT_CAP = 16;
-    internal const int SPATIAL_PREWARM = 32;
-    internal const int SPATIAL_CAP = 160;
+    public const int FLAT_PREWARM = 8;
+    public const int FLAT_CAP = 16;
+    public const int SPATIAL_PREWARM = 32;
+    public const int SPATIAL_CAP = 160;
 
     private sealed class Voice
     {
@@ -52,10 +40,10 @@ public partial class Sfx : Node, ISfx
     private ulong _startSerial;
     private float _lastTimeScale = -1f;
 
-    internal int FlatVoiceCount => _flat.Count;
-    internal int SpatialVoiceCount => _spatial.Count;
-    internal int ActiveFlatVoices => _flat.Count(v => v.Active);
-    internal int ActiveSpatialVoices => _spatial.Count(v => v.Active);
+    public int FlatVoiceCount => _flat.Count;
+    public int SpatialVoiceCount => _spatial.Count;
+    public int ActiveFlatVoices => _flat.Count(v => v.Active);
+    public int ActiveSpatialVoices => _spatial.Count(v => v.Active);
 
     public SoundRegistry Sounds =>
         _sounds ?? throw new InvalidOperationException("Sfx has no SoundRegistry assigned.");
@@ -103,7 +91,7 @@ public partial class Sfx : Node, ISfx
         Start(sound, spatial: true,
             target.OrNull()?.GlobalPosition ?? default, target, pitch, gainDb);
 
-    internal void Stop(bool spatial, int index, uint generation) =>
+    public void Stop(bool spatial, int index, uint generation) =>
         ReleaseVoice(spatial ? _spatial : _flat, index, generation, stop: true);
 
     private SfxHandle Start(SoundEffect? sound, bool spatial, Vector2 position, Node2D? target,

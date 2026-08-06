@@ -1,4 +1,5 @@
 using Mortz.Core.Match;
+using Mortz.Core.Match.Events;
 
 namespace Mortz.Client.Announcements;
 
@@ -16,9 +17,9 @@ public static class Vocab
     };
 
     /// <summary>One tier per announced streak; the cadence itself lives in
-    /// the judge's StreakAnnouncementOrdinal.</summary>
+    /// Streaks.AnnouncementOrdinal.</summary>
     public static StreakWording StreakTier(byte magnitude) =>
-        GameEventJudge.StreakAnnouncementOrdinal(magnitude) switch
+        Streaks.AnnouncementOrdinal(magnitude) switch
         {
             0 => new("has a", "taste for it", "BLOODLUST", "has", 0),
             1 => new("demands", "obedience", "PUNISHMENT", "serves", 1),

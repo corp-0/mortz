@@ -1,4 +1,5 @@
 using Mortz.Core.Match;
+using Mortz.Core.Match.Scoring;
 using Xunit;
 
 namespace Mortz.Tests.Core.Match;
@@ -10,7 +11,7 @@ public class MatchPointTests
     [InlineData(-1)]
     public void AWonMatchIsNotMatchPoint(int remaining) =>
         Assert.Throws<ArgumentOutOfRangeException>(
-            () => new MatchPoint(remaining, new PlayerVictor(1)));
+            () => new MatchPoint(remaining, new Victor.Player(1)));
 
     [Fact]
     public void HoldingItWithoutALeaderIsFine()

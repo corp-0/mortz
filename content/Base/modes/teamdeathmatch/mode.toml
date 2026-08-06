@@ -1,7 +1,6 @@
 format_version = 1
 name = "Team Deathmatch"
 description = "Two teams. First team to the kill target wins."
-identity = ["rules.teams", "rules.win_condition"]
 
 [rules]
 teams = true

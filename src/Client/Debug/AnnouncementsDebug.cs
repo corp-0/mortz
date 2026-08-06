@@ -5,11 +5,13 @@ using Mortz.Client.Admin;
 using Mortz.Client.Announcements;
 using Mortz.Client.Audio;
 using Mortz.Client.Chat;
-using Mortz.Client.Roster;
+using Mortz.Client.Players;
 using Mortz.Client.Session;
 using Mortz.Core.Match;
+using Mortz.Core.Match.Events;
+using Mortz.Core.Match.Scoring;
 using Mortz.Core.Net;
-using Mortz.Core.Net.Messages;
+using Mortz.Core.Net.Match;
 using Mortz.Net;
 
 namespace Mortz.Client.Debug;
@@ -18,10 +20,11 @@ namespace Mortz.Client.Debug;
 [Meta(typeof(IAutoNode))]
 public partial class AnnouncementsDebug : Control,
     IProvide<IAnnouncementDirector>,
-    IProvide<MatchRoster>,
+    IProvide<ClientPlayers>,
     IProvide<ClientAdmin>,
     IProvide<ClientChat>,
     IProvide<INetwork>,
+    IProvide<NetRouter>,
     IProvide<ISessionExit>,
     IProvide<ISfx>
 {
@@ -30,18 +33,20 @@ public partial class AnnouncementsDebug : Control,
 
     private readonly FakeAnnouncementDirector _director = new();
     private readonly FakeNetwork _network = new();
+    private readonly NetRouter _router = new();
     private readonly FakeSessionExit _sessionExit = new();
 
-    [Export] private MatchRoster _roster = null!;
+    [Export] private ClientPlayers _players = null!;
     [Export] private ClientAdmin _admin = null!;
     [Export] private ClientChat _chat = null!;
     [Export] private Sfx _sfx = null!;
 
     IAnnouncementDirector IProvide<IAnnouncementDirector>.Value() => _director;
-    MatchRoster IProvide<MatchRoster>.Value() => _roster;
+    ClientPlayers IProvide<ClientPlayers>.Value() => _players;
     ClientAdmin IProvide<ClientAdmin>.Value() => _admin;
     ClientChat IProvide<ClientChat>.Value() => _chat;
     INetwork IProvide<INetwork>.Value() => _network;
+    NetRouter IProvide<NetRouter>.Value() => _router;
     ISessionExit IProvide<ISessionExit>.Value() => _sessionExit;
     ISfx IProvide<ISfx>.Value() => _sfx;
 
@@ -114,7 +119,7 @@ public partial class AnnouncementsDebug : Control,
     private void Fire(params GameEventMsg[] events) => _director.Fire(events);
 
     private void SetMatchPoint(int remaining) => _director.SetMatchPoint(
-        new MatchPoint(remaining, new PlayerVictor((int)KILLER)));
+        new MatchPoint(remaining, new Victor.Player((int)KILLER)));
 
     private static GameEventMsg Event(GameEventKind kind, byte magnitude = 0) =>
         new(kind, KILLER, VICTIM, magnitude);

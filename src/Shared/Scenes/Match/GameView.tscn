@@ -11,7 +11,6 @@
 [ext_resource type="PackedScene" uid="uid://bs35s8cifnvm2" path="res://src/Shared/Prefabs/Mortar.tscn" id="9_mortar"]
 [ext_resource type="Script" uid="uid://da7tme6kkv2xu" path="res://src/Client/Diagnostics/NetStatsProbe.cs" id="10_netstats"]
 [ext_resource type="Script" uid="uid://b3jq6f2xj1ct" path="res://src/Client/Diagnostics/LagProbes.cs" id="11_lagprobes"]
-[ext_resource type="Script" uid="uid://c4xs1n8kwl65d" path="res://src/Client/Diagnostics/E2EHooks.cs" id="12_e2e"]
 [ext_resource type="PackedScene" path="res://src/Shared/UI/Hud/PlayerStatusHud.tscn" id="13_status"]
 [ext_resource type="PackedScene" path="res://src/Shared/UI/Hud/WinnerBanner.tscn" id="15_score"]
 [ext_resource type="Script" uid="uid://bxev1av5gpki2" path="res://src/Client/Announcements/GameAnnouncer.cs" id="16_announcer"]
@@ -23,8 +22,10 @@
 [ext_resource type="PackedScene" uid="uid://bkx20bfq77ejk" path="res://src/Shared/UI/Hud/AnnouncementBanner.tscn" id="25_banner"]
 [ext_resource type="Script" uid="uid://cukwng3fiyn6t" path="res://src/Client/Announcements/AnnouncementChat.cs" id="26_annchat"]
 [ext_resource type="Script" uid="uid://bxsnp7y1yhbw" path="res://src/Client/Match/MortarClient.cs" id="27_mortarclient"]
+[ext_resource type="Script" path="res://src/Client/Spectating/SpectatorController.cs" id="28_spectator"]
+[ext_resource type="PackedScene" path="res://src/Shared/UI/Hud/SpectatorHud.tscn" id="29_spectator_hud"]
 
-[node name="GameView" type="Node2D" unique_id=1808596722 node_paths=PackedStringArray("_ropes", "_localPlayer", "_players", "_mortarClient", "_hud", "_finalKillReplay", "_announcements", "_chat")]
+[node name="GameView" type="Node2D" unique_id=1808596722 node_paths=PackedStringArray("_ropes", "_localPlayer", "_players", "_mortarClient", "_hud", "_finalKillReplay", "_announcements", "_chat", "_spectator")]
 script = ExtResource("1_gview")
 _gameMapScene = ExtResource("2_gmap")
 _ropes = NodePath("RopeOverlay")
@@ -35,6 +36,7 @@ _hud = NodePath("Hud/PlayerStatus")
 _finalKillReplay = NodePath("FinalKillReplay")
 _announcements = NodePath("AnnouncementDirector")
 _chat = NodePath("ClientChat")
+_spectator = NodePath("SpectatorController")
 
 [node name="Effects" type="Node2D" parent="." unique_id=700736968]
 script = ExtResource("5_effects")
@@ -62,7 +64,14 @@ _finalKillReplay = NodePath("../FinalKillReplay")
 [node name="ReplayCamera" type="Camera2D" parent="." unique_id=1800253533]
 enabled = false
 
-[node name="FinalKillReplay" type="Node" parent="." unique_id=1859975862 node_paths=PackedStringArray("_effects", "_ropes", "_localPlayer", "_players", "_mortars", "_replayCamera")]
+[node name="MatchCamera" type="Camera2D" parent="."]
+
+[node name="SpectatorController" type="Node" parent="." node_paths=PackedStringArray("_camera", "_hud")]
+script = ExtResource("28_spectator")
+_camera = NodePath("../MatchCamera")
+_hud = NodePath("../Hud/SpectatorHud")
+
+[node name="FinalKillReplay" type="Node" parent="." unique_id=1859975862 node_paths=PackedStringArray("_effects", "_ropes", "_localPlayer", "_players", "_mortars", "_replayCamera", "_spectator")]
 script = ExtResource("17_replay")
 _effects = NodePath("../Effects")
 _ropes = NodePath("../RopeOverlay")
@@ -70,6 +79,7 @@ _localPlayer = NodePath("../LocalPlayer")
 _players = NodePath("../Players")
 _mortars = NodePath("../Mortars")
 _replayCamera = NodePath("../ReplayCamera")
+_spectator = NodePath("../SpectatorController")
 
 [node name="AnnouncementDirector" type="Node" parent="." unique_id=1595954289]
 script = ExtResource("24_director")
@@ -93,6 +103,8 @@ script = ExtResource("26_annchat")
 
 [node name="AnnouncementBanner" parent="Hud" unique_id=1206395185 instance=ExtResource("25_banner")]
 
+[node name="SpectatorHud" parent="Hud" instance=ExtResource("29_spectator_hud")]
+
 [node name="GameChat" parent="Hud" unique_id=1206395184 instance=ExtResource("23_gamechat")]
 anchors_preset = 2
 anchor_top = 1.0
@@ -114,8 +126,3 @@ _localPlayer = NodePath("../../LocalPlayer")
 script = ExtResource("11_lagprobes")
 _localPlayer = NodePath("../../LocalPlayer")
 _players = NodePath("../../Players")
-
-[node name="E2EHooks" type="Node" parent="Diagnostics" unique_id=176005610 node_paths=PackedStringArray("_gameView", "_localPlayer")]
-script = ExtResource("12_e2e")
-_gameView = NodePath("../..")
-_localPlayer = NodePath("../../LocalPlayer")

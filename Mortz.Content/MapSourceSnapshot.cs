@@ -4,11 +4,7 @@ using JetBrains.Annotations;
 
 namespace Mortz.Content;
 
-/// <summary>
-/// Every file of a map, read once. Parsing, decoding and hashing all work off
-/// these same bytes: if they re-read the files instead, the hash we advertise
-/// could describe a map nobody actually loaded.
-/// </summary>
+/// <summary>The exact map data used for loading and compatibility checks.</summary>
 public sealed class MapSourceSnapshot
 {
     private static readonly UTF8Encoding _strictUtf8 = new(false, true);
@@ -48,7 +44,7 @@ public sealed class MapSourceSnapshot
             if (manifestText.Length > 0 && manifestText[0] == '\uFEFF')
                 manifestText = manifestText[1..];
 
-            ContentReadResult<MapManifest> read = ContentManifestReader.ReadMap(
+            ContentReadResult<MapManifest> read = TomlModel.Read<MapManifest>(
                 manifestText, definition.ManifestPath);
             diagnostics.AddRange(read.Diagnostics);
             if (read.Value is not MapManifest manifest)

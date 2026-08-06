@@ -2,7 +2,7 @@ using Godot;
 
 namespace Mortz.Client.Replay;
 
-internal sealed record ReplayFrame(
+public sealed record ReplayFrame(
     float Tick,
     ReplayPlayer[] Players,
     ReplayMortar[] Mortars,

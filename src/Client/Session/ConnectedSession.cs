@@ -2,7 +2,7 @@ using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
 using Mortz.Client.Admin;
-using Mortz.Client.Roster;
+using Mortz.Client.Players;
 using Mortz.Client.Score;
 using Mortz.Client.Setup;
 using Mortz.Client.Stats;
@@ -14,21 +14,27 @@ namespace Mortz.Client.Session;
 [Meta(typeof(IAutoNode))]
 public partial class ConnectedSession : Node,
     IProvide<MatchSetup>,
-    IProvide<ClientStats>,
+    IProvide<Pings>,
+    IProvide<SessionWins>,
     IProvide<MatchScore>,
-    IProvide<MatchRoster>,
+    IProvide<ClientPlayers>,
     IProvide<ClientAdmin>
 {
     [Export] private MatchSetup _matchSetup = null!;
-    [Export] private ClientStats _clientStats = null!;
+    [Export] private Pings _pings = null!;
+    [Export] private SessionWins _sessionWins = null!;
     [Export] private MatchScore _matchScore = null!;
-    [Export] private MatchRoster _matchRoster = null!;
+    [Export] private ClientPlayers _clientPlayers = null!;
     [Export] private ClientAdmin _clientAdmin = null!;
 
     MatchSetup IProvide<MatchSetup>.Value() => _matchSetup;
-    ClientStats IProvide<ClientStats>.Value() => _clientStats;
+    Pings IProvide<Pings>.Value() => _pings;
+    SessionWins IProvide<SessionWins>.Value() => _sessionWins;
     MatchScore IProvide<MatchScore>.Value() => _matchScore;
-    MatchRoster IProvide<MatchRoster>.Value() => _matchRoster;
+    ClientPlayers IProvide<ClientPlayers>.Value() => _clientPlayers;
+
+    /// <summary>For the session controller, which owns match lifecycle.</summary>
+    public ClientPlayers Players => _clientPlayers;
     ClientAdmin IProvide<ClientAdmin>.Value() => _clientAdmin;
 
     public override void _Notification(int what) => this.Notify(what);

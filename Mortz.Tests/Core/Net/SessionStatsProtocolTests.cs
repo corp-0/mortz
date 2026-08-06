@@ -1,5 +1,6 @@
 using Mortz.Core.Net;
-using Mortz.Core.Net.Messages;
+using Mortz.Core.Net.Stats;
+using Mortz.Tests.Net;
 using Xunit;
 
 namespace Mortz.Tests.Core.Net;
@@ -15,25 +16,15 @@ public class SessionStatsProtocolTests : IDisposable
 
     public void Dispose() => NetTransport.Send = _original;
 
-    private static void UseLoopback() =>
-        NetTransport.Send = (id, payload, _, _) =>
-            Assert.True(NetRegistry.Dispatch(id, PEER, payload, isServer: false));
-
     private static IReadOnlyList<PeerWins>? Wins(Action send)
     {
-        UseLoopback();
-        IReadOnlyList<PeerWins>? received = null;
-        Action<IReadOnlyList<PeerWins>> handler = decoded => received = decoded;
-        SessionStatsProtocol.WinsReceived += handler;
-        try
-        {
-            send();
-        }
-        finally
-        {
-            SessionStatsProtocol.WinsReceived -= handler;
-        }
-        return received;
+        NetRouter router = new();
+        ClientProbe<SessionWinsMsg> probe = new();
+        router.Add(probe);
+        NetTransport.Send = (id, payload, _, _) => Assert.True(router.Dispatch(id, payload));
+        send();
+        SessionWinsMsg received = Assert.Single(probe.Messages);
+        return SessionStatsProtocol.TryDecode(received, out PeerWins[]? wins) ? wins : null;
     }
 
     [Fact]
@@ -41,8 +32,8 @@ public class SessionStatsProtocolTests : IDisposable
     {
         PeerWins[] sent = [new PeerWins(11, 2), new PeerWins(22, 0)];
 
-        Assert.Equal(sent, Wins(() => SessionStatsProtocol.BroadcastWins(sent)));
-        Assert.Equal(sent, Wins(() => SessionStatsProtocol.SendWinsTo(PEER, sent)));
+        Assert.Equal(sent, Wins(() => SessionStatsProtocol.Encode(sent).Broadcast()));
+        Assert.Equal(sent, Wins(() => SessionStatsProtocol.Encode(sent).SendTo(PEER)));
     }
 
     [Fact]

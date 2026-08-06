@@ -70,12 +70,11 @@ animations = [{
 "speed": 5.0
 }]
 
-[node name="Player" type="Node2D" unique_id=1524314240 node_paths=PackedStringArray("_body", "_aimPivot", "_launcher", "_camera", "_reloadBar", "_nameplate", "_dashDust", "_typingAnimation")]
+[node name="Player" type="Node2D" unique_id=1524314240 node_paths=PackedStringArray("_body", "_aimPivot", "_launcher", "_reloadBar", "_nameplate", "_dashDust", "_typingAnimation")]
 script = ExtResource("3_pview")
 _body = NodePath("PlayerSprite")
 _aimPivot = NodePath("AimPivot")
 _launcher = NodePath("AimPivot/Launcher")
-_camera = NodePath("Camera2D")
 _reloadBar = NodePath("ReloadingTime")
 _nameplate = NodePath("Nameplate")
 _dashDust = NodePath("DashDust")
@@ -96,8 +95,6 @@ texture = ExtResource("2_2h1fo")
 
 [node name="Muzzle" type="Marker2D" parent="AimPivot" unique_id=334312682]
 position = Vector2(40, 0)
-
-[node name="Camera2D" type="Camera2D" parent="." unique_id=1011691946]
 
 [node name="ReloadingTime" type="ProgressBar" parent="." unique_id=1801305937]
 visible = false

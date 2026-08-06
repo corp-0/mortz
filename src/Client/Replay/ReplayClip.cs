@@ -3,7 +3,7 @@ using Mortz.Core.Sim;
 
 namespace Mortz.Client.Replay;
 
-internal sealed class ReplayClip
+public sealed class ReplayClip
 {
     private readonly ReplayFrame[] _frames;
 

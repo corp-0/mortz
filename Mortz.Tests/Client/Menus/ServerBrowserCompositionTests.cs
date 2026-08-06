@@ -47,7 +47,7 @@ public class ServerBrowserCompositionTests
         ServerRow row = Instantiate<ServerRow>("res://src/Shared/UI/Menus/ServerRow.tscn");
         ServerEntry entry = new(new ServerEndpoint("10.0.0.7", 7777), ServerSource.FAVORITE);
         entry.Info = new ServerInfo("Basement Box", "Kills", "castlewars", Players: 3,
-            MaxPlayers: 8, InLobby: false, GamePort: 7777,
+            MaxPlayers: 8, InLobby: false, AllowJoinInProgress: false, GamePort: 7777,
             NetConfig.PROTOCOL_VERSION, NetRegistry.SCHEMA_HASH);
         entry.Status = ServerStatus.ONLINE;
         entry.PingMs = 24;

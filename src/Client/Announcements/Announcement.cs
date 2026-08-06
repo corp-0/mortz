@@ -1,4 +1,5 @@
 using Mortz.Core.Match;
+using Mortz.Core.Match.Events;
 
 namespace Mortz.Client.Announcements;
 

@@ -1,28 +1,33 @@
 using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
-using Mortz.Core.Match;
-using Mortz.Core.Net.Messages;
+using Mortz.Core.Net;
+using Mortz.Core.Net.Match;
+using Mortz.Core.Net.Sim;
 using Mortz.Core.Terrain;
 using Mortz.Net;
 using Mortz.Shared;
+using Mortz.Shared.Logging;
+using Serilog;
+using Combat = Mortz.Core.Match.Configuration.Combat;
 
 namespace Mortz.Client.Match;
 
-/// <summary>
-/// The loaded map on screen: layer sprites, collision mask, and carve events.
-/// Local shells carve predictively; the CarveLedger holds each hole until the
-/// authoritative carve with the same owner+spawnSeq confirms it. Mispredicted
-/// pixels restore from the pristine map unless another carve covers them;
-/// unconfirmed carves revert on timeout.
-/// </summary>
+/// <summary>The loaded map on screen: layer sprites, collision mask, and carve events.</summary>
 [Meta(typeof(IAutoNode))]
-public partial class GameMap : Node2D
+public partial class GameMap : Node2D, IHandle<CarveMsg>
 {
+    private static readonly ILogger _log = MortzLog.For("client");
+
     private static readonly Color _hole = new(0, 0, 0, 0);
 
     [Dependency]
     private INetwork Network => this.DependOn<INetwork>();
+
+    [Dependency]
+    private NetRouter Router => this.DependOn<NetRouter>();
+
+    private NetRouter? _routed;
 
     public override void _Notification(int what) => this.Notify(what);
 
@@ -43,11 +48,12 @@ public partial class GameMap : Node2D
     public event Action<Vector2, List<(Vector2 Position, Color Color)>>? GroundRemoved;
 
     private readonly CarveLedger _ledger = new();
+    private ZoneOverlay? _zoneOverlay;
 
     // Predicted carves use the match's radius; authoritative ones carry theirs.
     private int _carveRadius;
 
-    // Working copy of the destructible layer; carves punch it transparent.
+    // Working copy of the destructible layer, punched transparent by carves.
     // The pristine original stays around to un-carve mispredictions.
     private Image _destructibleImage = null!;
     private Image _pristineDestructible = null!;
@@ -59,7 +65,7 @@ public partial class GameMap : Node2D
     private List<(Vector2 Position, Color Color)> _activeReplayPixels = [];
 
     /// <summary>Must be called right after instantiating, before entering the tree.</summary>
-    public void Initialize(MapPackage map, Physics config,
+    public void Initialize(MapPackage map, Combat config,
         TerrainSyncEncoding terrainEncoding, byte[] terrainData)
     {
         Mask = map.BuildMask();
@@ -77,26 +83,46 @@ public partial class GameMap : Node2D
         _replayTerrainImage = Image.CreateEmpty(
             Mask.Width, Mask.Height, false, Image.Format.Rgba8);
         _replayTerrainTexture = ImageTexture.CreateFromImage(_replayTerrainImage);
-        GD.Print($"[client] late-join sync: {alreadyRemoved} px already removed");
+        _log.Information("Terrain sync: {Pixels} px already removed", alreadyRemoved);
 
         _background.Texture = ImageTexture.CreateFromImage(map.Background);
         _solid.Texture = ImageTexture.CreateFromImage(map.Solid);
         _destructible.Texture = _destructibleTexture;
         _replayTerrain.Texture = _replayTerrainTexture;
         _blood.Initialize(Mask.Width, Mask.Height);
+
+        if (map.Zones.All.Count > 0)
+        {
+            _zoneOverlay = new ZoneOverlay { Visible = false };
+            _zoneOverlay.Initialize(map.Zones);
+            AddChild(_zoneOverlay);
+        }
     }
 
-    public override void _Ready() =>
-        CarveMsg.Received += OnCarve;
+    /// <summary>Zones are debug/editor markup, not part of the normal map art.</summary>
+    public void SetZonesVisible(bool visible)
+    {
+        if (_zoneOverlay != null)
+            _zoneOverlay.Visible = visible;
+    }
 
-    public override void _ExitTree() =>
-        CarveMsg.Received -= OnCarve;
+    public void OnResolved()
+    {
+        _routed = Router;
+        _routed.Add(this);
+    }
+
+    public void OnExitTree()
+    {
+        _routed?.Remove(this);
+        _routed = null;
+    }
 
     public override void _Process(double delta)
     {
         foreach ((int seq, CarveLedger.PendingCarve pending) in _ledger.Expire(Time.GetTicksMsec()))
         {
-            GD.Print($"[client] predicted carve seq {seq} expired, reverting");
+            _log.Information("predicted carve seq {Seq} expired, reverting", seq);
             Restore(pending, confirmedX: 0, confirmedY: 0, confirmedRadius: -1);
         }
     }
@@ -122,12 +148,12 @@ public partial class GameMap : Node2D
         _ledger.MarkSettled(spawnSeq, Time.GetTicksMsec());
         if (!_ledger.TryConfirm(spawnSeq, out CarveLedger.PendingCarve? pending))
             return false;
-        GD.Print($"[client] predicted carve seq {spawnSeq} deflected, reverting");
+        _log.Information("predicted carve seq {Seq} deflected, reverting", spawnSeq);
         Restore(pending, confirmedX: 0, confirmedY: 0, confirmedRadius: -1);
         return true;
     }
 
-    private void OnCarve(CarveMsg msg)
+    public void Handle(in CarveMsg msg)
     {
         (int x, int y, int radius) = (msg.X, msg.Y, msg.Radius);
         ulong now = Time.GetTicksMsec();
@@ -139,14 +165,12 @@ public partial class GameMap : Node2D
 
         if (mine && _ledger.TryConfirm(msg.SpawnSeq, out CarveLedger.PendingCarve? pending))
         {
-            // Our shell, already predicted. Usually both steps are no-ops; on
-            // a mispredict this moves the hole quietly.
+            // Already predicted; on a mispredict this moves the hole quietly.
             Restore(pending, x, y, radius);
             Carve(x, y, radius, withDebris: false);
             return;
         }
 
-        // Someone else's explosion (or one we never predicted).
         Exploded?.Invoke(new Vector2(x, y), radius);
         Carve(x, y, radius);
     }
@@ -155,7 +179,7 @@ public partial class GameMap : Node2D
     private List<(int X, int Y)> Carve(int x, int y, int radius, bool withDebris = true)
     {
         List<(int X, int Y)> removed = Mask.CarveCircle(x, y, radius);
-        GD.Print($"[client] carve at ({x},{y}) removed {removed.Count} px");
+        _log.Information("carve at ({X},{Y}) removed {Pixels} px", x, y, removed.Count);
         EraseLooseBlood(x, y, radius);
         if (removed.Count == 0)
             return removed;

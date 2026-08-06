@@ -1,4 +1,5 @@
 using Mortz.Core.Match;
+using Mortz.Core.Match.Teams;
 using Xunit;
 
 namespace Mortz.Tests.Core.Match;

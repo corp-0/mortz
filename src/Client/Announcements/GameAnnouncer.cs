@@ -3,6 +3,7 @@ using Chickensoft.Introspection;
 using Godot;
 using Mortz.Client.Audio;
 using Mortz.Core.Match;
+using Mortz.Core.Match.Events;
 using Mortz.Net;
 
 namespace Mortz.Client.Announcements;
@@ -12,7 +13,7 @@ namespace Mortz.Client.Announcements;
 [Meta(typeof(IAutoNode))]
 public partial class GameAnnouncer : Node
 {
-    internal enum Cue
+    public enum Cue
     {
         FIRST_BLOOD,
         HUMILIATION,
@@ -34,7 +35,7 @@ public partial class GameAnnouncer : Node
     }
 
     /// <summary>Consecutive suicides before the announcer bothers to mock.</summary>
-    internal const int SUICIDE_MOCK_COUNT = 3;
+    public const int SUICIDE_MOCK_COUNT = 3;
 
     [Dependency]
     private IAnnouncementDirector Director => this.DependOn<IAnnouncementDirector>();
@@ -74,7 +75,7 @@ public partial class GameAnnouncer : Node
     }
 
     /// <summary>The lines to speak for one priority-ordered batch.</summary>
-    internal static List<Cue> Plan(IReadOnlyList<Announcement> batch, int localId)
+    public static List<Cue> Plan(IReadOnlyList<Announcement> batch, int localId)
     {
         List<Cue> cues = new();
         bool hasBurst = batch.Any(a =>
@@ -128,7 +129,7 @@ public partial class GameAnnouncer : Node
     };
 
     private static Cue StreakCue(byte magnitude) =>
-        GameEventJudge.StreakAnnouncementOrdinal(magnitude) switch
+        Streaks.AnnouncementOrdinal(magnitude) switch
         {
             0 => Cue.BLOODLUST,
             1 => Cue.PUNISHMENT,

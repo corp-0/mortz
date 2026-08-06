@@ -1,11 +1,13 @@
-using Chickensoft.AutoInject;
-using Chickensoft.Introspection;
 using Godot;
-using Mortz.Core.Net;
 using Mortz.Core.Net.Query;
 using Mortz.Server.Hosting;
-using Mortz.Server.Lobby;
-using Mortz.Server.Session;
+using Mortz.Server.Pump;
+using Mortz.Shared;
+using Mortz.Shared.Logging;
+using Serilog;
+#if TOOLS
+using Mortz.Shared.E2E;
+#endif
 
 namespace Mortz.Server.Query;
 
@@ -14,44 +16,58 @@ namespace Mortz.Server.Query;
 /// ENet owns the game port and only talks to peers that finish Hello, so a
 /// browser that must not join has nowhere else to ask.
 /// </summary>
-[Meta(typeof(IAutoNode))]
 public partial class ServerQueryResponder : Node
 {
+    private static readonly ILogger _log = MortzLog.For("server");
+
     private const int MAX_PACKETS_PER_FRAME = 32;
 
     private readonly ServerQueryRateLimiter _limiter = new();
+
+    [Export] private ServerHost _host = null!;
+    [Export] private ServerPump _pump = null!;
+
     private PacketPeerUdp? _socket;
 
-    [Dependency]
-    private IServerIdentity Identity => this.DependOn<IServerIdentity>();
+    /// <summary>The port the responder bound, -1 when it never did.</summary>
+    public int BoundQueryPort { get; private set; } = -1;
 
-    [Dependency]
-    private IServerSession Session => this.DependOn<IServerSession>();
-
-    [Dependency]
-    private IServerLobbySettings LobbySettings => this.DependOn<IServerLobbySettings>();
-
-    public override void _Notification(int what) => this.Notify(what);
-
-    public void OnResolved()
+    public override void _Ready()
     {
+        if (_host.Load is not ServerBootLoad load)
+            return;
+#if TOOLS
+        // Under E2E the OS picks the game port, so the port derived from it is
+        // meaningless; a scenario that wants the responder names one.
+        if (E2ELaunch.Enabled && CmdArgs.GetValue("--query-port") == null)
+            return;
+#endif
+        int queryPort = load.Boot.QueryPort;
         PacketPeerUdp socket = new PacketPeerUdp();
-        Error error = socket.Bind(Identity.QueryPort);
+#if TOOLS
+        Error error = E2ELaunch.Enabled
+            ? socket.Bind(queryPort, "127.0.0.1")
+            : socket.Bind(queryPort);
+#else
+        Error error = socket.Bind(queryPort);
+#endif
         if (error != Error.Ok)
         {
             // Still playable, just invisible to server browsers.
-            GD.PrintErr($"[server] query port {Identity.QueryPort} unavailable: {error}");
+            _log.Error("query port {Port} unavailable: {Error}", queryPort, error);
             socket.Dispose();
             return;
         }
         _socket = socket;
-        GD.Print($"[server] answering browser queries on port {Identity.QueryPort}");
+        BoundQueryPort = queryPort;
+        _log.Information("answering browser queries on port {Port}", queryPort);
     }
 
-    public void OnExitTree()
+    public override void _ExitTree()
     {
         _socket?.Close();
         _socket = null;
+        BoundQueryPort = -1;
     }
 
     public override void _Process(double delta)
@@ -69,21 +85,8 @@ public partial class ServerQueryResponder : Node
             if (!_limiter.Allow(source, now))
                 continue;
             socket.SetDestAddress(source, port);
-            socket.PutPacket(ServerQueryProtocol.EncodeResponse(nonce, Describe()));
+            socket.PutPacket(
+                ServerQueryProtocol.EncodeResponse(nonce, _pump.Server.Describe()));
         }
-    }
-
-    private ServerInfo Describe()
-    {
-        return new ServerInfo(
-            Identity.Name,
-            LobbySettings.ModeName,
-            LobbySettings.Map.DisplayName,
-            Session.PlayerCount,
-            NetConfig.MAX_PLAYERS,
-            Session.IsLobby,
-            Identity.GamePort,
-            NetConfig.PROTOCOL_VERSION,
-            NetRegistry.SCHEMA_HASH);
     }
 }

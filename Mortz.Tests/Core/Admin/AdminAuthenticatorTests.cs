@@ -10,27 +10,29 @@ public class AdminAuthenticatorTests
     private const string PASSWORD = "correct horse battery staple with entropy";
     private const int PEER = 77;
 
+    private readonly AdminSession _session = new();
+
     [Fact]
     public void Challenge_AuthenticatesConnectionAndSignedCommandsInOrder()
     {
-        using AdminAuthenticator auth = Connected();
-        byte[] challenge = Begin(auth, nowMs: 1_000, Nonce(2));
+        using AdminAuthenticator auth = new(PASSWORD, challengeTimeoutMs: 10_000);
+        byte[] challenge = Begin(auth, _session, nowMs: 1_000, Nonce(2));
         byte[] passwordKey = Key(challenge);
         byte[] proof = AdminCrypto.ComputeProof(passwordKey, PEER, challenge);
         byte[] sessionKey = AdminCrypto.DeriveSessionKey(passwordKey, PEER, challenge);
 
-        Assert.Equal(AdminProofResult.ACCEPTED, auth.Verify(PEER, 1_001, proof));
-        Assert.True(auth.IsAdmin(PEER));
+        Assert.Equal(AdminProofResult.ACCEPTED, auth.Verify(_session, PEER, 1_001, proof));
+        Assert.True(auth.IsAdmin(_session));
 
         byte[] payload = [1, 2, 3];
         byte[] tag1 = AdminCrypto.ComputeCommandTag(sessionKey, PEER, 1, 4, payload);
-        Assert.True(auth.VerifyCommand(PEER, 1, 4, payload, tag1));
-        Assert.False(auth.VerifyCommand(PEER, 1, 4, payload, tag1));
+        Assert.True(auth.VerifyCommand(_session, PEER, 1, 4, payload, tag1));
+        Assert.False(auth.VerifyCommand(_session, PEER, 1, 4, payload, tag1));
         byte[] tag3 = AdminCrypto.ComputeCommandTag(sessionKey, PEER, 3, 4, payload);
-        Assert.False(auth.VerifyCommand(PEER, 3, 4, payload, tag3));
+        Assert.False(auth.VerifyCommand(_session, PEER, 3, 4, payload, tag3));
         byte[] tag2 = AdminCrypto.ComputeCommandTag(sessionKey, PEER, 2, 4, payload);
         tag2[0] ^= 0x80;
-        Assert.False(auth.VerifyCommand(PEER, 2, 4, payload, tag2));
+        Assert.False(auth.VerifyCommand(_session, PEER, 2, 4, payload, tag2));
 
         CryptographicOperations.ZeroMemory(passwordKey);
         CryptographicOperations.ZeroMemory(sessionKey);
@@ -39,34 +41,35 @@ public class AdminAuthenticatorTests
     [Fact]
     public void Challenge_IsOneShotAndExpires()
     {
-        using AdminAuthenticator auth = Connected(challengeTimeoutMs: 100);
-        byte[] challenge = Begin(auth, nowMs: 50, Nonce(3));
+        using AdminAuthenticator auth = new(PASSWORD, challengeTimeoutMs: 100);
+        byte[] challenge = Begin(auth, _session, nowMs: 50, Nonce(3));
         byte[] proof = AdminCrypto.ComputeProof(Key(challenge), PEER, challenge);
 
-        Assert.Equal(AdminProofResult.EXPIRED, auth.Verify(PEER, 151, proof));
-        Assert.Equal(AdminProofResult.NO_CHALLENGE, auth.Verify(PEER, 151, proof));
+        Assert.Equal(AdminProofResult.EXPIRED, auth.Verify(_session, PEER, 151, proof));
+        Assert.Equal(AdminProofResult.NO_CHALLENGE, auth.Verify(_session, PEER, 151, proof));
 
-        challenge = Begin(auth, nowMs: 200, Nonce(4));
+        challenge = Begin(auth, _session, nowMs: 200, Nonce(4));
         proof = AdminCrypto.ComputeProof(Key(challenge), PEER, challenge);
         proof[0] ^= 1;
-        Assert.Equal(AdminProofResult.INVALID, auth.Verify(PEER, 201, proof));
-        Assert.Equal(AdminProofResult.NO_CHALLENGE, auth.Verify(PEER, 201, proof));
+        Assert.Equal(AdminProofResult.INVALID, auth.Verify(_session, PEER, 201, proof));
+        Assert.Equal(AdminProofResult.NO_CHALLENGE, auth.Verify(_session, PEER, 201, proof));
     }
 
     [Fact]
-    public void ReusedPeerIdGetsNewServerSessionAndNoOldGrant()
+    public void ReconnectingPeerGetsNewServerSessionAndNoOldGrant()
     {
-        using AdminAuthenticator auth = Connected();
-        byte[] first = Begin(auth, 1, Nonce(5));
+        using AdminAuthenticator auth = new(PASSWORD, challengeTimeoutMs: 10_000);
+        byte[] first = Begin(auth, _session, 1, Nonce(5));
         byte[] key = Key(first);
         Assert.Equal(AdminProofResult.ACCEPTED,
-            auth.Verify(PEER, 2, AdminCrypto.ComputeProof(key, PEER, first)));
+            auth.Verify(_session, PEER, 2, AdminCrypto.ComputeProof(key, PEER, first)));
 
-        auth.Connected(PEER, SessionId(9));
-        Assert.False(auth.IsAdmin(PEER));
+        // A reconnect is a fresh AdminSession on the same peer id.
+        using AdminSession reconnected = new();
+        Assert.False(auth.IsAdmin(reconnected));
         Assert.Equal(AdminProofResult.NO_CHALLENGE,
-            auth.Verify(PEER, 3, AdminCrypto.ComputeProof(key, PEER, first)));
-        byte[] second = Begin(auth, 4, Nonce(6));
+            auth.Verify(reconnected, PEER, 3, AdminCrypto.ComputeProof(key, PEER, first)));
+        byte[] second = Begin(auth, reconnected, 4, Nonce(6));
         Assert.NotEqual(first, second);
         CryptographicOperations.ZeroMemory(key);
     }
@@ -74,60 +77,63 @@ public class AdminAuthenticatorTests
     [Fact]
     public void StartingNewChallengeReplacesExistingGrant()
     {
-        using AdminAuthenticator auth = Connected();
-        byte[] first = Begin(auth, 1, Nonce(7));
+        using AdminAuthenticator auth = new(PASSWORD, challengeTimeoutMs: 10_000);
+        byte[] first = Begin(auth, _session, 1, Nonce(7));
         byte[] key = Key(first);
         Assert.Equal(AdminProofResult.ACCEPTED,
-            auth.Verify(PEER, 2, AdminCrypto.ComputeProof(key, PEER, first)));
-        Assert.True(auth.IsAdmin(PEER));
+            auth.Verify(_session, PEER, 2, AdminCrypto.ComputeProof(key, PEER, first)));
+        Assert.True(auth.IsAdmin(_session));
 
-        Begin(auth, 3, Nonce(8));
+        Begin(auth, _session, 3, Nonce(8));
 
-        Assert.False(auth.IsAdmin(PEER));
+        Assert.False(auth.IsAdmin(_session));
         CryptographicOperations.ZeroMemory(key);
     }
 
     [Fact]
-    public void DisabledUnknownAndRateLimitedRequestsFailClosed()
+    public void DisabledAndRateLimitedRequestsFailClosed()
     {
         using AdminAuthenticator disabled = new("");
-        disabled.Connected(PEER, SessionId(1));
         Assert.Equal(AdminChallengeResult.DISABLED,
-            disabled.Begin(PEER, 0, Nonce(1), out _));
+            disabled.Begin(_session, 0, Nonce(1), out _));
 
-        using AdminAuthenticator auth = Connected();
-        Assert.Equal(AdminChallengeResult.UNKNOWN_PEER,
-            auth.Begin(999, 0, Nonce(1), out _));
+        using AdminAuthenticator auth = new(PASSWORD, challengeTimeoutMs: 10_000);
         for (int i = 0; i < 3; i++)
         {
             Assert.Equal(AdminChallengeResult.STARTED,
-                auth.Begin(PEER, 0, Nonce((byte)(10 + i)), out _));
+                auth.Begin(_session, 0, Nonce((byte)(10 + i)), out _));
         }
         Assert.Equal(AdminChallengeResult.RATE_LIMITED,
-            auth.Begin(PEER, 0, Nonce(20), out _));
-        auth.Remove(PEER);
-        Assert.False(auth.IsAdmin(PEER));
+            auth.Begin(_session, 0, Nonce(20), out _));
     }
 
-    private static AdminAuthenticator Connected(ulong challengeTimeoutMs = 10_000)
+    [Fact]
+    public void DisposingTheSessionZeroesItsKeyMaterial()
     {
-        AdminAuthenticator auth = new(PASSWORD, challengeTimeoutMs);
-        auth.Connected(PEER, SessionId(1));
-        return auth;
+        using AdminAuthenticator auth = new(PASSWORD, challengeTimeoutMs: 10_000);
+        byte[] challenge = Begin(auth, _session, 1, Nonce(9));
+        byte[] key = Key(challenge);
+        Assert.Equal(AdminProofResult.ACCEPTED,
+            auth.Verify(_session, PEER, 2, AdminCrypto.ComputeProof(key, PEER, challenge)));
+
+        _session.Dispose();
+
+        Assert.Null(_session.AdminKey);
+        Assert.False(auth.IsAdmin(_session));
+        Assert.All(_session.Id, b => Assert.Equal(0, b));
+        CryptographicOperations.ZeroMemory(key);
     }
 
-    private static byte[] Begin(AdminAuthenticator auth, ulong nowMs, byte[] nonce)
+    private static byte[] Begin(AdminAuthenticator auth, AdminSession session, ulong nowMs,
+        byte[] nonce)
     {
         Assert.Equal(AdminChallengeResult.STARTED,
-            auth.Begin(PEER, nowMs, nonce, out byte[] challenge));
+            auth.Begin(session, nowMs, nonce, out byte[] challenge));
         return challenge;
     }
 
     private static byte[] Key(byte[] challenge) =>
         AdminCrypto.DerivePasswordKey(Encoding.UTF8.GetBytes(PASSWORD), challenge);
-
-    private static byte[] SessionId(byte value) =>
-        Enumerable.Repeat(value, AdminCrypto.SESSION_ID_BYTES).ToArray();
 
     private static byte[] Nonce(byte value) =>
         Enumerable.Repeat(value, AdminCrypto.NONCE_BYTES).ToArray();

@@ -3,11 +3,13 @@ using Godot;
 using Mortz.Client.Audio;
 using Mortz.Client.Chat;
 using Mortz.Client.Match;
-using Mortz.Client.Roster;
+using Mortz.Client.Players;
 using Mortz.Client.Views;
 using Mortz.Core.Match;
-using Mortz.Core.Net.Messages;
+using Mortz.Core.Match.Configuration;
+using Mortz.Core.Net.Chat;
 using Mortz.Net;
+using Mortz.Tests.Net;
 using Xunit;
 
 namespace Mortz.Tests.Client;
@@ -22,9 +24,11 @@ public class PlayerViewTypingTests : NodeServiceTest
         _manager = TakeManagerFromGameViewScene();
         _manager.FakeDependency<INetwork>(new FakeNetwork { LocalPeerId = 1 });
         _manager.FakeDependency<ISfx>(new NullSfx());
-        _manager.FakeDependency(Host(new MatchRoster()));
-        Host(_manager);
-        _manager.Configure(new Physics());
+        ClientPlayers players = HostRouted(new ClientPlayers());
+        players.OpenMatch();
+        _manager.FakeDependency(players);
+        HostRouted(_manager);
+        _manager.Configure(new MatchConfig());
     }
 
     [Fact]

@@ -46,12 +46,12 @@ public class SnapshotBufferTests
     }
 
     [Fact]
-    public void Sample_ReturnsNullUntilTwoSnapshotsExist()
+    public void Sample_UsesTheOnlySnapshotUntilAnotherArrives()
     {
         SnapshotBuffer buf = new SnapshotBuffer();
         Assert.Null(buf.Sample(0f));
         buf.Add(Snap(10, 100));
-        Assert.Null(buf.Sample(10f));
+        Assert.Equal(100, buf.Sample(10f)!.Players[0].Position.X, 3);
     }
 
     [Fact]

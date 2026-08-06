@@ -1,6 +1,6 @@
 namespace Mortz.Client.Session;
 
-internal enum ClientSessionStage
+public enum ClientSessionStage
 {
     MENU,
     CONNECTING,

@@ -6,21 +6,8 @@ using SixLabors.ImageSharp.PixelFormats;
 
 namespace Mortz.Tools;
 
-/// <summary>
-/// Converts an OpenLieroX .lxl level into a Mortz map package (3 PNGs + map.toml).
-///
-/// .lxl image format (version 0): 32-byte id, uint32 version, 64-byte name,
-/// uint32 width/height/type, 32-byte theme, uint32 object count, then a
-/// zlib block holding back RGB, front RGB and one material byte per pixel
-/// (1 = empty, 2 = dirt, 4 = rock). Back image becomes Background, front
-/// splits into Destructible (dirt) and Solid (rock).
-///
-/// Liero worms are ~18 px and dig through dirt; the 32 px Mortz player does
-/// neither, so levels convert 4x by default or the tunnels don't fit.
-/// Left/right/top edges get a solid border (rope needs something to hook,
-/// out of bounds is empty); the bottom stays as authored for death pits.
-/// </summary>
-internal static class ConvertLxl
+/// <summary>Converts OpenLieroX levels into Mortz map packages.</summary>
+public static class ConvertLxl
 {
     private static readonly Rgba32 _borderColor = new(0x26, 0x26, 0x26);
 
@@ -44,7 +31,7 @@ internal static class ConvertLxl
         }
         if (lxlPath == null || mapId == null)
             throw new Exception("usage: convert-lxl <path.lxl> <mapId> [--scale N] [--players N] [--out DIR]");
-        if (!ContentManifestReader.IsLogicalId(mapId))
+        if (!ContentId.IsValid(mapId))
             throw new Exception($"bad mapId '{mapId}': lowercase letters, digits, '_' and '-' only, starting with a letter or digit");
         if (scale <= 0)
             throw new Exception("--scale must be positive");
@@ -77,7 +64,7 @@ internal static class ConvertLxl
         LayerBytes layers = WriteLayers(data, w, h, scale);
         MapPackageWriter.Write(outRoot, new MapPackageWriteRequest(
             mapId,
-            new MapManifest(MapManifest.CURRENT_FORMAT_VERSION, name, players),
+            new MapManifest { Name = name, SuggestedPlayers = players },
             layers.Background,
             layers.Solid,
             layers.Destructible));
@@ -85,8 +72,7 @@ internal static class ConvertLxl
         Console.WriteLine($"wrote {Path.Combine(outRoot, mapId)}");
     }
 
-    // data = back RGB, front RGB, material byte per pixel. Writes the three
-    // layer PNGs, nearest-neighbor scaled by an integer factor.
+    // LXL stores back RGB, front RGB, then one material byte per pixel.
     private static LayerBytes WriteLayers(byte[] data, int w, int h, int scale)
     {
         int pixels = w * h;
@@ -117,9 +103,7 @@ internal static class ConvertLxl
             }
         }
 
-        // Enclose everything but the bottom: out of bounds reads as empty, so
-        // an open side or sky would let players drift out and eat every rope
-        // hook. The bottom stays as authored (open bottom = death pit).
+        // Keep players and rope hooks inside; leave authored death pits open.
         int border = 4 * scale;
         for (int y = 0; y < oh; y++)
         {

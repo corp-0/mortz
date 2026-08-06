@@ -3,7 +3,7 @@ namespace Mortz.Client.Announcements;
 /// <summary>Paces voice lines: a minimum gap between starts so chained cues
 /// don't talk over each other, and a TTL so a line that waited too long is
 /// dropped instead of played out of context.</summary>
-internal sealed class AnnouncementQueue
+public sealed class AnnouncementQueue
 {
     public const double LINE_GAP_SECONDS = 1.1;
     public const double TTL_SECONDS = 4.0;

@@ -2,7 +2,7 @@ using System.Diagnostics;
 
 namespace Mortz.Tools;
 
-internal static class PublishSteam
+public static class PublishSteam
 {
     private const int APP_ID = 5016960;
     private const int DEPOT_WINDOWS = 5016961;

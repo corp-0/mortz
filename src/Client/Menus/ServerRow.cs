@@ -78,7 +78,14 @@ public partial class ServerRow : Button
             case ServerStatus.INCOMPATIBLE:
                 return "different game version";
             case ServerStatus.ONLINE when Entry.Info is ServerInfo info:
-                return $"{info.Mode} - {info.Map} - {(info.InLobby ? "in lobby" : "in match")}";
+                string phase;
+                if (info.InLobby)
+                    phase = "in lobby";
+                else if (info.AllowJoinInProgress)
+                    phase = "in match - JIP enabled";
+                else
+                    phase = "in match - spectators only";
+                return $"{info.Mode} - {info.Map} - {phase}";
             default:
                 return "not checked";
         }

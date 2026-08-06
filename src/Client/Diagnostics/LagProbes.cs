@@ -3,6 +3,8 @@ using Mortz.Client.Match;
 using Mortz.Client.Views;
 using Mortz.Core.Sim;
 using Mortz.Shared;
+using Mortz.Shared.Logging;
+using Serilog;
 
 namespace Mortz.Client.Diagnostics;
 
@@ -14,6 +16,8 @@ namespace Mortz.Client.Diagnostics;
 /// </summary>
 public partial class LagProbes : Node
 {
+    private static readonly ILogger _log = MortzLog.For("probe");
+
     [Export] private LocalPlayerController _localPlayer = null!;
     [Export] private PlayerViewManager _players = null!;
 
@@ -39,7 +43,7 @@ public partial class LagProbes : Node
         if (phase >= SimConfig.TICK_RATE / 2)
             return InputButtons.NONE;
         if (phase == 0)
-            GD.Print($"[probe] press unix={Time.GetUnixTimeFromSystem():F3}");
+            _log.Information("press unix={Unix:F3}", Time.GetUnixTimeFromSystem());
         return (seq / CYCLE) % 2 == 0 ? InputButtons.RIGHT : InputButtons.LEFT;
     }
 
@@ -53,7 +57,7 @@ public partial class LagProbes : Node
         {
             if ((pos - _reference).Length() > 0.3f)
             {
-                GD.Print($"[probe] move unix={Time.GetUnixTimeFromSystem():F3}");
+                _log.Information("move unix={Unix:F3}", Time.GetUnixTimeFromSystem());
                 _armed = false;
                 _reference = pos;
                 _stableSince = now;

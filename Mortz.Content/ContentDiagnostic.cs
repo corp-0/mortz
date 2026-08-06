@@ -14,15 +14,10 @@ public sealed record ContentDiagnostic(
     public override string ToString() => $"{Source}: {Severity.ToString().ToLowerInvariant()}: {Message}";
 }
 
-public sealed class ContentReadResult<T> where T : class
+public sealed class ContentReadResult<T>(T? value, IReadOnlyList<ContentDiagnostic> diagnostics)
+    where T : class
 {
-    public ContentReadResult(T? value, IReadOnlyList<ContentDiagnostic> diagnostics)
-    {
-        Value = value;
-        Diagnostics = diagnostics;
-    }
-
-    public T? Value { get; }
-    public IReadOnlyList<ContentDiagnostic> Diagnostics { get; }
+    public T? Value { get; } = value;
+    public IReadOnlyList<ContentDiagnostic> Diagnostics { get; } = diagnostics;
     public bool HasErrors => Diagnostics.Any(d => d.Severity == ContentDiagnosticSeverity.ERROR);
 }

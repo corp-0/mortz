@@ -3,25 +3,28 @@ using Chickensoft.Introspection;
 using Godot;
 using Mortz.Client.Audio;
 using Mortz.Client.Chat;
-using Mortz.Client.Roster;
-using Mortz.Core.Match;
-using Mortz.Core.Net.Messages;
+using Mortz.Client.Players;
+using Mortz.Core.Match.Configuration;
+using Mortz.Core.Net;
+using Mortz.Core.Net.Chat;
+using Mortz.Core.Net.Sim;
 using Mortz.Core.Sim;
 using Mortz.Core.Sim.Modifiers;
 using Mortz.Net;
+using Mortz.Shared.Logging;
+using Serilog;
 
 namespace Mortz.Client.Views;
 
-/// <summary>
-/// Pool of PlayerView instances, one per visible player. GameView pushes
-/// placements between BeginFrame and Prune; anyone not placed this frame
-/// despawns. Nameplates come from the server's roster broadcasts, which cover
-/// match start and every later join/leave. F3 toggles the sim collision box
-/// outlines.
-/// </summary>
+/// <summary>Pool of PlayerView instances, one per visible player: GameView pushes
+/// placements between BeginFrame and Prune, anyone not placed despawns.</summary>
 [Meta(typeof(IAutoNode))]
-public partial class PlayerViewManager : Node2D
+public partial class PlayerViewManager : Node2D,
+    IHandle<PlayerModifiersMsg>,
+    IHandle<TypingStateMsg>
 {
+    private static readonly ILogger _log = MortzLog.For("client");
+
     [Export] private PackedScene _playerScene = null!;
 
     [Dependency]
@@ -31,25 +34,24 @@ public partial class PlayerViewManager : Node2D
     private ISfx Sfx => this.DependOn<ISfx>();
 
     [Dependency]
-    private MatchRoster Roster => this.DependOn<MatchRoster>();
+    private ClientPlayers Players => this.DependOn<ClientPlayers>();
+
+    [Dependency]
+    private NetRouter Router => this.DependOn<NetRouter>();
 
     /// <summary>A remote player's rendered feet position this frame (lag probe tap).</summary>
     public event Action<Vector2>? RemotePlaced;
 
-    private readonly Dictionary<int, PlayerView> _views = new();
+    private MatchStateKey<ViewSlot> _view;
     private readonly HashSet<int> _placed = new();
-    private readonly HashSet<int> _typing = new();
     private bool _replayActive;
 
-    // Replicated per-player modifier lists resolve through the same
-    // StatsPipeline the server runs; base stats are the fallback until a
-    // player's list arrives.
-    private Physics _config = null!;
+    // Base stats are the fallback until a player's own modifier list arrives.
+    private MatchConfig _config = null!;
     private PlayerStats _stats = null!;
-    private readonly Dictionary<int, PlayerStats> _playerStats = new();
 
     /// <summary>Must be called before the first Place (GameView.Initialize does).</summary>
-    public void Configure(Physics config)
+    public void Configure(MatchConfig config)
     {
         _config = config;
         _stats = PlayerStats.Resolve(config);
@@ -57,36 +59,37 @@ public partial class PlayerViewManager : Node2D
 
     public override void _Notification(int what) => this.Notify(what);
 
+    private NetRouter? _routed;
+
     public void OnResolved()
     {
-        Roster.Changed += OnRosterChanged;
-        PlayerModifiersMsg.Received += OnPlayerModifiers;
-        TypingStateMsg.Received += OnTypingState;
+        _view = Players.MatchKeys.Claim<ViewSlot>();
+        Players.Changed += OnPlayersChanged;
+        Players.PlayerLeft += OnPlayerLeft;
+        _routed = Router;
+        _routed.Add(this);
     }
 
     public void OnExitTree()
     {
-        Roster.Changed -= OnRosterChanged;
-        PlayerModifiersMsg.Received -= OnPlayerModifiers;
-        TypingStateMsg.Received -= OnTypingState;
+        if (_routed == null)
+            return;
+        Players.Changed -= OnPlayersChanged;
+        Players.PlayerLeft -= OnPlayerLeft;
+        _routed.Remove(this);
+        _routed = null;
     }
 
-    // Same race as rosters: applied at spawn and to the live view when a
-    // broadcast lands. The local player polls ChatInputGuard in Place instead.
-    private void OnTypingState(TypingStateMsg msg)
+    public void Handle(in TypingStateMsg msg)
     {
-        int peerId = msg.PeerId;
-        if (msg.IsTyping)
-            _typing.Add(peerId);
-        else
-            _typing.Remove(peerId);
-        if (peerId != Network.LocalPeerId && _views.TryGetValue(peerId, out PlayerView? view))
-            view.SetTyping(msg.IsTyping);
+        ViewSlot slot = Players.GetOrCreate(msg.PeerId).State(_view);
+        slot.Typing = msg.IsTyping;
+        // The local player polls ChatInputGuard in Place instead.
+        if (msg.PeerId != Network.LocalPeerId)
+            slot.View?.SetTyping(msg.IsTyping);
     }
 
-    // Modifiers race views the same way rosters do: they apply at spawn from
-    // the dict and to the live view when a broadcast lands.
-    private void OnPlayerModifiers(PlayerModifiersMsg msg)
+    public void Handle(in PlayerModifiersMsg msg)
     {
         PlayerStats stats;
         try
@@ -95,33 +98,36 @@ public partial class PlayerViewManager : Node2D
         }
         catch (Exception e) when (e is IOException or InvalidDataException)
         {
-            GD.PrintErr($"[client] dropped malformed modifiers for peer {msg.PeerId}");
+            _log.Error(e, "dropped malformed modifiers for peer {PeerId}", msg.PeerId);
             return;
         }
-        _playerStats[msg.PeerId] = stats;
-        if (_views.TryGetValue(msg.PeerId, out PlayerView? view))
-            view.Configure(stats);
+        ViewSlot slot = Players.GetOrCreate(msg.PeerId).State(_view);
+        slot.Stats = stats;
+        slot.View?.Configure(stats);
     }
 
-    // Views and rosters race (a view can spawn before the first roster, and
-    // rosters keep coming as players join/leave), so names apply in both
-    // directions: at spawn, and to live views on every roster change.
-    private void OnRosterChanged()
+    private void OnPlayersChanged()
     {
-        foreach ((int peerId, PlayerView view) in _views)
+        foreach (ClientPlayer player in Players)
         {
-            view.SetPlayerName(Roster.NameOf(peerId));
-            view.SetTeam(Roster.TeamOf(peerId));
+            ViewSlot slot = player.State(_view);
+            if (slot.View == null)
+                continue;
+            slot.View.SetPlayerName(player.Name);
+            slot.View.SetTeam(player.Team);
         }
     }
 
-    public override void _UnhandledInput(InputEvent @event)
+    private void OnPlayerLeft(ClientPlayer player)
     {
-        if (@event.IsActionPressed("toggle_sim_boxes"))
-            PlayerView.DrawSimBoxes = !PlayerView.DrawSimBoxes;
+        ViewSlot slot = player.State(_view);
+        if (slot.View == null)
+            return;
+        slot.View.QueueFree();
+        slot.View = null;
     }
 
-    internal PlayerView ViewForTest(int peerId) => _views[peerId];
+    public PlayerView ViewForTest(int peerId) => Players.Find(peerId)!.State(_view).View!;
 
     public void BeginFrame() => _placed.Clear();
 
@@ -129,48 +135,46 @@ public partial class PlayerViewManager : Node2D
     {
         _placed.Add(peerId);
         bool isLocal = peerId == Network.LocalPeerId;
-        // Snapshots carry no skin on the slot-id path, so the roster is the
+        ClientPlayer player = Players.GetOrCreate(peerId);
+        ViewSlot slot = player.State(_view);
+        // Snapshots carry no skin on the slot-id path, so identity is the
         // only source.
-        state = state with { Skin = Roster.SkinOf(peerId) };
+        state = state with { Skin = player.Skin };
         if (!isLocal)
             RemotePlaced?.Invoke(state.Feet);
-        if (!_views.TryGetValue(peerId, out PlayerView? view))
+        if (slot.View == null)
         {
-            view = _playerScene.Instantiate<PlayerView>();
+            PlayerView view = _playerScene.Instantiate<PlayerView>();
             view.SetSfx(Sfx);
-            view.Configure(_playerStats.GetValueOrDefault(peerId, _stats));
+            view.Configure(slot.Stats ?? _stats);
             view.SetIsLocal(isLocal);
-            view.SetReplayActive(_replayActive);
-            view.SetPlayerName(Roster.NameOf(peerId));
-            view.SetTeam(Roster.TeamOf(peerId));
+            view.SetPlayerName(player.Name);
+            view.SetTeam(player.Team);
             if (!isLocal)
-                view.SetTyping(_typing.Contains(peerId));
+                view.SetTyping(slot.Typing);
             AddChild(view);
-            _views[peerId] = view;
+            slot.View = view;
         }
         if (isLocal)
-            view.SetTyping(ChatInputGuard.IsTyping);
-        view.Apply(state, playTransitions: !_replayActive);
+            slot.View.SetTyping(ChatInputGuard.IsTyping);
+        slot.View.Apply(state, playTransitions: !_replayActive);
     }
 
     public void SetReplayActive(bool active)
     {
         _replayActive = active;
-        foreach (PlayerView view in _views.Values)
-        {
-            view.SetReplayActive(active);
-        }
     }
 
     /// <summary>Despawn every view not placed since BeginFrame.</summary>
     public void Prune()
     {
-        foreach ((int peerId, PlayerView view) in _views)
+        foreach (ClientPlayer player in Players)
         {
-            if (_placed.Contains(peerId))
+            ViewSlot slot = player.State(_view);
+            if (slot.View == null || _placed.Contains(player.PeerId))
                 continue;
-            view.QueueFree();
-            _views.Remove(peerId);
+            slot.View.QueueFree();
+            slot.View = null;
         }
     }
 }

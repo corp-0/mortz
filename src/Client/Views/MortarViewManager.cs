@@ -56,7 +56,7 @@ public partial class MortarViewManager : Node2D
         Prune(_remote, _seenRemote);
     }
 
-    internal static bool ShouldRenderAuthoritative(in RenderMortar mortar, int localId,
+    public static bool ShouldRenderAuthoritative(in RenderMortar mortar, int localId,
         IReadOnlySet<int> predictedSeqs, IReadOnlySet<int> completedSeqs) =>
         mortar.OwnerId != localId || mortar.Deflected ||
         (!predictedSeqs.Contains(mortar.SpawnSeq) && !completedSeqs.Contains(mortar.SpawnSeq));
@@ -80,7 +80,7 @@ public partial class MortarViewManager : Node2D
         Clear(_predicted);
     }
 
-    internal void SyncReplay(IReadOnlyList<ReplayMortar> mortars)
+    public void SyncReplay(IReadOnlyList<ReplayMortar> mortars)
     {
         _seenReplay.Clear();
         foreach (ReplayMortar mortar in mortars)

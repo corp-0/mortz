@@ -1,6 +1,7 @@
 using Mortz.Core.Match;
+using Mortz.Core.Match.Configuration;
 using Mortz.Core.Net;
-using Mortz.Core.Net.Messages;
+using Mortz.Core.Net.Sim;
 using Mortz.Core.Terrain;
 
 namespace Mortz.Client.Session;
@@ -8,7 +9,7 @@ namespace Mortz.Client.Session;
 /// <summary>Validates and assembles one Welcome terrain transfer. It accepts
 /// out-of-order chunks, ignores duplicates and unrelated transfer ids, and
 /// exposes complete bytes only after the declared length is exact.</summary>
-internal sealed class TerrainTransfer
+public sealed class TerrainTransfer
 {
     private readonly WelcomeMsg _welcome;
     private readonly byte[]?[] _chunks;

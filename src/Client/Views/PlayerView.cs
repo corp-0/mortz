@@ -2,6 +2,7 @@ using Godot;
 using Mortz.Client.Audio;
 using Mortz.Client.Ui;
 using Mortz.Core.Match;
+using Mortz.Core.Match.Teams;
 using Mortz.Core.Sim;
 
 namespace Mortz.Client.Views;
@@ -24,7 +25,6 @@ public partial class PlayerView : Node2D
     [Export] private Sprite2D _body = null!;
     [Export] private Node2D _aimPivot = null!;
     [Export] private Sprite2D _launcher = null!;
-    [Export] private Camera2D _camera = null!;
     [Export] private PlayerReloadIndicator _reloadBar = null!;
     [Export] private Label _nameplate = null!;
     [Export] private CpuParticles2D _dashDust = null!;
@@ -32,13 +32,12 @@ public partial class PlayerView : Node2D
 
     private static readonly Color _shieldColor = new(0.4f, 0.9f, 1f, 0.8f);
 
-    internal PlayerStats StatsForTest { get; private set; } = null!;
+    public PlayerStats StatsForTest { get; private set; } = null!;
 
     private ISfx _sfx = null!;
     private bool _boxVisible;
     private bool _shieldVisible;
     private bool _isLocal;
-    private bool _replayActive;
     private float _hitFlash;
     private PlayerViewState? _previous;
     private SfxHandle _reloadSound;
@@ -54,19 +53,11 @@ public partial class PlayerView : Node2D
         QueueRedraw(); // the shield can be up while its radius changes
     }
 
-    /// <summary>Only the local player's camera drives the screen, and only
-    /// remote players wear a nameplate; you know who you are.</summary>
+    /// <summary>Only remote players wear a nameplate; you know who you are.</summary>
     public void SetIsLocal(bool isLocal)
     {
         _isLocal = isLocal;
-        _camera.Enabled = isLocal && !_replayActive;
         _nameplate.Visible = !isLocal;
-    }
-
-    public void SetReplayActive(bool active)
-    {
-        _replayActive = active;
-        _camera.Enabled = _isLocal && !active;
     }
 
     public void SetPlayerName(string name) => _nameplate.Text = name;
@@ -124,7 +115,7 @@ public partial class PlayerView : Node2D
         _previous = next;
     }
 
-    internal static bool SpawnProtectedSpriteVisible(byte immunityTicks) =>
+    public static bool SpawnProtectedSpriteVisible(byte immunityTicks) =>
         immunityTicks == 0 || (immunityTicks / IMMUNITY_FLICKER_TICKS & 1) == 0;
 
     /// <summary>Everything that fires once on an edge rather than tracking a

@@ -1,6 +1,6 @@
 namespace Mortz.Client.Session;
 
-internal readonly record struct TerrainChunkResult(
+public readonly record struct TerrainChunkResult(
     TerrainChunkState State,
     byte[]? Data = null,
     string Error = "");

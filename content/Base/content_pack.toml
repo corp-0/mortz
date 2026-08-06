@@ -1,4 +1,4 @@
-id = "base"
+id = "org.mortz.base"
 name = "Mortz Base"
 version = "1.0.0"
 author = "Gilles"

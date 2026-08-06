@@ -3,13 +3,18 @@ using Godot;
 using Mortz.Client.Admin;
 using Mortz.Client.Match;
 using Mortz.Client.Menus;
+using Mortz.Client.Players;
 using Mortz.Client.Session;
 using Mortz.Client.Setup;
 using Mortz.Client.Stats;
 using Mortz.Core.Match;
-using Mortz.Core.Net.Messages;
+using Mortz.Core.Match.Configuration;
+using Mortz.Core.Match.Teams;
+using Mortz.Core.Net.Lobby;
 using Mortz.Net;
+using Mortz.Tests.Net;
 using Xunit;
+using ModeRules = Mortz.Core.Match.Configuration.ModeRules;
 
 namespace Mortz.Tests.Client.Menus;
 
@@ -26,8 +31,7 @@ public class RosterCompositionTests : NodeServiceTest
         Assert.IsType<SingleColumnRoster>(roster.GetNode("SingleColumnRoster"));
 
         Settings(teams: true).Broadcast();
-        new LobbyStateMsg([1, 2, 3], ["A", "B", "C"], [0, 0, 0], [1, 2, 1], [], [])
-            .Broadcast();
+        new LobbyStateMsg(TwoBlueOneRed(), []).Broadcast();
 
         TeamColumnsRoster columns =
             Assert.IsType<TeamColumnsRoster>(roster.GetNode("TeamColumnsRoster"));
@@ -44,8 +48,7 @@ public class RosterCompositionTests : NodeServiceTest
 
         Assert.Equal("SWAP", MemberSlotButtons(team2)[0].Text);
         Assert.Empty(MemberSlotButtons(team1));
-        new LobbyStateMsg([1, 2, 3], ["A", "B", "C"], [0, 0, 0], [1, 2, 1], [2], [1])
-            .Broadcast();
+        new LobbyStateMsg(TwoBlueOneRed(), [new SwapOffer(2, 1)]).Broadcast();
         Assert.Equal("ACCEPT",
             MemberSlotButtons(columns.GetNode("Column/Teams/Team2/Slots"))[0].Text);
 
@@ -80,12 +83,21 @@ public class RosterCompositionTests : NodeServiceTest
         FakeNetwork network = new() { LocalPeerId = 1 };
         ClientAdmin admin = new();
         admin.FakeDependency<INetwork>(network);
+        admin.FakeDependency(Router);
+        ClientPlayers players = HostRouted(new ClientPlayers());
+        Pings pings = new();
+        pings.FakeDependency(players);
+        SessionWins wins = new();
+        wins.FakeDependency(players);
         ServiceRoot root = Host(new ServiceRoot
         {
-            Setup = Host(new MatchSetup()),
-            Stats = Host(new ClientStats()),
+            Setup = HostRouted(new MatchSetup()),
+            Pings = HostRouted(pings),
+            Wins = HostRouted(wins),
+            Players = players,
             Admin = Host(admin),
             Network = network,
+            Router = Router,
             SessionExit = new FakeSessionExit(),
         });
         Lobby lobby = ResourceLoader.Load<PackedScene>(
@@ -93,6 +105,14 @@ public class RosterCompositionTests : NodeServiceTest
         root.AddChild(lobby);
         return lobby;
     }
+
+    /// <summary>The layout the roster test seats: 1 and 3 blue, 2 red.</summary>
+    private static LobbyMember[] TwoBlueOneRed() =>
+    [
+        new LobbyMember(1, "A", false, Team.BLUE),
+        new LobbyMember(2, "B", false, Team.RED),
+        new LobbyMember(3, "C", false, Team.BLUE),
+    ];
 
     private static List<Button> MemberSlotButtons(Node column) =>
         column.GetChildren().Where(child => child is not Button)

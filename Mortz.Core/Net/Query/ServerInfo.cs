@@ -9,6 +9,7 @@ public sealed record ServerInfo(
     int Players,
     int MaxPlayers,
     bool InLobby,
+    bool AllowJoinInProgress,
     int GamePort,
     int ProtocolVersion,
     ulong SchemaHash);

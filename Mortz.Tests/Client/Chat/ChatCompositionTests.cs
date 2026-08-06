@@ -5,21 +5,26 @@ using Mortz.Client.Announcements;
 using Mortz.Client.Chat;
 using Mortz.Client.Match;
 using Mortz.Client.Menus;
+using Mortz.Client.Players;
 using Mortz.Client.Session;
 using Mortz.Client.Setup;
+using Mortz.Client.Spectating;
 using Mortz.Client.Stats;
 using Mortz.Client.Ui;
 using Mortz.Core.Match;
-using Mortz.Core.Net.Messages;
+using Mortz.Core.Match.Configuration;
+using Mortz.Core.Net.Lobby;
 using Mortz.Extensions;
 using Mortz.Net;
 using Mortz.Server;
-using Mortz.Server.Chat;
 using Mortz.Server.Hosting;
-using Mortz.Server.Lobby;
-using Mortz.Server.Session;
+using Mortz.Server.Pump;
+using Mortz.Server.Query;
 using Mortz.Shared;
+using Mortz.Tests.Net;
 using Xunit;
+using ModeRules = Mortz.Core.Match.Configuration.ModeRules;
+using Physics = Mortz.Core.Match.Configuration.Physics;
 
 namespace Mortz.Tests.Client.Chat;
 
@@ -31,7 +36,11 @@ public class ChatCompositionTests : NodeServiceTest
     {
         Lobby lobby = MountLobby();
 
-        new LobbyStateMsg([1, 2], ["Host", "Guest"], [1, 0], [0, 0], [], []).Broadcast();
+        new LobbyStateMsg(
+        [
+            new LobbyMember(1, "Host", true, null),
+            new LobbyMember(2, "Guest", false, null),
+        ], []).Broadcast();
         new LobbySettingsMsg("castlewars", "hash", ["castlewars"], ["Castle Wars"],
             [], [], "", new MatchConfig().ToBytes()).Broadcast();
 
@@ -130,6 +139,10 @@ public class ChatCompositionTests : NodeServiceTest
             Assert.IsType<AnnouncementChat>(game.GetDescendantByType<AnnouncementChat>());
             Assert.IsType<ClientChat>(game.GetDescendantByType<ClientChat>());
             Assert.IsType<GameChat>(game.GetDescendantByType<GameChat>());
+            Assert.IsType<SpectatorController>(
+                game.GetDescendantByType<SpectatorController>());
+            Assert.IsType<SpectatorHud>(game.GetDescendantByType<SpectatorHud>());
+            Assert.Equal(2, game.GetChildren().OfType<Camera2D>().Count());
         }
         finally
         {
@@ -138,7 +151,7 @@ public class ChatCompositionTests : NodeServiceTest
     }
 
     [Fact]
-    public void ServerChatIsAnInjectedChildFeature()
+    public void ServerMainHostsTheHostPumpAndQuery()
     {
         PackedScene scene = ResourceLoader.Load<PackedScene>(
             "res://src/Shared/Scenes/Root/ServerMain.tscn");
@@ -146,11 +159,9 @@ public class ChatCompositionTests : NodeServiceTest
         try
         {
             Assert.IsType<ServerHost>(root.GetDescendantByType<ServerHost>());
-            Assert.IsType<ServerSessionController>(
-                root.GetDescendantByType<ServerSessionController>());
-            Assert.IsType<ServerChat>(root.GetDescendantByType<ServerChat>());
-            Assert.IsType<ServerLobbySettings>(
-                root.GetDescendantByType<ServerLobbySettings>());
+            Assert.IsType<ServerPump>(root.GetDescendantByType<ServerPump>());
+            Assert.IsType<ServerQueryResponder>(
+                root.GetDescendantByType<ServerQueryResponder>());
         }
         finally
         {
@@ -174,12 +185,21 @@ public class ChatCompositionTests : NodeServiceTest
         FakeNetwork network = new() { LocalPeerId = 1 };
         ClientAdmin admin = new();
         admin.FakeDependency<INetwork>(network);
+        admin.FakeDependency(Router);
+        ClientPlayers players = HostRouted(new ClientPlayers());
+        Pings pings = new();
+        pings.FakeDependency(players);
+        SessionWins wins = new();
+        wins.FakeDependency(players);
         return Host(new ServiceRoot
         {
-            Setup = Host(new MatchSetup()),
-            Stats = Host(new ClientStats()),
+            Setup = HostRouted(new MatchSetup()),
+            Pings = HostRouted(pings),
+            Wins = HostRouted(wins),
+            Players = players,
             Admin = Host(admin),
             Network = network,
+            Router = Router,
             SessionExit = new FakeSessionExit(),
         });
     }

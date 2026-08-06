@@ -1,22 +1,23 @@
 using Godot;
 using Mortz.Shared;
+using Mortz.Shared.Logging;
+using Serilog;
 
 namespace Mortz.Client.Session;
 
-/// <summary>
-/// "Host and play": spawns the dedicated server as a separate process next to
-/// the game, so hosting locally and renting a cloud box run the exact same
-/// server binary. In the editor (no exports yet) it launches this project
-/// again in headless server mode instead.
-/// </summary>
+/// <summary>"Host and play": spawns the dedicated server as a separate process;
+/// in the editor it relaunches this project headless instead.</summary>
 public static class ServerLauncher
 {
+    private static readonly ILogger _log = MortzLog.For("client");
+
     private static string ServerExeName =>
         OS.HasFeature("windows") ? "MortzServer.exe" : "MortzServer.x86_64";
 
     private static int _pid = -1;
 
-    public static bool Spawn(int port, string adminPassword, string serverName)
+    public static bool Spawn(int port, string adminPassword, string serverName,
+        bool allowJoinInProgress = true)
     {
         string[] gameArgs =
         [
@@ -27,6 +28,8 @@ public static class ServerLauncher
             gameArgs = [.. gameArgs, "--admin-password", adminPassword];
         if (serverName.Length > 0)
             gameArgs = [.. gameArgs, "--server-name", serverName];
+        if (!allowJoinInProgress)
+            gameArgs = [.. gameArgs, "--no-jip"];
 
         string exe;
         string[] args;
@@ -41,11 +44,11 @@ public static class ServerLauncher
             args = ["--headless", "++", .. gameArgs];
         }
 
-        GD.Print($"[client] spawning local server: {exe}");
+        _log.Information("spawning local server: {Exe}", exe);
         _pid = OS.CreateProcess(exe, args);
         if (_pid <= 0)
         {
-            GD.PrintErr($"[client] failed to spawn server process ({exe})");
+            _log.Error("failed to spawn server process ({Exe})", exe);
             return false;
         }
         return true;
@@ -55,7 +58,7 @@ public static class ServerLauncher
     {
         if (_pid > 0 && OS.IsProcessRunning(_pid))
         {
-            GD.Print("[client] stopping local server");
+            _log.Information("stopping local server");
             OS.Kill(_pid);
         }
         _pid = -1;

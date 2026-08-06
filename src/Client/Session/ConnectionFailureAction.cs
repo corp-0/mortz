@@ -1,6 +1,6 @@
 namespace Mortz.Client.Session;
 
-internal enum ConnectionFailureAction
+public enum ConnectionFailureAction
 {
     IGNORE,
     RETRY,

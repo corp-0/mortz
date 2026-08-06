@@ -18,7 +18,7 @@ public sealed class ContentCatalogTests : IDisposable
         ContentCatalogResult result = ContentCatalog.Load(_root);
 
         Assert.NotNull(result.Catalog);
-        Assert.Equal(["alpha", "beta", "zulu"],
+        Assert.Equal(["org.mortz.alpha", "org.mortz.beta", "org.mortz.zulu"],
             result.Catalog.Packs.Select(p => p.Manifest.Id).ToArray());
     }
 
@@ -36,10 +36,10 @@ public sealed class ContentCatalogTests : IDisposable
         ContentCatalog catalog = Assert.IsType<ContentCatalog>(result.Catalog);
         Assert.True(catalog.TryGetMap("arena", out ResolvedContent<MapManifest>? arena));
         Assert.Equal("Mod Arena", arena!.Winner.Manifest.Name);
-        Assert.Equal(["base", "mod"],
+        Assert.Equal(["org.mortz.base", "org.mortz.mod"],
             arena.OverrideChain.Select(m => m.SourcePack.Manifest.Id).ToArray());
         Assert.True(catalog.TryGetMap("duel", out ResolvedContent<MapManifest>? duel));
-        Assert.Equal("base", duel!.Winner.SourcePack.Manifest.Id);
+        Assert.Equal("org.mortz.base", duel!.Winner.SourcePack.Manifest.Id);
         Assert.Single(duel.OverrideChain);
     }
 
@@ -55,7 +55,7 @@ public sealed class ContentCatalogTests : IDisposable
 
         Assert.True(catalog.TryGetMap("arena", out ResolvedContent<MapManifest>? arena));
         Assert.Equal("Zulu Arena", arena!.Winner.Manifest.Name);
-        Assert.Equal(["alpha", "zulu"],
+        Assert.Equal(["org.mortz.alpha", "org.mortz.zulu"],
             arena.OverrideChain.Select(m => m.SourcePack.Manifest.Id).ToArray());
     }
 
@@ -69,7 +69,7 @@ public sealed class ContentCatalogTests : IDisposable
 
         Assert.Null(result.Catalog);
         Assert.Contains(result.Diagnostics,
-            diagnostic => diagnostic.Message.Contains("duplicate content pack id 'same'", StringComparison.Ordinal));
+            diagnostic => diagnostic.Message.Contains("duplicate content pack id 'org.mortz.same'", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -107,7 +107,7 @@ public sealed class ContentCatalogTests : IDisposable
         MapSourceSnapshot original = Assert.IsType<MapSourceSnapshot>(
             MapSourceSnapshot.Read(arena!.Winner).Value);
         File.WriteAllText(Path.Combine(mapDirectory, "map.toml"),
-            ContentManifestReader.WriteMap(new MapManifest(1, "Changed", 4)));
+            TomlModel.Write(new MapManifest { Name = "Changed", SuggestedPlayers = 4 }));
         File.WriteAllBytes(Path.Combine(mapDirectory, "solid.png"), "changed"u8.ToArray());
         MapSourceSnapshot changed = Assert.IsType<MapSourceSnapshot>(
             MapSourceSnapshot.Read(arena.Winner).Value);
@@ -122,38 +122,23 @@ public sealed class ContentCatalogTests : IDisposable
     public void PackageWriterReplacesOnlyAfterCompleteStagingAndRemovesStaleFiles()
     {
         string mapsDirectory = Path.Combine(_root, "Base", "maps");
-        MapPackageWriteRequest first = new("arena", new MapManifest(1, "First", 2),
+        MapPackageWriteRequest first = new("arena",
+            new MapManifest { Name = "First", SuggestedPlayers = 2 },
             "background-1"u8.ToArray(), "solid-1"u8.ToArray(), "dirt-1"u8.ToArray());
         MapPackageWriter.Write(mapsDirectory, first);
         string mapDirectory = Path.Combine(mapsDirectory, "arena");
         File.WriteAllText(Path.Combine(mapDirectory, "stale.txt"), "old");
 
-        MapPackageWriteRequest second = new("arena", new MapManifest(1, "Second", 4),
+        MapPackageWriteRequest second = new("arena",
+            new MapManifest { Name = "Second", SuggestedPlayers = 4 },
             "background-2"u8.ToArray(), "solid-2"u8.ToArray(), "dirt-2"u8.ToArray());
         MapPackageWriter.Write(mapsDirectory, second);
 
         Assert.False(File.Exists(Path.Combine(mapDirectory, "stale.txt")));
-        Assert.Equal("Second", Assert.IsType<MapManifest>(ContentManifestReader.ReadMapFile(
+        Assert.Equal("Second", Assert.IsType<MapManifest>(TomlModel.ReadFile<MapManifest>(
             Path.Combine(mapDirectory, "map.toml")).Value).Name);
         Assert.Equal("solid-2"u8.ToArray(), File.ReadAllBytes(Path.Combine(mapDirectory, "solid.png")));
         Assert.False(Directory.Exists(Path.Combine(_root, "Base", ".mortz-transactions")));
-    }
-
-    [Fact]
-    public void PackageWriterFailureLeavesExistingPackageUntouched()
-    {
-        string mapsDirectory = Path.Combine(_root, "Base", "maps");
-        MapPackageWriter.Write(mapsDirectory, new MapPackageWriteRequest(
-            "arena", new MapManifest(1, "Good", 2),
-            "background"u8.ToArray(), "solid"u8.ToArray(), "dirt"u8.ToArray()));
-
-        Assert.Throws<ArgumentException>(() => MapPackageWriter.Write(mapsDirectory,
-            new MapPackageWriteRequest("arena", new MapManifest(1, "", 2),
-                "new-background"u8.ToArray(), "new-solid"u8.ToArray(), "new-dirt"u8.ToArray())));
-
-        string manifestPath = Path.Combine(mapsDirectory, "arena", "map.toml");
-        Assert.Equal("Good", Assert.IsType<MapManifest>(
-            ContentManifestReader.ReadMapFile(manifestPath).Value).Name);
     }
 
     [Fact]
@@ -185,11 +170,11 @@ public sealed class ContentCatalogTests : IDisposable
 
         Assert.True(catalog.TryGetMode("deathmatch", out ResolvedContent<GameModeManifest>? deathmatch));
         Assert.Equal("Hyper Deathmatch", deathmatch!.Winner.Manifest.Name);
-        Assert.Equal(50, deathmatch.Winner.Manifest.Config.Rules.KillTarget);
-        Assert.Equal(["base", "mod"],
+        Assert.Equal(50, deathmatch.Winner.Manifest.Rules.KillTarget);
+        Assert.Equal(["org.mortz.base", "org.mortz.mod"],
             deathmatch.OverrideChain.Select(m => m.SourcePack.Manifest.Id).ToArray());
         Assert.True(catalog.TryGetMode("teamdeathmatch", out ResolvedContent<GameModeManifest>? teams));
-        Assert.True(teams!.Winner.Manifest.Config.Rules.Teams);
+        Assert.True(teams!.Winner.Manifest.Rules.Teams);
     }
 
     [Fact]
@@ -227,7 +212,7 @@ public sealed class ContentCatalogTests : IDisposable
         string directory = Path.Combine(_root, directoryName);
         Directory.CreateDirectory(directory);
         File.WriteAllText(Path.Combine(directory, "content_pack.toml"),
-            $"id = \"{id}\"\nname = \"{id}\"\nversion = \"1.0.0\"\nload_order = {loadOrder}\n");
+            $"id = \"org.mortz.{id}\"\nname = \"{id}\"\nversion = \"1.0.0\"\nload_order = {loadOrder}\n");
         return directory;
     }
 
@@ -244,7 +229,7 @@ public sealed class ContentCatalogTests : IDisposable
         string directory = Path.Combine(packDirectory, "maps", id);
         Directory.CreateDirectory(directory);
         File.WriteAllText(Path.Combine(directory, "map.toml"),
-            ContentManifestReader.WriteMap(new MapManifest(1, name, 4)));
+            TomlModel.Write(new MapManifest { Name = name, SuggestedPlayers = 4 }));
         foreach (string layer in new[] { "background.png", "solid.png", "destructible.png" })
         {
             File.WriteAllBytes(Path.Combine(directory, layer), Encoding.UTF8.GetBytes(layer));

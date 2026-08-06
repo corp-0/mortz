@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://oagrjsoi773j"]
 
 [ext_resource type="Script" uid="uid://d2mvuyqfyv0a7" path="res://src/Client/Debug/AnnouncementsDebug.cs" id="1_host"]
-[ext_resource type="Script" uid="uid://ooyj4qa2sesu" path="res://src/Client/Roster/MatchRoster.cs" id="2_roster"]
+[ext_resource type="Script" uid="uid://ooyj4qa2sesu" path="res://src/Client/Players/ClientPlayers.cs" id="2_roster"]
 [ext_resource type="Script" uid="uid://d2se7ahca8huk" path="res://src/Client/Admin/ClientAdmin.cs" id="3_admin"]
 [ext_resource type="Script" uid="uid://b7xyv1173ixe1" path="res://src/Client/Chat/ClientChat.cs" id="4_chat"]
 [ext_resource type="Script" uid="uid://b46f55d4mmx7l" path="res://src/Client/Audio/Sfx.cs" id="5_sfx"]
@@ -11,7 +11,7 @@
 [ext_resource type="PackedScene" uid="uid://bkx20bfq77ejk" path="res://src/Shared/UI/Hud/AnnouncementBanner.tscn" id="9_banner"]
 [ext_resource type="PackedScene" path="res://src/Shared/UI/Chat/GameChat.tscn" id="10_gamechat"]
 
-[node name="AnnouncementsDebug" type="Control" unique_id=133924536 node_paths=PackedStringArray("_roster", "_admin", "_chat", "_sfx")]
+[node name="AnnouncementsDebug" type="Control" unique_id=133924536 node_paths=PackedStringArray("_players", "_admin", "_chat", "_sfx")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -19,12 +19,12 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_host")
-_roster = NodePath("MatchRoster")
+_players = NodePath("ClientPlayers")
 _admin = NodePath("ClientAdmin")
 _chat = NodePath("ClientChat")
 _sfx = NodePath("Sfx")
 
-[node name="MatchRoster" type="Node" parent="." unique_id=674686940]
+[node name="ClientPlayers" type="Node" parent="." unique_id=674686940]
 script = ExtResource("2_roster")
 
 [node name="ClientAdmin" type="Node" parent="." unique_id=2097850461]

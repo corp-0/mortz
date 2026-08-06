@@ -7,7 +7,7 @@ using Mortz.Client.Session;
 using Mortz.Core.Chat;
 using Mortz.Core.Chat.Commands;
 using Mortz.Core.Net;
-using Mortz.Core.Net.Messages;
+using Mortz.Core.Net.Chat;
 using Mortz.Core.Text;
 
 namespace Mortz.Client.Chat;
@@ -15,7 +15,7 @@ namespace Mortz.Client.Chat;
 /// <summary>Chat history and command execution, one instance per screen
 /// (lobby, game view) so history dies with its screen.</summary>
 [Meta(typeof(IAutoNode))]
-public partial class ClientChat : Node
+public partial class ClientChat : Node, IHandle<ChatMsg>
 {
     private readonly ChatCommandRegistry<ClientCommandContext> _commands = new();
     private readonly List<ChatLine> _lines = [];
@@ -34,11 +34,14 @@ public partial class ClientChat : Node
     [Dependency]
     private ISessionExit SessionExit => this.DependOn<ISessionExit>();
 
+    [Dependency]
+    private NetRouter Router => this.DependOn<NetRouter>();
+
     public override void _Notification(int what) => this.Notify(what);
 
     public void OnResolved()
     {
-        ChatProtocol.Received += OnChatLine;
+        Router.Add(this);
         Admin.StatusLine += OnAdminStatusLine;
         _subscribed = true;
     }
@@ -47,9 +50,15 @@ public partial class ClientChat : Node
     {
         if (!_subscribed)
             return;
-        ChatProtocol.Received -= OnChatLine;
+        Router.Remove(this);
         Admin.StatusLine -= OnAdminStatusLine;
         _subscribed = false;
+    }
+
+    public void Handle(in ChatMsg message)
+    {
+        if (ChatProtocol.TryDecode(message, out ChatLine.Remote? line))
+            Add(line);
     }
 
     public bool Submit(string? input)
@@ -102,8 +111,6 @@ public partial class ClientChat : Node
         _lines.Clear();
         Cleared?.Invoke();
     }
-
-    private void OnChatLine(ChatLine.Remote line) => Add(line);
 
     private void OnAdminStatusLine(string line) => AddPrivate(line);
 }

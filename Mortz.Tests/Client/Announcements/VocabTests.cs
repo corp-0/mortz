@@ -1,5 +1,6 @@
 using Mortz.Client.Announcements;
 using Mortz.Core.Match;
+using Mortz.Core.Match.Events;
 using Xunit;
 
 namespace Mortz.Tests.Client.Announcements;

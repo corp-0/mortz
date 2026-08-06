@@ -2,30 +2,35 @@
 
 [ext_resource type="Script" uid="uid://b28br8dkvuhdv" path="res://src/Client/Session/ConnectedSession.cs" id="1_root"]
 [ext_resource type="Script" uid="uid://bynxb81cf00xi" path="res://src/Client/Setup/MatchSetup.cs" id="2_setup"]
-[ext_resource type="Script" uid="uid://ds8420gb3q8xn" path="res://src/Client/Stats/ClientStats.cs" id="3_stats"]
-[ext_resource type="Script" uid="uid://ht4g6pywavul" path="res://src/Client/Score/MatchScore.cs" id="4_score"]
-[ext_resource type="Script" uid="uid://ooyj4qa2sesu" path="res://src/Client/Roster/MatchRoster.cs" id="5_roster"]
-[ext_resource type="Script" uid="uid://d2se7ahca8huk" path="res://src/Client/Admin/ClientAdmin.cs" id="6_admin"]
+[ext_resource type="Script" uid="uid://ds8420gb3q8xn" path="res://src/Client/Stats/Pings.cs" id="3_pings"]
+[ext_resource type="Script" uid="uid://cnxem6jq8w711" path="res://src/Client/Stats/SessionWins.cs" id="4_wins"]
+[ext_resource type="Script" uid="uid://ht4g6pywavul" path="res://src/Client/Score/MatchScore.cs" id="5_score"]
+[ext_resource type="Script" uid="uid://ooyj4qa2sesu" path="res://src/Client/Players/ClientPlayers.cs" id="6_roster"]
+[ext_resource type="Script" uid="uid://d2se7ahca8huk" path="res://src/Client/Admin/ClientAdmin.cs" id="7_admin"]
 
-[node name="ConnectedSession" type="Node" unique_id=724459621 node_paths=PackedStringArray("_matchSetup", "_clientStats", "_matchScore", "_matchRoster", "_clientAdmin")]
+[node name="ConnectedSession" type="Node" unique_id=724459621 node_paths=PackedStringArray("_matchSetup", "_pings", "_sessionWins", "_matchScore", "_clientPlayers", "_clientAdmin")]
 script = ExtResource("1_root")
 _matchSetup = NodePath("MatchSetup")
-_clientStats = NodePath("ClientStats")
+_pings = NodePath("Pings")
+_sessionWins = NodePath("SessionWins")
 _matchScore = NodePath("MatchScore")
-_matchRoster = NodePath("MatchRoster")
+_clientPlayers = NodePath("ClientPlayers")
 _clientAdmin = NodePath("ClientAdmin")
 
 [node name="MatchSetup" type="Node" parent="." unique_id=482860832]
 script = ExtResource("2_setup")
 
-[node name="ClientStats" type="Node" parent="." unique_id=1087103465]
-script = ExtResource("3_stats")
+[node name="Pings" type="Node" parent="." unique_id=1087103465]
+script = ExtResource("3_pings")
+
+[node name="SessionWins" type="Node" parent="." unique_id=1758442907]
+script = ExtResource("4_wins")
 
 [node name="MatchScore" type="Node" parent="." unique_id=501511092]
-script = ExtResource("4_score")
+script = ExtResource("5_score")
 
-[node name="MatchRoster" type="Node" parent="." unique_id=824997641]
-script = ExtResource("5_roster")
+[node name="ClientPlayers" type="Node" parent="." unique_id=824997641]
+script = ExtResource("6_roster")
 
 [node name="ClientAdmin" type="Node" parent="." unique_id=1882813526]
-script = ExtResource("6_admin")
+script = ExtResource("7_admin")

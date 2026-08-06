@@ -1,4 +1,5 @@
 using Mortz.Core.Net;
+using Mortz.Core.Net.Roster;
 using Mortz.Core.Sim;
 
 namespace Mortz.Core.Replication;
@@ -12,7 +13,7 @@ namespace Mortz.Core.Replication;
 /// can miss by up to 1/8 px; the correction offset eats it. Bump
 /// <see cref="NetConfig.PROTOCOL_VERSION"/> on any layout change.
 /// </summary>
-internal static class SnapshotWire
+public static class SnapshotWire
 {
     private const byte GROUNDED_BIT = 0x04;
     private const byte FULL_STATE_BIT = 0x80;
@@ -150,7 +151,7 @@ internal static class SnapshotWire
         }
         player.Aim = reader.ReadByte();
         player.Health = reader.ReadByte();
-        player.RespawnTicks = reader.ReadByte();
+        player.RespawnTicks = reader.ReadUInt16();
         player.SpawnImmunityTicks = reader.ReadByte();
         player.ParryTicks = reader.ReadByte();
         if (full)

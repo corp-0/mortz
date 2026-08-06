@@ -1,7 +1,10 @@
 using Mortz.Core.Match;
+using Mortz.Core.Match.Configuration;
 using Mortz.Core.Net;
-using Mortz.Core.Net.Messages;
+using Mortz.Core.Net.Lobby;
+using Mortz.Tests.Net;
 using Xunit;
+using ModeRules = Mortz.Core.Match.Configuration.ModeRules;
 
 namespace Mortz.Tests.Core.Net;
 
@@ -10,37 +13,24 @@ namespace Mortz.Tests.Core.Net;
 [Collection("NetTransport")]
 public class LobbySettingsProtocolTests : IDisposable
 {
-    private const int SENDER = 42;
-
     private readonly NetTransport.SendDelegate _original = NetTransport.Send;
 
     public void Dispose() => NetTransport.Send = _original;
-
-    private static void UseLoopback() =>
-        NetTransport.Send = (id, payload, _, _) =>
-            Assert.True(NetRegistry.Dispatch(id, SENDER, payload, isServer: false));
 
     private sealed record Outcome(LobbySettings? Settings, LobbySettingsRejectReason? Reason);
 
     private static Outcome Send(LobbySettingsMsg message)
     {
-        UseLoopback();
-        LobbySettings? settings = null;
-        LobbySettingsRejectReason? reason = null;
-        Action<LobbySettings> onReceived = decoded => settings = decoded;
-        Action<LobbySettingsRejectReason> onRejected = rejected => reason = rejected;
-        LobbySettingsProtocol.Received += onReceived;
-        LobbySettingsProtocol.Rejected += onRejected;
-        try
-        {
-            message.Broadcast();
-        }
-        finally
-        {
-            LobbySettingsProtocol.Received -= onReceived;
-            LobbySettingsProtocol.Rejected -= onRejected;
-        }
-        return new Outcome(settings, reason);
+        NetRouter router = new();
+        ClientProbe<LobbySettingsMsg> probe = new();
+        router.Add(probe);
+        NetTransport.Send = (id, payload, _, _) => Assert.True(router.Dispatch(id, payload));
+        message.Broadcast();
+        LobbySettingsMsg received = Assert.Single(probe.Messages);
+        return LobbySettingsProtocol.TryDecode(received, out LobbySettings? settings,
+            out LobbySettingsRejectReason reason)
+            ? new Outcome(settings, null)
+            : new Outcome(null, reason);
     }
 
     private static Outcome Send(LobbySettings settings) =>

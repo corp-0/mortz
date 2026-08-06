@@ -29,8 +29,8 @@ public partial class UiPropertySheet : VBoxContainer
 
     public Type? BoundModelType { get; private set; }
 
-    internal int ControlCount => _categories.Sum(category => category.Properties.Count);
-    internal int CategoryBlockCount { get; private set; }
+    public int ControlCount => _categories.Sum(category => category.Properties.Count);
+    public int CategoryBlockCount { get; private set; }
 
     public override void _Ready()
     {

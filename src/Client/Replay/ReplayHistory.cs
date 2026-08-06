@@ -5,10 +5,10 @@ namespace Mortz.Client.Replay;
 /// <summary>A short rolling copy of exactly what was presented on screen. It
 /// is detached from prediction and terrain, so sampling it cannot affect the
 /// authoritative client state.</summary>
-internal sealed class ReplayHistory
+public sealed class ReplayHistory
 {
-    internal const float HISTORY_TICKS = SimConfig.TICK_RATE;
-    internal const float REPLAY_TICKS = SimConfig.TICK_RATE * 0.75f;
+    public const float HISTORY_TICKS = SimConfig.TICK_RATE;
+    public const float REPLAY_TICKS = SimConfig.TICK_RATE * 0.75f;
 
     private readonly List<ReplayFrame> _frames = new();
 

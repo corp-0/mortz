@@ -1,6 +1,6 @@
 namespace Mortz.Tools;
 
-internal static class ToolPath
+public static class ToolPath
 {
     public static string Resolve(string envVar, string baseName)
     {

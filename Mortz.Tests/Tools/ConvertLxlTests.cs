@@ -17,7 +17,7 @@ public sealed class ConvertLxlTests : IDisposable
         string mapsDirectory = Path.Combine(packDirectory, "maps");
         Directory.CreateDirectory(mapsDirectory);
         File.WriteAllText(Path.Combine(packDirectory, "content_pack.toml"),
-            "id = \"base\"\nname = \"Base\"\nversion = \"1\"\nload_order = 0\n");
+            "id = \"org.mortz.base\"\nname = \"Base\"\nversion = \"1\"\nload_order = 0\n");
         string fixture = Path.Combine(_root, "fixture.lxl");
         File.WriteAllBytes(fixture, CreateFixture());
 

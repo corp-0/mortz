@@ -1,11 +1,13 @@
 namespace Mortz.Tools;
 
-internal static class Program
+public static class Program
 {
     private static int Main(string[] args)
     {
         try
         {
+            LoadEnvironment();
+
             switch (args.FirstOrDefault())
             {
                 case "convert-lxl": ConvertLxl.Run(args[1..]); return 0;
@@ -18,7 +20,7 @@ internal static class Program
                     Console.Error.WriteLine("  dotnet run --project tools -- export [client|server|all] [--debug] [--require-official]");
                     Console.Error.WriteLine("  dotnet run --project tools -- official check");
                     Console.Error.WriteLine("  dotnet run --project tools -- official import-3d [--blender PATH] [--rebuild]");
-                    Console.Error.WriteLine("  dotnet run --project tools -- publish-playtest [--only itch,steam,docker]");
+                    Console.Error.WriteLine("  dotnet run --project tools -- publish-playtest [--skip-build] [--only itch,steam,docker]");
                     return 1;
             }
         }
@@ -29,7 +31,14 @@ internal static class Program
         }
     }
 
-    internal static string RepoRoot()
+    private static void LoadEnvironment()
+    {
+        string path = Path.Combine(Directory.GetCurrentDirectory(), ".env");
+        if (File.Exists(path))
+            DotNetEnv.Env.NoClobber().Load(path);
+    }
+
+    public static string RepoRoot()
     {
         if (!File.Exists("project.godot"))
             throw new Exception("run from the repo root (no project.godot in the current directory)");

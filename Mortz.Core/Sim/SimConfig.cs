@@ -14,8 +14,10 @@ public static class SimConfig
     public const float PLAYER_HALF_WIDTH = 16;
     public const float PLAYER_HALF_HEIGHT = 16;
 
-    /// <summary>Critter sprites on the sheet; the server deals one per player at join.</summary>
+    /// <summary>Selectable critter frames on the bundled sprite sheet, laid out
+    /// SKIN_COLUMNS per row (Player.tscn's hframes must match).</summary>
     public const int SKIN_COUNT = 25;
+    public const int SKIN_COLUMNS = 5;
 
     /// <summary>Max wall height (px) walked over automatically; makes carved rubble traversable.</summary>
     public const int STEP_UP_PIXELS = 4;

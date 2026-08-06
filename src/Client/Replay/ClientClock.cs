@@ -3,7 +3,7 @@ namespace Mortz.Client.Replay;
 /// <summary>Client-only presentation time. It never changes Godot's global
 /// clock or the simulation rate; replay-aware visuals and sounds opt into this
 /// scale explicitly.</summary>
-internal static class ClientClock
+public static class ClientClock
 {
     public const float REPLAY_TIME_SCALE = 0.3f;
 

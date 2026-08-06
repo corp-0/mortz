@@ -1,6 +1,7 @@
 using Godot;
 using Mortz.Content;
 using Mortz.Core.Match;
+using Mortz.Core.Match.Configuration;
 using Mortz.Core.Sim;
 using Mortz.Shared;
 using Xunit;
@@ -35,7 +36,7 @@ public class BundledMapTests
             Assert.Equal(package.SpawnPoints.Length, package.SpawnPoints.Distinct().Count());
             Assert.Empty(SpawnPointValidator.Validate(package.BuildMask(), package.SpawnPoints));
 
-            SimWorld world = new(package.BuildMask(), new MatchConfig(), seed: 1, package.SpawnPoints);
+            SimWorld world = new(package.BuildMask(), new MatchConfig(), package.SpawnPoints);
             for (int slot = 1; slot <= package.SuggestedPlayers; slot++)
             {
                 int peerId = 1000 + slot;
