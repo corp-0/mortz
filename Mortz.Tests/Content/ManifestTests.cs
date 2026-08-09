@@ -1,6 +1,7 @@
 using Mortz.Content;
 using Mortz.Core.Match.Configuration;
 using Mortz.Core.Match.Scoring;
+using Mortz.Core.Match.Teams;
 using Xunit;
 
 namespace Mortz.Tests.Content;
@@ -208,6 +209,33 @@ public class ManifestTests
         string normalized = TomlModel.Write(manifest);
         Assert.Equal(manifest.SpawnPoints,
             Assert.IsType<MapManifest>(TomlModel.Read<MapManifest>(normalized).Value).SpawnPoints);
+    }
+
+    [Fact]
+    public void SpawnPointTeamOwnershipIsOptionalAndRoundTrips()
+    {
+        const string TEXT = """
+            name = "Arena"
+            suggested_players = 2
+
+            [[spawn_points]]
+            x = 100
+            y = 250
+            team = "blue"
+
+            [[spawn_points]]
+            x = 300
+            y = 250
+            """;
+
+        MapManifest manifest = Assert.IsType<MapManifest>(
+            TomlModel.Read<MapManifest>(TEXT).Value);
+
+        Assert.Equal(Team.BLUE, manifest.SpawnPoints[0].Team);
+        Assert.Null(manifest.SpawnPoints[1].Team);
+        MapManifest roundTrip = Assert.IsType<MapManifest>(
+            TomlModel.Read<MapManifest>(TomlModel.Write(manifest)).Value);
+        Assert.Equal(manifest.SpawnPoints, roundTrip.SpawnPoints);
     }
 
     [Fact]

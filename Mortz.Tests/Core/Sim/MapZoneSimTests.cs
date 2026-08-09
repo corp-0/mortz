@@ -18,6 +18,18 @@ public class MapZoneSimTests
         [new MapZone("space", ["space"], shape,
             new StatsModifier(ModifierId.ZONE, Mul(Stat.GRAVITY, 0.1f)))]);
 
+    [Fact]
+    public void RotatedShapesUseTheirLocalAxesForContainment()
+    {
+        ZoneShape ellipse = ZoneShape.Ellipse(100, 100, 60, 10, 90);
+        ZoneShape rect = ZoneShape.Rect(80, 95, 40, 10, 90);
+
+        Assert.True(ellipse.Contains(new Vec2(100, 150)));
+        Assert.False(ellipse.Contains(new Vec2(150, 100)));
+        Assert.True(rect.Contains(new Vec2(100, 110)));
+        Assert.False(rect.Contains(new Vec2(120, 100)));
+    }
+
     /// <summary>Whole-sky low-gravity zone: the same jump must carry the zoned
     /// player higher than the unzoned one by the apex.</summary>
     [Fact]
@@ -87,10 +99,12 @@ public class MapZoneSimTests
 
         for (int t = 0; t < 300; t++)
         {
-            // Sweeps left and right through both zones, jumping along the way.
-            PlayerInput input = new((t / 40) % 2 == 0
-                ? InputButtons.RIGHT | (t % 8 == 0 ? InputButtons.JUMP : 0)
-                : InputButtons.LEFT | (t % 8 == 0 ? InputButtons.JUMP : 0));
+            InputButtons buttons = (t / 40) % 2 == 0
+                ? InputButtons.RIGHT
+                : InputButtons.LEFT;
+            if (t % 8 == 0)
+                buttons |= InputButtons.JUMP;
+            PlayerInput input = new(buttons);
             predictor.LocalTick(input);
             server.EnqueueInput(1, t, input);
             server.Step();

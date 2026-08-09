@@ -1,4 +1,4 @@
-using Mortz.Core.Match;
+using Mortz.Core.Match.Configuration;
 using Mortz.Core.Match.Teams;
 using Mortz.Core.Replication;
 using Mortz.Core.Sim;
@@ -26,6 +26,66 @@ public class SimWorldTests
         SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.ProductionConfig);
 
         Assert.Throws<ArgumentException>(() => w.AddPlayer(1, Team.BLUE));
+    }
+
+    [Fact]
+    public void TeamPlayersUseOnlyTheirOwnedSpawnPool()
+    {
+        MatchConfig config = new()
+        {
+            Rules = new ModeRules { Teams = true, SpawnImmunity = 0 },
+        };
+        SpawnPoint[] spawns =
+        [
+            new(new Vec2(100, 100), Team.BLUE),
+            new(new Vec2(200, 100), Team.RED),
+            new(new Vec2(300, 100), Team.BLUE),
+            new(new Vec2(400, 100), Team.RED),
+        ];
+        SimWorld world = new(TestWorlds.Flat(), config, spawns);
+
+        world.AddPlayer(1, Team.BLUE);
+        world.AddPlayer(2, Team.RED);
+        world.AddPlayer(3, Team.BLUE);
+        world.AddPlayer(4, Team.RED);
+
+        Assert.Equal(new Vec2(100, 100), world.Players[1].Position);
+        Assert.Equal(new Vec2(200, 100), world.Players[2].Position);
+        Assert.Equal(new Vec2(300, 100), world.Players[3].Position);
+        Assert.Equal(new Vec2(400, 100), world.Players[4].Position);
+    }
+
+    [Fact]
+    public void TeamWithoutOwnedSpawnsUsesNeutralPool()
+    {
+        MatchConfig config = new()
+        {
+            Rules = new ModeRules { Teams = true, SpawnImmunity = 0 },
+        };
+        SpawnPoint neutral = new(new Vec2(100, 100));
+        SimWorld world = new(TestWorlds.Flat(), config,
+            [neutral, new SpawnPoint(new Vec2(200, 100), Team.BLUE)]);
+
+        world.AddPlayer(1, Team.RED);
+
+        Assert.Equal(neutral.Position, world.Players[1].Position);
+    }
+
+    [Fact]
+    public void TeamOwnershipIsIgnoredWhenTeamsAreOff()
+    {
+        SpawnPoint[] spawns =
+        [
+            new(new Vec2(100, 100), Team.BLUE),
+            new(new Vec2(200, 100), Team.RED),
+        ];
+        SimWorld world = new(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig, spawns);
+
+        world.AddPlayer(1);
+        world.AddPlayer(2);
+
+        Assert.Equal(spawns[0].Position, world.Players[1].Position);
+        Assert.Equal(spawns[1].Position, world.Players[2].Position);
     }
 
     [Fact]

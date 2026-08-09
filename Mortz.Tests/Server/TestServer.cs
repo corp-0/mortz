@@ -1,6 +1,4 @@
-using System.Collections.Immutable;
 using Mortz.Content;
-using Mortz.Core.Match;
 using Mortz.Core.Match.Configuration;
 using Mortz.Core.Net;
 using Mortz.Core.Sim;
@@ -57,7 +55,12 @@ internal sealed class TestServer : IDisposable
         Hash = $"{id}-hash",
         Width = 64,
         Height = 64,
-        SpawnPoints = ImmutableArray.Create(new Vec2(8, 8), new Vec2(48, 8), new Vec2(24, 8)),
+        SpawnPoints =
+        [
+            new SpawnPoint(new Vec2(8, 8)),
+            new SpawnPoint(new Vec2(48, 8)),
+            new SpawnPoint(new Vec2(24, 8)),
+        ],
         InitialTerrain = new TerrainMask(64, 64, (_, _) => false, (_, _) => false),
     };
 

@@ -1,6 +1,8 @@
+using Mortz.Core.Match.Teams;
+
 namespace Mortz.Content;
 
-public readonly record struct MapSpawnPoint(int X, int Y);
+public readonly record struct MapSpawnPoint(int X, int Y, Team? Team = null);
 
 [TomlModel]
 public sealed record MapManifest

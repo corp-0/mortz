@@ -213,9 +213,8 @@ text = "Join game"
 layout_mode = 2
 text = "Host game"
 
-[node name="Map editor" type="Button" parent="HomePanel/HBoxContainer/VBoxContainer2" unique_id=149550485]
+[node name="MapEditor" type="Button" parent="HomePanel/HBoxContainer/VBoxContainer2" unique_id=149550485]
 layout_mode = 2
-disabled = true
 text = "Map editor"
 
 [node name="Settings" type="Button" parent="HomePanel/HBoxContainer/VBoxContainer2" unique_id=140986444]
@@ -241,5 +240,6 @@ libraries/ = SubResource("AnimationLibrary_duaim")
 [connection signal="pressed" from="MenuCenter/Menu/HostPanel/HostBackButton" to="." method="OnBackPressed"]
 [connection signal="pressed" from="HomePanel/HBoxContainer/VBoxContainer2/JoinButton" to="." method="OnJoinMenuPressed"]
 [connection signal="pressed" from="HomePanel/HBoxContainer/VBoxContainer2/HostButton" to="." method="OnHostMenuPressed"]
+[connection signal="pressed" from="HomePanel/HBoxContainer/VBoxContainer2/MapEditor" to="." method="OnMapEditorPressed"]
 [connection signal="pressed" from="HomePanel/HBoxContainer/VBoxContainer2/Settings" to="." method="OnSettingsPressed"]
 [connection signal="pressed" from="HomePanel/HBoxContainer/VBoxContainer2/Exit" to="." method="OnExitPressed"]

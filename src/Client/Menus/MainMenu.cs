@@ -22,6 +22,9 @@ public partial class MainMenu : Control
     public delegate void JoinRequestedEventHandler(string address, int port,
         string playerName, int skin);
 
+    [Signal]
+    public delegate void MapEditorRequestedEventHandler();
+
     [Export] private MenuBackdrop _backdrop = null!;
     [Export] private Control _homePanel = null!;
     [Export] private ServerBrowser _browser = null!;
@@ -104,8 +107,6 @@ public partial class MainMenu : Control
         _hostPanel.Visible = panel == _hostPanel;
     }
 
-    // ---- button handlers (connected in MainMenu.tscn) ----
-
     public void OnJoinMenuPressed()
     {
         SetStatus("");
@@ -129,6 +130,8 @@ public partial class MainMenu : Control
         ShowPanel(_settingsScreen);
         _settingsScreen.Open();
     }
+
+    public void OnMapEditorPressed() => EmitSignal(SignalName.MapEditorRequested);
 
     public void OnBackPressed()
     {

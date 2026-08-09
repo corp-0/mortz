@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using Godot;
 using Mortz.Core.Sim;
 using Mortz.Core.Sim.Modifiers;
@@ -20,7 +19,7 @@ public sealed class MapPackage
     public required string Hash { get; init; }
     public required int Width { get; init; }
     public required int Height { get; init; }
-    public required ImmutableArray<Vec2> SpawnPoints { get; init; }
+    public required SpawnPoint[] SpawnPoints { get; init; }
     public required MapZones Zones { get; init; }
     public required Image Background { get; init; }
     public required Image Solid { get; init; }

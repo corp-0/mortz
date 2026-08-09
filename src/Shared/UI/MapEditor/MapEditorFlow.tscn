@@ -1,0 +1,307 @@
+[gd_scene format=3 uid="uid://bxjeqfdo1sml8"]
+
+[ext_resource type="Script" uid="uid://bittit1m6m76" path="res://src/Client/MapEditor/MapEditorFlowHud.cs" id="1_flow_hud"]
+[ext_resource type="FontFile" uid="uid://tah7qwxd4iyq" path="res://Assets/Fonts/Metal_Mania/MetalMania-Regular.ttf" id="2_font"]
+
+[node name="MapEditorFlowHud" type="Control" unique_id=1416404324 node_paths=PackedStringArray("_packScreen", "_mapScreen", "_packRows", "_mapRows", "_packEmpty", "_mapEmpty", "_mapTitle", "_mapHint", "_status", "_createPackDialog", "_packName", "_packId", "_createMapDialog", "_mapName", "_mapId", "_mapWidth", "_mapHeight", "_suggestedPlayers")]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_flow_hud")
+_packScreen = NodePath("PackScreen")
+_mapScreen = NodePath("MapScreen")
+_packRows = NodePath("PackScreen/Margin/Column/Scroll/Rows")
+_mapRows = NodePath("MapScreen/Margin/Column/Scroll/Rows")
+_packEmpty = NodePath("PackScreen/Margin/Column/Scroll/Rows/Empty")
+_mapEmpty = NodePath("MapScreen/Margin/Column/Scroll/Rows/Empty")
+_mapTitle = NodePath("MapScreen/Margin/Column/Title")
+_mapHint = NodePath("MapScreen/Margin/Column/Hint")
+_status = NodePath("Status")
+_createPackDialog = NodePath("CreatePackDialog")
+_packName = NodePath("CreatePackDialog/Fields/Name")
+_packId = NodePath("CreatePackDialog/Fields/Id")
+_createMapDialog = NodePath("CreateMapDialog")
+_mapName = NodePath("CreateMapDialog/Fields/Name")
+_mapId = NodePath("CreateMapDialog/Fields/Id")
+_mapWidth = NodePath("CreateMapDialog/Fields/Dimensions/Width")
+_mapHeight = NodePath("CreateMapDialog/Fields/Dimensions/Height")
+_suggestedPlayers = NodePath("CreateMapDialog/Fields/SuggestedPlayers")
+
+[node name="Background" type="ColorRect" parent="." unique_id=1484658243]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.025, 0.03, 0.04, 1)
+
+[node name="PackScreen" type="Control" parent="." unique_id=2135315584]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Margin" type="MarginContainer" parent="PackScreen" unique_id=1871449226]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 60
+theme_override_constants/margin_top = 44
+theme_override_constants/margin_right = 60
+theme_override_constants/margin_bottom = 76
+
+[node name="Column" type="VBoxContainer" parent="PackScreen/Margin" unique_id=560899777]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="PackScreen/Margin/Column" unique_id=1051850615]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("2_font")
+theme_override_font_sizes/font_size = 42
+text = "CONTENT PACKS"
+
+[node name="Hint" type="Label" parent="PackScreen/Margin/Column" unique_id=643384812]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.72, 0.75, 1)
+text = "Choose where the map belongs."
+
+[node name="Scroll" type="ScrollContainer" parent="PackScreen/Margin/Column" unique_id=1757086049]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Rows" type="VBoxContainer" parent="PackScreen/Margin/Column/Scroll" unique_id=2088151189]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="Empty" type="Label" parent="PackScreen/Margin/Column/Scroll/Rows" unique_id=161419938]
+custom_minimum_size = Vector2(0, 120)
+layout_mode = 2
+text = "No content packs yet. Create one to start making maps."
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Actions" type="HBoxContainer" parent="PackScreen/Margin/Column" unique_id=1360754919]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Create" type="Button" parent="PackScreen/Margin/Column/Actions" unique_id=628796800]
+custom_minimum_size = Vector2(180, 44)
+layout_mode = 2
+text = "Create content pack"
+
+[node name="Spacer" type="Control" parent="PackScreen/Margin/Column/Actions" unique_id=1828502]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Back" type="Button" parent="PackScreen/Margin/Column/Actions" unique_id=2072356776]
+custom_minimum_size = Vector2(100, 44)
+layout_mode = 2
+text = "Back"
+
+[node name="MapScreen" type="Control" parent="." unique_id=1229172132]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Margin" type="MarginContainer" parent="MapScreen" unique_id=1560505426]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 60
+theme_override_constants/margin_top = 44
+theme_override_constants/margin_right = 60
+theme_override_constants/margin_bottom = 76
+
+[node name="Column" type="VBoxContainer" parent="MapScreen/Margin" unique_id=679726597]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="MapScreen/Margin/Column" unique_id=1982256981]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("2_font")
+theme_override_font_sizes/font_size = 42
+text = "MAPS"
+
+[node name="Hint" type="Label" parent="MapScreen/Margin/Column" unique_id=2016621897]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.72, 0.75, 1)
+text = "Choose a map, or create a blank one."
+
+[node name="Scroll" type="ScrollContainer" parent="MapScreen/Margin/Column" unique_id=755275848]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Rows" type="VBoxContainer" parent="MapScreen/Margin/Column/Scroll" unique_id=1690489419]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="Empty" type="Label" parent="MapScreen/Margin/Column/Scroll/Rows" unique_id=2028845276]
+custom_minimum_size = Vector2(0, 120)
+layout_mode = 2
+text = "This content pack has no maps yet. Create its first map."
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Actions" type="HBoxContainer" parent="MapScreen/Margin/Column" unique_id=1696926873]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Create" type="Button" parent="MapScreen/Margin/Column/Actions" unique_id=2129741907]
+custom_minimum_size = Vector2(160, 44)
+layout_mode = 2
+text = "Create map"
+
+[node name="Spacer" type="Control" parent="MapScreen/Margin/Column/Actions" unique_id=55442391]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Back" type="Button" parent="MapScreen/Margin/Column/Actions" unique_id=2015398614]
+custom_minimum_size = Vector2(140, 44)
+layout_mode = 2
+text = "Content packs"
+
+[node name="Status" type="Label" parent="." unique_id=276776332]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 60.0
+offset_top = -58.0
+offset_right = -60.0
+offset_bottom = -32.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_colors/font_color = Color(1, 0.55, 0.45, 1)
+autowrap_mode = 2
+
+[node name="CreatePackDialog" type="ConfirmationDialog" parent="." unique_id=1555739135]
+title = "Create content pack"
+size = Vector2i(520, 260)
+ok_button_text = "Create pack"
+
+[node name="Fields" type="VBoxContainer" parent="CreatePackDialog" unique_id=718261399]
+offset_left = 12.0
+offset_top = 12.0
+offset_right = 508.0
+offset_bottom = 190.0
+theme_override_constants/separation = 8
+
+[node name="NameLabel" type="Label" parent="CreatePackDialog/Fields" unique_id=386172290]
+layout_mode = 2
+text = "Name"
+
+[node name="Name" type="LineEdit" parent="CreatePackDialog/Fields" unique_id=1140278465]
+layout_mode = 2
+placeholder_text = "My maps"
+
+[node name="IdLabel" type="Label" parent="CreatePackDialog/Fields" unique_id=1654173861]
+layout_mode = 2
+text = "Pack ID"
+
+[node name="Id" type="LineEdit" parent="CreatePackDialog/Fields" unique_id=1881728982]
+layout_mode = 2
+placeholder_text = "com.example.my-maps"
+
+[node name="IdHint" type="Label" parent="CreatePackDialog/Fields" unique_id=1759742349]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.72, 0.75, 1)
+text = "Use a reverse-domain ID. It cannot be changed later."
+
+[node name="CreateMapDialog" type="ConfirmationDialog" parent="." unique_id=1284616874]
+title = "Create map"
+size = Vector2i(560, 410)
+ok_button_text = "Create map"
+
+[node name="Fields" type="VBoxContainer" parent="CreateMapDialog" unique_id=1346270143]
+offset_left = 12.0
+offset_top = 12.0
+offset_right = 548.0
+offset_bottom = 338.0
+theme_override_constants/separation = 8
+
+[node name="NameLabel" type="Label" parent="CreateMapDialog/Fields" unique_id=1227903125]
+layout_mode = 2
+text = "Name"
+
+[node name="Name" type="LineEdit" parent="CreateMapDialog/Fields" unique_id=74834660]
+layout_mode = 2
+placeholder_text = "My Arena"
+
+[node name="IdLabel" type="Label" parent="CreateMapDialog/Fields" unique_id=826186753]
+layout_mode = 2
+text = "Map ID"
+
+[node name="Id" type="LineEdit" parent="CreateMapDialog/Fields" unique_id=376652693]
+layout_mode = 2
+placeholder_text = "my-arena"
+
+[node name="DimensionsLabel" type="Label" parent="CreateMapDialog/Fields" unique_id=902197369]
+layout_mode = 2
+text = "Canvas size"
+
+[node name="Dimensions" type="HBoxContainer" parent="CreateMapDialog/Fields" unique_id=699064024]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Width" type="SpinBox" parent="CreateMapDialog/Fields/Dimensions" unique_id=47041994]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 320.0
+max_value = 8192.0
+value = 1280.0
+rounded = true
+suffix = " px wide"
+
+[node name="Height" type="SpinBox" parent="CreateMapDialog/Fields/Dimensions" unique_id=1006781989]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 240.0
+max_value = 8192.0
+value = 720.0
+rounded = true
+suffix = " px high"
+
+[node name="PlayersLabel" type="Label" parent="CreateMapDialog/Fields" unique_id=313174941]
+layout_mode = 2
+text = "Suggested players"
+
+[node name="SuggestedPlayers" type="SpinBox" parent="CreateMapDialog/Fields" unique_id=1724986236]
+layout_mode = 2
+min_value = 1.0
+max_value = 32.0
+value = 4.0
+rounded = true
+
+[node name="BlankHint" type="Label" parent="CreateMapDialog/Fields" unique_id=1022614684]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.72, 0.75, 1)
+text = "The new map starts blank. Add each layer image in the editor."
+
+[connection signal="pressed" from="PackScreen/Margin/Column/Actions/Create" to="." method="OnCreatePackPressed"]
+[connection signal="pressed" from="PackScreen/Margin/Column/Actions/Back" to="." method="OnPackBackPressed"]
+[connection signal="pressed" from="MapScreen/Margin/Column/Actions/Create" to="." method="OnCreateMapPressed"]
+[connection signal="pressed" from="MapScreen/Margin/Column/Actions/Back" to="." method="OnMapBackPressed"]
+[connection signal="confirmed" from="CreatePackDialog" to="." method="OnCreatePackConfirmed"]
+[connection signal="confirmed" from="CreateMapDialog" to="." method="OnCreateMapConfirmed"]

@@ -13,7 +13,11 @@ namespace Mortz.Core.Sim;
 /// unordered collections in here: the same inputs must always produce the
 /// same state.
 /// </summary>
-public sealed class SimWorld
+public sealed class SimWorld(
+    TerrainMask terrain,
+    MatchConfig config,
+    IReadOnlyList<SpawnPoint>? spawnPoints,
+    MapZones? zones = null)
 {
     public enum MortarEventKind : byte
     {
@@ -25,9 +29,9 @@ public sealed class SimWorld
     public readonly record struct MortarEvent(MortarEventKind Kind, MortarState State);
 
     public int Tick { get; private set; }
-    public TerrainMask Terrain { get; }
-    public MatchConfig Config { get; }
-    public MapZones Zones { get; }
+    public TerrainMask Terrain { get; } = terrain;
+    public MatchConfig Config { get; } = config;
+    public MapZones Zones { get; } = zones ?? MapZones.None;
 
     // Sorted for deterministic iteration order.
     private readonly SortedDictionary<int, PlayerState> _players = new();
@@ -40,7 +44,8 @@ public sealed class SimWorld
     private readonly SortedDictionary<int, ulong> _zoneMasks = new();
     private readonly SortedDictionary<int, PlayerStats> _effective = new();
     private readonly SortedDictionary<int, byte> _netSlots = new();
-    private readonly Vec2[] _spawnPoints;
+    private readonly SpawnPoint[] _spawnPoints = spawnPoints?.ToArray() ?? [];
+    private readonly Dictionary<int, int> _spawnAssignments = [];
 
     // Shells in flight, in spawn order.
     private readonly List<MortarState> _mortars = new();
@@ -70,11 +75,8 @@ public sealed class SimWorld
 
     public SimWorld(TerrainMask terrain, MatchConfig config,
         IReadOnlyList<Vec2>? spawnPoints = null, MapZones? zones = null)
+        : this(terrain, config, spawnPoints?.Select(point => new SpawnPoint(point)).ToArray(), zones)
     {
-        Terrain = terrain;
-        Config = config;
-        _spawnPoints = spawnPoints?.ToArray() ?? [];
-        Zones = zones ?? MapZones.None;
     }
 
     public void AddPlayer(int peerId, Team? team = null, byte skin = 0)
@@ -92,7 +94,7 @@ public sealed class SimWorld
         _zoneMasks[peerId] = 0;
         _stats[peerId] = PlayerStats.Resolve(Config);
         _effective[peerId] = _stats[peerId];
-        _players[peerId] = FreshState(peerId, lastInputSeq: -1) with
+        _players[peerId] = FreshState(peerId, team, lastInputSeq: -1) with
         {
             Skin = skin,
             Team = team,
@@ -154,10 +156,10 @@ public sealed class SimWorld
         return _effective[id];
     }
 
-    private PlayerState FreshState(int peerId, int lastInputSeq)
+    private PlayerState FreshState(int peerId, Team? team, int lastInputSeq)
     {
         PlayerStats stats = _stats[peerId];
-        Vec2 spawn = FindSpawn(peerId);
+        Vec2 spawn = FindSpawn(peerId, team);
         return new PlayerState
         {
             PeerId = peerId,
@@ -173,12 +175,20 @@ public sealed class SimWorld
         };
     }
 
-    /// <summary>Authored spawn points by net slot; maps without any fall back
-    /// to a stable-per-peer column search.</summary>
-    private Vec2 FindSpawn(int peerId)
+    private Vec2 FindSpawn(int peerId, Team? team)
     {
         if (_spawnPoints.Length > 0)
-            return _spawnPoints[(_netSlots[peerId] - 1) % _spawnPoints.Length];
+        {
+            SpawnPoint[] pool = SpawnPool(team);
+            if (!_spawnAssignments.TryGetValue(peerId, out int assignment))
+            {
+                assignment = Config.Rules.Teams && team != null
+                    ? _players.Values.Count(player => player.Team == team)
+                    : _netSlots[peerId] - 1;
+                _spawnAssignments[peerId] = assignment;
+            }
+            return pool[assignment % pool.Length].Position;
+        }
 
         // Long math: ENet peer ids are large random ints, int multiply overflows.
         int margin = (int)SimConfig.PLAYER_HALF_WIDTH * 3;
@@ -192,6 +202,17 @@ public sealed class SimWorld
         return new Vec2(x, Terrain.Height / 2f); // no floor in this column: drop them mid-air
     }
 
+    private SpawnPoint[] SpawnPool(Team? team)
+    {
+        if (!Config.Rules.Teams || team == null)
+            return _spawnPoints;
+        SpawnPoint[] owned = _spawnPoints.Where(point => point.Team == team).ToArray();
+        if (owned.Length > 0)
+            return owned;
+        SpawnPoint[] neutral = _spawnPoints.Where(point => point.Team == null).ToArray();
+        return neutral.Length > 0 ? neutral : _spawnPoints;
+    }
+
     public void RemovePlayer(int peerId)
     {
         _players.Remove(peerId);
@@ -202,6 +223,7 @@ public sealed class SimWorld
         _zoneMasks.Remove(peerId);
         _effective.Remove(peerId);
         _netSlots.Remove(peerId);
+        _spawnAssignments.Remove(peerId);
     }
 
     public void EnqueueInput(int peerId, int seq, PlayerInput input)
@@ -261,7 +283,7 @@ public sealed class SimWorld
             {
                 state = prev;
                 if (--state.RespawnTicks == 0)
-                    state = FreshState(id, queue.LastAppliedSeq) with
+                    state = FreshState(id, prev.Team, queue.LastAppliedSeq) with
                     {
                         Skin = prev.Skin,
                         Team = prev.Team,

@@ -8,6 +8,7 @@
 [ext_resource type="Resource" uid="uid://0gok5648oexn" path="res://Assets/Sounds/SoundRegistry.tres" id="6_sounds"]
 [ext_resource type="PackedScene" path="res://src/Shared/Scenes/Root/ConnectedSession.tscn" id="7_csession"]
 [ext_resource type="Script" uid="uid://drn2cynsax60k" path="res://src/Client/Session/ClientSessionController.cs" id="8_session"]
+[ext_resource type="PackedScene" uid="uid://d3jmapeditorscreen" path="res://src/Shared/Scenes/MapEditor/MapEditor.tscn" id="9_editor"]
 
 [node name="ClientMain" type="Node" unique_id=282168119 node_paths=PackedStringArray("_sfx")]
 script = ExtResource("1_cmain")
@@ -23,3 +24,4 @@ _gameViewScene = ExtResource("2_gview")
 _lobbyScene = ExtResource("4_lobby")
 _sessionScene = ExtResource("7_csession")
 _menuScene = ExtResource("3_menu")
+_mapEditorScene = ExtResource("9_editor")

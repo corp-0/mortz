@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using System.Text;
 using Mortz.Content;
 using Mortz.Core.Match.Configuration;
@@ -170,7 +169,7 @@ public sealed class SettingsFeatureTests : IDisposable
         Hash = $"{id}-hash",
         Width = 4,
         Height = 4,
-        SpawnPoints = ImmutableArray.Create(new Vec2(1, 1)),
+        SpawnPoints = [new SpawnPoint(new Vec2(1, 1))],
         InitialTerrain = new TerrainMask(4, 4, (_, _) => false, (_, _) => false),
     };
 

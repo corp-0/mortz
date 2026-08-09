@@ -90,6 +90,30 @@ public class MapZoneManifestTests
     }
 
     [Fact]
+    public void RotatedEllipsesRoundTrip()
+    {
+        const string SHAPE =
+            "shape = { type = \"ellipse\", x = 100, y = 80, radius_x = 60, " +
+            "radius_y = 20, rotation = 35.5 }";
+        ContentReadResult<MapManifest> result = TomlModel.Read<MapManifest>(HEADER + $"""
+
+            [[zones]]
+            name = "oval"
+            {SHAPE}
+            """);
+
+        MapManifest manifest = Assert.IsType<MapManifest>(result.Value);
+        Assert.Empty(result.Diagnostics);
+        Assert.Equal(new EllipseMapZoneShape(100, 80, 60, 20, 35.5f),
+            Assert.Single(manifest.Zones).Shape);
+
+        string written = TomlModel.Write(manifest);
+        MapManifest reparsed = Assert.IsType<MapManifest>(
+            TomlModel.Read<MapManifest>(written).Value);
+        Assert.Equal(manifest.Zones[0].Shape, reparsed.Zones[0].Shape);
+    }
+
+    [Fact]
     public void UnknownStatNameIsRejectedWithPath()
     {
         ContentReadResult<MapManifest> result = TomlModel.Read<MapManifest>(HEADER + """

@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using Mortz.Core.Sim;
 using Mortz.Core.Sim.Modifiers;
 using Mortz.Core.Terrain;
@@ -16,7 +15,7 @@ public sealed record MapSnapshot
     public required string Hash { get; init; }
     public required int Width { get; init; }
     public required int Height { get; init; }
-    public required ImmutableArray<Vec2> SpawnPoints { get; init; }
+    public required SpawnPoint[] SpawnPoints { get; init; }
     public MapZones Zones { get; init; } = MapZones.None;
     public required TerrainMask InitialTerrain { get; init; }
 

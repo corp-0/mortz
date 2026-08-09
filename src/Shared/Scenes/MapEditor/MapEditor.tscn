@@ -1,0 +1,27 @@
+[gd_scene load_steps=6 format=3 uid="uid://d3jmapeditorscreen"]
+
+[ext_resource type="Script" uid="uid://bl5js2wxao6wm" path="res://src/Client/MapEditor/MapEditorScreen.cs" id="1_screen"]
+[ext_resource type="Script" uid="uid://i7si72corf84" path="res://src/Client/MapEditor/MapEditor.cs" id="2_editor"]
+[ext_resource type="PackedScene" uid="uid://d3jmapeditorscene" path="res://src/Shared/UI/MapEditor/MapEditor.tscn" id="3_hud"]
+[ext_resource type="Script" path="res://src/Client/MapEditor/MapEditorFlow.cs" id="4_flow"]
+[ext_resource type="PackedScene" uid="uid://d3jmapeditorflowhud" path="res://src/Shared/UI/MapEditor/MapEditorFlow.tscn" id="5_flow_hud"]
+
+[node name="MapEditor" type="Node2D" node_paths=PackedStringArray("_editor", "_flow", "_flowHud", "_editorHud")]
+script = ExtResource("1_screen")
+_editor = NodePath("Editor")
+_flow = NodePath("Flow")
+_flowHud = NodePath("Hud/MapEditorFlowHud")
+_editorHud = NodePath("Hud/MapEditorHud")
+
+[node name="Flow" type="Node" parent="."]
+script = ExtResource("4_flow")
+
+[node name="Editor" type="Node" parent="."]
+script = ExtResource("2_editor")
+
+[node name="Hud" type="CanvasLayer" parent="."]
+
+[node name="MapEditorFlowHud" parent="Hud" instance=ExtResource("5_flow_hud")]
+
+[node name="MapEditorHud" parent="Hud" instance=ExtResource("3_hud")]
+visible = false

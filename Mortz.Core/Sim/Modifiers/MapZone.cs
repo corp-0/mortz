@@ -4,30 +4,47 @@ public enum ZoneShapeKind : byte
 {
     RECT,
     CIRCLE,
+    ELLIPSE,
 }
 
-/// <summary>Zone geometry in map pixels. RECT anchors X,Y at the top-left
-/// corner; CIRCLE centers on X,Y. Integer authored coordinates, float
-/// containment: both sides run the same math on the same values, so
-/// membership is deterministic.</summary>
+/// <summary>Zone geometry in map pixels. Rectangles use a top-left X/Y;
+/// circles and ellipses use a center X/Y. Rotation is in degrees.</summary>
 public readonly record struct ZoneShape(ZoneShapeKind Kind, int X, int Y,
-    int Width, int Height, int Radius)
+    int Width, int Height, int Radius, int RadiusY, float Rotation)
 {
-    public static ZoneShape Rect(int x, int y, int width, int height) =>
-        new(ZoneShapeKind.RECT, x, y, width, height, 0);
+    public static ZoneShape Rect(int x, int y, int width, int height,
+        float rotation = 0) =>
+        new(ZoneShapeKind.RECT, x, y, width, height, 0, 0, rotation);
 
     public static ZoneShape Circle(int x, int y, int radius) =>
-        new(ZoneShapeKind.CIRCLE, x, y, 0, 0, radius);
+        new(ZoneShapeKind.CIRCLE, x, y, 0, 0, radius, radius, 0);
+
+    public static ZoneShape Ellipse(int x, int y, int radiusX, int radiusY,
+        float rotation = 0) =>
+        new(ZoneShapeKind.ELLIPSE, x, y, 0, 0, radiusX, radiusY, rotation);
 
     public bool Contains(Vec2 point)
     {
         if (Kind == ZoneShapeKind.RECT)
         {
-            return point.X >= X && point.X < X + Width &&
-                   point.Y >= Y && point.Y < Y + Height;
+            Vec2 center = new(X + Width / 2f, Y + Height / 2f);
+            Vec2 local = Unrotate(point - center, Rotation);
+            return local.X >= -Width / 2f && local.X < Width / 2f &&
+                   local.Y >= -Height / 2f && local.Y < Height / 2f;
         }
-        Vec2 toCenter = new(point.X - X, point.Y - Y);
-        return toCenter.LengthSquared() <= (float)Radius * Radius;
+        Vec2 toCenter = Unrotate(new Vec2(point.X - X, point.Y - Y), Rotation);
+        float nx = toCenter.X / Radius;
+        float ny = toCenter.Y / RadiusY;
+        return nx * nx + ny * ny <= 1f;
+    }
+
+    private static Vec2 Unrotate(Vec2 point, float degrees)
+    {
+        float radians = -degrees * MathF.PI / 180f;
+        float cos = MathF.Cos(radians);
+        float sin = MathF.Sin(radians);
+        return new Vec2(point.X * cos - point.Y * sin,
+            point.X * sin + point.Y * cos);
     }
 }
 

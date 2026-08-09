@@ -21,21 +21,31 @@ public sealed record MapZoneDef
 [TomlUnion]
 [TomlCase("rect", typeof(RectMapZoneShape))]
 [TomlCase("circle", typeof(CircleMapZoneShape))]
+[TomlCase("ellipse", typeof(EllipseMapZoneShape))]
 public abstract record MapZoneShape(int X, int Y)
 {
     public abstract ZoneShape Compile();
 }
 
-public sealed record RectMapZoneShape(int X, int Y, int Width, int Height)
+public sealed record RectMapZoneShape(int X, int Y, int Width, int Height,
+    float Rotation = 0)
     : MapZoneShape(X, Y)
 {
-    public override ZoneShape Compile() => ZoneShape.Rect(X, Y, Width, Height);
+    public override ZoneShape Compile() => ZoneShape.Rect(X, Y, Width, Height, Rotation);
 }
 
 public sealed record CircleMapZoneShape(int X, int Y, int Radius)
     : MapZoneShape(X, Y)
 {
     public override ZoneShape Compile() => ZoneShape.Circle(X, Y, Radius);
+}
+
+public sealed record EllipseMapZoneShape(int X, int Y, int RadiusX, int RadiusY,
+    float Rotation = 0)
+    : MapZoneShape(X, Y)
+{
+    public override ZoneShape Compile() => ZoneShape.Ellipse(
+        X, Y, RadiusX, RadiusY, Rotation);
 }
 
 /// <summary>A stat change applied while a player is inside a zone.</summary>

@@ -9,29 +9,6 @@ public class SpawnPointTests
     private static readonly Vec2[] _authored = [new(100, 250), new(300, 250)];
 
     [Fact]
-    public void Validator_ReportsWhichPointIsWrong_AndWhy()
-    {
-        TerrainMask terrain = TestWorlds.Flat(extraSolid: (x, y) => x is >= 180 and < 220 && y >= 200);
-        Vec2[] points =
-        [
-            new(100, 250), // valid
-            new(10, 250),  // body outside left edge
-            new(200, 250), // body overlaps pillar
-            new(300, 200), // unsupported
-            new(100, 250), // duplicates entry 0
-        ];
-
-        IReadOnlyList<SpawnPointValidationError> errors = SpawnPointValidator.Validate(terrain, points);
-
-        Assert.Equal([1, 2, 3, 4], errors.Select(error => error.Index).ToArray());
-        Assert.Equal(points[1], errors[0].Position);
-        Assert.Contains("out of bounds", errors[0].Reason, StringComparison.Ordinal);
-        Assert.Contains("overlaps", errors[1].Reason, StringComparison.Ordinal);
-        Assert.Contains("not supported", errors[2].Reason, StringComparison.Ordinal);
-        Assert.Contains("duplicates spawn_points[0]", errors[3].Reason, StringComparison.Ordinal);
-    }
-
-    [Fact]
     public void AuthoredPoints_AreHandedOutByNetSlot_AndCycleWhenTheyRunOut()
     {
         SimWorld world = new(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig, _authored);
@@ -46,6 +23,18 @@ public class SpawnPointTests
         Assert.Equal((byte)1, world.Players[99].NetSlot);
         Assert.Equal((byte)2, world.Players[7].NetSlot);
         Assert.Equal((byte)3, world.Players[42].NetSlot);
+    }
+
+    [Fact]
+    public void AuthoredPointDoesNotNeedTerrainSupport()
+    {
+        Vec2 spawn = new(300, 200);
+        SimWorld world = new(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig, [spawn]);
+
+        world.AddPlayer(1);
+
+        Assert.Equal(spawn, world.Players[1].Position);
+        Assert.False(world.Players[1].Grounded);
     }
 
     [Fact]

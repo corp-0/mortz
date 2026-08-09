@@ -1,4 +1,3 @@
-using Mortz.Core.Match;
 using Mortz.Core.Match.Configuration;
 using Mortz.Core.Match.Participation;
 using Mortz.Core.Match.Scoring;
@@ -28,7 +27,7 @@ public sealed class MatchSession
     private MatchPoint? _matchPoint;
 
     public MatchSession(TerrainMask terrain, MatchConfig config, int victoryLapTicks,
-        MatchStateKeys keys, IReadOnlyList<Vec2>? spawnPoints = null, MapZones? zones = null)
+        MatchStateKeys keys, IReadOnlyList<SpawnPoint>? spawnPoints = null, MapZones? zones = null)
     {
         _victoryLapTicks = Math.Max(1, victoryLapTicks);
         World = new SimWorld(terrain, config, spawnPoints, zones);

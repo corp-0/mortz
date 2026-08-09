@@ -69,7 +69,8 @@
                         "type": "string",
                         "enum": [
                           "rect",
-                          "circle"
+                          "circle",
+                          "ellipse"
                         ]
                       },
                       "x": {
@@ -96,6 +97,19 @@
                         "type": "integer",
                         "minimum": 1,
                         "maximum": 2147483647
+                      },
+                      "radius_x": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 2147483647
+                      },
+                      "radius_y": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 2147483647
+                      },
+                      "rotation": {
+                        "type": "number"
                       }
                     },
                     "required": [
@@ -109,7 +123,9 @@
                       "type": {
                         "const": "rect"
                       },
-                      "radius": false
+                      "radius": false,
+                      "radius_x": false,
+                      "radius_y": false
                     },
                     "required": [
                       "width",
@@ -128,7 +144,8 @@
                         "type": "string",
                         "enum": [
                           "rect",
-                          "circle"
+                          "circle",
+                          "ellipse"
                         ]
                       },
                       "x": {
@@ -155,6 +172,19 @@
                         "type": "integer",
                         "minimum": 1,
                         "maximum": 2147483647
+                      },
+                      "radius_x": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 2147483647
+                      },
+                      "radius_y": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 2147483647
+                      },
+                      "rotation": {
+                        "type": "number"
                       }
                     },
                     "required": [
@@ -169,10 +199,88 @@
                         "const": "circle"
                       },
                       "width": false,
-                      "height": false
+                      "height": false,
+                      "radius_x": false,
+                      "radius_y": false,
+                      "rotation": false
                     },
                     "required": [
                       "radius"
+                    ]
+                  }
+                ]
+              },
+              {
+                "allOf": [
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "rect",
+                          "circle",
+                          "ellipse"
+                        ]
+                      },
+                      "x": {
+                        "type": "integer",
+                        "minimum": -2147483648,
+                        "maximum": 2147483647
+                      },
+                      "y": {
+                        "type": "integer",
+                        "minimum": -2147483648,
+                        "maximum": 2147483647
+                      },
+                      "width": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 2147483647
+                      },
+                      "height": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 2147483647
+                      },
+                      "radius": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 2147483647
+                      },
+                      "radius_x": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 2147483647
+                      },
+                      "radius_y": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 2147483647
+                      },
+                      "rotation": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "x",
+                      "y"
+                    ]
+                  },
+                  {
+                    "properties": {
+                      "type": {
+                        "const": "ellipse"
+                      },
+                      "width": false,
+                      "height": false,
+                      "radius": false
+                    },
+                    "required": [
+                      "radius_x",
+                      "radius_y"
                     ]
                   }
                 ]

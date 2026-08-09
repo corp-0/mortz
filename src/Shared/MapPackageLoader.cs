@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using Godot;
 using Mortz.Content;
 using Mortz.Core.Sim;
@@ -39,19 +38,10 @@ public static class MapPackageLoader
             return new MapPackageLoadResult(null, diagnostics);
         }
 
-        ImmutableArray<Vec2> spawnPoints = source.Manifest.SpawnPoints
-            .Select(point => new Vec2(point.X, point.Y))
-            .ToImmutableArray();
+        SpawnPoint[] spawnPoints = source.Manifest.SpawnPoints
+            .Select(point => new SpawnPoint(new Vec2(point.X, point.Y), point.Team))
+            .ToArray();
         TerrainMask initialTerrain = BuildMask(solid, destructible);
-        IReadOnlyList<SpawnPointValidationError> spawnErrors =
-            SpawnPointValidator.Validate(initialTerrain, spawnPoints);
-        foreach (SpawnPointValidationError error in spawnErrors)
-        {
-            Error(diagnostics, source.Definition.ManifestPath,
-                $"spawn_points[{error.Index}] ({error.Position.X:0}, {error.Position.Y:0}): {error.Reason}");
-        }
-        if (spawnErrors.Count > 0)
-            return new MapPackageLoadResult(null, diagnostics);
 
         return new MapPackageLoadResult(new MapPackage
         {

@@ -1,4 +1,3 @@
-using Mortz.Core.Match;
 using Mortz.Core.Match.Configuration;
 using Mortz.Core.Match.Participation;
 using Mortz.Core.Match.Scoring;
@@ -45,7 +44,8 @@ public class MatchSessionTests
                 SpawnImmunity = 0,
                 RespawnDelay = respawnDelay,
             },
-        }, victoryLapTicks, _keys, spawnPoints);
+        }, victoryLapTicks, _keys,
+            spawnPoints?.Select(point => new SpawnPoint(point)).ToArray());
     }
 
     [Fact]

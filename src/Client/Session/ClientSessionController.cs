@@ -1,6 +1,7 @@
 using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
+using Mortz.Client.MapEditor;
 using Mortz.Client.Match;
 using Mortz.Client.Menus;
 using Mortz.Client.Settings;
@@ -31,6 +32,7 @@ public partial class ClientSessionController : Node, ISessionExit,
     [Export] private PackedScene _lobbyScene = null!;
     [Export] private PackedScene _sessionScene = null!;
     [Export] private PackedScene _menuScene = null!;
+    [Export] private PackedScene _mapEditorScene = null!;
 
     private readonly ClientConnectionAttempt _connection = new(CONNECT_RETRIES);
     private readonly ClientSession _session = new();
@@ -40,6 +42,7 @@ public partial class ClientSessionController : Node, ISessionExit,
     private GameView? _gameView;
     private Lobby? _lobby;
     private MainMenu? _menu;
+    private MapEditorScreen? _mapEditor;
     private bool _spawnedLocalServer;
     private bool _subscribed;
 
@@ -308,6 +311,7 @@ public partial class ClientSessionController : Node, ISessionExit,
         _menu = _menuScene.Instantiate<MainMenu>();
         _menu.HostRequested += OnHostRequested;
         _menu.JoinRequested += OnJoinRequested;
+        _menu.MapEditorRequested += OpenMapEditor;
         AddChild(_menu);
         if (autoStartIntro)
             _menu.AutoStartIntro();
@@ -317,6 +321,26 @@ public partial class ClientSessionController : Node, ISessionExit,
     {
         Detach(_menu);
         _menu = null;
+    }
+
+    private void OpenMapEditor()
+    {
+        if (_mapEditor != null)
+            return;
+        DisposeMenu();
+        _mapEditor = _mapEditorScene.Instantiate<MapEditorScreen>();
+        _mapEditor.Closed += CloseMapEditor;
+        AddChild(_mapEditor);
+    }
+
+    private void CloseMapEditor()
+    {
+        if (_mapEditor != null)
+            _mapEditor.Closed -= CloseMapEditor;
+        Detach(_mapEditor);
+        _mapEditor = null;
+        CreateMenu(autoStartIntro: true);
+        _menu!.ShowHome();
     }
 
     private void CreateConnectedSession()
