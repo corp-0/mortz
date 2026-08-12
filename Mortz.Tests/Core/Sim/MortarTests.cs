@@ -307,9 +307,8 @@ public class MortarTests
     }
 
     [Fact]
-    public void ShellLeavingTheMapBottom_ExplodesAtBoundary()
+    public void ShellLeavingTheMapBottom_KeepsFlying()
     {
-        // No terrain at all: everything fired downward just falls out.
         TerrainMask world = new TerrainMask(400, 300, (_, _) => false, (_, _) => false);
         SimWorld w = new SimWorld(world, TestWorlds.NoSpawnProtectionConfig);
         w.AddPlayer(1);
@@ -318,15 +317,14 @@ public class MortarTests
         StepWith(w, ref seq, InputButtons.FIRE, AIM_DOWN);
         Assert.Single(w.Mortars);
 
-        int explosions = 0;
-        for (int t = 0; t < SimConfig.TICK_RATE && w.Mortars.Count > 0; t++)
+        for (int t = 0; t < SimConfig.TICK_RATE && w.Mortars[0].Position.Y < world.Height; t++)
         {
             StepWith(w, ref seq, InputButtons.NONE, AIM_DOWN);
-            explosions += w.Explosions.Count;
         }
-        Assert.Empty(w.Mortars);
-        Assert.Equal(1, explosions);
-        Assert.True(w.Explosions[0].Y >= world.Height);
+
+        MortarState shell = Assert.Single(w.Mortars);
+        Assert.True(shell.Position.Y >= world.Height);
+        Assert.Empty(w.Explosions);
     }
 
     [Fact]

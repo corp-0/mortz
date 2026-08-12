@@ -49,8 +49,6 @@ public static class MortarSim
                 m.Position = OutsideContact(terrain, nose, dir);
                 return MortarOutcome.EXPLODED;
             }
-            if (OutOfPlay(m.Position, terrain))
-                return MortarOutcome.EXPLODED;
             lastClearCenter = m.Position;
         }
         return MortarOutcome.FLYING;
@@ -66,10 +64,4 @@ public static class MortarSim
         }
         return contact;
     }
-
-    /// <summary>Above the map the shell keeps flying (OOB is empty and gravity
-    /// can bring it back down); crossing a side or the bottom detonates at the
-    /// last simulated position.</summary>
-    private static bool OutOfPlay(Vec2 pos, TerrainMask terrain) =>
-        pos.X < 0 || pos.X >= terrain.Width || pos.Y >= terrain.Height;
 }

@@ -1,4 +1,3 @@
-using Mortz.Core.Match;
 using Mortz.Core.Sim;
 using Mortz.Core.Terrain;
 
@@ -40,8 +39,6 @@ public static class MortarAimSolver
     /// <summary>False when no aim brings a shell close enough to kill.</summary>
     public static bool TrySolve(in MortarAimQuery query, out MortarAimSolution solution)
     {
-        // Never solid: the caller asked for a ballistics answer, not a line of
-        // sight. Bounds still matter, because leaving them ends the shell.
         TerrainMask open = new(
             Math.Max(1, query.ArenaWidth),
             Math.Max(1, query.ArenaHeight),
