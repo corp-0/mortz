@@ -1,4 +1,3 @@
-using Mortz.Core.Match;
 using Mortz.Core.Match.Configuration;
 using Mortz.Core.Replication;
 using Mortz.Core.Sim;
@@ -197,6 +196,74 @@ public class MortarTests
     }
 
     [Fact]
+    public void TerrainCollision_UsesTheVisibleNoseAndCannotSkipAThinWall()
+    {
+        TerrainMask terrain = new TerrainMask(100, 100,
+            solid: (x, _) => x == 50,
+            destructible: (_, _) => false);
+        Combat config = new() { MortarGravity = 0 };
+        MortarState shell = new()
+        {
+            Position = new Vec2(30, 50),
+            Velocity = new Vec2(750, 0),
+        };
+
+        MortarOutcome outcome = MortarSim.Tick(ref shell, terrain, config, SimConfig.DT);
+
+        Assert.Equal(MortarOutcome.EXPLODED, outcome);
+        Assert.InRange(shell.Position.X, 49, 50);
+        Assert.Equal(TerrainMaterial.EMPTY, terrain.Get((int)shell.Position.X, 50));
+        Assert.Equal(TerrainMaterial.SOLID, terrain.Get((int)shell.Position.X + 1, 50));
+        Assert.Equal(50, shell.Position.Y);
+    }
+
+    [Fact]
+    public void GlancingTerrainImpact_RicochetsAndLosesSpeed()
+    {
+        TerrainMask terrain = new TerrainMask(100, 100,
+            solid: (_, y) => y >= 42,
+            destructible: (_, _) => false);
+        Combat config = new() { MortarGravity = 0 };
+        MortarState shell = new()
+        {
+            Position = new Vec2(20, 39),
+            Velocity = new Vec2(750, 150),
+        };
+        float incomingSpeed = shell.Velocity.Length();
+
+        MortarOutcome outcome = MortarSim.Tick(ref shell, terrain, config, SimConfig.DT);
+
+        Assert.Equal(MortarOutcome.FLYING, outcome);
+        Assert.True(shell.Velocity.X > 0);
+        Assert.True(shell.Velocity.Y < 0);
+        Assert.Equal(incomingSpeed * SimConfig.MORTAR_RICOCHET_SPEED_RETENTION,
+            shell.Velocity.Length(), 0.01f);
+        Vec2 outgoingNose = shell.Position + shell.Velocity.Normalized() * SimConfig.MORTAR_NOSE_OFFSET;
+        Assert.False(terrain.IsSolid((int)outgoingNose.X, (int)outgoingNose.Y));
+    }
+
+    [Fact]
+    public void HeadOnTerrainImpact_StillExplodes()
+    {
+        TerrainMask terrain = new TerrainMask(100, 100,
+            solid: (_, y) => y >= 42,
+            destructible: (_, _) => false);
+        Combat config = new() { MortarGravity = 0 };
+        MortarState shell = new()
+        {
+            Position = new Vec2(50, 20),
+            Velocity = new Vec2(0, 750),
+        };
+
+        MortarOutcome outcome = MortarSim.Tick(ref shell, terrain, config, SimConfig.DT);
+
+        Assert.Equal(MortarOutcome.EXPLODED, outcome);
+        Assert.InRange(shell.Position.Y, 41, 42);
+        Assert.Equal(TerrainMaterial.EMPTY, terrain.Get(50, (int)shell.Position.Y));
+        Assert.Equal(TerrainMaterial.SOLID, terrain.Get(50, (int)shell.Position.Y + 1));
+    }
+
+    [Fact]
     public void ImpactOnDestructible_CarvesAndReportsExplosion()
     {
         SimWorld w = new SimWorld(DestructibleFloor(), TestWorlds.NoSpawnProtectionConfig);
@@ -235,7 +302,8 @@ public class MortarTests
 
         Assert.Empty(w.Mortars);
         (int x, int y, _, _, _) = Assert.Single(w.Explosions);
-        Assert.Equal(TerrainMaterial.SOLID, w.Terrain.Get(x, y));
+        Assert.Equal(TerrainMaterial.EMPTY, w.Terrain.Get(x, y));
+        Assert.Equal(TerrainMaterial.SOLID, w.Terrain.Get(x, y + 1));
     }
 
     [Fact]

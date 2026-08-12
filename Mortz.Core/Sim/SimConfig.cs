@@ -66,6 +66,10 @@ public static class SimConfig
     public const float MORTAR_GRAVITY = 800;      // px/s^2  floatier than players, for longer arcs
     public const float MORTAR_MAX_FALL = 900;     // px/s
     public const float MORTAR_MUZZLE_OFFSET = 20; // px     spawn distance from body center along the aim
+    public const float MORTAR_NOSE_OFFSET = 11;   // px     center to sprite nose
+    public const float MORTAR_RICOCHET_MAX_INCIDENCE = 0.34202f; // 20º to cause ricochet, calculate like sin(degrees) = incidence
+    public const float MORTAR_RICOCHET_SPEED_RETENTION = 0.7f; // 70% of the speed is kept after a ricochet
+    public const float MORTAR_RICOCHET_MIN_SPEED = 250; // px/s
     /// <summary>Explosion radius: the carved hole and the kill zone (LieroX-sized).</summary>
     public const int MORTAR_CARVE_RADIUS = 48;    // px
     // No cooldown between shots: the magazine is the limiter. Reload banks

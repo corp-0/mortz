@@ -310,7 +310,9 @@ public class PredictorTests
 
         (int spawnSeq, Vec2 pos) = Assert.Single(predictor.DrainImpacts());
         Assert.Equal(1, spawnSeq);
-        Assert.True(pos.Y >= TestWorlds.FLOOR_Y, "impact in the floor");
+        Assert.InRange(pos.Y, TestWorlds.FLOOR_Y - 1, TestWorlds.FLOOR_Y);
+        Assert.Equal(TerrainMaterial.EMPTY, world.Get((int)pos.X, (int)pos.Y));
+        Assert.Equal(TerrainMaterial.DESTRUCTIBLE, world.Get((int)pos.X, (int)pos.Y + 1));
         Assert.Empty(predictor.DrainImpacts()); // draining clears
         Assert.Empty(predictor.Shells);
     }

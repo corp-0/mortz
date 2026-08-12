@@ -454,6 +454,8 @@ public sealed class SimWorld(
             PlayerState p = _players[id];
             if (!CombatEligibility.CanTakeDamage(p))
                 continue;
+            if (!BlastSim.Reaches(p, at, Terrain))
+                continue;
             int damage = BlastSim.Damage(p, at, Config.Combat);
             if (damage == 0 || SparedByFriendlyFire(p, m.OwnerId))
                 continue;

@@ -1,3 +1,4 @@
+using Mortz.Core.Sim;
 using Mortz.Core.Terrain;
 using Xunit;
 
@@ -41,6 +42,60 @@ public class TerrainMaskTests
         Assert.All(removed, p => Assert.Equal(TerrainMaterial.EMPTY, m.Get(p.X, p.Y)));
         Assert.Equal(TerrainMaterial.SOLID, m.Get(150, 255)); // floor survives
         Assert.Equal(TerrainMaterial.DESTRUCTIBLE, m.Get(105, 105)); // outside circle survives
+    }
+
+    [Fact]
+    public void SolidWall_ShieldsDestructibleTerrainBehindIt()
+    {
+        TerrainMask m = new(100, 100,
+            solid: (x, _) => x == 50,
+            destructible: (x, y) => x is >= 30 and <= 70 && y is >= 30 and <= 70);
+
+        m.CarveCircle(40, 50, 20);
+
+        Assert.Equal(TerrainMaterial.EMPTY, m.Get(49, 50));
+        Assert.Equal(TerrainMaterial.SOLID, m.Get(50, 50));
+        Assert.Equal(TerrainMaterial.DESTRUCTIBLE, m.Get(51, 50));
+        Assert.Equal(TerrainMaterial.DESTRUCTIBLE, m.Get(60, 50));
+    }
+
+    [Fact]
+    public void SurfaceNormal_PointsOutOfFloorsAndWalls()
+    {
+        TerrainMask floor = new(100, 100,
+            solid: (_, y) => y >= 50,
+            destructible: (_, _) => false);
+        TerrainMask wall = new(100, 100,
+            solid: (x, _) => x >= 50,
+            destructible: (_, _) => false);
+
+        Assert.Equal(new Vec2(0, -1), floor.SurfaceNormal(40, 50, new Vec2(0, 1)));
+        Assert.Equal(new Vec2(-1, 0), wall.SurfaceNormal(50, 40, new Vec2(1, 0)));
+    }
+
+    [Fact]
+    public void SurfaceNormal_FollowsDiagonalTerrain()
+    {
+        TerrainMask slope = new(100, 100,
+            solid: (x, y) => y >= x,
+            destructible: (_, _) => false);
+
+        Vec2 normal = slope.SurfaceNormal(50, 50, new Vec2(-1, 1).Normalized());
+
+        Assert.True(normal.X > 0);
+        Assert.True(normal.Y < 0);
+        Assert.Equal(1, normal.Length(), 0.001f);
+    }
+
+    [Fact]
+    public void SurfaceNormal_UsesIncomingDirectionForAnIsolatedPixel()
+    {
+        TerrainMask isolated = new(100, 100,
+            solid: (x, y) => x == 50 && y == 50,
+            destructible: (_, _) => false);
+        Vec2 incoming = new Vec2(3, 4).Normalized();
+
+        Assert.Equal(-incoming, isolated.SurfaceNormal(50, 50, incoming));
     }
 
     [Fact]

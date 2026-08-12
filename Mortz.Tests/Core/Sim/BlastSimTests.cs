@@ -1,5 +1,5 @@
-using Mortz.Core.Match;
 using Mortz.Core.Sim;
+using Mortz.Core.Terrain;
 using Xunit;
 using Combat = Mortz.Core.Match.Configuration.Combat;
 
@@ -55,5 +55,27 @@ public class BlastSimTests
     {
         PlayerState p = PlayerAt(100, 100);
         Assert.Equal(0, BlastSim.Damage(p, new Vec2(116 + RIM + 1, 84), _cfg));
+    }
+
+    [Fact]
+    public void SolidWall_BlocksBlastFromTheWholeBody()
+    {
+        TerrainMask terrain = new(200, 200,
+            solid: (x, _) => x == 100,
+            destructible: (_, _) => false);
+        PlayerState p = PlayerAt(130, 100);
+
+        Assert.False(BlastSim.Reaches(p, new Vec2(80, 84), terrain));
+    }
+
+    [Fact]
+    public void DestructibleTerrain_DoesNotBlockBlast()
+    {
+        TerrainMask terrain = new(200, 200,
+            solid: (_, _) => false,
+            destructible: (x, _) => x == 100);
+        PlayerState p = PlayerAt(130, 100);
+
+        Assert.True(BlastSim.Reaches(p, new Vec2(80, 84), terrain));
     }
 }

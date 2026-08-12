@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using Mortz.Core.Sim;
 
 namespace Mortz.Core.Terrain;
 
@@ -52,6 +53,75 @@ public sealed class TerrainMask
 
     public bool IsSolid(int x, int y) => Get(x, y) != TerrainMaterial.EMPTY;
 
+    public Vec2 SurfaceNormal(int x, int y, Vec2 incomingDirection)
+    {
+        const int RADIUS = 2;
+        float normalX = 0;
+        float normalY = 0;
+        for (int offsetY = -RADIUS; offsetY <= RADIUS; offsetY++)
+        {
+            for (int offsetX = -RADIUS; offsetX <= RADIUS; offsetX++)
+            {
+                if (!IsSolid(x + offsetX, y + offsetY))
+                    continue;
+                normalX -= offsetX;
+                normalY -= offsetY;
+            }
+        }
+
+        Vec2 normal = new Vec2(normalX, normalY).Normalized();
+        if (normal != Vec2.Zero && Vec2.Dot(incomingDirection, normal) < 0)
+            return normal;
+
+        return -incomingDirection.Normalized();
+    }
+
+    /// <summary>Checks for indestructible terrain after the segment's starting pixel.</summary>
+    public bool SolidBetween(float fromX, float fromY, float toX, float toY)
+    {
+        int x = (int)fromX;
+        int y = (int)fromY;
+        int targetX = (int)toX;
+        int targetY = (int)toY;
+        int nx = Math.Abs(targetX - x);
+        int ny = Math.Abs(targetY - y);
+        int stepX = Math.Sign(targetX - x);
+        int stepY = Math.Sign(targetY - y);
+        int ix = 0;
+        int iy = 0;
+
+        while (ix < nx || iy < ny)
+        {
+            long decision = (1L + 2L * ix) * ny - (1L + 2L * iy) * nx;
+            if (decision == 0)
+            {
+                // Corner-touching solid pixels block the ray.
+                if ((stepX != 0 && Get(x + stepX, y) == TerrainMaterial.SOLID) ||
+                    (stepY != 0 && Get(x, y + stepY) == TerrainMaterial.SOLID))
+                    return true;
+                x += stepX;
+                y += stepY;
+                ix++;
+                iy++;
+            }
+            else if (decision < 0)
+            {
+                x += stepX;
+                ix++;
+            }
+            else
+            {
+                y += stepY;
+                iy++;
+            }
+
+            if (Get(x, y) == TerrainMaterial.SOLID)
+                return true;
+        }
+
+        return false;
+    }
+
     /// <summary>Any solid cell in the pixel rect [minX,maxX) x [minY,maxY)?</summary>
     public bool RectSolid(float minX, float minY, float maxX, float maxY)
     {
@@ -87,6 +157,7 @@ public sealed class TerrainMask
                 int dx = x - cx, dy = y - cy;
                 if (dx * dx + dy * dy > r2) continue;
                 if (_cells[y * Width + x] != TerrainMaterial.DESTRUCTIBLE) continue;
+                if (SolidBetween(cx, cy, x, y)) continue;
                 _cells[y * Width + x] = TerrainMaterial.EMPTY;
                 removed.Add((x, y));
             }
