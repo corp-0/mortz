@@ -15,10 +15,8 @@ public static class PublishDocker
         string dockerfile = Path.Combine(root, "tools", "Docker", "Dockerfile");
 
         Console.WriteLine($"==> building {IMAGE}:latest and :{sha}");
-        RunDocker(docker, ["build", "--platform", "linux/amd64", "-f", dockerfile,
-            "-t", $"{IMAGE}:latest", "-t", $"{IMAGE}:{sha}", context]);
-        RunDocker(docker, ["push", $"{IMAGE}:latest"]);
-        RunDocker(docker, ["push", $"{IMAGE}:{sha}"]);
+        RunDocker(docker, ["buildx", "build", "--platform", "linux/amd64", "--push",
+            "-f", dockerfile, "-t", $"{IMAGE}:latest", "-t", $"{IMAGE}:{sha}", context]);
     }
 
     private static string StageContext(string root)
@@ -79,7 +77,9 @@ public static class PublishDocker
         using Process process = Process.Start(startInfo)!;
         process.WaitForExit();
         if (process.ExitCode != 0)
+        {
             throw new Exception($"docker {args[0]} failed (exit {process.ExitCode}); " +
                                 "if the push was denied, run 'docker login ghcr.io' once with a write:packages PAT");
+        }
     }
 }
