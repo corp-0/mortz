@@ -10,9 +10,11 @@ using Mortz.Core.Net.Lobby;
 using Mortz.Core.Net.Sim;
 using Mortz.Net;
 using Mortz.Shared;
-using Mortz.Shared.E2E;
 using Mortz.Shared.Logging;
 using Serilog;
+#if TOOLS
+using Mortz.Shared.E2E;
+#endif
 
 namespace Mortz.Client.Session;
 
