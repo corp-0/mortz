@@ -81,7 +81,7 @@ public sealed class MatchWire(
         }
     }
 
-    public void Publish(MatchFrame frame, MatchSession match, ServerTime time)
+    public void Publish(in MatchFrame frame, MatchSession match, ServerTime time)
     {
         // Tick is frozen during VictoryLap; skip periodic snapshot/correction broadcasts.
         if (match.Stage == MatchStage.VICTORY_LAP && frame.MatchEnded == null)

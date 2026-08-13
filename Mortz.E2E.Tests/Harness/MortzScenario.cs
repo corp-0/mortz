@@ -1,9 +1,15 @@
-using Mortz.Core.Match;
+using System.Globalization;
 using Mortz.Core.Match.Configuration;
 using Mortz.Core.Sim;
 using Mortz.E2E.Protocol;
 
 namespace Mortz.E2E.Tests.Harness;
+
+/// <summary>The live match's rules and arena, decoded from the server.</summary>
+public readonly record struct MatchSetup(
+    MatchConfig Config,
+    int TerrainWidth,
+    int TerrainHeight);
 
 /// <summary>
 /// One scenario: a real dedicated server, real headless clients, the real
@@ -441,7 +447,7 @@ public sealed class MortzScenario : IAsyncDisposable
     }
 
     private static string Timescale(ScenarioOptions options) =>
-        options.Timescale.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        options.Timescale.ToString(CultureInfo.InvariantCulture);
 
     private static async Task<IReadOnlyList<string>> SweepOnceAsync(string runId, string godot)
     {

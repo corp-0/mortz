@@ -3,6 +3,13 @@ using Mortz.Core.Net;
 
 namespace Mortz.Core.Chat.Commands;
 
+public readonly record struct ChatCommandMetadata(
+    ChatCommandName Name,
+    string Usage,
+    string Description,
+    IReadOnlyList<ChatCommandName> Aliases,
+    bool Sensitive = false);
+
 /// <summary>Parses "/name args..." into a freshly created, bound command
 /// instance. Register calls are generated from [ChatCommand] classes.</summary>
 public sealed class ChatCommandRegistry<TContext>

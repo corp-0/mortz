@@ -1,4 +1,3 @@
-using Mortz.Core.Match;
 using Mortz.Core.Match.Events;
 using Mortz.Core.Match.Teams;
 using Mortz.Core.Sim;
@@ -6,6 +5,9 @@ using Mortz.Server.Match.Scoring;
 using Mortz.Server.Players;
 
 namespace Mortz.Server.Match.Events;
+
+/// <summary>One shell fired by one killer, for counting same-shell kills.</summary>
+public readonly record struct KillerShell(int KillerId, int ShellId);
 
 /// <summary>Turns each frame's scored deaths into game events. First blood
 /// arrives pre-judged; the rest come from the judge cells.</summary>

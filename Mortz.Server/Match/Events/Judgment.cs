@@ -1,4 +1,3 @@
-using Mortz.Core.Match;
 using Mortz.Core.Match.Events;
 
 namespace Mortz.Server.Match.Events;
