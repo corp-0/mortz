@@ -123,7 +123,7 @@ public sealed class ReadyLink(IServerTransport transport) : IServerLink
     }
 
     private static bool IsBootstrap<TMsg>() =>
-        typeof(TMsg) == typeof(PhaseLoadMsg) ||
-        typeof(TMsg) == typeof(WelcomeMsg) ||
+        typeof(TMsg) == typeof(LobbyLoadMsg) ||
+        typeof(TMsg) == typeof(MatchLoadMsg) ||
         typeof(TMsg) == typeof(TerrainChunkMsg);
 }

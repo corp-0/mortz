@@ -1,9 +1,8 @@
-using Mortz.Core.Match;
 using Mortz.Core.Match.Participation;
+using Mortz.Core.Net;
 using Mortz.Core.Net.Chat;
 using Mortz.Core.Net.Lobby;
 using Mortz.Core.Net.Roster;
-using Mortz.Core.Net.Sim;
 using Mortz.Server.Phases;
 using Xunit;
 
@@ -58,8 +57,8 @@ public class GameServerPhaseTests : IDisposable
 
         string[] trace = _server.Link.Trace();
         int roster = Array.IndexOf(trace, "7:RosterMsg");
-        int first = Array.IndexOf(trace, "7:WelcomeMsg");
-        int second = Array.IndexOf(trace, "8:WelcomeMsg");
+        int first = Array.IndexOf(trace, "7:MatchLoadMsg");
+        int second = Array.IndexOf(trace, "8:MatchLoadMsg");
         Assert.True(first == 0 && second > first && roster > second,
             $"bootstrap must precede the queued phase roster, got {string.Join(", ", trace)}");
     }
@@ -73,8 +72,8 @@ public class GameServerPhaseTests : IDisposable
         _server.Tick();
 
         // Not only the joiner: both seated players get the new phase's state.
-        Assert.Contains("7:WelcomeMsg", _server.Link.Trace());
-        Assert.Contains("8:WelcomeMsg", _server.Link.Trace());
+        Assert.Contains("7:MatchLoadMsg", _server.Link.Trace());
+        Assert.Contains("8:MatchLoadMsg", _server.Link.Trace());
         Assert.Contains("7:ScoreSyncMsg", _server.Link.Trace());
         Assert.Contains("8:ScoreSyncMsg", _server.Link.Trace());
     }
@@ -90,10 +89,10 @@ public class GameServerPhaseTests : IDisposable
 
         string[] trace = _server.Link.Trace();
         Assert.Contains("9:RosterMsg", trace);
-        Assert.Contains("9:WelcomeMsg", trace);
+        Assert.Contains("9:MatchLoadMsg", trace);
         Assert.Contains("9:LobbySettingsMsg", trace);
         Assert.Contains(9, _server.Link.Last<RosterMsg>().Entries.Select(entry => entry.PeerId));
-        Assert.Equal(MatchSeat.PLAYER, _server.Link.Last<WelcomeMsg>().Seat);
+        Assert.Equal(MatchSeat.PLAYER, _server.Link.Last<MatchLoadMsg>().Seat);
     }
 
     [Fact]
@@ -105,7 +104,7 @@ public class GameServerPhaseTests : IDisposable
 
         _server.Connect(9, "carol");
 
-        // The broadcast copy left before the welcome, when the joiner had no
+        // The broadcast copy left before the match load, when the joiner had no
         // match screen to hear it; the unicast after the terrain is theirs.
         string[] trace = _server.Link.Trace();
         int lastChunk = Array.LastIndexOf(trace, "9:TerrainChunkMsg");
@@ -127,11 +126,11 @@ public class GameServerPhaseTests : IDisposable
         server.Connect(9, "carol");
 
         Assert.Equal([7, 8], server.Link.Last<RosterMsg>().Entries.Select(entry => entry.PeerId));
-        WelcomeMsg welcome = server.Link.Last<WelcomeMsg>();
-        Assert.Equal(MatchSeat.SPECTATOR, welcome.Seat);
-        Assert.Equal(MatchActivity.SPECTATING, welcome.Activity);
-        Assert.Equal(SpectateReason.JIP, welcome.SpectateReason);
-        Assert.NotEmpty(welcome.InitialSnapshot);
+        MatchLoadMsg load = server.Link.Last<MatchLoadMsg>();
+        Assert.Equal(MatchSeat.SPECTATOR, load.Seat);
+        Assert.Equal(MatchActivity.SPECTATING, load.Activity);
+        Assert.Equal(SpectateReason.JIP, load.SpectateReason);
+        Assert.NotEmpty(load.InitialSnapshot);
     }
 
     [Fact]

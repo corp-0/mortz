@@ -1,4 +1,3 @@
-using Mortz.Core.Match;
 using Mortz.Core.Net;
 using Mortz.Core.Net.Query;
 using Mortz.Server.Admin;
@@ -94,7 +93,7 @@ public sealed class GameServer : IDisposable, IHandle<Player, PhaseReadyMsg>
         _phase.PlayerJoined(player);
         _matchObserver.PlayerJoined(player, _current.Kind);
         if (_phase.Kind == ServerPhaseKind.LOBBY)
-            _link.Send(peerId, new PhaseLoadMsg(_generation));
+            _link.Send(peerId, new LobbyLoadMsg(_generation));
         else
         {
             _jipAwaitingReady.Add(peerId);
@@ -266,7 +265,7 @@ public sealed class GameServer : IDisposable, IHandle<Player, PhaseReadyMsg>
         foreach (Player player in _roster)
         {
             if (next.Kind == ServerPhaseKind.LOBBY)
-                _link.Send(player.PeerId, new PhaseLoadMsg(_generation));
+                _link.Send(player.PeerId, new LobbyLoadMsg(_generation));
             else
                 next.Load(player, _generation, initialPhase: true);
         }

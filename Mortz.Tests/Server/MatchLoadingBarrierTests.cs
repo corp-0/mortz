@@ -1,7 +1,6 @@
 using Mortz.Core.Input;
 using Mortz.Core.Net;
 using Mortz.Core.Net.Lobby;
-using Mortz.Core.Net.Sim;
 using Mortz.Core.Sim;
 using Mortz.Server.Diagnostics;
 using Mortz.Server.Phases;
@@ -43,7 +42,7 @@ public sealed class MatchLoadingBarrierTests : IDisposable
     public void StaleReadyDoesNotReleaseTheBarrier()
     {
         BeginLoadingMatch();
-        int generation = _server.Link.Last<WelcomeMsg>().Generation;
+        int generation = _server.Link.Last<MatchLoadMsg>().Generation;
 
         _server.Receive(7, new PhaseReadyMsg(generation - 1));
         _server.Ready(8);

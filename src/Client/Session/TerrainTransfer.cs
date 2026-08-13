@@ -1,4 +1,3 @@
-using Mortz.Core.Match;
 using Mortz.Core.Match.Configuration;
 using Mortz.Core.Net;
 using Mortz.Core.Net.Sim;
@@ -6,38 +5,36 @@ using Mortz.Core.Terrain;
 
 namespace Mortz.Client.Session;
 
-/// <summary>Validates and assembles one Welcome terrain transfer. It accepts
-/// out-of-order chunks, ignores duplicates and unrelated transfer ids, and
-/// exposes complete bytes only after the declared length is exact.</summary>
+/// <summary>The terrain payload being received for one match load.</summary>
 public sealed class TerrainTransfer
 {
-    private readonly WelcomeMsg _welcome;
+    private readonly MatchLoadMsg _load;
     private readonly byte[]?[] _chunks;
     private int _received;
 
     public MatchConfig Config { get; }
-    public TerrainSyncEncoding Encoding => (TerrainSyncEncoding)_welcome.TerrainEncoding;
+    public TerrainSyncEncoding Encoding => (TerrainSyncEncoding)_load.TerrainEncoding;
 
-    private TerrainTransfer(WelcomeMsg welcome, MatchConfig config)
+    private TerrainTransfer(MatchLoadMsg load, MatchConfig config)
     {
-        _welcome = welcome;
+        _load = load;
         Config = config;
-        _chunks = new byte[welcome.TerrainChunks][];
+        _chunks = new byte[load.TerrainChunks][];
     }
 
-    public static bool TryCreate(WelcomeMsg welcome, out TerrainTransfer? transfer, out string error)
+    public static bool TryCreate(MatchLoadMsg load, out TerrainTransfer? transfer, out string error)
     {
         transfer = null;
-        if (welcome.TerrainEncoding > (byte)TerrainSyncEncoding.CARVE_LOG ||
-            welcome.TerrainBytes is < 0 or > NetConfig.MAX_TERRAIN_SYNC_BYTES ||
-            welcome.TerrainChunks is < 1 or > NetConfig.MAX_TERRAIN_SYNC_CHUNKS)
+        if (load.TerrainEncoding > (byte)TerrainSyncEncoding.CARVE_LOG ||
+            load.TerrainBytes is < 0 or > NetConfig.MAX_TERRAIN_SYNC_BYTES ||
+            load.TerrainChunks is < 1 or > NetConfig.MAX_TERRAIN_SYNC_CHUNKS)
         {
             error = "Invalid terrain sync metadata.";
             return false;
         }
         try
         {
-            transfer = new TerrainTransfer(welcome, MatchConfig.FromBytes(welcome.Config));
+            transfer = new TerrainTransfer(load, MatchConfig.FromBytes(load.Config));
             error = "";
             return true;
         }
@@ -50,9 +47,9 @@ public sealed class TerrainTransfer
 
     public TerrainChunkResult Accept(TerrainChunkMsg chunk)
     {
-        if (chunk.TransferId != _welcome.TerrainTransferId)
+        if (chunk.TransferId != _load.TerrainTransferId)
             return new TerrainChunkResult(TerrainChunkState.IGNORED);
-        if (chunk.Count != _welcome.TerrainChunks || chunk.Index < 0 ||
+        if (chunk.Count != _load.TerrainChunks || chunk.Index < 0 ||
             chunk.Index >= chunk.Count || chunk.Data.Length > NetConfig.TERRAIN_CHUNK_BYTES)
             return Reject("Invalid terrain sync chunk.");
         if (_chunks[chunk.Index] != null)
@@ -63,7 +60,7 @@ public sealed class TerrainTransfer
         if (_received != _chunks.Length)
             return new TerrainChunkResult(TerrainChunkState.WAITING);
 
-        byte[] data = new byte[_welcome.TerrainBytes];
+        byte[] data = new byte[_load.TerrainBytes];
         int offset = 0;
         foreach (byte[]? part in _chunks)
         {

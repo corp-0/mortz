@@ -10,6 +10,7 @@ using Mortz.Core.Net.Lobby;
 using Mortz.Core.Net.Sim;
 using Mortz.Net;
 using Mortz.Shared;
+using Mortz.Shared.E2E;
 using Mortz.Shared.Logging;
 using Serilog;
 
@@ -19,8 +20,8 @@ namespace Mortz.Client.Session;
 /// one client.</summary>
 [Meta(typeof(IAutoNode))]
 public partial class ClientSessionController : Node, ISessionExit,
-    IHandle<PhaseLoadMsg>,
-    IHandle<WelcomeMsg>,
+    IHandle<LobbyLoadMsg>,
+    IHandle<MatchLoadMsg>,
     IHandle<TerrainChunkMsg>,
     IProvide<ISessionExit>, IProvide<ClientSettings>
 {
@@ -171,7 +172,7 @@ public partial class ClientSessionController : Node, ISessionExit,
         _menu?.SetStatus("Entering lobby...");
     }
 
-    public void Handle(in PhaseLoadMsg message)
+    public void Handle(in LobbyLoadMsg message)
     {
         bool returningFromMatch = _session.Stage is
             ClientSessionStage.LOADING_MATCH or ClientSessionStage.PLAYING;
@@ -186,14 +187,14 @@ public partial class ClientSessionController : Node, ISessionExit,
         CreateLobby(message.Generation);
     }
 
-    public void Handle(in WelcomeMsg message)
+    public void Handle(in MatchLoadMsg message)
     {
         if (!_session.TryBeginMatchLoad())
             return;
         if (!PendingMatchEntry.TryCreate(message, out PendingMatchEntry? bootstrap,
                 out string error))
         {
-            RejectWelcome(error);
+            RejectMatchLoad(error);
             return;
         }
 
@@ -210,7 +211,7 @@ public partial class ClientSessionController : Node, ISessionExit,
             return;
         if (result.State == TerrainChunkState.REJECTED)
         {
-            RejectWelcome(result.Error);
+            RejectMatchLoad(result.Error);
             return;
         }
 
@@ -222,7 +223,7 @@ public partial class ClientSessionController : Node, ISessionExit,
         if (_connectedSession == null || !_session.TryEnterMatch())
             return;
 #if TOOLS
-        if (Mortz.Shared.E2E.E2ELaunch.ScreenLoadDelayMs > 0)
+        if (E2ELaunch.ScreenLoadDelayMs > 0)
         {
             DelayMatchEntry(entry, terrainData);
             return;
@@ -235,7 +236,7 @@ public partial class ClientSessionController : Node, ISessionExit,
     private async void DelayMatchEntry(PendingMatchEntry entry, byte[] terrainData)
     {
         await ToSignal(GetTree().CreateTimer(
-            Mortz.Shared.E2E.E2ELaunch.ScreenLoadDelayMs / 1000.0),
+            E2ELaunch.ScreenLoadDelayMs / 1000.0),
             SceneTreeTimer.SignalName.Timeout);
         if (_pendingMatch == entry && _connectedSession != null)
             MountMatch(entry, terrainData);
@@ -256,7 +257,7 @@ public partial class ClientSessionController : Node, ISessionExit,
         catch (IOException exception)
         {
             gameView.Free();
-            RejectWelcome($"Invalid terrain sync: {exception.Message}");
+            RejectMatchLoad($"Invalid terrain sync: {exception.Message}");
             return;
         }
 
@@ -271,7 +272,7 @@ public partial class ClientSessionController : Node, ISessionExit,
         _pendingMatch = null;
     }
 
-    private void RejectWelcome(string reason)
+    private void RejectMatchLoad(string reason)
     {
         _log.Error("{Reason} Disconnecting.", reason);
         ReturnToMenu(reason, stopLocalServer: true);
@@ -362,7 +363,7 @@ public partial class ClientSessionController : Node, ISessionExit,
         if (_lobby != null || _connectedSession == null)
             return;
 #if TOOLS
-        if (Mortz.Shared.E2E.E2ELaunch.ScreenLoadDelayMs > 0)
+        if (E2ELaunch.ScreenLoadDelayMs > 0)
         {
             DelayLobbyEntry(generation);
             return;
@@ -375,7 +376,7 @@ public partial class ClientSessionController : Node, ISessionExit,
     private async void DelayLobbyEntry(int generation)
     {
         await ToSignal(GetTree().CreateTimer(
-            Mortz.Shared.E2E.E2ELaunch.ScreenLoadDelayMs / 1000.0),
+            E2ELaunch.ScreenLoadDelayMs / 1000.0),
             SceneTreeTimer.SignalName.Timeout);
         if (_lobby == null && _connectedSession != null &&
             _session.Stage == ClientSessionStage.LOBBY)

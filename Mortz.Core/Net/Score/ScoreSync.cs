@@ -1,8 +1,9 @@
 namespace Mortz.Core.Net.Score;
 
-/// <summary>Score seed for the match sync: full per-player table plus team
-/// totals, so a late joiner's score isn't blank. Eliminations keep it current
-/// after that.</summary>
+[NetRow]
+public readonly partial record struct ScoreRow(int PeerId, int Kills, int Deaths);
+
+/// <summary>Full player and team scores for initial sync; eliminations update them afterward.</summary>
 [NetMessage(NetChannel.RELIABLE, NetDirection.SERVER_TO_CLIENT)]
 public readonly partial record struct ScoreSyncMsg(
     ScoreRow[] Rows,

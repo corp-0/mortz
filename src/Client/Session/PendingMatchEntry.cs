@@ -1,5 +1,5 @@
 using Mortz.Core.Match.Participation;
-using Mortz.Core.Net.Sim;
+using Mortz.Core.Net;
 using Mortz.Shared;
 
 namespace Mortz.Client.Session;
@@ -25,28 +25,28 @@ public sealed class PendingMatchEntry
         InitialSnapshotAck = initialSnapshotAck;
     }
 
-    public static bool TryCreate(WelcomeMsg welcome, out PendingMatchEntry? bootstrap,
+    public static bool TryCreate(MatchLoadMsg load, out PendingMatchEntry? bootstrap,
         out string error)
     {
         bootstrap = null;
         // Fresh catalog per join: a map installed since app start must count.
-        MapPackage? map = GameContent.Load()?.LoadMap(welcome.MapId);
-        if (map == null || map.Hash != welcome.MapHash)
+        MapPackage? map = GameContent.Load()?.LoadMap(load.MapId);
+        if (map == null || map.Hash != load.MapHash)
         {
-            error = $"Map mismatch: {welcome.MapId}";
+            error = $"Map mismatch: {load.MapId}";
             return false;
         }
-        if (!TerrainTransfer.TryCreate(welcome, out TerrainTransfer? terrain, out error))
+        if (!TerrainTransfer.TryCreate(load, out TerrainTransfer? terrain, out error))
             return false;
         MatchParticipation participation = new(
-            welcome.Seat, welcome.Activity, welcome.SpectateReason, welcome.ReturnTick);
-        if (!participation.IsValid || welcome.InitialSnapshot.Length == 0)
+            load.Seat, load.Activity, load.SpectateReason, load.ReturnTick);
+        if (!participation.IsValid || load.InitialSnapshot.Length == 0)
         {
             error = "Invalid match participation bootstrap.";
             return false;
         }
-        bootstrap = new PendingMatchEntry(welcome.Generation, map, terrain!, participation,
-            welcome.InitialSnapshot, welcome.InitialSnapshotAck);
+        bootstrap = new PendingMatchEntry(load.Generation, map, terrain!, participation,
+            load.InitialSnapshot, load.InitialSnapshotAck);
         return true;
     }
 }

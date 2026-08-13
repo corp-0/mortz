@@ -1,11 +1,9 @@
 using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
-using Mortz.Core.Match;
 using Mortz.Core.Match.Configuration;
 using Mortz.Core.Net;
 using Mortz.Core.Net.Lobby;
-using Mortz.Core.Net.Sim;
 
 namespace Mortz.Client.Setup;
 
@@ -15,7 +13,7 @@ namespace Mortz.Client.Setup;
 public partial class MatchSetup : Node,
     IHandle<LobbySettingsMsg>,
     IHandle<LobbyStateMsg>,
-    IHandle<WelcomeMsg>
+    IHandle<MatchLoadMsg>
 {
     private readonly List<SwapOffer> _swapOffers = [];
     private byte[] _configBytes;
@@ -32,7 +30,7 @@ public partial class MatchSetup : Node,
     /// <summary>A pending swap offer appeared, resolved, or expired.</summary>
     public event Action? SwapOffersChanged;
 
-    /// <summary>Null until the first valid server settings arrive; a welcome
+    /// <summary>Null until the first valid server settings arrive; a match load
     /// carries no catalogs, so it never produces one.</summary>
     public LobbySelection? Selection { get; private set; }
 
@@ -108,7 +106,7 @@ public partial class MatchSetup : Node,
     /// <summary>Mid-match rules for a player who never saw a lobby broadcast.
     /// It carries no catalogs, so it sets no Selection; the match screen gets
     /// its map from ClientMatchBootstrap.</summary>
-    public void Handle(in WelcomeMsg message)
+    public void Handle(in MatchLoadMsg message)
     {
         MatchConfig config;
         try
@@ -117,7 +115,7 @@ public partial class MatchSetup : Node,
         }
         catch (Exception exception) when (exception is IOException or InvalidDataException)
         {
-            return; // the session controller rejects the welcome itself
+            return; // the session controller rejects the match load itself
         }
 
         ApplyConfig(config, raiseSettings: false);

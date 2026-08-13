@@ -1,5 +1,4 @@
 using Mortz.Core.Chat;
-using Mortz.Core.Match;
 using Mortz.Core.Match.Configuration;
 using Mortz.Core.Match.Participation;
 using Mortz.Core.Match.Teams;
@@ -191,19 +190,19 @@ public class NetMessageTests : IDisposable
     }
 
     [Fact]
-    public void WelcomeMsg_RoundTrips()
+    public void MatchLoadMsg_RoundTrips()
     {
         NetRouter router = UseClientLoopback();
-        ClientProbe<WelcomeMsg> probe = new();
+        ClientProbe<MatchLoadMsg> probe = new();
         router.Add(probe);
         byte[] config = TestWorlds.NoSpawnProtectionConfig.ToBytes();
 
-        new WelcomeMsg("castlewars", "abc123", config,
+        new MatchLoadMsg("castlewars", "abc123", config,
             (byte)TerrainSyncEncoding.CARVE_LOG, 17, 12345, 2,
             MatchSeat.SPECTATOR, MatchActivity.SPECTATING, SpectateReason.JIP, -1,
             new Snapshot(12, [], []).SerializeFor(5), -1).SendTo(5);
 
-        WelcomeMsg received = Assert.Single(probe.Messages);
+        MatchLoadMsg received = Assert.Single(probe.Messages);
         Assert.Equal("castlewars", received.MapId);
         Assert.Equal("abc123", received.MapHash);
         Assert.Equal(config, received.Config);
@@ -464,9 +463,9 @@ public class NetMessageTests : IDisposable
     {
         NetRouter router = new();
         ClientProbe<RosterMsg> roster = new();
-        ClientProbe<WelcomeMsg> welcome = new();
+        ClientProbe<MatchLoadMsg> matchLoad = new();
         router.Add(roster);
-        router.Add(welcome);
+        router.Add(matchLoad);
 
         Assert.False(router.Dispatch(NetRegistry.ID_RosterMsg,
             Bytes(w => w.Write(-1))));
@@ -475,8 +474,8 @@ public class NetMessageTests : IDisposable
         Assert.False(router.Dispatch(NetRegistry.ID_RosterMsg,
             Bytes(w => { w.Write(2); w.Write(123L); })));
 
-        // Welcome's config array follows two strings.
-        Assert.False(router.Dispatch(NetRegistry.ID_WelcomeMsg,
+        // MatchLoadMsg's config array follows two strings.
+        Assert.False(router.Dispatch(NetRegistry.ID_MatchLoadMsg,
             Bytes(w =>
             {
                 w.Write("");
@@ -484,21 +483,21 @@ public class NetMessageTests : IDisposable
                 w.Write(NetConfig.MAX_BYTE_ARRAY_BYTES + 1);
             })));
         Assert.Empty(roster.Messages);
-        Assert.Empty(welcome.Messages);
+        Assert.Empty(matchLoad.Messages);
     }
 
     [Fact]
     public void Dispatch_RejectsOversizedAndMalformedStrings()
     {
         NetRouter router = new();
-        ClientProbe<WelcomeMsg> welcome = new();
-        router.Add(welcome);
+        ClientProbe<MatchLoadMsg> matchLoad = new();
+        router.Add(matchLoad);
 
-        Assert.False(router.Dispatch(NetRegistry.ID_WelcomeMsg,
+        Assert.False(router.Dispatch(NetRegistry.ID_MatchLoadMsg,
             Bytes(w => w.Write(new string('x', NetConfig.MAX_STRING_BYTES + 1)))));
-        Assert.False(router.Dispatch(NetRegistry.ID_WelcomeMsg,
+        Assert.False(router.Dispatch(NetRegistry.ID_MatchLoadMsg,
             [0x80, 0x80, 0x80, 0x80, 0x10]));
-        Assert.Empty(welcome.Messages);
+        Assert.Empty(matchLoad.Messages);
     }
 
     [Fact]

@@ -3,8 +3,8 @@ using Mortz.Client.Setup;
 using Mortz.Core.Match.Configuration;
 using Mortz.Core.Match.Participation;
 using Mortz.Core.Match.Teams;
+using Mortz.Core.Net;
 using Mortz.Core.Net.Lobby;
-using Mortz.Core.Net.Sim;
 using Mortz.Core.Replication;
 using Mortz.Core.Terrain;
 using Mortz.Tests.Net;
@@ -165,13 +165,13 @@ public class MatchSetupTests : NodeServiceTest
     }
 
     [Fact]
-    public void WelcomeCarriesTheFrozenRulesButNoCatalog()
+    public void MatchLoadCarriesTheFrozenRulesButNoCatalog()
     {
         MatchSetup setup = HostRouted(new MatchSetup());
         int teams = 0;
         setup.TeamsChanged += () => teams++;
 
-        new WelcomeMsg("arena", "abc", new MatchConfig { Rules = new ModeRules { Teams = true } }.ToBytes(),
+        new MatchLoadMsg("arena", "abc", new MatchConfig { Rules = new ModeRules { Teams = true } }.ToBytes(),
             (byte)TerrainSyncEncoding.CARVE_LOG, 1, 10, 1,
             MatchSeat.PLAYER, MatchActivity.ACTIVE, SpectateReason.NONE, -1,
             new Snapshot(0, [], []).SerializeFor(1), -1).SendTo(1);

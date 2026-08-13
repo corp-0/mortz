@@ -1,7 +1,7 @@
 using Mortz.Client.Session;
-using Mortz.Core.Match;
 using Mortz.Core.Match.Configuration;
 using Mortz.Core.Match.Participation;
+using Mortz.Core.Net;
 using Mortz.Core.Net.Sim;
 using Mortz.Core.Replication;
 using Mortz.Core.Terrain;
@@ -11,7 +11,7 @@ namespace Mortz.Tests.Client;
 
 public class TerrainTransferTests
 {
-    private static WelcomeMsg Welcome(int bytes = 5, short chunks = 2, byte[]? config = null) =>
+    private static MatchLoadMsg MatchLoad(int bytes = 5, short chunks = 2, byte[]? config = null) =>
         new("map", "hash", config ?? new MatchConfig().ToBytes(),
             (byte)TerrainSyncEncoding.CARVE_LOG, 17, bytes, chunks,
             MatchSeat.PLAYER, MatchActivity.ACTIVE, SpectateReason.NONE, -1,
@@ -20,7 +20,7 @@ public class TerrainTransferTests
     [Fact]
     public void OutOfOrderChunksProduceTheDeclaredPayload()
     {
-        Assert.True(TerrainTransfer.TryCreate(Welcome(), out TerrainTransfer? transfer, out _));
+        Assert.True(TerrainTransfer.TryCreate(MatchLoad(), out TerrainTransfer? transfer, out _));
 
         TerrainChunkResult second = transfer!.Accept(new TerrainChunkMsg(17, 1, 2, [4, 5]));
         TerrainChunkResult first = transfer.Accept(new TerrainChunkMsg(17, 0, 2, [1, 2, 3]));
@@ -33,7 +33,7 @@ public class TerrainTransferTests
     [Fact]
     public void DuplicateAndUnrelatedChunksAreIgnored()
     {
-        TerrainTransfer.TryCreate(Welcome(), out TerrainTransfer? transfer, out _);
+        TerrainTransfer.TryCreate(MatchLoad(), out TerrainTransfer? transfer, out _);
         TerrainChunkMsg first = new(17, 0, 2, [1, 2, 3]);
 
         Assert.Equal(TerrainChunkState.WAITING, transfer!.Accept(first).State);
@@ -45,7 +45,7 @@ public class TerrainTransferTests
     [Fact]
     public void DeclaredLengthMustMatchCompletedChunks()
     {
-        TerrainTransfer.TryCreate(Welcome(bytes: 4, chunks: 1),
+        TerrainTransfer.TryCreate(MatchLoad(bytes: 4, chunks: 1),
             out TerrainTransfer? transfer, out _);
 
         TerrainChunkResult result = transfer!.Accept(new TerrainChunkMsg(17, 0, 1, [1, 2, 3]));
@@ -57,7 +57,7 @@ public class TerrainTransferTests
     [Fact]
     public void InvalidConfigIsRejectedBeforeChunksAreAccepted()
     {
-        bool created = TerrainTransfer.TryCreate(Welcome(config: [1, 2]),
+        bool created = TerrainTransfer.TryCreate(MatchLoad(config: [1, 2]),
             out TerrainTransfer? transfer, out string error);
 
         Assert.False(created);

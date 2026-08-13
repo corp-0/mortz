@@ -234,7 +234,7 @@ public sealed class MatchWire(
         int ack = session.World.Players.TryGetValue(peerId, out PlayerState player)
             ? player.LastInputSeq
             : -1;
-        link.Send(peerId, new WelcomeMsg(map.MapId, map.Hash, session.Config.ToBytes(),
+        link.Send(peerId, new MatchLoadMsg(map.MapId, map.Hash, session.Config.ToBytes(),
             (byte)terrain.Encoding, transferId, terrain.Data.Length, checked((short)chunkCount),
             participation.Seat, participation.Activity, participation.Reason,
             participation.ReturnTick, initialSnapshot.SerializeFor(peerId), ack, generation));

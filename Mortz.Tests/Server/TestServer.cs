@@ -78,10 +78,10 @@ internal sealed class TestServer : IDisposable
     public void Ready(int peerId)
     {
         int generation = Link.Messages.Select(sent => sent.Message)
-            .Where(message => message is PhaseLoadMsg || message is Mortz.Core.Net.Sim.WelcomeMsg)
-            .Select(message => message is PhaseLoadMsg lobby
+            .Where(message => message is LobbyLoadMsg or MatchLoadMsg)
+            .Select(message => message is LobbyLoadMsg lobby
                 ? lobby.Generation
-                : ((Mortz.Core.Net.Sim.WelcomeMsg)message).Generation)
+                : ((MatchLoadMsg)message).Generation)
             .Last();
         Receive(peerId, new PhaseReadyMsg(generation));
     }
@@ -93,8 +93,8 @@ internal sealed class TestServer : IDisposable
         (int PeerId, int Generation)[] loads = [.. Link.Messages.Skip(before)
             .Select(sent => sent.Message switch
             {
-                PhaseLoadMsg lobby => (sent.Target, lobby.Generation),
-                Mortz.Core.Net.Sim.WelcomeMsg match => (sent.Target, match.Generation),
+                LobbyLoadMsg lobby => (sent.Target, lobby.Generation),
+                MatchLoadMsg match => (sent.Target, match.Generation),
                 _ => (0, 0),
             })
             .Where(load => load.Item1 != 0)];

@@ -21,7 +21,7 @@ public class GameServerConnectTests : IDisposable
 
         Assert.Equal(
         [
-            "7:PhaseLoadMsg",
+            "7:LobbyLoadMsg",
             "7:LobbySettingsMsg",
             "7:ChatMsg",
             "7:SessionWinsMsg",
@@ -54,8 +54,8 @@ public class GameServerConnectTests : IDisposable
 
         string[] trace = _server.Link.Trace();
         int roster = Array.IndexOf(trace, "8:LobbyStateMsg");
-        int welcome = Array.IndexOf(trace, "8:LobbySettingsMsg");
-        Assert.True(welcome >= 0 && roster > welcome,
+        int settings = Array.IndexOf(trace, "8:LobbySettingsMsg");
+        Assert.True(settings >= 0 && roster > settings,
             $"join observers must flush before the phase roster, got {string.Join(", ", trace)}");
     }
 

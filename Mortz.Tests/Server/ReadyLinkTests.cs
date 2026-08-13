@@ -31,9 +31,9 @@ public sealed class ReadyLinkTests
         link.BeginLoading(7, generation: 3, nowMs: 10);
 
         link.Send(7, Message("waiting"));
-        link.Send(7, new PhaseLoadMsg(3));
+        link.Send(7, new LobbyLoadMsg(3));
 
-        Assert.IsType<PhaseLoadMsg>(Assert.Single(wire.Messages).Message);
+        Assert.IsType<LobbyLoadMsg>(Assert.Single(wire.Messages).Message);
     }
 
     [Fact]

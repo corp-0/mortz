@@ -100,7 +100,7 @@ public class GameServerEndMatchTests : IDisposable
         EndMatch(sessionKey);
 
         string[] trace = _server.Link.Trace();
-        Assert.Equal("7:PhaseLoadMsg", trace[0]);
+        Assert.Equal("7:LobbyLoadMsg", trace[0]);
     }
 
     [Fact]

@@ -12,7 +12,7 @@ internal sealed class RecordingTransport : IServerTransport
     public List<int> Disconnected { get; } = [];
 
     /// <summary>The wire as an ordered, readable sequence: "all:RosterMsg",
-    /// "7:WelcomeMsg". Order is the assertion in most flow tests.</summary>
+    /// "7:MatchLoadMsg". Order is the assertion in most flow tests.</summary>
     public string[] Trace() => [.. Messages.Select(Describe)];
 
     public T Last<T>() => Messages.Select(sent => sent.Message).OfType<T>().Last();

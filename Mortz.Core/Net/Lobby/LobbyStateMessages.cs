@@ -1,10 +1,8 @@
-using Mortz.Core.Match;
 using Mortz.Core.Match.Teams;
 
 namespace Mortz.Core.Net.Lobby;
 
-/// <summary>One seated player in the lobby broadcast; live state lives in the
-/// server's lobby cells. Team is null when teams are off or not dealt yet.</summary>
+/// <summary>One player in the server's lobby-state snapshot.</summary>
 [NetRow]
 public readonly partial record struct LobbyMember
 {
@@ -23,3 +21,14 @@ public readonly partial record struct LobbyMember
     public bool Ready { get; }
     public Team? Team { get; }
 }
+
+[NetRow]
+public readonly partial record struct SwapOffer(int From, int To);
+
+[NetMessage(NetChannel.RELIABLE, NetDirection.SERVER_TO_CLIENT)]
+public readonly partial record struct LobbyStateMsg(
+    LobbyMember[] Members,
+    SwapOffer[] Offers);
+
+[NetMessage(NetChannel.RELIABLE, NetDirection.CLIENT_TO_SERVER)]
+public readonly partial record struct SetReadyMsg(bool Ready);
