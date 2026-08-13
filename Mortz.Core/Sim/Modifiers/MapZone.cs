@@ -51,20 +51,20 @@ public readonly record struct ZoneShape(ZoneShapeKind Kind, int X, int Y,
 /// <summary>A named, tagged region of the map. Effects (if any) apply to any
 /// player whose body center is inside the shape; tags are inert data that
 /// modes, editors and overlays interpret, the sim never reads them.</summary>
-public sealed class MapZone
+public sealed class MapZone(
+    string name,
+    IReadOnlyList<string> tags,
+    ZoneShape shape,
+    StatsModifier? effects)
 {
-    public string Name { get; }
-    public IReadOnlyList<string> Tags { get; }
-    public ZoneShape Shape { get; }
-    public StatsModifier? Effects { get; }
+    public string Name { get; } = name;
+    public IReadOnlyList<string> Tags { get; } = tags;
+    public ZoneShape Shape { get; } = shape;
+    public StatsModifier? Effects { get; } = effects;
 
-    public MapZone(string name, IReadOnlyList<string> tags, ZoneShape shape,
-        StatsModifier? effects)
+    public bool ContainsPlayer(in PlayerState player)
     {
-        Name = name;
-        Tags = tags;
-        Shape = shape;
-        Effects = effects;
+        return Shape.Contains(player.BodyCenter);
     }
 
     public bool HasTag(string tag)

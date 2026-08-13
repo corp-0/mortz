@@ -1,4 +1,3 @@
-using Mortz.Core.Match;
 using Mortz.Core.Match.Teams;
 
 namespace Mortz.Core.Sim;
@@ -87,4 +86,8 @@ public record struct PlayerState
     /// detection. Serialized because queue draining and respawn make it
     /// non-inferable from the ack.</summary>
     public InputButtons PrevButtons;
+
+    public readonly bool IsAlive => RespawnTicks == 0;
+    public readonly Vec2 BodyCenter =>
+        Position with { Y = Position.Y - SimConfig.PLAYER_HALF_HEIGHT };
 }

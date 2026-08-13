@@ -314,7 +314,7 @@ public sealed class SimWorld(
                 state.Aim = queue.RawAppliedInput.Aim;
                 if (FellOutOfTheMap(state))
                 {
-                    _deaths.Add(new Death(id, BodyCenter(state),
+                    _deaths.Add(new Death(id, state.BodyCenter,
                         KillerId: 0, Owned: false, ShellId: -1)); // death pit
                     state = Corpse(state);
                 }
@@ -342,7 +342,7 @@ public sealed class SimWorld(
                 continue;
             if (pending.Amount >= player.Health)
             {
-                _deaths.Add(new Death(pending.PeerId, BodyCenter(player),
+                _deaths.Add(new Death(pending.PeerId, player.BodyCenter,
                     KillerId: pending.PeerId, Owned: false, ShellId: -1));
                 _players[pending.PeerId] = Corpse(player);
                 continue;
@@ -402,7 +402,7 @@ public sealed class SimWorld(
         {
             if (p.ParryTicks == 0 || p.RespawnTicks > 0)
                 continue;
-            Vec2 toCenter = BodyCenter(p) - m.Position;
+            Vec2 toCenter = p.BodyCenter - m.Position;
             float radius = _effective[id].ParryRadius;
             if (toCenter.LengthSquared() > radius * radius || Vec2.Dot(m.Velocity, toCenter) <= 0)
                 continue;
@@ -462,7 +462,7 @@ public sealed class SimWorld(
             if (damage >= p.Health)
             {
                 // OWNED: the parried shell came back for its own shooter.
-                _deaths.Add(new Death(id, BodyCenter(p), m.OwnerId,
+                _deaths.Add(new Death(id, p.BodyCenter, m.OwnerId,
                     Owned: m.Deflected && id == m.FiredBy, ShellId: m.Id));
                 _players[id] = Corpse(p);
                 continue;
@@ -488,9 +488,6 @@ public sealed class SimWorld(
         RespawnTicks = (ushort)Math.Max(1, Config.Rules.RespawnDelayTicks),
         SpawnImmunityTicks = 0,
     };
-
-    private static Vec2 BodyCenter(in PlayerState p) =>
-        p.Position with { Y = p.Position.Y - SimConfig.PLAYER_HALF_HEIGHT };
 
     /// <summary>Only the bottom edge kills; side/top exits fall back in.</summary>
     private bool FellOutOfTheMap(in PlayerState p) =>
