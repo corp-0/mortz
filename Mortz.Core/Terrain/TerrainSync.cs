@@ -2,6 +2,10 @@ using System.IO.Compression;
 
 namespace Mortz.Core.Terrain;
 
+public readonly record struct TerrainCarve(short X, short Y, byte Radius);
+
+public readonly record struct TerrainSyncPayload(TerrainSyncEncoding Encoding, byte[] Data);
+
 /// <summary>Builds exact late-join terrain state using whichever representation
 /// is smaller: compressed carve commands early in a match, or the compressed
 /// removed-pixel bitmap after destruction becomes dense.</summary>
