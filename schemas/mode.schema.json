@@ -29,22 +29,35 @@
         "teams": {
           "type": "boolean"
         },
-        "win_condition": {
-          "type": "string",
-          "enum": [
-            "kills",
-            "kill_lead"
+        "victory": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "type": { "const": "kills" },
+                "target": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 999
+                }
+              },
+              "required": ["type"]
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "type": { "const": "kill_lead" },
+                "target": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 999
+                }
+              },
+              "required": ["type"]
+            }
           ]
-        },
-        "kill_target": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 999
-        },
-        "kill_lead_target": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 999
         },
         "friendly_fire": {
           "type": "boolean"

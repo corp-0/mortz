@@ -1,5 +1,4 @@
 using System.Globalization;
-using Mortz.Core.Match;
 using Mortz.Core.Match.Configuration;
 using Mortz.Core.Ui;
 
@@ -16,6 +15,24 @@ public static class LobbySettingsDiff
             ModeRulesUiMetadata.Categories,
             before.Rules,
             after.Rules);
+
+        VictoryRuleDescriptor beforeVictory = VictoryRulesMetadata.For(before.Rules.Victory);
+        VictoryRuleDescriptor afterVictory = VictoryRulesMetadata.For(after.Rules.Victory);
+        if (beforeVictory.RulesType == afterVictory.RulesType)
+        {
+            AddDeltas(
+                deltas,
+                afterVictory.Categories,
+                before.Rules.Victory,
+                after.Rules.Victory);
+        }
+        else
+        {
+            deltas.Add(new LobbySettingDelta(
+                "Victory Rule",
+                beforeVictory.DisplayName,
+                afterVictory.DisplayName));
+        }
 
         AddDeltas(
             deltas,

@@ -15,6 +15,10 @@ public class MatchConfigTests
     public void GeneratedMetadata_CoversEveryWritableProperty_InDeclarationOrder()
     {
         AssertMetadataCoversWritableProperties(typeof(ModeRules), ModeRulesUiMetadata.Categories);
+        AssertMetadataCoversWritableProperties(
+            typeof(KillsVictoryRules), KillsVictoryRulesUiMetadata.Categories);
+        AssertMetadataCoversWritableProperties(
+            typeof(KillLeadVictoryRules), KillLeadVictoryRulesUiMetadata.Categories);
         AssertMetadataCoversWritableProperties(typeof(Physics), PhysicsUiMetadata.Categories);
         AssertMetadataCoversWritableProperties(typeof(Combat), CombatUiMetadata.Categories);
     }
@@ -25,7 +29,9 @@ public class MatchConfigTests
         IUiPropertyDescriptor[] descriptors = categories
             .SelectMany(category => category.Properties)
             .ToArray();
-        PropertyInfo[] writableProperties = WritableProperties(owner).ToArray();
+        PropertyInfo[] writableProperties = WritableProperties(owner)
+            .Where(property => property.GetCustomAttribute<UiPropertyAttribute>() != null)
+            .ToArray();
 
         Assert.Equal(
             writableProperties.Select(property => property.Name),
@@ -55,13 +61,12 @@ public class MatchConfigTests
         Assert.Throws<ArgumentException>(() => gravity.SetValue(physics, 654));
         Assert.Throws<ArgumentException>(() => gravity.SetValue(new object(), 654f));
 
-        ModeRules rules = new();
-        IUiPropertyDescriptor winCondition = ModeRulesUiMetadata.Categories
+        KillsVictoryRules rules = new();
+        IUiPropertyDescriptor target = KillsVictoryRulesUiMetadata.Categories
             .SelectMany(category => category.Properties)
-            .Single(property => property.Name == nameof(ModeRules.WinCondition));
-        rules.WinCondition = (WinCondition)99;
-        winCondition.SetValue(rules, WinCondition.KILLS);
-        Assert.Equal(WinCondition.KILLS, rules.WinCondition);
+            .Single(property => property.Name == nameof(KillsVictoryRules.Target));
+        target.SetValue(rules, 42);
+        Assert.Equal(42, rules.Target);
     }
 
     [Fact]
@@ -74,24 +79,26 @@ public class MatchConfigTests
         Assert.Equal(8000, gravity.Max);
         Assert.Equal(50, gravity.Step);
 
-        IUiPropertyDescriptor[] ruleDescriptors = ModeRulesUiMetadata.Categories
+        IUiPropertyDescriptor[] ruleDescriptors = KillsVictoryRulesUiMetadata.Categories
             .SelectMany(category => category.Properties)
             .ToArray();
 
         // No step authored, so the SpinBox keeps its scene default.
         IUiPropertyDescriptor killTarget = ruleDescriptors
-            .Single(property => property.Name == nameof(ModeRules.KillTarget));
+            .Single(property => property.Name == nameof(KillsVictoryRules.Target));
         Assert.Equal(1, killTarget.Min);
         Assert.Equal(999, killTarget.Max);
         Assert.Null(killTarget.Step);
 
-        IUiPropertyDescriptor killLeadTarget = ruleDescriptors
-            .Single(property => property.Name == nameof(ModeRules.KillLeadTarget));
+        IUiPropertyDescriptor killLeadTarget = KillLeadVictoryRulesUiMetadata.Categories
+            .SelectMany(category => category.Properties)
+            .Single(property => property.Name == nameof(KillLeadVictoryRules.Target));
         Assert.Equal(1, killLeadTarget.Min);
         Assert.Equal(999, killLeadTarget.Max);
         Assert.Null(killLeadTarget.Step);
 
-        IUiPropertyDescriptor teams = ruleDescriptors
+        IUiPropertyDescriptor teams = ModeRulesUiMetadata.Categories
+            .SelectMany(category => category.Properties)
             .Single(property => property.Name == nameof(ModeRules.Teams));
         Assert.Null(teams.Min);
         Assert.Null(teams.Max);
@@ -99,33 +106,34 @@ public class MatchConfigTests
     }
 
     [Fact]
+    public void VictoryMetadata_DeclaresEverySelectableRuleType()
+    {
+        Assert.Collection(
+            VictoryRulesMetadata.Variants,
+            kills =>
+            {
+                Assert.Equal("kills", kills.Id);
+                Assert.Equal("Kills", kills.DisplayName);
+                Assert.IsType<KillsVictoryRules>(kills.CreateDefault());
+            },
+            lead =>
+            {
+                Assert.Equal("kill_lead", lead.Id);
+                Assert.Equal("Kill Lead", lead.DisplayName);
+                Assert.IsType<KillLeadVictoryRules>(lead.CreateDefault());
+            });
+    }
+
+    [Fact]
     public void GeneratedMetadata_EvaluatesConditionalVisibility()
     {
-        IUiPropertyDescriptor killTarget = ModeRulesUiMetadata.Categories
-            .SelectMany(category => category.Properties)
-            .Single(property => property.Name == nameof(ModeRules.KillTarget));
-        IUiPropertyDescriptor killLeadTarget = ModeRulesUiMetadata.Categories
-            .SelectMany(category => category.Properties)
-            .Single(property => property.Name == nameof(ModeRules.KillLeadTarget));
         IUiPropertyDescriptor friendlyFire = ModeRulesUiMetadata.Categories
             .SelectMany(category => category.Properties)
             .Single(property => property.Name == nameof(ModeRules.FriendlyFire));
         ModeRules rules = new();
 
-        Assert.True(killTarget.IsVisible(rules));
-        Assert.False(killLeadTarget.IsVisible(rules));
         Assert.False(friendlyFire.IsVisible(rules));
-
-        rules.WinCondition = WinCondition.KILL_LEAD;
-
-        Assert.False(killTarget.IsVisible(rules));
-        Assert.True(killLeadTarget.IsVisible(rules));
-
-        rules.WinCondition = (WinCondition)99;
         rules.Teams = true;
-
-        Assert.False(killTarget.IsVisible(rules));
-        Assert.False(killLeadTarget.IsVisible(rules));
         Assert.True(friendlyFire.IsVisible(rules));
     }
 
@@ -158,8 +166,8 @@ public class MatchConfigTests
                 float value => value + 0.01f,
                 int value => value + 1,
                 bool value => !value,
-                WinCondition => (WinCondition)99,
                 SuicidePenalty => SuicidePenalty.REWARD_CLOSEST_ENEMY,
+                VictoryRules => new KillLeadVictoryRules { Target = 4 },
                 _ => throw new InvalidOperationException(
                     $"Unhandled config type {property.PropertyType}"),
             };
@@ -170,7 +178,20 @@ public class MatchConfigTests
     private static void AssertWritablePropertiesEqual<T>(T expected, T actual)
     {
         foreach (PropertyInfo property in WritableProperties(typeof(T)))
-            Assert.Equal(property.GetValue(expected), property.GetValue(actual));
+        {
+            object? expectedValue = property.GetValue(expected);
+            object? actualValue = property.GetValue(actual);
+            if (expectedValue is VictoryRules expectedVictory &&
+                actualValue is VictoryRules actualVictory)
+            {
+                Assert.Equal(expectedVictory.GetType(), actualVictory.GetType());
+                Assert.Equal(
+                    ((KillLeadVictoryRules)expectedVictory).Target,
+                    ((KillLeadVictoryRules)actualVictory).Target);
+                continue;
+            }
+            Assert.Equal(expectedValue, actualValue);
+        }
     }
 
     [Fact]
@@ -234,9 +255,7 @@ public class MatchConfigTests
             Rules = new ModeRules
             {
                 Teams = true,
-                WinCondition = WinCondition.KILLS,
-                KillTarget = 5,
-                KillLeadTarget = 4,
+                Victory = new KillsVictoryRules { Target = 5 },
                 FriendlyFire = false,
                 SuicidePenalty = SuicidePenalty.REWARD_CLOSEST_ENEMY,
             },
@@ -244,9 +263,7 @@ public class MatchConfigTests
         MatchConfig got = MatchConfig.FromBytes(sent.ToBytes());
 
         Assert.True(got.Rules.Teams);
-        Assert.Equal(WinCondition.KILLS, got.Rules.WinCondition);
-        Assert.Equal(5, got.Rules.KillTarget);
-        Assert.Equal(4, got.Rules.KillLeadTarget);
+        Assert.Equal(5, Assert.IsType<KillsVictoryRules>(got.Rules.Victory).Target);
         Assert.False(got.Rules.FriendlyFire);
         Assert.Equal(SuicidePenalty.REWARD_CLOSEST_ENEMY, got.Rules.SuicidePenalty);
 
@@ -254,34 +271,46 @@ public class MatchConfigTests
         {
             Rules = new ModeRules
             {
-                WinCondition = (WinCondition)99,
-                KillTarget = 0,
-                KillLeadTarget = 1000,
+                Victory = new KillLeadVictoryRules { Target = 1000 },
             },
         };
         got = MatchConfig.FromBytes(hostile.ToBytes());
-        Assert.Equal(WinCondition.KILLS, got.Rules.WinCondition);
-        Assert.Equal(1, got.Rules.KillTarget);
-        Assert.Equal(999, got.Rules.KillLeadTarget);
+        Assert.Equal(999, Assert.IsType<KillLeadVictoryRules>(got.Rules.Victory).Target);
+    }
+
+    [Fact]
+    public void Clamp_IncludesTheSelectedVictoryRules()
+    {
+        MatchConfig config = new()
+        {
+            Rules = new ModeRules
+            {
+                Victory = new KillsVictoryRules { Target = 1000 },
+            },
+        };
+
+        config.Clamp();
+
+        Assert.Equal(999, Assert.IsType<KillsVictoryRules>(config.Rules.Victory).Target);
     }
 
     [Fact]
     public void TryApplyKey_SetsTypedValuesFromRawTomlTypes()
     {
         ModeRules rules = new();
+        KillsVictoryRules kills = new();
+        KillLeadVictoryRules lead = new();
         Physics physics = new();
 
         Assert.Equal(ConfigKeyResult.APPLIED, rules.TryApplyKey("teams", true, out _));
-        Assert.Equal(ConfigKeyResult.APPLIED, rules.TryApplyKey("win_condition", "kills", out _));
-        Assert.Equal(ConfigKeyResult.APPLIED, rules.TryApplyKey("kill_target", 30L, out _));
-        Assert.Equal(ConfigKeyResult.APPLIED, rules.TryApplyKey("kill_lead_target", 4L, out _));
+        Assert.Equal(ConfigKeyResult.APPLIED, kills.TryApplyKey("target", 30L, out _));
+        Assert.Equal(ConfigKeyResult.APPLIED, lead.TryApplyKey("target", 4L, out _));
         Assert.Equal(ConfigKeyResult.APPLIED, physics.TryApplyKey("gravity", 600L, out _));
         Assert.Equal(ConfigKeyResult.APPLIED, rules.TryApplyKey("spawn_immunity", 2.5, out _));
 
         Assert.True(rules.Teams);
-        Assert.Equal(WinCondition.KILLS, rules.WinCondition);
-        Assert.Equal(30, rules.KillTarget);
-        Assert.Equal(4, rules.KillLeadTarget);
+        Assert.Equal(30, kills.Target);
+        Assert.Equal(4, lead.Target);
         Assert.Equal(600, physics.Gravity);
         Assert.Equal(2.5f, rules.SpawnImmunity);
         Assert.Equal(150, rules.SpawnImmunityTicks);
@@ -292,15 +321,15 @@ public class MatchConfigTests
     public void TryApplyKey_RejectsUnknownKeysAndWrongTypes()
     {
         ModeRules rules = new();
+        KillsVictoryRules kills = new();
 
         Assert.Equal(ConfigKeyResult.UNKNOWN_KEY, rules.TryApplyKey("lives", 3L, out string error));
         Assert.Contains("lives", error);
         Assert.Equal(ConfigKeyResult.INVALID_VALUE, rules.TryApplyKey("teams", "yes", out _));
-        Assert.Equal(ConfigKeyResult.INVALID_VALUE, rules.TryApplyKey("win_condition", "most_flags", out error));
-        Assert.Contains("kills", error); // the error lists the legal values
-        Assert.Equal(ConfigKeyResult.INVALID_VALUE, rules.TryApplyKey("kill_target", 1.5, out _));
-        Assert.Equal(ConfigKeyResult.INVALID_VALUE,
-            rules.TryApplyKey("kill_lead_target", 1.5, out _));
+        Assert.Equal(ConfigKeyResult.UNKNOWN_KEY,
+            rules.TryApplyKey("win_condition", "most_flags", out error));
+        Assert.Contains("win_condition", error);
+        Assert.Equal(ConfigKeyResult.INVALID_VALUE, kills.TryApplyKey("target", 1.5, out _));
 
         Assert.Equal(ConfigKeyResult.UNKNOWN_KEY, rules.TryApplyKey("gravity", 600L, out _));
         Assert.Equal(ConfigKeyResult.UNKNOWN_KEY, new Physics().TryApplyKey("teams", true, out _));

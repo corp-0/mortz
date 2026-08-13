@@ -50,6 +50,70 @@ public static class TomlModel
         return Toml.FromModel(table!);
     }
 
+    internal static bool PropertiesMatch(
+        object expected,
+        object actual,
+        IEnumerable<string> paths)
+    {
+        if (!TomlGeneratedModels.TryWrite(expected.GetType(), expected, out TomlTable? expectedTable) ||
+            !TomlGeneratedModels.TryWrite(actual.GetType(), actual, out TomlTable? actualTable))
+        {
+            throw new NotSupportedException("Mode identity requires TOML models.");
+        }
+
+        foreach (string path in paths)
+        {
+            if (!TryValue(expectedTable!, path, out object? expectedValue) ||
+                !TryValue(actualTable!, path, out object? actualValue) ||
+                !TomlValueEquals(expectedValue, actualValue))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static bool TryValue(TomlTable root, string path, out object? value)
+    {
+        value = root;
+        foreach (string key in path.Split('.'))
+        {
+            if (key.Length == 0 || value is not TomlTable table ||
+                !table.TryGetValue(key, out value))
+            {
+                value = null;
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static bool TomlValueEquals(object? left, object? right)
+    {
+        if (left is TomlTable leftTable && right is TomlTable rightTable)
+        {
+            return leftTable.Count == rightTable.Count && leftTable.All(pair =>
+                rightTable.TryGetValue(pair.Key, out object? value) &&
+                TomlValueEquals(pair.Value, value));
+        }
+        if (left is System.Collections.IEnumerable leftItems && left is not string &&
+            right is System.Collections.IEnumerable rightItems && right is not string)
+        {
+            return leftItems.Cast<object?>().SequenceEqual(
+                rightItems.Cast<object?>(), TomlValueComparer.Instance);
+        }
+        return Equals(left, right);
+    }
+
+    private sealed class TomlValueComparer : IEqualityComparer<object?>
+    {
+        public static TomlValueComparer Instance { get; } = new();
+
+        public new bool Equals(object? left, object? right) => TomlValueEquals(left, right);
+
+        public int GetHashCode(object? value) => value?.GetHashCode() ?? 0;
+    }
+
     public static void UnknownKeys(TomlTable table, string[] known, string path, string source,
         List<ContentDiagnostic> diagnostics)
     {

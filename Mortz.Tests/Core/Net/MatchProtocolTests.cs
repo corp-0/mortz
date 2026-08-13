@@ -1,4 +1,3 @@
-using Mortz.Core.Match;
 using Mortz.Core.Match.Scoring;
 using Mortz.Core.Match.Teams;
 using Mortz.Core.Net;
@@ -28,7 +27,7 @@ public class MatchProtocolTests : IDisposable
         SendRawEnd(MatchProtocol.Encode(winner));
 
     private static MatchPoint? BroadcastMatchPoint(MatchPoint? state) =>
-        SendRawMatchPoint(MatchProtocol.Encode(WinCondition.KILLS, state));
+        SendRawMatchPoint(MatchProtocol.Encode(state));
 
     /// <summary>Malformed messages cannot be built from a Victor, so raw
     /// messages send by hand.</summary>
@@ -90,7 +89,7 @@ public class MatchProtocolTests : IDisposable
     [Fact]
     public void ALeaderNobodyCanNameKeepsTheStateAndLosesTheName() =>
         Assert.Equal(new MatchPoint(4, null),
-            SendRawMatchPoint(new MatchPointMsg(true, WinCondition.KILLS, 4, 9,
+            SendRawMatchPoint(new MatchPointMsg(true, 4, 9,
                 LeaderIsTeam: true)));
 
     /// <summary>A zero would trip MatchPoint's own check, so the decoder
@@ -98,5 +97,5 @@ public class MatchProtocolTests : IDisposable
     [Fact]
     public void AnImpossibleRemainingIsSanitizedNotThrown() =>
         Assert.Equal(new MatchPoint(1, null),
-            SendRawMatchPoint(new MatchPointMsg(true, WinCondition.KILLS, 0)));
+            SendRawMatchPoint(new MatchPointMsg(true, 0)));
 }

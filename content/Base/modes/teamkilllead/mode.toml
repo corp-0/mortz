@@ -1,9 +1,12 @@
 format_version = 1
 name = "Team Kill Lead"
 description = "Two teams. First team to lead by the target wins."
+identity = ["rules.teams", "rules.victory.type"]
 
 [rules]
 teams = true
-win_condition = "kill_lead"
-kill_lead_target = 5
 suicide_penalty = "reward_closest_enemy"
+
+[rules.victory]
+type = "kill_lead"
+target = 5

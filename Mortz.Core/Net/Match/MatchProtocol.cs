@@ -1,5 +1,4 @@
 using System.Diagnostics.CodeAnalysis;
-using Mortz.Core.Match;
 using Mortz.Core.Match.Scoring;
 using Mortz.Core.Match.Teams;
 using Mortz.Core.Net.Roster;
@@ -16,17 +15,17 @@ public static class MatchProtocol
         _ => throw new ArgumentOutOfRangeException(nameof(victor)),
     };
 
-    public static MatchPointMsg Encode(WinCondition kind, MatchPoint? state)
+    public static MatchPointMsg Encode(MatchPoint? state)
     {
         if (state == null)
-            return new MatchPointMsg(false, kind, 0);
+            return new MatchPointMsg(false, 0);
         byte remaining = (byte)Math.Clamp(state.Remaining, 1, byte.MaxValue);
         return state.Leader switch
         {
-            Victor.Player player => new MatchPointMsg(true, kind, remaining, player.PeerId),
-            Victor.Team team => new MatchPointMsg(true, kind, remaining,
+            Victor.Player player => new MatchPointMsg(true, remaining, player.PeerId),
+            Victor.Team team => new MatchPointMsg(true, remaining,
                 TeamWire.ToByte(team.Value), LeaderIsTeam: true),
-            _ => new MatchPointMsg(true, kind, remaining),
+            _ => new MatchPointMsg(true, remaining),
         };
     }
 

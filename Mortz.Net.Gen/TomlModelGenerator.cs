@@ -207,7 +207,7 @@ public sealed class TomlModelGenerator : IIncrementalGenerator
         foreach (CaseInfo item in model.Cases)
         {
             int target = IndexOf(models, item.Type);
-            b.AppendLine($"            {Quote(item.Name)} => Read{target}(Without(table, {Quote(discriminator)}), path, source, diagnostics),");
+            b.AppendLine($"            {Quote(item.Name)} => Read{target}(Without{index}(table, {Quote(discriminator)}), path, source, diagnostics),");
         }
         b.AppendLine("            _ => BadTag(),");
         b.AppendLine("        };");
@@ -230,7 +230,7 @@ public sealed class TomlModelGenerator : IIncrementalGenerator
         b.AppendLine("        foreach (var pair in table) result.Add(pair.Key, pair.Value);");
         b.AppendLine("        return result;");
         b.AppendLine("    }");
-        b.AppendLine("    private static global::Tomlyn.Model.TomlTable Without(global::Tomlyn.Model.TomlTable source, string key) { global::Tomlyn.Model.TomlTable copy = new(); foreach (var pair in source) if (pair.Key != key) copy.Add(pair.Key, pair.Value); return copy; }");
+        b.AppendLine($"    private static global::Tomlyn.Model.TomlTable Without{index}(global::Tomlyn.Model.TomlTable source, string key) {{ global::Tomlyn.Model.TomlTable copy = new(); foreach (var pair in source) if (pair.Key != key) copy.Add(pair.Key, pair.Value); return copy; }}");
     }
 
     private static void EmitReadField(StringBuilder b, FieldInfo field, int i, ModelInfo[] models)
@@ -307,19 +307,26 @@ public sealed class TomlModelGenerator : IIncrementalGenerator
     {
         if (models.ContainsKey(type)) return;
         AttributeData? union = Attr(type, "TomlUnionAttribute");
-        if (union != null)
+        AttributeData[] victoryCases = type.GetAttributes()
+            .Where(attribute => attribute.AttributeClass?.Name == "VictoryRuleCaseAttribute")
+            .ToArray();
+        if (union != null || victoryCases.Length > 0)
         {
             ImmutableArray<CaseInfo>.Builder cases = ImmutableArray.CreateBuilder<CaseInfo>();
-            string discriminator = union.ConstructorArguments.Length == 0
+            string discriminator = union == null || union.ConstructorArguments.Length == 0
                 ? "type"
                 : (string?)union.ConstructorArguments[0].Value ?? "type";
             models[type] = new(type, null, ImmutableArray<FieldInfo>.Empty, discriminator,
                 ImmutableArray<CaseInfo>.Empty);
-            foreach (AttributeData attr in type.GetAttributes().Where(x => x.AttributeClass?.Name == "TomlCaseAttribute"))
+            IEnumerable<AttributeData> caseAttributes = union != null
+                ? type.GetAttributes().Where(x => x.AttributeClass?.Name == "TomlCaseAttribute")
+                : victoryCases;
+            foreach (AttributeData attr in caseAttributes)
             {
-                if (attr.ConstructorArguments.Length == 2 &&
+                int typeArgument = union != null ? 1 : 2;
+                if (attr.ConstructorArguments.Length > typeArgument &&
                     attr.ConstructorArguments[0].Value is string name &&
-                    attr.ConstructorArguments[1].Value is INamedTypeSymbol member)
+                    attr.ConstructorArguments[typeArgument].Value is INamedTypeSymbol member)
                 {
                     cases.Add(new(name, member));
                     Inspect(member, models, context);

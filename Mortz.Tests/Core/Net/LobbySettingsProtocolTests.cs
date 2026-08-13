@@ -1,4 +1,3 @@
-using Mortz.Core.Match;
 using Mortz.Core.Match.Configuration;
 using Mortz.Core.Net;
 using Mortz.Core.Net.Lobby;
@@ -43,7 +42,13 @@ public class LobbySettingsProtocolTests : IDisposable
             new LobbyCatalog([new ContentOption("castlewars", "Castle Wars")]),
             new LobbyCatalog([new ContentOption("deathmatch", "Deathmatch")]),
             modeId),
-        new MatchConfig { Rules = new ModeRules { KillTarget = 12 } });
+        new MatchConfig
+        {
+            Rules = new ModeRules
+            {
+                Victory = new KillsVictoryRules { Target = 12 },
+            },
+        });
 
     private static LobbySettingsMsg Raw(string[] mapIds, string[] mapNames,
         string[] modeIds, string[] modeNames, byte[]? config = null) =>
@@ -59,7 +64,8 @@ public class LobbySettingsProtocolTests : IDisposable
         Assert.NotNull(received);
         Assert.Equal(sent.Selection, received.Selection);
         Assert.Equal("deathmatch", received.Selection.ModeId);
-        Assert.Equal(12, received.Config.Rules.KillTarget);
+        Assert.Equal(12,
+            Assert.IsType<KillsVictoryRules>(received.Config.Rules.Victory).Target);
     }
 
     [Fact]

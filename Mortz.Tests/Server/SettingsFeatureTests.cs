@@ -25,12 +25,19 @@ public sealed class SettingsFeatureTests : IDisposable
     public void RulesUpdateAppliesAndReportsTheChange()
     {
         SettingsFeature settings = Build();
-        MatchConfig next = new() { Rules = new ModeRules { KillTarget = 42 } };
+        MatchConfig next = new()
+        {
+            Rules = new ModeRules
+            {
+                Victory = new KillsVictoryRules { Target = 42 },
+            },
+        };
 
         bool applied = settings.TrySetRules(next.ToBytes(), out LobbySettingDelta[] deltas);
 
         Assert.True(applied);
-        Assert.Equal(42, settings.Config.Rules.KillTarget);
+        Assert.Equal(42,
+            Assert.IsType<KillsVictoryRules>(settings.Config.Rules.Victory).Target);
         Assert.Contains(deltas, delta => delta.After == "42");
     }
 
@@ -143,7 +150,8 @@ public sealed class SettingsFeatureTests : IDisposable
         string pack = AddPack("Base", "base");
         AddMap(pack, "arena", "Arena");
         AddMap(pack, "duel", "Duel");
-        AddMode(pack, "deathmatch", "Deathmatch", "kill_target = 5");
+        AddMode(pack, "deathmatch", "Deathmatch",
+            "[rules.victory]\ntype = \"kills\"\ntarget = 5");
         AddMode(pack, "teamdeathmatch", "Team Deathmatch", "teams = true");
         ContentCatalog catalog = Assert.IsType<ContentCatalog>(ContentCatalog.Load(_root).Catalog);
         ServerBoot boot = new()

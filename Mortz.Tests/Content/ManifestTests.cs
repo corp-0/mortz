@@ -1,6 +1,5 @@
 using Mortz.Content;
 using Mortz.Core.Match.Configuration;
-using Mortz.Core.Match.Scoring;
 using Mortz.Core.Match.Teams;
 using Xunit;
 
@@ -15,21 +14,58 @@ public class ManifestTests
             format_version = 1
             name = "Team Deathmatch"
             description = "Two teams."
+            identity = ["rules.teams", "rules.victory.target"]
 
             [rules]
             teams = true
-            win_condition = "kills"
-            kill_target = 15
+
+            [rules.victory]
+            type = "kills"
+            target = 15
             """, "mode.toml");
 
         GameModeManifest manifest = Assert.IsType<GameModeManifest>(result.Value);
         Assert.Empty(result.Diagnostics);
         Assert.Equal("Team Deathmatch", manifest.Name);
         Assert.Equal("Two teams.", manifest.Description);
+        Assert.Equal(["rules.teams", "rules.victory.target"], manifest.Identity);
         Assert.True(manifest.Rules.Teams);
-        Assert.Equal(WinCondition.KILLS, manifest.Rules.WinCondition);
-        Assert.Equal(15, manifest.Rules.KillTarget);
+        Assert.Equal(15,
+            Assert.IsType<KillsVictoryRules>(manifest.Rules.Victory).Target);
         Assert.True(manifest.Rules.FriendlyFire);
+    }
+
+    [Fact]
+    public void ModeIdentityUsesItsAuthoredConfigPaths()
+    {
+        GameModeManifest manifest = new()
+        {
+            FormatVersion = 1,
+            Name = "Five Kill Teams",
+            Identity = ["rules.teams", "rules.victory.type", "rules.victory.target"],
+            Rules = new ModeRules
+            {
+                Teams = true,
+                Victory = new KillsVictoryRules { Target = 5 },
+            },
+        };
+
+        Assert.True(manifest.Matches(new MatchConfig
+        {
+            Rules = new ModeRules
+            {
+                Teams = true,
+                Victory = new KillsVictoryRules { Target = 5 },
+            },
+        }));
+        Assert.False(manifest.Matches(new MatchConfig
+        {
+            Rules = new ModeRules
+            {
+                Teams = true,
+                Victory = new KillsVictoryRules { Target = 6 },
+            },
+        }));
     }
 
     [Fact]
@@ -68,14 +104,14 @@ public class ManifestTests
             format_version = 1
             name = "Broken"
 
-            [rules]
-            win_condition = "most_flags"
+            [rules.victory]
+            type = "most_flags"
             """, "mode.toml");
 
         Assert.Null(result.Value);
         Assert.Contains(result.Diagnostics,
             diagnostic => diagnostic.Severity == ContentDiagnosticSeverity.ERROR &&
-                          diagnostic.Message.Contains("rules.win_condition", StringComparison.Ordinal));
+                          diagnostic.Message.Contains("rules.victory.type", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -85,12 +121,36 @@ public class ManifestTests
             format_version = 1
             name = "Greedy"
 
-            [rules]
-            kill_target = 5000
+            [rules.victory]
+            type = "kills"
+            target = 5000
             """, "mode.toml");
 
         GameModeManifest manifest = Assert.IsType<GameModeManifest>(result.Value);
-        Assert.Equal(5000, manifest.Rules.KillTarget);
+        Assert.Equal(5000,
+            Assert.IsType<KillsVictoryRules>(manifest.Rules.Victory).Target);
+    }
+
+    [Fact]
+    public void RulesetRoundTripsTheSelectedVictoryRule()
+    {
+        RulesetManifest expected = new()
+        {
+            Rules = new ModeRules
+            {
+                Victory = new KillLeadVictoryRules { Target = 7 },
+            },
+        };
+
+        string text = TomlModel.Write(expected);
+        ContentReadResult<RulesetManifest> result = TomlModel.Read<RulesetManifest>(text);
+
+        RulesetManifest actual = Assert.IsType<RulesetManifest>(result.Value);
+        Assert.Empty(result.Diagnostics);
+        Assert.Contains("[rules.victory]", text, StringComparison.Ordinal);
+        Assert.Contains("type = \"kill_lead\"", text, StringComparison.Ordinal);
+        Assert.Equal(7,
+            Assert.IsType<KillLeadVictoryRules>(actual.Rules.Victory).Target);
     }
 
     [Fact]

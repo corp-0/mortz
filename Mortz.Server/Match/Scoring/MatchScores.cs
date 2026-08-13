@@ -1,4 +1,3 @@
-using Mortz.Core.Match;
 using Mortz.Core.Match.Scoring;
 using Mortz.Core.Match.Teams;
 using Mortz.Server.Match.Scoring.SuicidePenalties;
@@ -16,7 +15,7 @@ public sealed class MatchScores(
     IReadOnlyDictionary<int, Player> seated)
 {
     private readonly MatchStateKey<ScoreState> _key = keys.Claim<ScoreState>();
-    private readonly WinConditionStrategy _winCondition = WinConditionStrategy.Create(config.WinCondition);
+    private readonly WinConditionStrategy _winCondition = WinConditionStrategy.Create(config.Victory);
     private readonly SuicidePenaltyStrategy _suicidePenalty = SuicidePenaltyStrategy.Create(config.SuicidePenalty);
     private TeamKills _teamKills;
 

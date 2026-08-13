@@ -39,8 +39,9 @@ public partial class UiPropertySheet : VBoxContainer
     }
 
     public void Build(IReadOnlyList<UiCategoryDescriptor> categories, object model,
-        Action changed)
+        Action changed, bool showFirstCategoryHeading = true)
     {
+        Clear();
         _model = model;
         BoundModelType = model.GetType();
         int categoryIndex = 0;
@@ -54,11 +55,14 @@ public partial class UiPropertySheet : VBoxContainer
             categoryBlock.AddThemeConstantOverride("separation", 7);
             categoryMargin.AddChild(categoryBlock);
 
-            Label heading = new() { Text = category.DisplayName };
-            heading.AddThemeFontSizeOverride("font_size", 18);
-            heading.AddThemeColorOverride("font_color", new Color("cbd5e1"));
-            categoryBlock.AddChild(heading);
-            categoryBlock.AddChild(new HSeparator());
+            if (categoryIndex > 0 || showFirstCategoryHeading)
+            {
+                Label heading = new() { Text = category.DisplayName };
+                heading.AddThemeFontSizeOverride("font_size", 18);
+                heading.AddThemeColorOverride("font_color", new Color("cbd5e1"));
+                categoryBlock.AddChild(heading);
+                categoryBlock.AddChild(new HSeparator());
+            }
             List<BoundProperty> properties = [];
             foreach (IUiPropertyDescriptor descriptor in category.Properties)
             {
@@ -92,6 +96,17 @@ public partial class UiPropertySheet : VBoxContainer
         }
         CategoryBlockCount = categoryIndex;
         RefreshVisibility();
+    }
+
+    private void Clear()
+    {
+        foreach (Node child in GetChildren())
+        {
+            RemoveChild(child);
+            child.Free();
+        }
+        _categories.Clear();
+        CategoryBlockCount = 0;
     }
 
     public void UpdateModel(object model)

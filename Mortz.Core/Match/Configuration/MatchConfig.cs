@@ -11,6 +11,7 @@ public sealed class MatchConfig
     public void Clamp()
     {
         Rules.Clamp();
+        VictoryRulesMetadata.Clamp(Rules.Victory);
         Physics.Clamp();
         Combat.Clamp();
     }

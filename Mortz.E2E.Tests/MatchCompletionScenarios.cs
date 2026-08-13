@@ -1,6 +1,4 @@
-using Mortz.Core.Match;
 using Mortz.Core.Match.Configuration;
-using Mortz.Core.Match.Scoring;
 using Mortz.Core.Sim;
 using Mortz.E2E.Protocol;
 using Mortz.E2E.Tests.Harness;
@@ -31,8 +29,8 @@ public sealed class MatchCompletionScenarios
         MatchSetupResponse setup = await scenario.Server.SetupAsync(
             TestContext.Current.CancellationToken);
         MatchConfig config = MatchConfig.FromBytes(setup.Config);
-        Assert.Equal(1, config.Rules.KillTarget);
-        Assert.Equal(WinCondition.KILLS, config.Rules.WinCondition);
+        Assert.Equal(1,
+            Assert.IsType<KillsVictoryRules>(config.Rules.Victory).Target);
 
         await scenario.Server.PlacePlayerAsync(
             shooter.PeerId, new Vec2(400, FLOOR_Y), TestContext.Current.CancellationToken);

@@ -1,5 +1,6 @@
 using System.Text;
 using Mortz.Content;
+using Mortz.Core.Match.Configuration;
 using Xunit;
 
 namespace Mortz.Tests.Content;
@@ -162,15 +163,18 @@ public sealed class ContentCatalogTests : IDisposable
     {
         string basePack = AddPack("Base", "base", 0);
         string modPack = AddPack("Mod", "mod", 100);
-        AddMode(basePack, "deathmatch", "Deathmatch", "kill_target = 5");
+        AddMode(basePack, "deathmatch", "Deathmatch",
+            "[rules.victory]\ntype = \"kills\"\ntarget = 5");
         AddMode(basePack, "teamdeathmatch", "Team Deathmatch", "teams = true");
-        AddMode(modPack, "deathmatch", "Hyper Deathmatch", "kill_target = 50");
+        AddMode(modPack, "deathmatch", "Hyper Deathmatch",
+            "[rules.victory]\ntype = \"kills\"\ntarget = 50");
 
         ContentCatalog catalog = Assert.IsType<ContentCatalog>(ContentCatalog.Load(_root).Catalog);
 
         Assert.True(catalog.TryGetMode("deathmatch", out ResolvedContent<GameModeManifest>? deathmatch));
         Assert.Equal("Hyper Deathmatch", deathmatch!.Winner.Manifest.Name);
-        Assert.Equal(50, deathmatch.Winner.Manifest.Rules.KillTarget);
+        Assert.Equal(50, Assert.IsType<KillsVictoryRules>(
+            deathmatch.Winner.Manifest.Rules.Victory).Target);
         Assert.Equal(["org.mortz.base", "org.mortz.mod"],
             deathmatch.OverrideChain.Select(m => m.SourcePack.Manifest.Id).ToArray());
         Assert.True(catalog.TryGetMode("teamdeathmatch", out ResolvedContent<GameModeManifest>? teams));

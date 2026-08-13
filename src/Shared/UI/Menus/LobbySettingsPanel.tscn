@@ -2,8 +2,9 @@
 
 [ext_resource type="Script" uid="uid://ccv87mfb0uwoq" path="res://src/Client/Menus/LobbySettingsPanel.cs" id="1"]
 [ext_resource type="PackedScene" uid="uid://pbne52ymu80j" path="res://src/Shared/UI/Controls/UiPropertySheet.tscn" id="2"]
+[ext_resource type="PackedScene" path="res://src/Shared/UI/Controls/VictoryRulesSheet.tscn" id="3_victory"]
 
-[node name="LobbySettingsPanel" type="PanelContainer" unique_id=289524066 node_paths=PackedStringArray("_modePicker", "_mapPicker", "_mapPreview", "_mapStatus", "_rulesSheet", "_physicsSheet", "_combatSheet")]
+[node name="LobbySettingsPanel" type="PanelContainer" unique_id=289524066 node_paths=PackedStringArray("_modePicker", "_mapPicker", "_mapPreview", "_mapStatus", "_rulesSheet", "_victoryRulesSheet", "_physicsSheet", "_combatSheet")]
 custom_minimum_size = Vector2(440, 0)
 offset_right = 440.0
 offset_bottom = 720.0
@@ -14,7 +15,8 @@ _modePicker = NodePath("Margin/Column/Header/MapInfo/ModePicker")
 _mapPicker = NodePath("Margin/Column/Header/MapInfo/MapPicker")
 _mapPreview = NodePath("Margin/Column/Header/PreviewFrame/MapPreview")
 _mapStatus = NodePath("Margin/Column/Header/MapInfo/MapStatus")
-_rulesSheet = NodePath("Margin/Column/SettingsTabs/Rules/Sheet")
+_rulesSheet = NodePath("Margin/Column/SettingsTabs/Rules/Sheets/RulesSheet")
+_victoryRulesSheet = NodePath("Margin/Column/SettingsTabs/Rules/Sheets/VictoryRulesSheet")
 _physicsSheet = NodePath("Margin/Column/SettingsTabs/Physics/Sheet")
 _combatSheet = NodePath("Margin/Column/SettingsTabs/Combat/Sheet")
 
@@ -102,12 +104,22 @@ text = "MATCH SETTINGS"
 custom_minimum_size = Vector2(0, 100)
 layout_mode = 2
 size_flags_vertical = 3
+current_tab = 0
 
 [node name="Rules" type="ScrollContainer" parent="Margin/Column/SettingsTabs" unique_id=2055186421]
 layout_mode = 2
 horizontal_scroll_mode = 0
+metadata/_tab_index = 0
 
-[node name="Sheet" parent="Margin/Column/SettingsTabs/Rules" unique_id=995309611 instance=ExtResource("2")]
+[node name="Sheets" type="VBoxContainer" parent="Margin/Column/SettingsTabs/Rules" unique_id=1844485998]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 22
+
+[node name="VictoryRulesSheet" parent="Margin/Column/SettingsTabs/Rules/Sheets" unique_id=1115237244 instance=ExtResource("3_victory")]
+layout_mode = 2
+
+[node name="RulesSheet" parent="Margin/Column/SettingsTabs/Rules/Sheets" unique_id=995309611 instance=ExtResource("2")]
 layout_mode = 2
 size_flags_horizontal = 3
 
@@ -115,6 +127,7 @@ size_flags_horizontal = 3
 visible = false
 layout_mode = 2
 horizontal_scroll_mode = 0
+metadata/_tab_index = 1
 
 [node name="Sheet" parent="Margin/Column/SettingsTabs/Combat" unique_id=733181246 instance=ExtResource("2")]
 layout_mode = 2
@@ -124,6 +137,7 @@ size_flags_horizontal = 3
 visible = false
 layout_mode = 2
 horizontal_scroll_mode = 0
+metadata/_tab_index = 2
 
 [node name="Sheet" parent="Margin/Column/SettingsTabs/Physics" unique_id=1471520893 instance=ExtResource("2")]
 layout_mode = 2

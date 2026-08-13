@@ -55,7 +55,7 @@ public sealed class MatchWire(
         if (session.ActiveMatchPoint is MatchPoint matchPoint)
         {
             link.Send(peerId,
-                MatchProtocol.Encode(session.Config.Rules.WinCondition, matchPoint));
+                MatchProtocol.Encode(matchPoint));
         }
         if (session.Winner is Victor winner)
             link.Send(peerId, MatchProtocol.Encode(winner));
@@ -129,7 +129,7 @@ public sealed class MatchWire(
         if (frame.MatchPoint is MatchPointChange change)
         {
             log.Information("match point {MatchPointState}", change.Held != null ? "on" : "off");
-            link.Broadcast(MatchProtocol.Encode(match.Config.Rules.WinCondition, change.Held));
+            link.Broadcast(MatchProtocol.Encode(change.Held));
         }
 
         if (frame.Tick % NetConfig.TICKS_PER_SNAPSHOT == 0 && match.World.Players.Count > 0)
@@ -141,8 +141,7 @@ public sealed class MatchWire(
 
         if (frame.MatchEnded is Victor winner)
         {
-            log.Information("match over: {Winner} wins (first to {KillTarget})",
-                Describe(winner), match.Config.Rules.KillTarget);
+            log.Information("match over: {Winner} wins", Describe(winner));
             link.Broadcast(MatchProtocol.Encode(winner));
         }
     }

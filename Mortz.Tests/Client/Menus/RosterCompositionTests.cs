@@ -7,7 +7,6 @@ using Mortz.Client.Players;
 using Mortz.Client.Session;
 using Mortz.Client.Setup;
 using Mortz.Client.Stats;
-using Mortz.Core.Match;
 using Mortz.Core.Match.Configuration;
 using Mortz.Core.Match.Teams;
 using Mortz.Core.Net.Lobby;
@@ -124,7 +123,11 @@ public class RosterCompositionTests : NodeServiceTest
     {
         MatchConfig config = new()
         {
-            Rules = new ModeRules { Teams = teams, KillTarget = killTarget },
+            Rules = new ModeRules
+            {
+                Teams = teams,
+                Victory = new KillsVictoryRules { Target = killTarget },
+            },
         };
         return new LobbySettingsMsg("castlewars", "hash", ["castlewars"], ["Castle Wars"],
             [], [], "", config.ToBytes());

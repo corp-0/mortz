@@ -11,19 +11,7 @@ public sealed partial class ModeRules
     [MatchRule]
     public bool Teams { get; set; }
 
-    [UiProperty("Win Condition")]
-    [MatchRule]
-    public WinCondition WinCondition { get; set; } = WinCondition.KILLS;
-
-    [UiProperty("Kill Target", min: 1, max: 999)]
-    [UiVisibleWhen(nameof(KillTargetIsRelevant))]
-    [MatchRule(min: 1, max: 999)]
-    public int KillTarget { get; set; } = SimConfig.KILL_TARGET;
-
-    [UiProperty("Kill Lead Target", min: 1, max: 999)]
-    [UiVisibleWhen(nameof(KillLeadTargetIsRelevant))]
-    [MatchRule(min: 1, max: 999)]
-    public int KillLeadTarget { get; set; } = SimConfig.KILL_LEAD_TARGET;
+    public VictoryRules Victory { get; set; } = new KillsVictoryRules();
 
     // Self-damage always applies.
     [UiProperty("Friendly Fire")]
@@ -52,13 +40,30 @@ public sealed partial class ModeRules
 
     public int SpawnImmunityTicks => (int)(SpawnImmunity * SimConfig.TICK_RATE);
 
-    public bool KillTargetIsRelevant => WinCondition == WinCondition.KILLS;
-
-    public bool KillLeadTargetIsRelevant => WinCondition == WinCondition.KILL_LEAD;
-
     public bool FriendlyFireIsRelevant => Teams;
 
-    public byte[] ToBytes() => Serialize(this);
+    public byte[] ToBytes()
+    {
+        byte[] shared = Serialize(this);
+        byte[] victory = VictoryRulesMetadata.Serialize(Victory);
+        using MemoryStream stream = new();
+        using BinaryWriter writer = new(stream);
+        writer.Write(shared.Length);
+        writer.Write(shared);
+        writer.Write(victory);
+        return stream.ToArray();
+    }
 
-    public static ModeRules FromBytes(byte[] data) => Deserialize(data);
+    public static ModeRules FromBytes(byte[] data)
+    {
+        using MemoryStream stream = new(data, writable: false);
+        using BinaryReader reader = new(stream);
+        int sharedLength = reader.ReadInt32();
+        if (sharedLength < 0 || sharedLength > stream.Length - stream.Position)
+            throw new InvalidDataException("Invalid shared match-rules length.");
+        ModeRules rules = Deserialize(reader.ReadBytes(sharedLength));
+        rules.Victory = VictoryRulesMetadata.Deserialize(
+            reader.ReadBytes(checked((int)(stream.Length - stream.Position))));
+        return rules;
+    }
 }

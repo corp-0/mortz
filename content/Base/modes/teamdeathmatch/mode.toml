@@ -1,9 +1,12 @@
 format_version = 1
 name = "Team Deathmatch"
 description = "Two teams. First team to the kill target wins."
+identity = ["rules.teams", "rules.victory.type"]
 
 [rules]
 teams = true
-win_condition = "kills"
-kill_target = 15
 suicide_penalty = "reward_closest_enemy"
+
+[rules.victory]
+type = "kills"
+target = 15

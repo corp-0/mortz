@@ -6,9 +6,7 @@ using Mortz.Client.Admin;
 using Mortz.Client.Setup;
 using Mortz.Client.Ui;
 using Mortz.Core.Admin;
-using Mortz.Core.Match;
 using Mortz.Core.Match.Configuration;
-using Mortz.Core.Net;
 using Mortz.Core.Net.Lobby;
 using Mortz.Shared;
 
@@ -22,6 +20,7 @@ public partial class LobbySettingsPanel : PanelContainer
     [Export] private TextureRect _mapPreview = null!;
     [Export] private Label _mapStatus = null!;
     [Export] private UiPropertySheet _rulesSheet = null!;
+    [Export] private VictoryRulesSheet _victoryRulesSheet = null!;
     [Export] private UiPropertySheet _physicsSheet = null!;
     [Export] private UiPropertySheet _combatSheet = null!;
 
@@ -46,6 +45,7 @@ public partial class LobbySettingsPanel : PanelContainer
         _mapPicker.ItemSelected += OnMapSelected;
         _modePicker.ItemSelected += OnModeSelected;
         _rulesSheet.Build(ModeRulesUiMetadata.Categories, _config.Rules, OnConfigEdited);
+        _victoryRulesSheet.Build(_config.Rules.Victory, OnVictoryRulesEdited);
         _physicsSheet.Build(PhysicsUiMetadata.Categories, _config.Physics, OnConfigEdited);
         _combatSheet.Build(CombatUiMetadata.Categories, _config.Combat, OnConfigEdited);
         UpdateEditing(isAdmin: false);
@@ -88,6 +88,7 @@ public partial class LobbySettingsPanel : PanelContainer
         ApplyMapOptions(selection);
         ApplyModeOptions(selection);
         _rulesSheet.UpdateModel(_config.Rules);
+        _victoryRulesSheet.UpdateModel(_config.Rules.Victory);
         _physicsSheet.UpdateModel(_config.Physics);
         _combatSheet.UpdateModel(_config.Combat);
         UpdateEditing(Admin.IsAdmin);
@@ -164,6 +165,12 @@ public partial class LobbySettingsPanel : PanelContainer
         }
     }
 
+    private void OnVictoryRulesEdited(VictoryRules victory)
+    {
+        _config.Rules.Victory = victory;
+        OnConfigEdited();
+    }
+
     private void OnMapSelected(long index)
     {
         if (_applyingState || !Admin.IsAdmin || index < 0 || index >= _mapIds.Count)
@@ -209,6 +216,7 @@ public partial class LobbySettingsPanel : PanelContainer
         _modePicker.Disabled = !canEdit;
         _mapPicker.Disabled = !canEdit;
         _rulesSheet.SetEditable(canEdit);
+        _victoryRulesSheet.SetEditable(canEdit);
         _physicsSheet.SetEditable(canEdit);
         _combatSheet.SetEditable(canEdit);
     }

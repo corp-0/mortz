@@ -4,7 +4,7 @@ public static class NetConfig
 {
     /// <summary>Bumped on semantic wire changes. Message shape changes are caught
     /// automatically by NetRegistry.SCHEMA_HASH; both ride in Hello.</summary>
-    public const int PROTOCOL_VERSION = 40;
+    public const int PROTOCOL_VERSION = 41;
 
     public const ulong PHASE_READY_TIMEOUT_MS = 30_000;
 

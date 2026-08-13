@@ -39,7 +39,7 @@ public class MatchSessionTests
             Rules = new ModeRules
             {
                 Teams = teams,
-                KillTarget = killTarget,
+                Victory = new KillsVictoryRules { Target = killTarget },
                 SuicidePenalty = suicidePenalty,
                 SpawnImmunity = 0,
                 RespawnDelay = respawnDelay,

@@ -1,6 +1,8 @@
-# Deathmatch with kill_target=1, so the match ends after one shot, not five.
+# Deathmatch with target=1, so the match ends after one shot, not five.
 [rules]
 teams = false
-win_condition = "kills"
-kill_target = 1
 suicide_penalty = "kill_no_negative"
+
+[rules.victory]
+type = "kills"
+target = 1

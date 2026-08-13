@@ -1,15 +1,12 @@
 using Godot;
 using Mortz.Client.Setup;
-using Mortz.Core.Match;
 using Mortz.Core.Match.Configuration;
 using Mortz.Core.Match.Participation;
 using Mortz.Core.Match.Teams;
-using Mortz.Core.Net;
 using Mortz.Core.Net.Lobby;
 using Mortz.Core.Net.Sim;
 using Mortz.Core.Replication;
 using Mortz.Core.Terrain;
-using Mortz.Net;
 using Mortz.Tests.Net;
 using Xunit;
 using ModeRules = Mortz.Core.Match.Configuration.ModeRules;
@@ -19,6 +16,12 @@ namespace Mortz.Tests.Client;
 [Collection(nameof(MortzGodotCollection))]
 public class MatchSetupTests : NodeServiceTest
 {
+    private static ModeRules Rules(int target, bool teams = false) => new()
+    {
+        Teams = teams,
+        Victory = new KillsVictoryRules { Target = target },
+    };
+
     private static LobbySettingsMsg Settings(MatchConfig config,
         string mapId = "castlewars", string hash = "hash") =>
         new(mapId, hash, [mapId], ["Castle Wars"],
@@ -33,20 +36,21 @@ public class MatchSetupTests : NodeServiceTest
         setup.TeamsChanged += () => teams++;
         setup.SettingsChanged += () => settings++;
 
-        Settings(new MatchConfig { Rules = new ModeRules { Teams = true, KillTarget = 5 } }).Broadcast();
+        Settings(new MatchConfig { Rules = Rules(5, teams: true) }).Broadcast();
 
         Assert.NotNull(setup.Selection);
         Assert.True(setup.Config.Rules.Teams);
-        Assert.Equal(5, setup.Config.Rules.KillTarget);
+        Assert.Equal(5,
+            Assert.IsType<KillsVictoryRules>(setup.Config.Rules.Victory).Target);
         LobbySelection selection = setup.Selection!;
         Assert.Equal("castlewars", selection.MapId);
         Assert.Equal([new ContentOption("castlewars", "Castle Wars")], selection.Maps.Options);
         Assert.Equal((1, 1, 1), (config, teams, settings));
 
-        Settings(new MatchConfig { Rules = new ModeRules { Teams = true, KillTarget = 5 } }).Broadcast();
+        Settings(new MatchConfig { Rules = Rules(5, teams: true) }).Broadcast();
         Assert.Equal((1, 1, 1), (config, teams, settings));
 
-        Settings(new MatchConfig { Rules = new ModeRules { Teams = true, KillTarget = 6 } }).Broadcast();
+        Settings(new MatchConfig { Rules = Rules(6, teams: true) }).Broadcast();
         Assert.Equal((2, 1, 2), (config, teams, settings));
     }
 
@@ -101,19 +105,20 @@ public class MatchSetupTests : NodeServiceTest
     public void CopyConfigGivesEditorsAnIndependentConfig()
     {
         MatchSetup setup = HostRouted(new MatchSetup());
-        Settings(new MatchConfig { Rules = new ModeRules { KillTarget = 9 } }).Broadcast();
+        Settings(new MatchConfig { Rules = Rules(9) }).Broadcast();
 
         MatchConfig copy = setup.CopyConfig();
-        copy.Rules.KillTarget = 123;
+        Assert.IsType<KillsVictoryRules>(copy.Rules.Victory).Target = 123;
 
-        Assert.Equal(9, setup.Config.Rules.KillTarget);
+        Assert.Equal(9,
+            Assert.IsType<KillsVictoryRules>(setup.Config.Rules.Victory).Target);
     }
 
     [Fact]
     public void InvalidServerSettingsSurfaceAnErrorAndKeepState()
     {
         MatchSetup setup = HostRouted(new MatchSetup());
-        Settings(new MatchConfig { Rules = new ModeRules { KillTarget = 7 } }).Broadcast();
+        Settings(new MatchConfig { Rules = Rules(7) }).Broadcast();
         int settings = 0;
         setup.SettingsChanged += () => settings++;
 
@@ -121,7 +126,8 @@ public class MatchSetupTests : NodeServiceTest
             .Broadcast();
 
         Assert.Equal("Server sent an invalid map catalog.", setup.SettingsError);
-        Assert.Equal(7, setup.Config.Rules.KillTarget);
+        Assert.Equal(7,
+            Assert.IsType<KillsVictoryRules>(setup.Config.Rules.Victory).Target);
         Assert.NotNull(setup.Selection);
         Assert.Equal(1, settings);
 
@@ -129,7 +135,7 @@ public class MatchSetupTests : NodeServiceTest
         Assert.Equal("Server sent invalid match settings.", setup.SettingsError);
         Assert.Equal(2, settings);
 
-        Settings(new MatchConfig { Rules = new ModeRules { KillTarget = 7 } }).Broadcast();
+        Settings(new MatchConfig { Rules = Rules(7) }).Broadcast();
         Assert.Null(setup.SettingsError);
         Assert.Equal(3, settings);
     }

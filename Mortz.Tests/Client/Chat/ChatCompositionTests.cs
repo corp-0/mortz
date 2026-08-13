@@ -11,7 +11,6 @@ using Mortz.Client.Setup;
 using Mortz.Client.Spectating;
 using Mortz.Client.Stats;
 using Mortz.Client.Ui;
-using Mortz.Core.Match;
 using Mortz.Core.Match.Configuration;
 using Mortz.Core.Net.Lobby;
 using Mortz.Extensions;
@@ -48,6 +47,7 @@ public class ChatCompositionTests : NodeServiceTest
             sheet => sheet.BoundModelType == typeof(ModeRules));
         UiPropertySheet physicsSheet = lobby.GetDescendantByType<UiPropertySheet>(
             sheet => sheet.BoundModelType == typeof(Physics));
+        VictoryRulesSheet victorySheet = lobby.GetDescendantByType<VictoryRulesSheet>();
         Assert.Equal(
             ModeRulesUiMetadata.Categories.Sum(category => category.Properties.Count),
             rulesSheet.ControlCount);
@@ -56,6 +56,7 @@ public class ChatCompositionTests : NodeServiceTest
             PhysicsUiMetadata.Categories.Sum(category => category.Properties.Count),
             physicsSheet.ControlCount);
         Assert.Equal(PhysicsUiMetadata.Categories.Count, physicsSheet.CategoryBlockCount);
+        Assert.IsType<KillsVictoryRules>(victorySheet.Rules);
         Assert.True(rulesSheet.Visible);
         BoolPropertyControl friendlyFire = rulesSheet.GetDescendantByType<BoolPropertyControl>(
             control => control.GetDescendantByType<Label>().Text == "Friendly Fire");
@@ -90,6 +91,7 @@ public class ChatCompositionTests : NodeServiceTest
         AssertSceneType<FloatPropertyControl>("FloatPropertyControl");
         AssertSceneType<EnumPropertyControl>("EnumPropertyControl");
         AssertSceneType<UiPropertySheet>("UiPropertySheet");
+        AssertSceneType<VictoryRulesSheet>("VictoryRulesSheet");
 
         string contentRoot = ProjectSettings.GlobalizePath("res://content");
         GameContent content = Assert.IsType<GameContent>(GameContent.Load(contentRoot));

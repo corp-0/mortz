@@ -11,13 +11,21 @@ public sealed record GameModeManifest
     public required int FormatVersion { get; init; }
     public required string Name { get; init; }
     public string Description { get; init; } = "";
+    public string[] Identity { get; init; } =
+        ["rules.teams", "rules.victory.type"];
     public ModeRules Rules { get; init; } = new();
     public Physics Physics { get; init; } = new();
     public Combat Combat { get; init; } = new();
 
-    /// <summary>The bundled modes are identified by the two rules that define their scoring.</summary>
-    public bool Matches(MatchConfig current) =>
-        Rules.Teams == current.Rules.Teams && Rules.WinCondition == current.Rules.WinCondition;
+    public bool Matches(MatchConfig current) => TomlModel.PropertiesMatch(
+        this,
+        new RulesetManifest
+        {
+            Rules = current.Rules,
+            Physics = current.Physics,
+            Combat = current.Combat,
+        },
+        Identity);
 }
 
 [TomlModel]

@@ -1,10 +1,11 @@
-using Mortz.Core.Match;
+using Mortz.Core.Match.Configuration;
 using Mortz.Core.Match.Scoring;
 using Mortz.Core.Match.Teams;
 
 namespace Mortz.Server.Match.Scoring.WinConditions;
 
-public sealed class KillsWinConditionStrategy : WinConditionStrategy
+[VictoryRuleStrategy(typeof(KillsVictoryRules))]
+public sealed class KillsWinConditionStrategy(KillsVictoryRules rules) : WinConditionStrategy
 {
     public override Victor? Resolve(WinConditionContext context)
     {
@@ -12,7 +13,7 @@ public sealed class KillsWinConditionStrategy : WinConditionStrategy
         {
             foreach (Team team in Teams.All)
             {
-                if (context.TeamKills[team] >= context.Rules.KillTarget)
+                if (context.TeamKills[team] >= rules.Target)
                     return new Victor.Team(team);
             }
             return null;
@@ -20,7 +21,7 @@ public sealed class KillsWinConditionStrategy : WinConditionStrategy
 
         foreach (SeatedScore row in context.Rows)
         {
-            if (row.Score.Kills >= context.Rules.KillTarget)
+            if (row.Score.Kills >= rules.Target)
                 return new Victor.Player(row.Player.PeerId);
         }
         return null;
@@ -52,6 +53,6 @@ public sealed class KillsWinConditionStrategy : WinConditionStrategy
         }
 
         return new MatchStanding(
-            leader, Math.Max(0, context.Rules.KillTarget - best));
+            leader, Math.Max(0, rules.Target - best));
     }
 }

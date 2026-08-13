@@ -1,4 +1,4 @@
-using Mortz.Core.Match;
+using Mortz.Core.Match.Configuration;
 using Mortz.Core.Match.Scoring;
 using Mortz.Core.Match.Teams;
 using Mortz.Server.Match.Scoring;
@@ -15,13 +15,13 @@ public class MatchScoresTests
 
     private static ModeRules Cfg(bool teams = false, int target = 3,
         SuicidePenalty suicidePenalty = SuicidePenalty.NONE,
-        WinCondition winCondition = WinCondition.KILLS,
+        bool killLead = false,
         int leadTarget = 3) => new()
         {
             Teams = teams,
-            WinCondition = winCondition,
-            KillTarget = target,
-            KillLeadTarget = leadTarget,
+            Victory = killLead
+                ? new KillLeadVictoryRules { Target = leadTarget }
+                : new KillsVictoryRules { Target = target },
             SuicidePenalty = suicidePenalty,
         };
 
@@ -250,16 +250,16 @@ public class MatchScoresTests
     public void StrategyFactory_MapsEachAuthoredWinCondition()
     {
         Assert.IsType<KillsWinConditionStrategy>(
-            WinConditionStrategy.Create(WinCondition.KILLS));
+            WinConditionStrategy.Create(new KillsVictoryRules()));
         Assert.IsType<KillLeadWinConditionStrategy>(
-            WinConditionStrategy.Create(WinCondition.KILL_LEAD));
+            WinConditionStrategy.Create(new KillLeadVictoryRules()));
     }
 
     [Fact]
     public void KillLeadWithoutTeams_RequiresALeadOverTheRunnerUp()
     {
         MatchScores s = Scores(Cfg(
-            winCondition: WinCondition.KILL_LEAD, leadTarget: 2));
+            killLead: true, leadTarget: 2));
         Player p1 = Seat(s, 1);
         Player p2 = Seat(s, 2);
         Player p3 = Seat(s, 3);
@@ -282,7 +282,7 @@ public class MatchScoresTests
     public void KillLeadWithTeams_CombinesTeammateKills()
     {
         MatchScores s = Scores(Cfg(
-            teams: true, winCondition: WinCondition.KILL_LEAD, leadTarget: 2));
+            teams: true, killLead: true, leadTarget: 2));
         Player p1 = Seat(s, 1, Team.BLUE);
         Player p2 = Seat(s, 2, Team.BLUE);
         Player p3 = Seat(s, 3, Team.RED);
@@ -298,7 +298,7 @@ public class MatchScoresTests
     {
         MatchScores s = Scores(Cfg(
             suicidePenalty: SuicidePenalty.KILL,
-            winCondition: WinCondition.KILL_LEAD,
+            killLead: true,
             leadTarget: 2));
         Player p1 = Seat(s, 1);
         Player p2 = Seat(s, 2);
@@ -313,7 +313,7 @@ public class MatchScoresTests
     public void KillLeadNeedsAtLeastTwoCompetitors()
     {
         MatchScores s = Scores(Cfg(
-            winCondition: WinCondition.KILL_LEAD, leadTarget: 1));
+            killLead: true, leadTarget: 1));
         Player p1 = Seat(s, 1);
 
         Assert.Null(s.ScoreDeath(p1.PeerId, p1, p1, null).Winner);
