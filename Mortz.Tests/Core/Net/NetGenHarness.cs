@@ -9,6 +9,11 @@ using Mortz.Net.Gen;
 
 namespace Mortz.Tests.Core.Net;
 
+internal readonly record struct NetGenResult(
+    ImmutableArray<Diagnostic> Diagnostics,
+    string Sources,
+    Assembly? Assembly);
+
 /// <summary>
 /// Compiles a source string with Mortz.Net.Gen attached and loads the result, so
 /// the generator can be tested on shapes production does not have yet. Attaching

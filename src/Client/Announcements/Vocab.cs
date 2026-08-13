@@ -1,7 +1,16 @@
-using Mortz.Core.Match;
 using Mortz.Core.Match.Events;
 
 namespace Mortz.Client.Announcements;
+
+public readonly record struct MultiKillWording(string Link, string Loud, int Heat);
+
+public readonly record struct StreakWording(
+    string Weak,
+    string Strong,
+    string StreakName,
+    string StreakVerb,
+    int Heat
+);
 
 /// <summary>Wording ladders and pools shared by the banner and chat.</summary>
 public static class Vocab

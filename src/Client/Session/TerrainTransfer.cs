@@ -5,6 +5,11 @@ using Mortz.Core.Terrain;
 
 namespace Mortz.Client.Session;
 
+public readonly record struct TerrainChunkResult(
+    TerrainChunkState State,
+    byte[]? Data = null,
+    string Error = "");
+
 /// <summary>The terrain payload being received for one match load.</summary>
 public sealed class TerrainTransfer
 {

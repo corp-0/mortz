@@ -4,6 +4,8 @@ using Mortz.Core.Ui;
 
 namespace Mortz.Server.Settings;
 
+public readonly record struct LobbySettingDelta(string Name, string Before, string After);
+
 public static class LobbySettingsDiff
 {
     public static LobbySettingDelta[] Between(MatchConfig before, MatchConfig after)

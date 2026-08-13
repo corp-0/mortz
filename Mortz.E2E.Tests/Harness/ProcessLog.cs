@@ -2,12 +2,14 @@ using System.Text;
 
 namespace Mortz.E2E.Tests.Harness;
 
+public readonly record struct ProcessLogLine(DateTimeOffset At, string Stream, string Text);
+
 /// <summary>The bounded tail an exception message can carry. Every line also
 /// goes to the artifact sink, so the disk copy is never truncated.</summary>
 public sealed class ProcessLog(Action<ProcessLogLine>? sink = null, int capacity = 300)
 {
     private readonly Queue<ProcessLogLine> _lines = new();
-    private readonly object _gate = new();
+    private readonly Lock _gate = new();
 
     public void Add(string stream, string line)
     {
@@ -16,7 +18,9 @@ public sealed class ProcessLog(Action<ProcessLogLine>? sink = null, int capacity
         {
             _lines.Enqueue(recorded);
             while (_lines.Count > capacity)
+            {
                 _lines.Dequeue();
+            }
         }
         sink?.Invoke(recorded);
     }

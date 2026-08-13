@@ -1,5 +1,11 @@
 namespace Mortz.Client.Session;
 
+public readonly record struct ConnectionFailure(
+    ConnectionFailureAction Action,
+    int Generation,
+    int RetryNumber,
+    int MaxRetries);
+
 /// <summary>Tracks one connection attempt and its retry budget.
 /// Generation tokens prevent scheduled retries from starting after the
 /// attempt has been replaced, connected, or cancelled.</summary>

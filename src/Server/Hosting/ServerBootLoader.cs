@@ -8,6 +8,8 @@ using Serilog;
 
 namespace Mortz.Server.Hosting;
 
+public readonly record struct ServerBootLoad(ServerBoot Boot, GameContent Content);
+
 /// <summary>Resolves the server's boot input: CLI flags over server.toml over defaults.</summary>
 public static class ServerBootLoader
 {

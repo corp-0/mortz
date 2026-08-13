@@ -1,7 +1,23 @@
 using Mortz.Core.Sim;
 using Mortz.Core.Terrain;
+using Combat = Mortz.Core.Match.Configuration.Combat;
 
 namespace Mortz.E2E.Tests.Harness;
+
+/// <summary>Everything the aim solver needs.</summary>
+public readonly record struct MortarAimQuery(
+    PlayerState Shooter,
+    PlayerState Victim,
+    Combat Combat,
+    int ArenaWidth,
+    int ArenaHeight);
+
+/// <summary>Fire solution, output of the aim solver.</summary>
+public readonly record struct MortarAimSolution(
+    byte Aim,
+    int ImpactTick,
+    Vec2 Impact,
+    int Damage);
 
 /// <summary>
 /// Which aim byte hits. There are only 256 aims, so this flies every one of

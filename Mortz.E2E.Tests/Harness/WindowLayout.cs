@@ -1,5 +1,7 @@
 namespace Mortz.E2E.Tests.Harness;
 
+public readonly record struct WindowPlacement(int X, int Y, int Width, int Height);
+
 /// <summary>Tiles watched clients so two of them never sit on top of each
 /// other. Small and side by side beats fullscreen when you want to see both.</summary>
 public static class WindowLayout

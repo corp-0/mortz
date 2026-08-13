@@ -3,6 +3,11 @@ using Mortz.E2E.Protocol;
 
 namespace Mortz.E2E.Tests.Harness;
 
+/// <summary>A position in one process's event history.</summary>
+public readonly record struct E2EEventCursor(long Sequence);
+
+public readonly record struct RecordedEvent(long Sequence, E2EEvent Event);
+
 /// <summary>
 /// One process's events, with history so "it arrived before I waited" is not a
 /// race. Every event carries a monotonic sequence, and a wait can be anchored

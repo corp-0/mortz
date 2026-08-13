@@ -7,6 +7,9 @@ using Serilog;
 
 namespace Mortz.Client.Servers;
 
+/// <summary>A hostname probe parked in Godot's resolver queue.</summary>
+public readonly record struct PendingResolve(int ResolveId, ServerEndpoint Endpoint);
+
 /// <summary>Sockets and DNS around ProbeTracker, which decides what a datagram means.</summary>
 public partial class ServerProbe : Node
 {

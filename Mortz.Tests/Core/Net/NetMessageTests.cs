@@ -20,6 +20,9 @@ using Physics = Mortz.Core.Match.Configuration.Physics;
 
 namespace Mortz.Tests.Core.Net;
 
+/// <summary>The id and bytes one send put on the wire.</summary>
+public readonly record struct SentEnvelope(ushort Id, byte[] Payload);
+
 /// <summary>Full protocol round-trips over a loopback NetTransport, no socket:
 /// down the wire it's serializer -> NetRouter -> IHandle, up the wire it's
 /// SendToServer -> NetRouter&lt;TSender&gt; -> IHandle. All tests share the
