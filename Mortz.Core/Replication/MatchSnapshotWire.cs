@@ -5,8 +5,6 @@ namespace Mortz.Core.Replication;
 /// <summary>Fixed binary layout for the outer match snapshot.</summary>
 public static class MatchSnapshotWire
 {
-    public const int PRESENTATION_BYTES_PER_PLAYER = 1;
-
     public static byte[] Serialize(MatchSnapshot snapshot, int? localPeerId)
     {
         using MemoryStream stream = new();
@@ -36,11 +34,13 @@ public static class MatchSnapshotWire
         return new MatchSnapshot(simulation.Tick, players, simulation.Mortars);
     }
 
-    private static void WritePresentation(
-        BinaryWriter writer,
-        in PlayerPresentationState presentation) =>
-        writer.Write(presentation.KillingSpreeMagnitude);
+    private static void WritePresentation(BinaryWriter writer, in PlayerPresentationState presentation)
+    {
+        PlayerPresentationState.WriteTo(writer, presentation);
+    }
 
-    private static PlayerPresentationState ReadPresentation(BinaryReader reader) =>
-        new(reader.ReadByte());
+    private static PlayerPresentationState ReadPresentation(BinaryReader reader)
+    {
+        return PlayerPresentationState.ReadFrom(reader);
+    }
 }

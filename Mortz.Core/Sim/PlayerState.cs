@@ -88,6 +88,7 @@ public record struct PlayerState
     public InputButtons PrevButtons;
 
     public readonly bool IsAlive => RespawnTicks == 0;
+
     public readonly Vec2 BodyCenter =>
         Position with { Y = Position.Y - SimConfig.PLAYER_HALF_HEIGHT };
 }

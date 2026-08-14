@@ -127,5 +127,6 @@ public partial class KillingSpreeDebug : Node2D
         ParryTicks: 0,
         DashCooldown: 0,
         SpawnImmunityTicks: 0,
-        Presentation: new PlayerPresentationState(_magnitude)), playTransitions: false);
+        Presentation: new PlayerPresentationState { KillingSpreeMagnitude = _magnitude }),
+        playTransitions: false);
 }

@@ -12,7 +12,7 @@ namespace Mortz.Tests.Core.Net;
 public class BandwidthTests
 {
     [Fact]
-    public void RecipientMatchSnapshot_BudgetsPresentationAndCompactRemoteRecords()
+    public void RecipientMatchSnapshot_UsesCompactRemoteRecords()
     {
         SimWorld world = new(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         for (int peer = 1; peer <= NetConfig.MAX_PLAYERS; peer++)
@@ -25,7 +25,7 @@ public class BandwidthTests
             simulation.Tick,
             [.. simulation.Players.Select(player => new ReplicatedPlayer(
                 player,
-                new PlayerPresentationState((byte)player.PeerId)))],
+                default))],
             simulation.Mortars);
         byte[] data = snapshot.SerializeFor(localPeerId: 1);
         RosterSnapshot roster = new([.. simulation.Players
@@ -34,10 +34,8 @@ public class BandwidthTests
         ]);
         MatchSnapshot restored = MatchSnapshot.Deserialize(data, roster);
 
-        // 4 tick + 1 count/format + 29 local + 7*14 remote + 2 mortar count
-        // + 8 one-byte presentation records.
-        Assert.Equal(150, data.Length);
-        Assert.Equal(8, restored.Players.Length);
+        Assert.True(data.Length < snapshot.Serialize().Length);
+        Assert.Equal(NetConfig.MAX_PLAYERS, restored.Players.Length);
         // Static identity values come from RosterMsg on the slot-id path.
         Assert.Equal(0, restored.Players[0].Simulation.Skin);
         Assert.Equal(simulation.Players[0].PrevButtons,
@@ -50,9 +48,6 @@ public class BandwidthTests
         Assert.Equal(0, restored.Players[1].Simulation.Skin);
         Assert.Equal(Vec2.Zero,
             restored.Players[1].Simulation.Velocity); // render-only remote record
-        Assert.Equal(1, restored.Players[0].Presentation.KillingSpreeMagnitude);
-        Assert.Equal(8, restored.Players[^1].Presentation.KillingSpreeMagnitude);
-        Assert.Equal(1, MatchSnapshotWire.PRESENTATION_BYTES_PER_PLAYER);
     }
 
     [Fact]

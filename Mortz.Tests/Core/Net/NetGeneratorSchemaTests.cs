@@ -28,6 +28,18 @@ public class NetGeneratorSchemaTests
         public readonly partial record struct ScalarMsg({0});
         """;
 
+    private const string STANDALONE_ROW = """
+        using Mortz.Core.Net;
+
+        namespace GenTest;
+
+        [NetRow]
+        public readonly partial record struct Pair({0});
+
+        [NetMessage(NetChannel.RELIABLE, NetDirection.SERVER_TO_CLIENT)]
+        public readonly partial record struct ScalarMsg(int Sequence);
+        """;
+
     private const string ZERO_VALUED_ENUM = """
         using Mortz.Core.Net;
 
@@ -48,6 +60,14 @@ public class NetGeneratorSchemaTests
     {
         string before = Hash(ROW_MESSAGE, "int PeerId, int PingMs");
         string after = Hash(ROW_MESSAGE, "int PingMs, int PeerId");
+        Assert.NotEqual(before, after);
+    }
+
+    [Fact]
+    public void ReorderingFieldsInAStandaloneRowChangesTheSchemaHash()
+    {
+        string before = Hash(STANDALONE_ROW, "int PeerId, int PingMs");
+        string after = Hash(STANDALONE_ROW, "int PingMs, int PeerId");
         Assert.NotEqual(before, after);
     }
 

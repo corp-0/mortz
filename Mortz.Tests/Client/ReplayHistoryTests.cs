@@ -55,7 +55,7 @@ public class ReplayHistoryTests
         tick,
         [new ReplayPlayer(1, new PlayerViewState(
             new Vector2(x, 0), 0, 0, 5, 0, 100, 0, 0, 0, 0,
-            new PlayerPresentationState(magnitude)))],
+            new PlayerPresentationState { KillingSpreeMagnitude = magnitude }))],
         [new ReplayMortar(7, new Vector2(x, 10), new Vec2(1, 2))],
         []);
 }

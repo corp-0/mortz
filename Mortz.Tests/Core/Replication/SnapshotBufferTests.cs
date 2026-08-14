@@ -11,7 +11,7 @@ public class SnapshotBufferTests
         [
             new ReplicatedPlayer(
                 new PlayerState { PeerId = 1, Position = new Vec2(x, 0) },
-                new PlayerPresentationState(magnitude)),
+                new PlayerPresentationState { KillingSpreeMagnitude = magnitude }),
         ], []);
 
     private static MatchSnapshot Snap(

@@ -104,11 +104,16 @@ public sealed class MatchRuntime : IDisposable
     public MatchParticipation ParticipationOf(Player player) =>
         _participation.Of(player);
 
-    public PlayerPresentationState PresentationOf(int peerId)
+    public PlayerPresentationState PresentationOf(in PlayerState simulation)
     {
-        if (!_seated.TryGetValue(peerId, out Player? player))
-            throw new InvalidOperationException($"Player {peerId} is not seated in this match.");
-        return new PlayerPresentationState(_gameEvents.KillingSpreeMagnitude(player));
+        int peerId = simulation.PeerId;
+        Player member = _seated[peerId];
+        PlayerStats stats = World.Stats[peerId];
+
+        byte spreeMagnitude = _gameEvents.KillingSpreeMagnitude(member);
+        bool isBleeding = simulation.Health > 0 && simulation.Health * 3 <= stats.MaxHealth;
+
+        return new PlayerPresentationState(spreeMagnitude, isBleeding);
     }
 
     public void Remove(Player player)

@@ -1,4 +1,7 @@
+using Mortz.Core.Net;
+
 namespace Mortz.Core.Replication;
 
 /// <summary>Compact server-authored values used only to present a player.</summary>
-public readonly record struct PlayerPresentationState(byte KillingSpreeMagnitude);
+[NetRow]
+public readonly partial record struct PlayerPresentationState(byte KillingSpreeMagnitude, bool IsBleeding);

@@ -258,7 +258,7 @@ public class ClientPlayersTests : NodeServiceTest
         [
             new ReplicatedPlayer(
                 new PlayerState { PeerId = 1 },
-                new PlayerPresentationState(magnitude)),
+                new PlayerPresentationState { KillingSpreeMagnitude = magnitude }),
         ],
         []);
 }

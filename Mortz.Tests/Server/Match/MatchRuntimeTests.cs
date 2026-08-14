@@ -80,8 +80,10 @@ public class MatchRuntimeTests
 
         Assert.NotNull(credited);
         Assert.Equal(killer.PeerId, credited.Value.Killer?.PeerId);
-        Assert.Equal(1, runtime.PresentationOf(killer.PeerId).KillingSpreeMagnitude);
-        Assert.Equal(0, runtime.PresentationOf(victim.PeerId).KillingSpreeMagnitude);
+        Assert.Equal(1, runtime.PresentationOf(
+            runtime.World.Players[killer.PeerId]).KillingSpreeMagnitude);
+        Assert.Equal(0, runtime.PresentationOf(
+            runtime.World.Players[victim.PeerId]).KillingSpreeMagnitude);
     }
 
     [Fact]

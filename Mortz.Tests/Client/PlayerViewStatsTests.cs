@@ -63,7 +63,7 @@ public class PlayerViewStatsTests : NodeServiceTest
         manager.BeginFrame();
         manager.Place(2, ViewState() with
         {
-            Presentation = new PlayerPresentationState(5),
+            Presentation = new PlayerPresentationState { KillingSpreeMagnitude = 5 },
         });
 
         Assert.True(manager.ViewForTest(2)

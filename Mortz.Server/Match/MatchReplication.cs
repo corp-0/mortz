@@ -167,7 +167,7 @@ public class MatchReplication(
         [
             .. simulation.Players.Select(player => new ReplicatedPlayer(
                 player,
-                runtime.PresentationOf(player.PeerId)))
+                runtime.PresentationOf(player)))
         ];
         return new MatchSnapshot(simulation.Tick, players, simulation.Mortars);
     }
