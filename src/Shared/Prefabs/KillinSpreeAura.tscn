@@ -1,0 +1,9 @@
+[gd_scene format=3 uid="uid://dwprxh00be3bd"]
+
+[ext_resource type="Script" uid="uid://ct4sbtbgyshib" path="res://src/Client/Views/KillingSpreeAura.cs" id="1_ork5a"]
+[ext_resource type="Shader" uid="uid://d1m5x4n2p8q7r" path="res://src/Shared/Rendering/killing_spree_afterimage.gdshader" id="2_afterimage"]
+
+[node name="KillinSpreeAura" type="Node2D" unique_id=912068056]
+script = ExtResource("1_ork5a")
+_afterimageShader = ExtResource("2_afterimage")
+metadata/_custom_type_script = "uid://ct4sbtbgyshib"

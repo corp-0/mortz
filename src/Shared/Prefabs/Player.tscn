@@ -5,6 +5,27 @@
 [ext_resource type="Script" uid="uid://b7lehci78rb18" path="res://src/Client/Views/PlayerView.cs" id="3_pview"]
 [ext_resource type="Script" uid="uid://b6jvo56n8bmbd" path="res://src/Client/Views/PlayerReloadIndicator.cs" id="4_reload"]
 [ext_resource type="Texture2D" uid="uid://dtss4v1mjjkm6" path="res://Assets/ImanorBalloon.png" id="5_rvoui"]
+[ext_resource type="PackedScene" uid="uid://dwprxh00be3bd" path="res://src/Shared/Prefabs/KillinSpreeAura.tscn" id="6_4r3ks"]
+[ext_resource type="Shader" uid="uid://c3g7wan4k2w6p" path="res://src/Shared/Rendering/killing_spree_glint.gdshader" id="7_glint"]
+
+[sub_resource type="Gradient" id="Gradient_glint"]
+offsets = PackedFloat32Array(0, 0.28, 0.5, 0.72, 1)
+colors = PackedColorArray(0.1, 0.65, 1, 0, 0.1, 0.65, 1, 0.75, 1, 1, 1, 1, 0.85, 0.25, 1, 0.75, 0.85, 0.25, 1, 0)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture_glint"]
+gradient = SubResource("Gradient_glint")
+width = 32
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_body_glint"]
+resource_local_to_scene = true
+shader = ExtResource("7_glint")
+shader_parameter/glint_gradient = SubResource("GradientTexture_glint")
+shader_parameter/frame_grid = Vector2(5, 5)
+shader_parameter/active = true
+shader_parameter/sweep_duration = 0.32
+shader_parameter/pause_duration = 0.75
+shader_parameter/shine_size = 0.14
+shader_parameter/shine_angle = 45.0
 
 [sub_resource type="Curve" id="Curve_dash"]
 _data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
@@ -12,6 +33,17 @@ point_count = 2
 
 [sub_resource type="Gradient" id="Gradient_dash"]
 colors = PackedColorArray(0.82, 0.78, 0.7, 0.85, 0.6, 0.57, 0.5, 0)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_launcher_glint"]
+resource_local_to_scene = true
+shader = ExtResource("7_glint")
+shader_parameter/glint_gradient = SubResource("GradientTexture_glint")
+shader_parameter/frame_grid = Vector2(1, 1)
+shader_parameter/active = true
+shader_parameter/sweep_duration = 0.32
+shader_parameter/pause_duration = 0.75
+shader_parameter/shine_size = 0.14
+shader_parameter/shine_angle = 45.0
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_4r3ks"]
 atlas = ExtResource("5_rvoui")
@@ -70,33 +102,28 @@ animations = [{
 "speed": 5.0
 }]
 
-[node name="Player" type="Node2D" unique_id=1524314240 node_paths=PackedStringArray("_body", "_aimPivot", "_launcher", "_reloadBar", "_nameplate", "_dashDust", "_typingAnimation")]
+[node name="Player" type="Node2D" unique_id=1524314240 node_paths=PackedStringArray("_body", "_aimPivot", "_launcher", "_reloadBar", "_nameplate", "_dashDust", "_typingAnimation", "_killingSpreeEffect")]
 script = ExtResource("3_pview")
 _body = NodePath("PlayerSprite")
 _aimPivot = NodePath("AimPivot")
 _launcher = NodePath("AimPivot/Launcher")
-_reloadBar = NodePath("ReloadingTime")
+_reloadBar = NodePath("PlayerSprite/ReloadingTime")
 _nameplate = NodePath("Nameplate")
-_dashDust = NodePath("DashDust")
+_dashDust = NodePath("PlayerSprite/DashDust")
 _typingAnimation = NodePath("AnimatedSprite2D")
+_killingSpreeEffect = NodePath("KillingSpreeEffect")
+
+[node name="KillingSpreeEffect" parent="." unique_id=912068056 instance=ExtResource("6_4r3ks")]
+visible = false
 
 [node name="PlayerSprite" type="Sprite2D" parent="." unique_id=1209316856]
+material = SubResource("ShaderMaterial_body_glint")
 texture = ExtResource("1_el0ul")
 hframes = 5
 vframes = 5
 region_rect = Rect2(0, 0, 32, 32)
 
-[node name="AimPivot" type="Node2D" parent="." unique_id=1795265278]
-
-[node name="Launcher" type="Sprite2D" parent="AimPivot" unique_id=1062109070]
-position = Vector2(20, 0)
-scale = Vector2(0.3115385, 0.29761904)
-texture = ExtResource("2_2h1fo")
-
-[node name="Muzzle" type="Marker2D" parent="AimPivot" unique_id=334312682]
-position = Vector2(40, 0)
-
-[node name="ReloadingTime" type="ProgressBar" parent="." unique_id=1801305937]
+[node name="ReloadingTime" type="ProgressBar" parent="PlayerSprite" unique_id=1801305937]
 visible = false
 offset_left = -16.0
 offset_top = -16.0
@@ -106,7 +133,7 @@ max_value = 5.0
 show_percentage = false
 script = ExtResource("4_reload")
 
-[node name="DashDust" type="CPUParticles2D" parent="." unique_id=771294055]
+[node name="DashDust" type="CPUParticles2D" parent="PlayerSprite" unique_id=771294055]
 emitting = false
 amount = 16
 lifetime = 0.35
@@ -122,6 +149,17 @@ scale_amount_min = 2.5
 scale_amount_max = 4.0
 scale_amount_curve = SubResource("Curve_dash")
 color_ramp = SubResource("Gradient_dash")
+
+[node name="AimPivot" type="Node2D" parent="." unique_id=1795265278]
+
+[node name="Launcher" type="Sprite2D" parent="AimPivot" unique_id=1062109070]
+material = SubResource("ShaderMaterial_launcher_glint")
+position = Vector2(20, 0)
+scale = Vector2(0.3115385, 0.29761904)
+texture = ExtResource("2_2h1fo")
+
+[node name="Muzzle" type="Marker2D" parent="AimPivot" unique_id=334312682]
+position = Vector2(40, 0)
 
 [node name="Nameplate" type="Label" parent="." unique_id=252378163]
 anchors_preset = 10

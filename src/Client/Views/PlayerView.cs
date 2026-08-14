@@ -1,7 +1,6 @@
 using Godot;
 using Mortz.Client.Audio;
 using Mortz.Client.Ui;
-using Mortz.Core.Match;
 using Mortz.Core.Match.Teams;
 using Mortz.Core.Sim;
 
@@ -29,6 +28,7 @@ public partial class PlayerView : Node2D
     [Export] private Label _nameplate = null!;
     [Export] private CpuParticles2D _dashDust = null!;
     [Export] private AnimatedSprite2D _typingAnimation = null!;
+    [Export] private KillingSpreeAura _killingSpreeEffect = null!;
 
     private static readonly Color _shieldColor = new(0.4f, 0.9f, 1f, 0.8f);
 
@@ -41,6 +41,13 @@ public partial class PlayerView : Node2D
     private float _hitFlash;
     private PlayerViewState? _previous;
     private SfxHandle _reloadSound;
+
+    public override void _Ready()
+    {
+        _killingSpreeEffect.ConfigureGlintMaterials(
+            (ShaderMaterial)_body.Material,
+            (ShaderMaterial)_launcher.Material);
+    }
 
     public void SetSfx(ISfx sfx) => _sfx = sfx;
 
@@ -61,6 +68,9 @@ public partial class PlayerView : Node2D
     }
 
     public void SetPlayerName(string name) => _nameplate.Text = name;
+
+    public void SetKillingSpreeMagnitude(int magnitude) =>
+        _killingSpreeEffect.SetMagnitude(magnitude);
 
     /// <summary>The chat balloon; everyone sees it, including the typist.</summary>
     public void SetTyping(bool typing)
@@ -98,7 +108,9 @@ public partial class PlayerView : Node2D
         _body.Visible = spawnProtectedVisible;
         _aimPivot.Visible = spawnProtectedVisible;
         _reloadBar.Apply(next.Ammo, next.ReloadTicks);
-        Position = new Vector2(next.Feet.X, next.Feet.Y - SimConfig.PLAYER_HALF_HEIGHT);
+        Vector2 nextPosition = new(next.Feet.X, next.Feet.Y - SimConfig.PLAYER_HALF_HEIGHT);
+        Vector2 displacement = _previous == null ? Vector2.Zero : nextPosition - Position;
+        Position = nextPosition;
         _body.Frame = next.Skin % SimConfig.SKIN_COUNT;
 
         Vec2 aimDir = PlayerInput.AimToDir(next.Aim);
@@ -109,6 +121,18 @@ public partial class PlayerView : Node2D
         bool aimingLeft = aimDir.X < 0f;
         _body.FlipH = aimingLeft;
         _launcher.FlipV = aimingLeft;
+        PlayerAfterimagePose afterimagePose = new(
+            _body.Texture,
+            _body.Hframes,
+            _body.Vframes,
+            _body.Frame,
+            _body.FlipH,
+            _launcher.Texture,
+            _launcher.Position,
+            _launcher.Scale,
+            _aimPivot.Rotation,
+            _launcher.FlipV);
+        _killingSpreeEffect.ApplyPose(afterimagePose, displacement, Visible && _body.Visible);
 
         if (DrawSimBoxes != _boxVisible)
             QueueRedraw();

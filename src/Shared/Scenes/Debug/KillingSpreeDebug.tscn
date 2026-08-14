@@ -1,0 +1,74 @@
+[gd_scene format=3 uid="uid://ddx3n8p4h7q2c"]
+
+[ext_resource type="Script" uid="uid://cq8x5k2r7m9vb" path="res://src/Client/Debug/KillingSpreeDebug.cs" id="1_debug"]
+[ext_resource type="PackedScene" uid="uid://4ksxyg8c7l8k" path="res://src/Shared/Prefabs/Player.tscn" id="2_player"]
+
+[node name="KillingSpreeDebug" type="Node2D" node_paths=PackedStringArray("_player", "_tierLabel")]
+script = ExtResource("1_debug")
+_player = NodePath("Player")
+_tierLabel = NodePath("Ui/Panel/Margin/Rows/Tier")
+
+[node name="Player" parent="." instance=ExtResource("2_player")]
+
+[node name="Ui" type="CanvasLayer" parent="."]
+
+[node name="Panel" type="PanelContainer" parent="Ui"]
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 784.0
+offset_bottom = 116.0
+
+[node name="Margin" type="MarginContainer" parent="Ui/Panel"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 10
+
+[node name="Rows" type="VBoxContainer" parent="Ui/Panel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Help" type="Label" parent="Ui/Panel/Margin/Rows"]
+layout_mode = 2
+text = "Move: A/D or arrows    Jump: Space    Aim: Mouse    Shooting disabled"
+
+[node name="Controls" type="HBoxContainer" parent="Ui/Panel/Margin/Rows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Off" type="Button" parent="Ui/Panel/Margin/Rows/Controls"]
+layout_mode = 2
+text = "Off"
+
+[node name="Bloodlust" type="Button" parent="Ui/Panel/Margin/Rows/Controls"]
+layout_mode = 2
+text = "5 Bloodlust"
+
+[node name="Punishment" type="Button" parent="Ui/Panel/Margin/Rows/Controls"]
+layout_mode = 2
+text = "7 Punishment"
+
+[node name="Dominating" type="Button" parent="Ui/Panel/Margin/Rows/Controls"]
+layout_mode = 2
+text = "9 Dominating"
+
+[node name="MachineGod" type="Button" parent="Ui/Panel/Margin/Rows/Controls"]
+layout_mode = 2
+text = "11 Machine god"
+
+[node name="Psycho" type="Button" parent="Ui/Panel/Margin/Rows/Controls"]
+layout_mode = 2
+text = "13 Psycho"
+
+[node name="Tier" type="Label" parent="Ui/Panel/Margin/Rows"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.45, 0.85, 1, 1)
+text = "5 — BLOODLUST"
+
+[connection signal="pressed" from="Ui/Panel/Margin/Rows/Controls/Off" to="." method="OnOff"]
+[connection signal="pressed" from="Ui/Panel/Margin/Rows/Controls/Bloodlust" to="." method="OnBloodlust"]
+[connection signal="pressed" from="Ui/Panel/Margin/Rows/Controls/Punishment" to="." method="OnPunishment"]
+[connection signal="pressed" from="Ui/Panel/Margin/Rows/Controls/Dominating" to="." method="OnDominating"]
+[connection signal="pressed" from="Ui/Panel/Margin/Rows/Controls/MachineGod" to="." method="OnMachineGod"]
+[connection signal="pressed" from="Ui/Panel/Margin/Rows/Controls/Psycho" to="." method="OnPsycho"]
