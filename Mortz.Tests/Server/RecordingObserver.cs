@@ -13,7 +13,7 @@ public sealed class RecordingObserver : IMatchObserver
 
     public IReadOnlyList<string> Trace => _trace;
 
-    public MatchFrame? LastFrame { get; private set; }
+    public MatchUpdate? LastUpdate { get; private set; }
 
     public void PlayerJoined(Player player, ServerPhaseKind phase) =>
         _trace.Add($"join:{player.PeerId}");
@@ -23,5 +23,5 @@ public sealed class RecordingObserver : IMatchObserver
 
     public void PhaseChanged(ServerPhaseKind kind) => _trace.Add($"phase:{kind}");
 
-    public void MatchAdvanced(in MatchFrame frame) => LastFrame = frame;
+    public void MatchAdvanced(MatchUpdate update) => LastUpdate = update;
 }

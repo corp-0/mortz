@@ -5,7 +5,6 @@ using Mortz.Client.Chat;
 using Mortz.Client.Match;
 using Mortz.Client.Players;
 using Mortz.Client.Views;
-using Mortz.Core.Match;
 using Mortz.Core.Match.Configuration;
 using Mortz.Core.Net.Chat;
 using Mortz.Net;
@@ -25,14 +24,13 @@ public class PlayerViewTypingTests : NodeServiceTest
         _manager.FakeDependency<INetwork>(new FakeNetwork { LocalPeerId = 1 });
         _manager.FakeDependency<ISfx>(new NullSfx());
         ClientPlayers players = HostRouted(new ClientPlayers());
-        players.OpenMatch();
+        players.OpenMatch(new MatchConfig());
         _manager.FakeDependency(players);
         HostRouted(_manager);
-        _manager.Configure(new MatchConfig());
     }
 
     [Fact]
-    public void RemoteBalloonsFollowBroadcastsOnBothSidesOfTheSpawn()
+    public void RemoteBalloonsFollowSessionTypingOnBothSidesOfTheSpawn()
     {
         new TypingStateMsg(2, true).Broadcast();
         _manager.BeginFrame();
@@ -43,9 +41,11 @@ public class PlayerViewTypingTests : NodeServiceTest
         Assert.False(Balloon(3).Visible);
 
         new TypingStateMsg(3, true).Broadcast();
+        _manager.Place(3, ViewState());
         Assert.True(Balloon(3).Visible);
 
         new TypingStateMsg(3, false).Broadcast();
+        _manager.Place(3, ViewState());
         Assert.False(Balloon(3).Visible);
     }
 
@@ -72,6 +72,18 @@ public class PlayerViewTypingTests : NodeServiceTest
         {
             ChatInputGuard.SetTyping(owner, false);
         }
+    }
+
+    [Fact]
+    public void ReplayHidesLiveTypingState()
+    {
+        new TypingStateMsg(2, true).Broadcast();
+        _manager.SetReplayActive(true);
+
+        _manager.BeginFrame();
+        _manager.Place(2, ViewState());
+
+        Assert.False(Balloon(2).Visible);
     }
 
     private AnimatedSprite2D Balloon(int peerId) =>

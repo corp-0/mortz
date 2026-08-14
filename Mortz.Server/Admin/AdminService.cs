@@ -9,7 +9,7 @@ using CryptoRandom = System.Security.Cryptography.RandomNumberGenerator;
 namespace Mortz.Server.Admin;
 
 /// <summary>Admin challenge, grant and privileged-command authorization.</summary>
-public sealed class AdminFeature(
+public sealed class AdminService(
     ServerStateKeys keys,
     IServerLink link,
     ServerClock clock,

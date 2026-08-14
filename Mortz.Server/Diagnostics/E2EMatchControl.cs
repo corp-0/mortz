@@ -3,8 +3,8 @@ using Mortz.Core.Sim;
 namespace Mortz.Server.Diagnostics;
 
 /// <summary>Queues mutations and state reads for tick boundaries; enqueue from
-/// the main thread only, the driver already marshals. A mutation lands before
-/// Step and completes after, so AppliedTick is the first tick whose snapshot
+/// the main thread only, the driver already marshals. A mutation lands before match
+/// advancement and completes after, so AppliedTick is the first tick whose snapshot
 /// and deaths include it.</summary>
 public sealed class E2EMatchControl : IMatchControl
 {

@@ -12,19 +12,19 @@ using ModeRules = Mortz.Core.Match.Configuration.ModeRules;
 
 namespace Mortz.Tests.Server;
 
-public sealed class SettingsFeatureTests : IDisposable
+public sealed class SettingsServiceTests : IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), $"mortz-settings-{Guid.NewGuid():N}");
     private readonly RecordingTransport _transport = new();
     private readonly IServerLink _link;
 
-    public SettingsFeatureTests() => _link = new ReadyLink(_transport);
+    public SettingsServiceTests() => _link = new ReadyLink(_transport);
     private readonly FakeMapSource _maps = new();
 
     [Fact]
     public void RulesUpdateAppliesAndReportsTheChange()
     {
-        SettingsFeature settings = Build();
+        SettingsService settings = Build();
         MatchConfig next = new()
         {
             Rules = new ModeRules
@@ -44,7 +44,7 @@ public sealed class SettingsFeatureTests : IDisposable
     [Fact]
     public void MalformedRulesChangeNothing()
     {
-        SettingsFeature settings = Build();
+        SettingsService settings = Build();
         MatchConfig before = settings.Config;
 
         bool applied = settings.TrySetRules([1, 2, 3], out LobbySettingDelta[] deltas);
@@ -58,7 +58,7 @@ public sealed class SettingsFeatureTests : IDisposable
     [Fact]
     public void ModeUpdateAppliesItsRulesAndNamesTheMode()
     {
-        SettingsFeature settings = Build();
+        SettingsService settings = Build();
 
         bool applied = settings.TrySetMode("teamdeathmatch", out LobbySettingDelta[] deltas);
 
@@ -73,7 +73,7 @@ public sealed class SettingsFeatureTests : IDisposable
     [Fact]
     public void UnknownModeChangesNothing()
     {
-        SettingsFeature settings = Build();
+        SettingsService settings = Build();
         MatchConfig before = settings.Config;
         string beforeName = settings.ModeName;
 
@@ -89,7 +89,7 @@ public sealed class SettingsFeatureTests : IDisposable
     public void MapUpdateSelectsTheLoadedSnapshot()
     {
         _maps.Add(Snapshot("duel", "Duel"));
-        SettingsFeature settings = Build();
+        SettingsService settings = Build();
 
         bool applied = settings.TrySetMap("duel", out LobbySettingDelta[] deltas);
 
@@ -105,7 +105,7 @@ public sealed class SettingsFeatureTests : IDisposable
     public void MapOutsideTheCatalogChangesNothing()
     {
         _maps.Add(Snapshot("elsewhere", "Elsewhere"));
-        SettingsFeature settings = Build();
+        SettingsService settings = Build();
         MapSnapshot before = settings.Map;
 
         bool applied = settings.TrySetMap("elsewhere", out LobbySettingDelta[] deltas);
@@ -118,7 +118,7 @@ public sealed class SettingsFeatureTests : IDisposable
     [Fact]
     public void MapThatFailsToLoadChangesNothing()
     {
-        SettingsFeature settings = Build();
+        SettingsService settings = Build();
         MapSnapshot before = settings.Map;
 
         bool applied = settings.TrySetMap("duel", out LobbySettingDelta[] deltas);
@@ -131,7 +131,7 @@ public sealed class SettingsFeatureTests : IDisposable
     [Fact]
     public void StateGoesOutOverTheLink()
     {
-        SettingsFeature settings = Build();
+        SettingsService settings = Build();
 
         settings.SendTo(7);
         settings.Broadcast();
@@ -145,7 +145,7 @@ public sealed class SettingsFeatureTests : IDisposable
             Directory.Delete(_root, recursive: true);
     }
 
-    private SettingsFeature Build()
+    private SettingsService Build()
     {
         string pack = AddPack("Base", "base");
         AddMap(pack, "arena", "Arena");
@@ -167,7 +167,7 @@ public sealed class SettingsFeatureTests : IDisposable
             NetStats = false,
             AllowJoinInProgress = true,
         };
-        return new SettingsFeature(boot, _maps, _link, Logger.None);
+        return new SettingsService(boot, _maps, _link, Logger.None);
     }
 
     private static MapSnapshot Snapshot(string id, string name) => new()

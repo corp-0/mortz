@@ -69,10 +69,7 @@ public partial class PlayerView : Node2D
 
     public void SetPlayerName(string name) => _nameplate.Text = name;
 
-    public void SetKillingSpreeMagnitude(int magnitude) =>
-        _killingSpreeEffect.SetMagnitude(magnitude);
-
-    /// <summary>The chat balloon; everyone sees it, including the typist.</summary>
+    // Everyone sees the chat balloon, including the typist.
     public void SetTyping(bool typing)
     {
         if (_typingAnimation.Visible == typing)
@@ -108,6 +105,7 @@ public partial class PlayerView : Node2D
         _body.Visible = spawnProtectedVisible;
         _aimPivot.Visible = spawnProtectedVisible;
         _reloadBar.Apply(next.Ammo, next.ReloadTicks);
+        _killingSpreeEffect.SetMagnitude(next.Presentation.KillingSpreeMagnitude);
         Vector2 nextPosition = new(next.Feet.X, next.Feet.Y - SimConfig.PLAYER_HALF_HEIGHT);
         Vector2 displacement = _previous == null ? Vector2.Zero : nextPosition - Position;
         Position = nextPosition;

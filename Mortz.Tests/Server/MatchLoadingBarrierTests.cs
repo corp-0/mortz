@@ -23,19 +23,19 @@ public sealed class MatchLoadingBarrierTests : IDisposable
         BeginLoadingMatch();
 
         _server.AdvanceWithoutReady();
-        Assert.Null(_observer.LastFrame);
+        Assert.Null(_observer.LastUpdate);
         Assert.DoesNotContain(_server.Link.Messages, sent => sent.Message is MatchStartMsg);
 
         _server.Ready(7);
         _server.AdvanceWithoutReady();
-        Assert.Null(_observer.LastFrame);
+        Assert.Null(_observer.LastUpdate);
 
         _server.Ready(8);
         Assert.Contains(_server.Link.Messages, sent => sent.Message is MatchStartMsg);
-        Assert.Null(_observer.LastFrame);
+        Assert.Null(_observer.LastUpdate);
 
         _server.AdvanceWithoutReady();
-        Assert.NotNull(_observer.LastFrame);
+        Assert.NotNull(_observer.LastUpdate);
     }
 
     [Fact]
@@ -48,7 +48,7 @@ public sealed class MatchLoadingBarrierTests : IDisposable
         _server.Ready(8);
 
         Assert.DoesNotContain(_server.Link.Messages, sent => sent.Message is MatchStartMsg);
-        Assert.Null(_observer.LastFrame);
+        Assert.Null(_observer.LastUpdate);
     }
 
     [Fact]

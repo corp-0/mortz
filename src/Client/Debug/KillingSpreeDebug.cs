@@ -2,6 +2,7 @@ using Godot;
 using Mortz.Client.Audio;
 using Mortz.Client.Views;
 using Mortz.Core.Match.Configuration;
+using Mortz.Core.Replication;
 using Mortz.Core.Sim;
 
 namespace Mortz.Client.Debug;
@@ -18,6 +19,7 @@ public partial class KillingSpreeDebug : Node2D
     private Vector2 _velocity;
     private float _groundY;
     private byte _aim;
+    private byte _magnitude = 5;
 
     public override void _Ready()
     {
@@ -98,8 +100,9 @@ public partial class KillingSpreeDebug : Node2D
 
     private void SetMagnitude(int magnitude, string label)
     {
-        _player.SetKillingSpreeMagnitude(magnitude);
+        _magnitude = (byte)magnitude;
         _tierLabel.Text = label;
+        ApplyPlayer();
     }
 
     private void ResizeWorld()
@@ -123,5 +126,6 @@ public partial class KillingSpreeDebug : Node2D
         RespawnTicks: 0,
         ParryTicks: 0,
         DashCooldown: 0,
-        SpawnImmunityTicks: 0), playTransitions: false);
+        SpawnImmunityTicks: 0,
+        Presentation: new PlayerPresentationState(_magnitude)), playTransitions: false);
 }

@@ -1,14 +1,13 @@
-using Mortz.Core.Net;
 using Mortz.Core.Net.Stats;
-using Mortz.Server.Features;
 using Mortz.Server.Players;
+using Mortz.Server.Services;
 using Serilog;
 
 namespace Mortz.Server.Wins;
 
 /// <summary>Session win tallies. A leaver's count dies with their state cell,
 /// so nothing removes anything.</summary>
-public sealed class WinsFeature(
+public sealed class WinsService(
     ServerStateKeys keys,
     Roster roster,
     IServerLink link,

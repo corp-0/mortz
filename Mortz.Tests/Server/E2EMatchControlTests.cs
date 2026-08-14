@@ -1,4 +1,3 @@
-using Mortz.Core.Match;
 using Mortz.Core.Match.Configuration;
 using Mortz.Core.Net.Lobby;
 using Mortz.Core.Net.Match;
@@ -52,7 +51,7 @@ public class E2EMatchControlTests : IDisposable
         Assert.Null(outcome.Error);
         // The world has stepped once past the placement, so the tick the caller
         // is told about is one the snapshot for that tick already includes.
-        Assert.Equal(_observer.LastFrame!.Value.Tick, outcome.AppliedTick);
+        Assert.Equal(_observer.LastUpdate!.Tick, outcome.AppliedTick);
     }
 
     [Fact]
@@ -94,7 +93,7 @@ public class E2EMatchControlTests : IDisposable
         Assert.Null(outcome.Error);
         Assert.False(outcome.Died);
         Assert.Equal(_server.Boot.Rules.Combat.MaxHealth - 30, outcome.RemainingHealth);
-        Assert.Equal(_observer.LastFrame!.Value.Tick, outcome.AppliedTick);
+        Assert.Equal(_observer.LastUpdate!.Tick, outcome.AppliedTick);
     }
 
     [Fact]
@@ -115,16 +114,41 @@ public class E2EMatchControlTests : IDisposable
     }
 
     [Fact]
-    public void QueuedDamageDeathReachesTheObserversFrame()
+    public void QueuedDamageDeathReachesTheObserverUpdate()
     {
         StartMatch();
         _control.DamagePlayer(7, 500, _ => { });
 
         _server.Tick();
 
-        ScoredKill scored = Assert.Single(_observer.LastFrame!.Value.Eliminations);
+        ScoredKill scored = Assert.Single(_observer.LastUpdate!.Eliminations);
         Assert.Equal(DeathKind.SUICIDE, scored.Score.Kind);
         Assert.Equal(7, scored.Score.VictimId);
+    }
+
+    [Fact]
+    public void AdministrativeCompletionRunsBeforeReplication()
+    {
+        E2EMatchControl control = new();
+        using TestServer server = new(rules: new MatchConfig
+        {
+            Rules = new ModeRules { SpawnImmunity = 0 },
+        }, control: control);
+        server.Connect(7, "alice");
+        server.Connect(8, "bob");
+        server.Receive(7, new SetReadyMsg(true));
+        server.Receive(8, new SetReadyMsg(true));
+        server.Tick();
+        server.Link.Messages.Clear();
+        bool eliminationWasPublishedAtCompletion = true;
+        control.DamagePlayer(7, 500, _ =>
+            eliminationWasPublishedAtCompletion = server.Link.Messages.Any(
+                sent => sent.Message is EliminationMsg));
+
+        server.Tick();
+
+        Assert.False(eliminationWasPublishedAtCompletion);
+        Assert.Contains(server.Link.Messages, sent => sent.Message is EliminationMsg);
     }
 
     [Fact]
@@ -147,7 +171,7 @@ public class E2EMatchControlTests : IDisposable
 
         WorldStateOutcome state = ReadState();
 
-        Assert.Equal(_observer.LastFrame!.Value.Tick, state.Tick);
+        Assert.Equal(_observer.LastUpdate!.Tick, state.Tick);
         Assert.Equal([7, 8], state.Players.Select(player => player.PeerId).Order().ToArray());
     }
 

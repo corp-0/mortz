@@ -4,9 +4,9 @@ using Mortz.Client.Audio;
 using Mortz.Client.Match;
 using Mortz.Client.Players;
 using Mortz.Client.Views;
-using Mortz.Core.Match;
 using Mortz.Core.Match.Configuration;
 using Mortz.Core.Net.Sim;
+using Mortz.Core.Replication;
 using Mortz.Core.Sim.Modifiers;
 using Mortz.Net;
 using Mortz.Tests.Core;
@@ -26,10 +26,9 @@ public class PlayerViewStatsTests : NodeServiceTest
         manager.FakeDependency<INetwork>(new FakeNetwork());
         manager.FakeDependency<ISfx>(new NullSfx());
         ClientPlayers players = HostRouted(new ClientPlayers());
-        players.OpenMatch();
+        players.OpenMatch(new MatchConfig());
         manager.FakeDependency(players);
         HostRouted(manager);
-        manager.Configure(new MatchConfig());
 
         float baseRadius = TestWorlds.Stats.ParryRadius;
         byte[] bigParry = ModifierWire.Serialize(
@@ -48,6 +47,27 @@ public class PlayerViewStatsTests : NodeServiceTest
         new PlayerModifiersMsg(3, smallParry).Broadcast();
         Assert.Equal(baseRadius * 0.5f, manager.ViewForTest(3).StatsForTest.ParryRadius);
         Assert.Equal(baseRadius * 4, manager.ViewForTest(2).StatsForTest.ParryRadius);
+    }
+
+    [Fact]
+    public void ApplyUsesTheSampledPresentationState()
+    {
+        PlayerViewManager manager = TakeManagerFromGameViewScene();
+        manager.FakeDependency<INetwork>(new FakeNetwork());
+        manager.FakeDependency<ISfx>(new NullSfx());
+        ClientPlayers players = HostRouted(new ClientPlayers());
+        players.OpenMatch(new MatchConfig());
+        manager.FakeDependency(players);
+        HostRouted(manager);
+
+        manager.BeginFrame();
+        manager.Place(2, ViewState() with
+        {
+            Presentation = new PlayerPresentationState(5),
+        });
+
+        Assert.True(manager.ViewForTest(2)
+            .GetNode<KillingSpreeAura>("KillingSpreeEffect").Active);
     }
 
     private static PlayerViewManager TakeManagerFromGameViewScene()

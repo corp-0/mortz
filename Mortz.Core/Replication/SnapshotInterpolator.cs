@@ -17,7 +17,7 @@ public sealed class SnapshotInterpolator
     public int NewestTick => _snapshots.NewestTick;
     public float RenderTick => _renderTick;
 
-    public void Add(Snapshot snapshot) => _snapshots.Add(snapshot);
+    public void Add(MatchSnapshot snapshot) => _snapshots.Add(snapshot);
 
     /// <summary>Step the clock by one rendered frame and sample the world at it.</summary>
     public InterpolatedState? Advance(float delta)

@@ -1,4 +1,3 @@
-using Mortz.Core.Match;
 using Mortz.Core.Match.Configuration;
 using Mortz.Core.Net;
 using Mortz.Core.Net.Roster;
@@ -13,7 +12,7 @@ namespace Mortz.Tests.Core.Net;
 public class BandwidthTests
 {
     [Fact]
-    public void RecipientSnapshot_UsesSlotsAndCompactRemoteRecords()
+    public void RecipientMatchSnapshot_BudgetsPresentationAndCompactRemoteRecords()
     {
         SimWorld world = new(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         for (int peer = 1; peer <= NetConfig.MAX_PLAYERS; peer++)
@@ -21,26 +20,39 @@ public class BandwidthTests
             world.AddPlayer(peer);
         }
 
-        Snapshot snapshot = world.TakeSnapshot(includeMortars: false);
+        Snapshot simulation = world.TakeSnapshot(includeMortars: false);
+        MatchSnapshot snapshot = new(
+            simulation.Tick,
+            [.. simulation.Players.Select(player => new ReplicatedPlayer(
+                player,
+                new PlayerPresentationState((byte)player.PeerId)))],
+            simulation.Mortars);
         byte[] data = snapshot.SerializeFor(localPeerId: 1);
-        RosterSnapshot roster = new([.. snapshot.Players
+        RosterSnapshot roster = new([.. simulation.Players
             .Select(p => new RosterEntry(p.PeerId, $"Player {p.PeerId}",
                 p.Skin, p.Team, p.NetSlot))
         ]);
-        Snapshot restored = Snapshot.Deserialize(data, roster);
+        MatchSnapshot restored = MatchSnapshot.Deserialize(data, roster);
 
-        // 4 tick + 1 count/format + 29 local + 7*14 remote + 2 mortar count.
-        Assert.Equal(142, data.Length);
+        // 4 tick + 1 count/format + 29 local + 7*14 remote + 2 mortar count
+        // + 8 one-byte presentation records.
+        Assert.Equal(150, data.Length);
         Assert.Equal(8, restored.Players.Length);
-        Assert.Equal(0, restored.Players[0].Skin); // static value comes from RosterMsg
-        Assert.Equal(snapshot.Players[0].PrevButtons, restored.Players[0].PrevButtons);
-        Assert.Equal(snapshot.Players[0].SpawnImmunityFireThroughSeq,
-            restored.Players[0].SpawnImmunityFireThroughSeq);
-        Assert.Equal(snapshot.Players[1].Position, restored.Players[1].Position);
-        Assert.Equal(snapshot.Players[1].SpawnImmunityTicks,
-            restored.Players[1].SpawnImmunityTicks);
-        Assert.Equal(0, restored.Players[1].Skin); // static value comes from RosterMsg
-        Assert.Equal(Vec2.Zero, restored.Players[1].Velocity); // render-only remote record
+        // Static identity values come from RosterMsg on the slot-id path.
+        Assert.Equal(0, restored.Players[0].Simulation.Skin);
+        Assert.Equal(simulation.Players[0].PrevButtons,
+            restored.Players[0].Simulation.PrevButtons);
+        Assert.Equal(simulation.Players[0].SpawnImmunityFireThroughSeq,
+            restored.Players[0].Simulation.SpawnImmunityFireThroughSeq);
+        Assert.Equal(simulation.Players[1].Position, restored.Players[1].Simulation.Position);
+        Assert.Equal(simulation.Players[1].SpawnImmunityTicks,
+            restored.Players[1].Simulation.SpawnImmunityTicks);
+        Assert.Equal(0, restored.Players[1].Simulation.Skin);
+        Assert.Equal(Vec2.Zero,
+            restored.Players[1].Simulation.Velocity); // render-only remote record
+        Assert.Equal(1, restored.Players[0].Presentation.KillingSpreeMagnitude);
+        Assert.Equal(8, restored.Players[^1].Presentation.KillingSpreeMagnitude);
+        Assert.Equal(1, MatchSnapshotWire.PRESENTATION_BYTES_PER_PLAYER);
     }
 
     [Fact]

@@ -6,8 +6,17 @@ namespace Mortz.Tests.Core.Replication;
 
 public class SnapshotBufferTests
 {
-    private static Snapshot Snap(int tick, float x) =>
-        new(tick, [new PlayerState { PeerId = 1, Position = new Vec2(x, 0) }], []);
+    private static MatchSnapshot Snap(int tick, float x, byte magnitude = 0) =>
+        new(tick,
+        [
+            new ReplicatedPlayer(
+                new PlayerState { PeerId = 1, Position = new Vec2(x, 0) },
+                new PlayerPresentationState(magnitude)),
+        ], []);
+
+    private static MatchSnapshot Snap(
+        int tick, PlayerState[] players, MortarState[] mortars) =>
+        new(tick, [.. players.Select(player => new ReplicatedPlayer(player, default))], mortars);
 
     [Fact]
     public void Sample_InterpolatesBetweenBracketingSnapshots()
@@ -58,12 +67,12 @@ public class SnapshotBufferTests
     public void Sample_InterpolatesMortarsById_AndDropsExploded()
     {
         SnapshotBuffer buf = new SnapshotBuffer();
-        buf.Add(new Snapshot(10, [],
+        buf.Add(Snap(10, [],
         [
             new MortarState { Id = 7, Position = new Vec2(100, 50) },
             new MortarState { Id = 8, Position = new Vec2(0, 0) }, // gone by tick 12: exploded
         ]));
-        buf.Add(new Snapshot(12, [],
+        buf.Add(Snap(12, [],
         [
             new MortarState { Id = 7, Position = new Vec2(120, 70) },
             new MortarState { Id = 9, Position = new Vec2(300, 300) }, // just fired
@@ -80,8 +89,8 @@ public class SnapshotBufferTests
     public void PlayerPresentOnlyInNewerSnapshot_UsesNewerPosition()
     {
         SnapshotBuffer buf = new SnapshotBuffer();
-        buf.Add(new Snapshot(10, [new PlayerState { PeerId = 1, Position = new Vec2(100, 0) }], []));
-        buf.Add(new Snapshot(12,
+        buf.Add(Snap(10, [new PlayerState { PeerId = 1, Position = new Vec2(100, 0) }], []));
+        buf.Add(Snap(12,
         [
             new PlayerState { PeerId = 1, Position = new Vec2(200, 0) },
             new PlayerState { PeerId = 2, Position = new Vec2(500, 0) }, // just joined
@@ -95,15 +104,30 @@ public class SnapshotBufferTests
     public void Sample_TakesSpawnImmunityAndShellSeq_FromTheNewerSnapshot()
     {
         SnapshotBuffer buffer = new();
-        buffer.Add(new Snapshot(10,
+        buffer.Add(Snap(10,
             [new PlayerState { PeerId = 1, SpawnImmunityTicks = 10 }],
             [new MortarState { Id = 7, SpawnSeq = 41 }]));
-        buffer.Add(new Snapshot(12,
+        buffer.Add(Snap(12,
             [new PlayerState { PeerId = 1, SpawnImmunityTicks = 8 }],
             [new MortarState { Id = 7, SpawnSeq = 41 }]));
 
         InterpolatedState sample = buffer.Sample(11)!;
         Assert.Equal(8, Assert.Single(sample.Players).SpawnImmunityTicks);
         Assert.Equal(41, Assert.Single(sample.Mortars).SpawnSeq);
+    }
+
+    [Fact]
+    public void Sample_StepsPresentationFromTheNewerBracketingSnapshot()
+    {
+        SnapshotBuffer buffer = new();
+        buffer.Add(Snap(10, 100, magnitude: 5));
+        buffer.Add(Snap(12, 200, magnitude: 7));
+
+        RenderPlayer sampled = Assert.Single(buffer.Sample(11)!.Players);
+
+        Assert.Equal(150, sampled.Position.X, 3);
+        Assert.Equal(7, sampled.Presentation.KillingSpreeMagnitude);
+        Assert.Equal(5, Assert.Single(buffer.Sample(9)!.Players)
+            .Presentation.KillingSpreeMagnitude);
     }
 }

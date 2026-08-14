@@ -12,14 +12,14 @@ public sealed class LobbyPhase : ServerPhase
 {
     private readonly LobbySession _session;
     private readonly LobbyStateKeys _keys;
-    private readonly LobbyFeature _lobby;
+    private readonly LobbyService _lobby;
     private readonly Roster _roster;
     private readonly ILogger _log;
     private readonly PhaseControl _control;
-    private readonly object[] _features;
+    private readonly object[] _services;
 
-    private LobbyPhase(LobbySession session, LobbyStateKeys keys, LobbyFeature lobby,
-        LobbySettingsFeature lobbySettings, Roster roster, ILogger log, PhaseControl control)
+    private LobbyPhase(LobbySession session, LobbyStateKeys keys, LobbyService lobby,
+        LobbySettingsService lobbySettings, Roster roster, ILogger log, PhaseControl control)
     {
         _session = session;
         _keys = keys;
@@ -27,12 +27,12 @@ public sealed class LobbyPhase : ServerPhase
         _roster = roster;
         _log = log;
         _control = control;
-        _features = [_lobby, lobbySettings];
+        _services = [_lobby, lobbySettings];
     }
 
     public override ServerPhaseKind Kind => ServerPhaseKind.LOBBY;
 
-    public override IReadOnlyList<object> Features => _features;
+    public override IReadOnlyList<object> Services => _services;
 
     public bool CanStart => _session.CanStart;
 
@@ -40,13 +40,13 @@ public sealed class LobbyPhase : ServerPhase
         .._session.Members.Select(member => new SeatAssignment(member, _session.TeamOf(member)))
     ];
 
-    public static LobbyPhase Open(Roster roster, SettingsFeature settings, AdminFeature admin,
-        ChatFeature chat, IServerLink link, ILogger log, PhaseControl control, int generation)
+    public static LobbyPhase Open(Roster roster, SettingsService settings, AdminService admin,
+        ChatService chat, IServerLink link, ILogger log, PhaseControl control, int generation)
     {
         LobbyStateKeys keys = new(generation);
         LobbySession session = new(keys, settings.Config.Rules.Teams);
-        LobbyFeature lobby = new(session, link, log, control);
-        LobbySettingsFeature lobbySettings = new(settings, admin, chat, lobby, log);
+        LobbyService lobby = new(session, link, log, control);
+        LobbySettingsService lobbySettings = new(settings, admin, chat, lobby, log);
         return new LobbyPhase(session, keys, lobby, lobbySettings, roster, log, control);
     }
 

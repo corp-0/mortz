@@ -1,20 +1,25 @@
-using Mortz.Core.Match;
 using Mortz.Core.Match.Teams;
 using Mortz.Core.Net.Lobby;
 using Mortz.Core.Net.Roster;
+using Mortz.Core.Sim;
 
 namespace Mortz.Client.Players;
 
-/// <summary>One player this client has heard of, from any stream. Identity is
-/// whatever the latest broadcast said; feature state lives in cells that
-/// cannot outlive the player or its phase.</summary>
-public sealed class ClientPlayer(int peerId, SessionStateKeys sessionKeys, MatchStateKeys? matchKeys)
+/// <summary>One player this client has heard of, from any stream.</summary>
+public sealed class ClientPlayer(
+    int peerId,
+    SessionStateKeys sessionKeys,
+    MatchStateKeys? matchKeys,
+    PlayerStats? matchBaseStats)
 {
     private object?[]? _session;
     private MatchStateKeys? _matchKeys = matchKeys;
     private object?[]? _match;
 
     public int PeerId { get; } = peerId;
+
+    public ClientMatchPlayer? Match { get; private set; } =
+        matchBaseStats == null ? null : new ClientMatchPlayer(matchBaseStats);
 
     private readonly record struct Identity(string Name, Team? Team, byte Skin, bool Ready);
 
@@ -30,6 +35,8 @@ public sealed class ClientPlayer(int peerId, SessionStateKeys sessionKeys, Match
     public byte Skin => _identity.Skin;
 
     public bool Ready => _identity.Ready;
+
+    public bool IsTyping { get; private set; }
 
     /// <summary>False between first reference by a faster stream and the
     /// broadcast that names this player.</summary>
@@ -67,6 +74,8 @@ public sealed class ClientPlayer(int peerId, SessionStateKeys sessionKeys, Match
         Skin = entry.Skin,
     });
 
+    internal void ApplyTyping(bool isTyping) => IsTyping = isTyping;
+
     private bool Confirm(Identity next)
     {
         bool changed = !Known || next != _identity;
@@ -77,11 +86,12 @@ public sealed class ClientPlayer(int peerId, SessionStateKeys sessionKeys, Match
         return changed;
     }
 
-    public void OpenMatch(MatchStateKeys keys)
+    public void OpenMatch(MatchStateKeys keys, PlayerStats baseStats)
     {
         DisposeReverse(_match);
         _matchKeys = keys;
         _match = null;
+        Match = new ClientMatchPlayer(baseStats);
     }
 
     public void CloseMatch()
@@ -89,6 +99,7 @@ public sealed class ClientPlayer(int peerId, SessionStateKeys sessionKeys, Match
         DisposeReverse(_match);
         _match = null;
         _matchKeys = null;
+        Match = null;
     }
 
     /// <summary>Left the server: match cells, then session cells, reverse

@@ -3,7 +3,7 @@ using Mortz.Server.Players;
 namespace Mortz.Tests.Server.Match;
 
 /// <summary>Mints players with open match cells for one match lifetime. Join
-/// players only after every service under test has claimed its keys.</summary>
+/// players only after every match system under test has claimed its keys.</summary>
 public sealed class MatchCells
 {
     private const int GENERATION = 1;

@@ -49,6 +49,8 @@ public sealed class GameEventJudge
 
     public JudgeState Of(Player player) => player.State(_key);
 
+    public byte KillingSpreeMagnitude(Player player) => ClampToByte(Of(player).Streak);
+
     public List<Judgment> JudgeFrame(IReadOnlyList<ScoredKill> kills, int tick)
     {
         List<Judgment> events = new();

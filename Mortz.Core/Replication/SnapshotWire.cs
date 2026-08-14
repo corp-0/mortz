@@ -24,6 +24,12 @@ public static class SnapshotWire
     {
         using MemoryStream stream = new();
         using BinaryWriter writer = new(stream);
+        Write(writer, snapshot, localPeerId);
+        return stream.ToArray();
+    }
+
+    internal static void Write(BinaryWriter writer, Snapshot snapshot, int? localPeerId)
+    {
         writer.Write(snapshot.Tick);
         if (snapshot.Players.Length > NetConfig.MAX_PLAYERS)
             throw new InvalidDataException($"Too many players in snapshot: {snapshot.Players.Length}.");
@@ -34,13 +40,20 @@ public static class SnapshotWire
             WritePlayer(writer, player, localPeerId, slotIds);
         }
         WriteMortars(writer, snapshot.Mortars);
-        return stream.ToArray();
     }
 
     public static Snapshot Deserialize(byte[] data, IPeerSlots? slots)
     {
         using MemoryStream stream = new(data, writable: false);
         using BinaryReader reader = new(stream);
+        Snapshot snapshot = Read(reader, slots);
+        if (stream.Position != stream.Length)
+            throw new InvalidDataException("Trailing bytes in snapshot.");
+        return snapshot;
+    }
+
+    internal static Snapshot Read(BinaryReader reader, IPeerSlots? slots)
+    {
         int tick = reader.ReadInt32();
         byte countAndFormat = reader.ReadByte();
         bool slotIds = (countAndFormat & SLOT_IDS_BIT) != 0;
@@ -53,8 +66,6 @@ public static class SnapshotWire
             players[i] = ReadPlayer(reader, slotIds, slots);
         }
         MortarState[] mortars = ReadMortars(reader);
-        if (stream.Position != stream.Length)
-            throw new InvalidDataException("Trailing bytes in snapshot.");
         return new Snapshot(tick, players, mortars);
     }
 
@@ -65,12 +76,15 @@ public static class SnapshotWire
         if (slotIds)
         {
             if (player.NetSlot is 0 or > NetConfig.MAX_PLAYERS)
+            {
                 throw new InvalidDataException(
                     $"Invalid network slot {player.NetSlot} for peer {player.PeerId}.");
+            }
+
             writer.Write(player.NetSlot);
         }
-        else
-            writer.Write(player.PeerId);
+        else writer.Write(player.PeerId);
+
         WriteVec(writer, player.Position);
         writer.Write((byte)((byte)player.Rope | (player.Grounded ? GROUNDED_BIT : 0) |
                             (full ? FULL_STATE_BIT : 0)));

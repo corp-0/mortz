@@ -11,12 +11,12 @@ namespace Mortz.Core.Replication;
 /// </summary>
 public sealed class SnapshotBuffer
 {
-    private readonly List<Snapshot> _snapshots = new();
+    private readonly List<MatchSnapshot> _snapshots = [];
     private const int MAX_KEPT = 64;
 
     public int NewestTick => _snapshots.Count > 0 ? _snapshots[^1].Tick : -1;
 
-    public void Add(Snapshot snapshot)
+    public void Add(MatchSnapshot snapshot)
     {
         int i = _snapshots.FindLastIndex(s => s.Tick < snapshot.Tick);
         if (i == _snapshots.Count - 1) _snapshots.Add(snapshot);
@@ -29,24 +29,31 @@ public sealed class SnapshotBuffer
 
     /// <summary>
     /// World state at fractional tick (newest - delay + subTickFraction),
-    /// interpolated. Returns null until two snapshots exist.
+    /// interpolated. A single snapshot is enough to produce a sample.
     /// </summary>
     public InterpolatedState? Sample(float renderTick)
     {
         if (_snapshots.Count == 0) return null;
 
         // Find the pair bracketing renderTick; clamp to the buffered range.
-        Snapshot older = _snapshots[0], newer = _snapshots[0];
+        MatchSnapshot older = _snapshots[0], newer = _snapshots[0];
         if (_snapshots.Count > 1)
         {
-            newer = _snapshots[1];
-            for (int i = _snapshots.Count - 1; i >= 1; i--)
+            if (renderTick < _snapshots[0].Tick)
             {
-                if (_snapshots[i - 1].Tick <= renderTick)
+                newer = _snapshots[0];
+            }
+            else
+            {
+                newer = _snapshots[1];
+                for (int i = _snapshots.Count - 1; i >= 1; i--)
                 {
-                    older = _snapshots[i - 1];
-                    newer = _snapshots[i];
-                    break;
+                    if (_snapshots[i - 1].Tick <= renderTick)
+                    {
+                        older = _snapshots[i - 1];
+                        newer = _snapshots[i];
+                        break;
+                    }
                 }
             }
         }
@@ -55,11 +62,13 @@ public sealed class SnapshotBuffer
         float t = span > 0 ? Math.Clamp((renderTick - older.Tick) / span, 0f, 1f) : 1f;
 
         List<RenderPlayer> result = new List<RenderPlayer>();
-        foreach (PlayerState np in newer.Players)
+        foreach (ReplicatedPlayer next in newer.Players)
         {
+            PlayerState np = next.Simulation;
             Vec2 pos = np.Position;
-            foreach (PlayerState op in older.Players)
+            foreach (ReplicatedPlayer previous in older.Players)
             {
+                PlayerState op = previous.Simulation;
                 if (op.PeerId == np.PeerId)
                 {
                     pos = Vec2.Lerp(op.Position, np.Position, t);
@@ -71,7 +80,7 @@ public sealed class SnapshotBuffer
             // Ammo/reload/health too: they step at most once per snapshot anyway.
             result.Add(new RenderPlayer(np.PeerId, pos, np.Aim, np.Skin, np.Rope, np.RopePoint,
                 np.Ammo, np.ReloadTicks, np.Health, np.RespawnTicks, np.SpawnImmunityTicks,
-                np.ParryTicks, np.DashCooldown));
+                np.ParryTicks, np.DashCooldown, next.Presentation));
         }
 
         // Full-snapshot path for tests and recordings; live traffic uses

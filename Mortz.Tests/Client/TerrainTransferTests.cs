@@ -15,7 +15,7 @@ public class TerrainTransferTests
         new("map", "hash", config ?? new MatchConfig().ToBytes(),
             (byte)TerrainSyncEncoding.CARVE_LOG, 17, bytes, chunks,
             MatchSeat.PLAYER, MatchActivity.ACTIVE, SpectateReason.NONE, -1,
-            new Snapshot(0, [], []).SerializeFor(1), -1);
+            new MatchSnapshot(0, [], []).SerializeFor(1), -1);
 
     [Fact]
     public void OutOfOrderChunksProduceTheDeclaredPayload()

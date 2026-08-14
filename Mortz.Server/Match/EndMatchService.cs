@@ -4,17 +4,17 @@ using Mortz.Core.Net;
 using Mortz.Core.Net.Match;
 using Mortz.Server.Admin;
 using Mortz.Server.Chat;
-using Mortz.Server.Features;
 using Mortz.Server.Phases;
 using Mortz.Server.Players;
+using Mortz.Server.Services;
 
 namespace Mortz.Server.Match;
 
 /// <summary>The admin END_MATCH command. Server lifetime because it owes a reply
 /// when there is no match to end.</summary>
-public sealed class EndMatchFeature(
-    AdminFeature admin,
-    ChatFeature chat,
+public sealed class EndMatchService(
+    AdminService admin,
+    ChatService chat,
     CurrentPhase phase,
     PhaseControl control)
     : IHandle<Player, EndMatchRequestMsg>, IObservePhase
@@ -36,9 +36,9 @@ public sealed class EndMatchFeature(
     }
 
     /// <summary>Deferred to the fresh lobby so the line lands in the lobby chats.</summary>
-    public void PhaseChanged(ServerPhaseKind phase)
+    public void PhaseChanged(ServerPhaseKind phaseKind)
     {
-        if (phase != ServerPhaseKind.LOBBY || _pendingAnnounce is not string name)
+        if (phaseKind != ServerPhaseKind.LOBBY || _pendingAnnounce is not string name)
             return;
         _pendingAnnounce = null;
         chat.Broadcast(new ChatLine.System($"{name} ended the match."));

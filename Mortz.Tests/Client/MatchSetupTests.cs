@@ -174,7 +174,7 @@ public class MatchSetupTests : NodeServiceTest
         new MatchLoadMsg("arena", "abc", new MatchConfig { Rules = new ModeRules { Teams = true } }.ToBytes(),
             (byte)TerrainSyncEncoding.CARVE_LOG, 1, 10, 1,
             MatchSeat.PLAYER, MatchActivity.ACTIVE, SpectateReason.NONE, -1,
-            new Snapshot(0, [], []).SerializeFor(1), -1).SendTo(1);
+            new MatchSnapshot(0, [], []).SerializeFor(1), -1).SendTo(1);
 
         Assert.Null(setup.Selection);
         Assert.True(setup.Config.Rules.Teams);

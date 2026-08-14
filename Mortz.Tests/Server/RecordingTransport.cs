@@ -7,10 +7,14 @@ namespace Mortz.Tests.Server;
 /// <summary>One thing the server put on the wire. Target 0 means broadcast.</summary>
 internal readonly record struct Sent(int Target, object Message);
 
+internal readonly record struct SentSnapshot(int Target, byte[] Data, int Ack);
+
 /// <summary>Every byte the server transport emits, in a list.</summary>
 internal sealed class RecordingTransport : IServerTransport
 {
     public List<Sent> Messages { get; } = [];
+
+    public List<SentSnapshot> Snapshots { get; } = [];
 
     public List<int> Disconnected { get; } = [];
 
@@ -30,7 +34,11 @@ internal sealed class RecordingTransport : IServerTransport
 
     public int BroadcastSnapshot(Func<int, byte[]> dataFor, Func<int, int> ackFor) => 0;
 
-    public int SendSnapshot(int peerId, byte[] data, int ack) => data.Length + sizeof(int);
+    public int SendSnapshot(int peerId, byte[] data, int ack)
+    {
+        Snapshots.Add(new SentSnapshot(peerId, data, ack));
+        return data.Length + sizeof(int);
+    }
 
     public PeerPing[] PeerPings() => [];
 

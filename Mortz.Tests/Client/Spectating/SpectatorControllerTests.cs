@@ -3,7 +3,7 @@ using Godot;
 using Mortz.Client.Match;
 using Mortz.Client.Players;
 using Mortz.Client.Spectating;
-using Mortz.Core.Match;
+using Mortz.Core.Match.Configuration;
 using Mortz.Core.Match.Participation;
 using Mortz.Core.Match.Scoring;
 using Mortz.Core.Net.Match;
@@ -35,7 +35,7 @@ public class SpectatorControllerTests : NodeServiceTest
 
         _controller.FakeDependency<INetwork>(new FakeNetwork { LocalPeerId = 1 });
         ClientPlayers players = HostRouted(new ClientPlayers());
-        players.OpenMatch();
+        players.OpenMatch(new MatchConfig());
         _controller.FakeDependency(players);
         _controller.Initialize(MatchParticipation.JipSpectator, Vector2.Zero);
         HostRouted(_controller);

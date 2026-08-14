@@ -1,4 +1,3 @@
-using Mortz.Core.Match;
 using Mortz.Core.Match.Teams;
 using Mortz.Core.Net;
 using Mortz.Core.Net.Lobby;
@@ -10,7 +9,7 @@ using Serilog;
 namespace Mortz.Server.Lobby;
 
 /// <summary>Ready-up, team moves and swap offers.</summary>
-public sealed class LobbyFeature(
+public sealed class LobbyService(
     LobbySession session,
     IServerLink link,
     ILogger log,

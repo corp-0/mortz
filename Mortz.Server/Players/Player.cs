@@ -2,7 +2,7 @@ using Mortz.Server.Phases;
 
 namespace Mortz.Server.Players;
 
-/// <summary>One admitted connection and every feature's state about it. State
+/// <summary>One admitted connection and every service's state about it. State
 /// cannot outlive its lifetime and cannot be reached without the player.</summary>
 public sealed class Player(
     int peerId,

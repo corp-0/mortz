@@ -11,5 +11,5 @@ public interface IMatchObserver
     void PlayerJoined(Player player, ServerPhaseKind phase);
     void PlayerLeft(Player player, ServerPhaseKind phase);
     void PhaseChanged(ServerPhaseKind kind);
-    void MatchAdvanced(in MatchFrame frame);
+    void MatchAdvanced(MatchUpdate update);
 }

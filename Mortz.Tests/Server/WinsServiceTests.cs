@@ -9,19 +9,19 @@ using Xunit;
 namespace Mortz.Tests.Server;
 
 /// <summary>Session win tallies, driven through the framework's state keys.</summary>
-public class WinsFeatureTests
+public class WinsServiceTests
 {
     private readonly RecordingTransport _transport = new();
     private readonly IServerLink _link;
     private readonly ServerStateKeys _keys = new(generation: 1);
     private readonly Roster _roster;
-    private readonly WinsFeature _wins;
+    private readonly WinsService _wins;
 
-    public WinsFeatureTests()
+    public WinsServiceTests()
     {
         _link = new ReadyLink(_transport);
         _roster = new Roster(_keys);
-        _wins = new WinsFeature(_keys, _roster, _link, Logger.None);
+        _wins = new WinsService(_keys, _roster, _link, Logger.None);
     }
 
     [Fact]

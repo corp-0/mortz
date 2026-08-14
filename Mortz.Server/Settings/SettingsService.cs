@@ -3,9 +3,9 @@ using Mortz.Core.Match.Configuration;
 using Mortz.Core.Net;
 using Mortz.Core.Net.Lobby;
 using Mortz.Server.Content;
-using Mortz.Server.Features;
 using Mortz.Server.Phases;
 using Mortz.Server.Players;
+using Mortz.Server.Services;
 using Serilog;
 using Combat = Mortz.Core.Match.Configuration.Combat;
 using ModeRules = Mortz.Core.Match.Configuration.ModeRules;
@@ -14,7 +14,7 @@ using Physics = Mortz.Core.Match.Configuration.Physics;
 namespace Mortz.Server.Settings;
 
 /// <summary>Lobby-owned map and rules for the next match.</summary>
-public sealed class SettingsFeature : IObservePlayers, IObservePhase
+public sealed class SettingsService : IObservePlayers, IObservePhase
 {
     private sealed record ModeOption(string Id, GameModeManifest Manifest)
     {
@@ -27,7 +27,7 @@ public sealed class SettingsFeature : IObservePlayers, IObservePhase
     private readonly IServerLink _link;
     private readonly ILogger _log;
 
-    public SettingsFeature(ServerBoot boot, IMapSource maps, IServerLink link, ILogger log)
+    public SettingsService(ServerBoot boot, IMapSource maps, IServerLink link, ILogger log)
     {
         _mapSource = maps;
         _link = link;
@@ -146,19 +146,23 @@ public sealed class SettingsFeature : IObservePlayers, IObservePhase
 
     private LobbySettings CreateState()
     {
-        List<ContentOption> options = _maps.Values
-            .OrderBy(option => option.Name, StringComparer.Ordinal)
-            .ThenBy(option => option.Id, StringComparer.Ordinal)
-            .ToList();
+        List<ContentOption> options =
+        [
+            .. _maps.Values
+                .OrderBy(option => option.Name, StringComparer.Ordinal)
+                .ThenBy(option => option.Id, StringComparer.Ordinal)
+        ];
         if (options.Count > NetConfig.MAX_LOBBY_MAPS)
         {
             ContentOption selected = _maps[Map.MapId];
-            options = options.Take(NetConfig.MAX_LOBBY_MAPS - 1)
-                .Append(selected)
-                .DistinctBy(option => option.Id, StringComparer.Ordinal)
-                .OrderBy(option => option.Name, StringComparer.Ordinal)
-                .ThenBy(option => option.Id, StringComparer.Ordinal)
-                .ToList();
+            options =
+            [
+                .. options.Take(NetConfig.MAX_LOBBY_MAPS - 1)
+                    .Append(selected)
+                    .DistinctBy(option => option.Id, StringComparer.Ordinal)
+                    .OrderBy(option => option.Name, StringComparer.Ordinal)
+                    .ThenBy(option => option.Id, StringComparer.Ordinal)
+            ];
         }
         return new LobbySettings(
             new LobbySelection(

@@ -3,7 +3,7 @@ using Mortz.Core.Net.Stats;
 
 namespace Mortz.Server;
 
-/// <summary>Raw server wire transport. Server features never receive this;
+/// <summary>Raw server wire transport. Server services never receive this;
 /// ReadyLink decorates it with readiness guarantees first.</summary>
 public interface IServerTransport
 {

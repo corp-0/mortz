@@ -12,5 +12,5 @@ public sealed class NullMatchObserver : IMatchObserver
 
     public void PhaseChanged(ServerPhaseKind kind) { }
 
-    public void MatchAdvanced(in MatchFrame frame) { }
+    public void MatchAdvanced(MatchUpdate update) { }
 }

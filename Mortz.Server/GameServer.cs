@@ -4,11 +4,11 @@ using Mortz.Server.Admin;
 using Mortz.Server.Chat;
 using Mortz.Server.Content;
 using Mortz.Server.Diagnostics;
-using Mortz.Server.Features;
 using Mortz.Server.Match;
 using Mortz.Server.Phases;
 using Mortz.Server.Pings;
 using Mortz.Server.Players;
+using Mortz.Server.Services;
 using Mortz.Server.Settings;
 using Mortz.Server.Wins;
 using Serilog;
@@ -31,11 +31,11 @@ public sealed class GameServer : IDisposable, IHandle<Player, PhaseReadyMsg>
     private readonly HashSet<ushort> _undispatched = [];
     private readonly HashSet<int> _jipAwaitingReady = [];
     private readonly HashSet<int> _matchLoadingPeers = [];
-    private readonly object[] _features;
-    private readonly SettingsFeature _settings;
-    private readonly AdminFeature _admin;
-    private readonly ChatFeature _chat;
-    private readonly WinsFeature _wins;
+    private readonly object[] _services;
+    private readonly SettingsService _settings;
+    private readonly AdminService _admin;
+    private readonly ChatService _chat;
+    private readonly WinsService _wins;
 
     private IObservePlayers[] _observePlayers = [];
     private IObservePhase[] _observePhase = [];
@@ -63,14 +63,14 @@ public sealed class GameServer : IDisposable, IHandle<Player, PhaseReadyMsg>
         _control = new PhaseControl();
         _roster = new Roster(slots);
 
-        _settings = new SettingsFeature(boot, maps, _link, log);
-        _admin = new AdminFeature(slots, _link, _clock, _current, log, boot.AdminPassword);
-        _chat = new ChatFeature(slots, _link, _clock, new Random(boot.Seed));
-        TypingFeature typing = new(slots, _link);
-        _wins = new WinsFeature(slots, _roster, _link, log);
-        PingFeature pings = new(_link);
-        EndMatchFeature endMatch = new(_admin, _chat, _current, _control);
-        _features = [_settings, _admin, _chat, typing, _wins, pings, endMatch];
+        _settings = new SettingsService(boot, maps, _link, log);
+        _admin = new AdminService(slots, _link, _clock, _current, log, boot.AdminPassword);
+        _chat = new ChatService(slots, _link, _clock, new Random(boot.Seed));
+        TypingService typing = new(slots, _link);
+        _wins = new WinsService(slots, _roster, _link, log);
+        PingService pings = new(_link);
+        EndMatchService endMatch = new(_admin, _chat, _current, _control);
+        _services = [_settings, _admin, _chat, typing, _wins, pings, endMatch];
 
         _phase = LobbyPhase.Open(_roster, _settings, _admin, _chat, _link, log, _control,
             ++_generation);
@@ -206,13 +206,13 @@ public sealed class GameServer : IDisposable, IHandle<Player, PhaseReadyMsg>
         if (_disposed)
             return;
         _disposed = true;
-        // Cells first, while every feature is still alive and every payload is still readable.
+        // Cells first, while every service is still alive and every payload is still readable.
         foreach (Player player in _roster)
         {
             player.Close(_phase.Kind);
         }
-        DisposeReverse(_phase.Features);
-        DisposeReverse(_features);
+        DisposePhase();
+        DisposeReverse(_services);
     }
 
     private void StartMatch()
@@ -251,6 +251,7 @@ public sealed class GameServer : IDisposable, IHandle<Player, PhaseReadyMsg>
         _jipAwaitingReady.Clear();
         _matchLoadingPeers.Clear();
         _matchRunning = next.Kind != ServerPhaseKind.MATCH;
+        DisposePhase();
         _phase = next;
         foreach (Player player in _roster)
         {
@@ -293,27 +294,33 @@ public sealed class GameServer : IDisposable, IHandle<Player, PhaseReadyMsg>
 
     private void Recompose()
     {
-        object[] live = [.. _features, .. _phase.Features];
+        object[] live = [.. _services, .. _phase.Services];
         _observePlayers = [.. live.OfType<IObservePlayers>()];
         _observePhase = [.. live.OfType<IObservePhase>()];
         _advance = [.. live.OfType<IAdvance>()];
-        _syncJip = [.. _phase.Features.OfType<ISyncJip>()];
+        _syncJip = [.. _phase.Services.OfType<ISyncJip>()];
 
         _router.Clear();
         _router.Add(this);
-        foreach (object feature in live)
+        foreach (object service in live)
         {
-            _router.Add(feature);
+            _router.Add(service);
         }
         _log.Information("{Routes}", _router.Describe());
     }
 
-    private static void DisposeReverse(IReadOnlyList<object> features)
+    private static void DisposeReverse(IReadOnlyList<object> services)
     {
-        for (int i = features.Count - 1; i >= 0; i--)
+        for (int i = services.Count - 1; i >= 0; i--)
         {
-            if (features[i] is IDisposable disposable)
+            if (services[i] is IDisposable disposable)
                 disposable.Dispose();
         }
+    }
+
+    private void DisposePhase()
+    {
+        DisposeReverse(_phase.Services);
+        _phase.Dispose();
     }
 }

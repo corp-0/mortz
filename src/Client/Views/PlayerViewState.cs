@@ -1,4 +1,5 @@
 using Godot;
+using Mortz.Core.Replication;
 
 namespace Mortz.Client.Views;
 
@@ -13,4 +14,5 @@ public readonly record struct PlayerViewState(
     ushort RespawnTicks,
     byte ParryTicks,
     byte DashCooldown,
-    byte SpawnImmunityTicks);
+    byte SpawnImmunityTicks,
+    PlayerPresentationState Presentation = default);

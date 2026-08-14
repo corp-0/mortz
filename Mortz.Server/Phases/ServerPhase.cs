@@ -2,11 +2,11 @@ using Mortz.Server.Players;
 
 namespace Mortz.Server.Phases;
 
-public abstract class ServerPhase
+public abstract class ServerPhase : IDisposable
 {
     public abstract ServerPhaseKind Kind { get; }
 
-    public abstract IReadOnlyList<object> Features { get; }
+    public abstract IReadOnlyList<object> Services { get; }
 
     public abstract void OpenPhaseKeys(Player player);
 
@@ -24,4 +24,6 @@ public abstract class ServerPhase
     }
 
     public virtual void Load(Player player, int generation, bool initialPhase) { }
+
+    public virtual void Dispose() { }
 }

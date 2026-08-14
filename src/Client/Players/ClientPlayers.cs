@@ -2,11 +2,18 @@ using System.Collections;
 using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
-using Mortz.Core.Match;
+using Mortz.Core.Match.Configuration;
 using Mortz.Core.Match.Teams;
 using Mortz.Core.Net;
+using Mortz.Core.Net.Chat;
 using Mortz.Core.Net.Lobby;
 using Mortz.Core.Net.Roster;
+using Mortz.Core.Net.Sim;
+using Mortz.Core.Replication;
+using Mortz.Core.Sim;
+using Mortz.Core.Sim.Modifiers;
+using Mortz.Shared.Logging;
+using Serilog;
 
 namespace Mortz.Client.Players;
 
@@ -18,8 +25,11 @@ namespace Mortz.Client.Players;
 public partial class ClientPlayers : Node,
     IReadOnlyCollection<ClientPlayer>,
     IHandle<RosterMsg>,
-    IHandle<LobbyStateMsg>
+    IHandle<LobbyStateMsg>,
+    IHandle<TypingStateMsg>,
+    IHandle<PlayerModifiersMsg>
 {
+    private static readonly ILogger _log = MortzLog.For("client");
     private static int _nextGeneration;
 
     private readonly SortedDictionary<int, ClientPlayer> _players = [];
@@ -28,6 +38,8 @@ public partial class ClientPlayers : Node,
     public SessionStateKeys SessionKeys { get; } = new(++_nextGeneration);
 
     private MatchStateKeys? _matchKeys;
+    private MatchConfig? _matchConfig;
+    private PlayerStats? _matchBaseStats;
 
     /// <summary>Keys for the open match. The session controller opens a match
     /// before mounting its scene; match cells then live until the next open or
@@ -42,6 +54,7 @@ public partial class ClientPlayers : Node,
 
     public event Action<ClientPlayer>? PlayerJoined;
     public event Action<ClientPlayer>? PlayerLeft;
+    public event Action<ClientPlayer>? MatchStatsChanged;
 
     /// <summary>Membership or any player's identity changed.</summary>
     public event Action? Changed;
@@ -65,7 +78,7 @@ public partial class ClientPlayers : Node,
     {
         if (_players.TryGetValue(peerId, out ClientPlayer? player))
             return player;
-        player = new ClientPlayer(peerId, SessionKeys, _matchKeys);
+        player = new ClientPlayer(peerId, SessionKeys, _matchKeys, _matchBaseStats);
         _players[peerId] = player;
         PlayerJoined?.Invoke(player);
         return player;
@@ -75,13 +88,27 @@ public partial class ClientPlayers : Node,
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-    public void OpenMatch()
+    public void OpenMatch(MatchConfig config)
     {
+        ArgumentNullException.ThrowIfNull(config);
         MatchStateKeys keys = new(++_matchGeneration);
         _matchKeys = keys;
+        _matchConfig = config;
+        _matchBaseStats = PlayerStats.Resolve(config);
         foreach (ClientPlayer player in _players.Values)
         {
-            player.OpenMatch(keys);
+            player.OpenMatch(keys, _matchBaseStats);
+        }
+    }
+
+    /// <summary>Makes the snapshot's player presentation values available through
+    /// <see cref="ClientPlayer.Match"/>.</summary>
+    public void ApplySnapshot(MatchSnapshot snapshot)
+    {
+        foreach (ReplicatedPlayer replicated in snapshot.Players)
+        {
+            ClientPlayer player = GetOrCreate(replicated.Simulation.PeerId);
+            player.Match?.ApplyPresentation(snapshot.Tick, replicated.Presentation);
         }
     }
 
@@ -132,6 +159,35 @@ public partial class ClientPlayers : Node,
         changed |= RetireAbsent(present.Contains);
         if (changed)
             Changed?.Invoke();
+    }
+
+    public void Handle(in TypingStateMsg message)
+    {
+        GetOrCreate(message.PeerId).ApplyTyping(message.IsTyping);
+    }
+
+    public void Handle(in PlayerModifiersMsg message)
+    {
+        if (_matchConfig == null)
+            return;
+        List<StatsModifier> modifiers;
+        PlayerStats stats;
+        try
+        {
+            modifiers = ModifierWire.Deserialize(message.Modifiers);
+            stats = StatsPipeline.Resolve(_matchConfig, modifiers);
+        }
+        catch (Exception exception) when (exception is IOException or InvalidDataException)
+        {
+            _log.Error(exception, "dropped malformed modifiers for peer {PeerId}", message.PeerId);
+            return;
+        }
+
+        ClientPlayer player = GetOrCreate(message.PeerId);
+        if (player.Match == null)
+            return;
+        player.Match.ApplyModifiers(stats, modifiers);
+        MatchStatsChanged?.Invoke(player);
     }
 
     private bool RetireAbsent(Func<int, bool> present)

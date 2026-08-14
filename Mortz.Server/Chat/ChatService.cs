@@ -2,14 +2,14 @@ using Mortz.Core.Chat;
 using Mortz.Core.Net;
 using Mortz.Core.Net.Chat;
 using Mortz.Core.Text;
-using Mortz.Server.Features;
 using Mortz.Server.Players;
+using Mortz.Server.Services;
 using Mortz.Server.Settings;
 
 namespace Mortz.Server.Chat;
 
 /// <summary>Player chat, dice rolls and the system lines around them.</summary>
-public sealed class ChatFeature(ServerStateKeys keys, IServerLink link, ServerClock clock, Random dice)
+public sealed class ChatService(ServerStateKeys keys, IServerLink link, ServerClock clock, Random dice)
     :
         IHandle<Player, ChatSendMsg>,
         IHandle<Player, RollRequestMsg>,

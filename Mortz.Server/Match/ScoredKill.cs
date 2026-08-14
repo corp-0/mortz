@@ -1,3 +1,4 @@
+using Mortz.Core.Sim;
 using Mortz.Server.Match.Scoring;
 using Mortz.Server.Players;
 
@@ -17,3 +18,6 @@ public readonly record struct ScoredKill(
 {
     public DeathKind Kind => Score.Kind;
 }
+
+/// <summary>The scored death that decided the match.</summary>
+public readonly record struct WinningScore(Death Death, ScoredKill Elimination);

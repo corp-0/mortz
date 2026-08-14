@@ -3,7 +3,7 @@ using Mortz.Core.Net.Stats;
 
 namespace Mortz.Server;
 
-/// <summary>The readiness-safe link exposed to server features. Every outgoing
+/// <summary>The readiness-safe link exposed to server services. Every outgoing
 /// message passes through this boundary.</summary>
 public interface IServerLink
 {

@@ -3,6 +3,7 @@ using Mortz.Core.Net;
 using Mortz.Core.Net.Chat;
 using Mortz.Core.Net.Lobby;
 using Mortz.Core.Net.Roster;
+using Mortz.Core.Replication;
 using Mortz.Server.Phases;
 using Xunit;
 
@@ -131,6 +132,29 @@ public class GameServerPhaseTests : IDisposable
         Assert.Equal(MatchActivity.SPECTATING, load.Activity);
         Assert.Equal(SpectateReason.JIP, load.SpectateReason);
         Assert.NotEmpty(load.InitialSnapshot);
+    }
+
+    [Fact]
+    public void InitialAndLiveSnapshotsUseTheSamePresentationProjection()
+    {
+        Seat(7, 8);
+        _server.Tick();
+        MatchLoadMsg load = _server.Link.Messages
+            .Where(sent => sent.Target == 7)
+            .Select(sent => sent.Message)
+            .OfType<MatchLoadMsg>()
+            .Single();
+        RosterSnapshot roster = new(_server.Link.Last<RosterMsg>().Entries);
+        MatchSnapshot initial = MatchSnapshot.Deserialize(load.InitialSnapshot, roster);
+
+        _server.Tick();
+        _server.Tick();
+
+        SentSnapshot sent = _server.Link.Snapshots.Last(snapshot => snapshot.Target == 7);
+        MatchSnapshot live = MatchSnapshot.Deserialize(sent.Data, roster);
+        Assert.Equal(
+            initial.Players.Select(player => player.Presentation),
+            live.Players.Select(player => player.Presentation));
     }
 
     [Fact]

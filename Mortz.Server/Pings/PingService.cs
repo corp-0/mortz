@@ -1,11 +1,10 @@
-using Mortz.Core.Net;
 using Mortz.Core.Net.Stats;
-using Mortz.Server.Features;
+using Mortz.Server.Services;
 
 namespace Mortz.Server.Pings;
 
 /// <summary>Republishes the transport's round-trip times once a second.</summary>
-public sealed class PingFeature(IServerLink link) : IAdvance
+public sealed class PingService(IServerLink link) : IAdvance
 {
     private const double PING_INTERVAL_SECONDS = 1;
 

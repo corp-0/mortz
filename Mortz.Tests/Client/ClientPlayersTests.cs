@@ -1,9 +1,12 @@
 using Mortz.Client.Players;
-using Mortz.Core.Match;
+using Mortz.Core.Match.Configuration;
 using Mortz.Core.Match.Teams;
 using Mortz.Core.Net;
+using Mortz.Core.Net.Chat;
 using Mortz.Core.Net.Lobby;
 using Mortz.Core.Net.Roster;
+using Mortz.Core.Replication;
+using Mortz.Core.Sim;
 using Mortz.Tests.Net;
 using Xunit;
 
@@ -159,12 +162,12 @@ public class ClientPlayersTests : NodeServiceTest
     public void MatchCellsDieWhenTheNextMatchOpens()
     {
         ClientPlayers players = HostRouted(new ClientPlayers());
-        players.OpenMatch();
+        players.OpenMatch(new MatchConfig());
         MatchStateKey<Counter> first = players.MatchKeys.Claim<Counter>();
         ClientPlayer seven = players.GetOrCreate(7);
         seven.State(first).Value = 5;
 
-        players.OpenMatch();
+        players.OpenMatch(new MatchConfig());
         MatchStateKey<Counter> second = players.MatchKeys.Claim<Counter>();
 
         Assert.Throws<InvalidOperationException>(() => seven.State(first));
@@ -182,7 +185,7 @@ public class ClientPlayersTests : NodeServiceTest
     public void APlayerJoiningMidMatchGetsTheOpenMatchCells()
     {
         ClientPlayers players = HostRouted(new ClientPlayers());
-        players.OpenMatch();
+        players.OpenMatch(new MatchConfig());
         MatchStateKey<Counter> counter = players.MatchKeys.Claim<Counter>();
 
         new RosterMsg([Entry(9, "Late")]).Broadcast();
@@ -199,4 +202,63 @@ public class ClientPlayersTests : NodeServiceTest
 
         Assert.Throws<InvalidOperationException>(() => second.GetOrCreate(1).State(foreign));
     }
+
+    [Fact]
+    public void MatchSnapshotUpdatesCanonicalPresentationWithoutRegressingOnLatePackets()
+    {
+        ClientPlayers players = HostRouted(new ClientPlayers());
+        players.OpenMatch(new MatchConfig());
+
+        players.ApplySnapshot(Snapshot(12, 7));
+        players.ApplySnapshot(Snapshot(10, 5));
+
+        Assert.Equal(7, players.Find(1)!.Match!.LatestPresentation.KillingSpreeMagnitude);
+    }
+
+    [Fact]
+    public void OpeningTheNextMatchReplacesCanonicalMatchState()
+    {
+        ClientPlayers players = HostRouted(new ClientPlayers());
+        players.OpenMatch(new MatchConfig());
+        players.ApplySnapshot(Snapshot(12, 7));
+
+        players.OpenMatch(new MatchConfig());
+
+        Assert.Equal(default, players.Find(1)!.Match!.LatestPresentation);
+    }
+
+    [Fact]
+    public void TypingBroadcastUpdatesThePlayersConnectionState()
+    {
+        ClientPlayers players = HostRouted(new ClientPlayers());
+
+        new TypingStateMsg(7, true).Broadcast();
+        Assert.True(players.Find(7)!.IsTyping);
+
+        new TypingStateMsg(7, false).Broadcast();
+        Assert.False(players.Find(7)!.IsTyping);
+    }
+
+    [Fact]
+    public void LeavingAndRejoiningCreatesFreshCanonicalMatchState()
+    {
+        ClientPlayers players = HostRouted(new ClientPlayers());
+        players.OpenMatch(new MatchConfig());
+        new RosterMsg([Entry(1, "Alice")]).Broadcast();
+        players.ApplySnapshot(Snapshot(12, 7));
+
+        new RosterMsg([Entry(2, "Bob")]).Broadcast();
+        new RosterMsg([Entry(1, "Alice")]).Broadcast();
+
+        Assert.Equal(default, players.Find(1)!.Match!.LatestPresentation);
+    }
+
+    private static MatchSnapshot Snapshot(int tick, byte magnitude) => new(
+        tick,
+        [
+            new ReplicatedPlayer(
+                new PlayerState { PeerId = 1 },
+                new PlayerPresentationState(magnitude)),
+        ],
+        []);
 }

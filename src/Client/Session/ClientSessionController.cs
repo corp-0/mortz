@@ -268,7 +268,7 @@ public partial class ClientSessionController : Node, ISessionExit,
         DisposeMenu();
         DisposeLobby();
         DisposeGameView();
-        connectedSession.Players.OpenMatch();
+        connectedSession.Players.OpenMatch(entry.Terrain.Config);
         _gameView = gameView;
         connectedSession.AddChild(gameView);
         _pendingMatch = null;

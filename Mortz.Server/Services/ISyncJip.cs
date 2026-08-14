@@ -1,6 +1,6 @@
 using Mortz.Server.Players;
 
-namespace Mortz.Server.Features;
+namespace Mortz.Server.Services;
 
 /// <summary>Bring a late joiner into a match already in progress. Lobby joins
 /// belong to IObservePlayers; phase initialization belongs to IObservePhase.</summary>

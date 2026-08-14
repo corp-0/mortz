@@ -1,6 +1,5 @@
 #if TOOLS
 using Godot;
-using Mortz.Core.Match;
 using Mortz.Core.Match.Scoring;
 using Mortz.Core.Sim;
 using Mortz.E2E.Protocol;
@@ -96,20 +95,20 @@ public partial class ServerE2EHandler : Node, IE2EHandler, IMatchObserver
         _responder?.Emit(new PhaseChangedEvent(Map(kind)));
     }
 
-    public void MatchAdvanced(in MatchFrame frame)
+    public void MatchAdvanced(MatchUpdate update)
     {
         if (_responder is not IE2EResponder responder)
             return;
-        if (frame.Tick % SimConfig.TICK_RATE == 0)
-            responder.Emit(new MatchTickEvent(frame.Tick));
-        foreach (ScoredKill kill in frame.Eliminations)
+        if (update.Tick % SimConfig.TICK_RATE == 0)
+            responder.Emit(new MatchTickEvent(update.Tick));
+        foreach (ScoredKill kill in update.Eliminations)
         {
-            responder.Emit(new EliminationEvent(frame.Tick,
+            responder.Emit(new EliminationEvent(update.Tick,
                 kill.Score.KillerId, kill.Score.VictimId,
                 kill.Score.Kind == DeathKind.SUICIDE));
         }
-        if (frame.MatchEnded is Victor victor)
-            responder.Emit(Ended(frame.Tick, victor));
+        if (update.MatchEnded is Victor victor)
+            responder.Emit(Ended(update.Tick, victor));
     }
 
     // ---- translation ----

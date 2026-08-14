@@ -6,7 +6,7 @@ namespace Mortz.Server.Diagnostics;
 /// outcome the tick produces already accounts for them.</summary>
 public interface IMatchControl
 {
-    /// <summary>Runs queued mutations right before MatchSession.Step.</summary>
+    /// <summary>Runs queued mutations right before match advancement.</summary>
     void ApplyBefore(SimWorld world);
 
     /// <summary>Completes pending callbacks with world.Tick as AppliedTick; the
