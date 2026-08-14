@@ -26,6 +26,21 @@ public class HealthTests
         Assert.Equal(SimConfig.MAX_HEALTH, w.Players[1].Health);
     }
 
+    [Theory]
+    [InlineData(34, 100, false)]
+    [InlineData(33, 100, true)]
+    [InlineData(1, 100, true)]
+    [InlineData(0, 100, false)]
+    [InlineData(84, 250, false)]
+    [InlineData(83, 250, true)]
+    public void CriticalHealth_IsPositiveHealthAtOrBelowOneThird(
+        byte health, byte maxHealth, bool expected)
+    {
+        PlayerState player = new() { Health = health };
+
+        Assert.Equal(expected, player.IsAtCriticalHealth(maxHealth));
+    }
+
     [Fact]
     public void GrazesChipHealth_DamageSticks_TheCrossingShotKills_CorpseIsUntouchable()
     {

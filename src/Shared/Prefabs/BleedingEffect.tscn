@@ -1,0 +1,48 @@
+[gd_scene format=3 uid="uid://ljo56284cej7"]
+
+[ext_resource type="Script" uid="uid://cs7yptiohif74" path="res://src/Client/Views/BleedingEffect.cs" id="1_bleeding"]
+[ext_resource type="Shader" uid="uid://ceiieukjbldv2" path="res://src/Shared/Rendering/bleeding_wounds.gdshader" id="2_wounds"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_wounds"]
+resource_local_to_scene = true
+shader = ExtResource("2_wounds")
+shader_parameter/wound_color = Color(0.72, 0.015, 0.02, 0.9)
+shader_parameter/frame_grid = Vector2(5, 5)
+shader_parameter/coverage = 0.499999988824
+shader_parameter/seed = 0.0
+
+[sub_resource type="Curve" id="Curve_blood_scale"]
+_data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
+point_count = 2
+
+[sub_resource type="Gradient" id="Gradient_blood"]
+offsets = PackedFloat32Array(0, 0.65, 1)
+colors = PackedColorArray(0.85, 0.015, 0.02, 0.95, 0.62, 0.01, 0.015, 0.75, 0.3, 0.005, 0.01, 0)
+
+[node name="BleedingEffect" type="Node2D" unique_id=1139187806 node_paths=PackedStringArray("_wounds", "_blood")]
+visible = false
+script = ExtResource("1_bleeding")
+_wounds = NodePath("Wounds")
+_blood = NodePath("Blood")
+metadata/_custom_type_script = "uid://cs7yptiohif74"
+
+[node name="Wounds" type="Sprite2D" parent="." unique_id=1088682020]
+material = SubResource("ShaderMaterial_wounds")
+
+[node name="Blood" type="CPUParticles2D" parent="." unique_id=1697861037]
+z_index = 1
+position = Vector2(0, 6)
+emitting = false
+amount = 10
+lifetime = 0.65
+one_shot = true
+explosiveness = 0.8
+randomness = 0.35
+direction = Vector2(0, 1)
+spread = 111.67
+gravity = Vector2(0, 240)
+initial_velocity_min = 25.0
+initial_velocity_max = 55.0
+scale_amount_max = 2.0
+scale_amount_curve = SubResource("Curve_blood_scale")
+color_ramp = SubResource("Gradient_blood")

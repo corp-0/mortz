@@ -4,7 +4,7 @@ using Mortz.Core.Match.Events;
 namespace Mortz.Client.Views;
 
 [GlobalClass]
-public partial class KillingSpreeAura : Node2D
+public partial class KillingSpreeAura : PlayerVfx
 {
     private static readonly VisualTier[] _visualTiers =
     [
@@ -16,6 +16,9 @@ public partial class KillingSpreeAura : Node2D
     ];
 
     [Export] private Shader _afterimageShader = null!;
+    [Export] private Sprite2D _bodyGlint = null!;
+    [Export] private Node2D _aimPivot = null!;
+    [Export] private Sprite2D _launcherGlint = null!;
 
     [Export(PropertyHint.Range, "0.02,0.2,0.005")]
     private float _trailInterval = 0.07f;
@@ -38,27 +41,33 @@ public partial class KillingSpreeAura : Node2D
     [Export] private Color _violetHighlight = new(1f, 0.42f, 1f);
 
     private readonly List<Afterimage> _afterimages = [];
+    private bool _active;
     private float _sinceAfterimage = float.MaxValue;
     private int _paletteIndex;
-    private ShaderMaterial? _bodyGlintMaterial;
-    private ShaderMaterial? _launcherGlintMaterial;
+    private int _magnitude = -1;
+    private ShaderMaterial _bodyGlintMaterial = null!;
+    private ShaderMaterial _launcherGlintMaterial = null!;
 
-    public bool Active => Visible;
+    public bool Active => _active;
 
-    public void ConfigureGlintMaterials(
-        ShaderMaterial bodyGlintMaterial,
-        ShaderMaterial launcherGlintMaterial)
+    public override void _Ready()
     {
-        _bodyGlintMaterial = bodyGlintMaterial;
-        _launcherGlintMaterial = launcherGlintMaterial;
-        SetGlintActive(Active);
+        _bodyGlintMaterial = (ShaderMaterial)_bodyGlint.Material;
+        _launcherGlintMaterial = (ShaderMaterial)_launcherGlint.Material;
+        Visible = false;
+        SetProcess(false);
     }
 
     public void SetActive(bool active)
     {
+        if (_active == active)
+        {
+            return;
+        }
+
+        _active = active;
         Visible = active;
         SetProcess(active);
-        SetGlintActive(active);
         if (!active)
         {
             ClearAfterimages();
@@ -67,6 +76,12 @@ public partial class KillingSpreeAura : Node2D
 
     public void SetMagnitude(int magnitude)
     {
+        if (_magnitude == magnitude)
+        {
+            return;
+        }
+
+        _magnitude = magnitude;
         if (magnitude < Streaks.ANNOUNCEMENT_ENTRY)
         {
             SetActive(false);
@@ -81,15 +96,19 @@ public partial class KillingSpreeAura : Node2D
         SetActive(true);
     }
 
-    public void ApplyPose(in PlayerAfterimagePose pose, Vector2 displacement, bool bodyVisible)
+    public override void Apply(in PlayerViewState state, in PlayerVisualPose pose)
     {
+        SetMagnitude(state.Presentation.KillingSpreeMagnitude);
+        pose.ApplyBody(_bodyGlint);
+        pose.ApplyLauncher(_aimPivot, _launcherGlint);
+
         foreach (Afterimage afterimage in _afterimages)
         {
-            afterimage.Root.Position -= displacement;
+            afterimage.Root.Position -= pose.Displacement;
         }
 
-        if (!Active || !bodyVisible || _sinceAfterimage < _trailInterval ||
-            displacement.LengthSquared() < _minimumMovement * _minimumMovement)
+        if (!Active || !pose.BodyVisible || _sinceAfterimage < _trailInterval ||
+            pose.Displacement.LengthSquared() < _minimumMovement * _minimumMovement)
         {
             return;
         }
@@ -118,12 +137,6 @@ public partial class KillingSpreeAura : Node2D
         }
     }
 
-    private void SetGlintActive(bool active)
-    {
-        _bodyGlintMaterial?.SetShaderParameter("active", active);
-        _launcherGlintMaterial?.SetShaderParameter("active", active);
-    }
-
     private void ApplyTier(in VisualTier tier)
     {
         _maxAfterimages = tier.MaxAfterimages;
@@ -142,11 +155,11 @@ public partial class KillingSpreeAura : Node2D
 
     private void SetGlintParameter(StringName parameter, float value)
     {
-        _bodyGlintMaterial?.SetShaderParameter(parameter, value);
-        _launcherGlintMaterial?.SetShaderParameter(parameter, value);
+        _bodyGlintMaterial.SetShaderParameter(parameter, value);
+        _launcherGlintMaterial.SetShaderParameter(parameter, value);
     }
 
-    private void AddAfterimage(in PlayerAfterimagePose pose)
+    private void AddAfterimage(in PlayerVisualPose pose)
     {
         while (_afterimages.Count >= _maxAfterimages)
         {
@@ -162,7 +175,10 @@ public partial class KillingSpreeAura : Node2D
         material.SetShaderParameter("highlight_color", useBlue ? _blueHighlight : _violetHighlight);
         material.SetShaderParameter("opacity", _trailOpacity);
 
-        Node2D root = new();
+        Node2D root = new()
+        {
+            ZIndex = -1,
+        };
         Sprite2D body = new()
         {
             Texture = pose.BodyTexture,
@@ -223,15 +239,3 @@ public partial class KillingSpreeAura : Node2D
         float GlintPause,
         float GlintSize);
 }
-
-public readonly record struct PlayerAfterimagePose(
-    Texture2D BodyTexture,
-    int BodyHframes,
-    int BodyVframes,
-    int BodyFrame,
-    bool BodyFlipH,
-    Texture2D LauncherTexture,
-    Vector2 LauncherPosition,
-    Vector2 LauncherScale,
-    float AimRotation,
-    bool LauncherFlipV);

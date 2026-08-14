@@ -50,7 +50,7 @@ public class PlayerViewStatsTests : NodeServiceTest
     }
 
     [Fact]
-    public void ApplyUsesTheSampledPresentationState()
+    public void ApplyComposesTheSampledPresentationEffects()
     {
         PlayerViewManager manager = TakeManagerFromGameViewScene();
         manager.FakeDependency<INetwork>(new FakeNetwork());
@@ -63,11 +63,30 @@ public class PlayerViewStatsTests : NodeServiceTest
         manager.BeginFrame();
         manager.Place(2, ViewState() with
         {
-            Presentation = new PlayerPresentationState { KillingSpreeMagnitude = 5 },
+            Presentation = new PlayerPresentationState
+            {
+                KillingSpreeMagnitude = 5,
+                IsBleeding = true,
+            },
         });
 
-        Assert.True(manager.ViewForTest(2)
-            .GetNode<KillingSpreeAura>("KillingSpreeEffect").Active);
+        PlayerView view = manager.ViewForTest(2);
+        KillingSpreeAura spree = view.GetNode<KillingSpreeAura>("Vfx/KillingSpreeEffect");
+        BleedingEffect bleeding = view.GetNode<BleedingEffect>("Vfx/BleedingEffect");
+        Assert.True(spree.Active);
+        Assert.True(bleeding.Active);
+
+        manager.Place(2, ViewState() with
+        {
+            Presentation = new PlayerPresentationState
+            {
+                KillingSpreeMagnitude = 0,
+                IsBleeding = true,
+            },
+        });
+
+        Assert.False(spree.Active);
+        Assert.True(bleeding.Active);
     }
 
     private static PlayerViewManager TakeManagerFromGameViewScene()

@@ -111,7 +111,7 @@ public sealed class MatchRuntime : IDisposable
         PlayerStats stats = World.Stats[peerId];
 
         byte spreeMagnitude = _gameEvents.KillingSpreeMagnitude(member);
-        bool isBleeding = simulation.Health > 0 && simulation.Health * 3 <= stats.MaxHealth;
+        bool isBleeding = simulation.IsAtCriticalHealth(stats.MaxHealth);
 
         return new PlayerPresentationState(spreeMagnitude, isBleeding);
     }

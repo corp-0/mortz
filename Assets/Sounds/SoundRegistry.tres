@@ -18,12 +18,12 @@
 [ext_resource type="Resource" uid="uid://bkkkoim76s6me" path="res://Assets/Sounds/Announcer/owned.tres" id="8"]
 [ext_resource type="AudioStream" uid="uid://ooxbt0ao7tns" path="res://Assets/Sounds/Parry/parry_raise1.wav" id="12_ox5b5"]
 [ext_resource type="AudioStream" uid="uid://smgbvo27lpwv" path="res://Assets/Sounds/Parry/parry_raise2.wav" id="13_2oxye"]
-[ext_resource type="Resource" path="res://Assets/Sounds/Announcer/shutdown.tres" id="14_shutdn"]
-[ext_resource type="Resource" path="res://Assets/Sounds/Announcer/holy_shit.tres" id="15_holysh"]
-[ext_resource type="Resource" path="res://Assets/Sounds/Announcer/double_kill.tres" id="16_double"]
-[ext_resource type="Resource" path="res://Assets/Sounds/Announcer/triple_kill.tres" id="17_triple"]
-[ext_resource type="Resource" path="res://Assets/Sounds/Announcer/multi_kill.tres" id="18_multik"]
-[ext_resource type="Resource" path="res://Assets/Sounds/Announcer/kill_streak.tres" id="19_streak"]
+[ext_resource type="Resource" uid="uid://c60xnqofp4q2t" path="res://Assets/Sounds/Announcer/shutdown.tres" id="14_shutdn"]
+[ext_resource type="Resource" uid="uid://chrnj7nhnu0o0" path="res://Assets/Sounds/Announcer/holy_shit.tres" id="15_holysh"]
+[ext_resource type="Resource" uid="uid://dm1ui1xxjj6sh" path="res://Assets/Sounds/Announcer/double_kill.tres" id="16_double"]
+[ext_resource type="Resource" uid="uid://ct081kd7gn2ia" path="res://Assets/Sounds/Announcer/triple_kill.tres" id="17_triple"]
+[ext_resource type="Resource" uid="uid://bj8sd8j8f3itq" path="res://Assets/Sounds/Announcer/multi_kill.tres" id="18_multik"]
+[ext_resource type="Resource" uid="uid://cuo24puyuiuxk" path="res://Assets/Sounds/Announcer/kill_streak.tres" id="19_streak"]
 
 [sub_resource type="AudioStreamRandomizer" id="AudioStreamRandomizer_vptec"]
 streams_count = 6

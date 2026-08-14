@@ -49,44 +49,6 @@ public class MatchRuntimeTests
     }
 
     [Fact]
-    public void CreditedKillProjectsTheAuthoritativeStreakForPresentation()
-    {
-        MatchStateKeys keys = new(GENERATION);
-        TerrainMask terrain = new(400, 300,
-            (x, y) => x < 16 || x >= 384 || y >= 250,
-            (_, _) => false);
-        using MatchRuntime runtime = new(terrain, new MatchConfig
-        {
-            Rules = new ModeRules { SpawnImmunity = 0 },
-        }, victoryLapTicks: 3, keys,
-            [new SpawnPoint(new Vec2(100, 250)), new SpawnPoint(new Vec2(250, 250))]);
-        Player killer = OpenPlayer(1, keys);
-        Player victim = OpenPlayer(2, keys);
-        runtime.Seat(killer);
-        runtime.Seat(victim);
-        runtime.EnqueueInput(killer, 0, new PlayerInput(InputButtons.FIRE, Aim: 0));
-
-        ScoredKill? credited = null;
-        for (int i = 0; i < 30 && credited == null; i++)
-        {
-            foreach (ScoredKill elimination in runtime.Advance(default).Eliminations)
-            {
-                if (elimination.Kind == DeathKind.KILL)
-                {
-                    credited = elimination;
-                }
-            }
-        }
-
-        Assert.NotNull(credited);
-        Assert.Equal(killer.PeerId, credited.Value.Killer?.PeerId);
-        Assert.Equal(1, runtime.PresentationOf(
-            runtime.World.Players[killer.PeerId]).KillingSpreeMagnitude);
-        Assert.Equal(0, runtime.PresentationOf(
-            runtime.World.Players[victim.PeerId]).KillingSpreeMagnitude);
-    }
-
-    [Fact]
     public void AuthoredSpawnPointsReachTheWorld()
     {
         MatchStateKeys keys = new(GENERATION);

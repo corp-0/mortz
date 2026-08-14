@@ -89,6 +89,9 @@ public record struct PlayerState
 
     public readonly bool IsAlive => RespawnTicks == 0;
 
+    public readonly bool IsAtCriticalHealth(byte maxHealth) =>
+        IsAlive && Health * 3 <= maxHealth;
+
     public readonly Vec2 BodyCenter =>
         Position with { Y = Position.Y - SimConfig.PLAYER_HALF_HEIGHT };
 }

@@ -1,9 +1,50 @@
 [gd_scene format=3 uid="uid://dwprxh00be3bd"]
 
-[ext_resource type="Script" uid="uid://ct4sbtbgyshib" path="res://src/Client/Views/KillingSpreeAura.cs" id="1_ork5a"]
+[ext_resource type="Script" uid="uid://ct4sbtbgyshib" path="res://src/Client/Views/KillingSpreeAura.cs" id="1_spree"]
 [ext_resource type="Shader" uid="uid://d1m5x4n2p8q7r" path="res://src/Shared/Rendering/killing_spree_afterimage.gdshader" id="2_afterimage"]
+[ext_resource type="Shader" path="res://src/Shared/Rendering/killing_spree_glint.gdshader" id="3_glint"]
 
-[node name="KillinSpreeAura" type="Node2D" unique_id=912068056]
-script = ExtResource("1_ork5a")
+[sub_resource type="Gradient" id="Gradient_glint"]
+offsets = PackedFloat32Array(0, 0.28, 0.5, 0.72, 1)
+colors = PackedColorArray(0.1, 0.65, 1, 0, 0.1, 0.65, 1, 0.75, 1, 1, 1, 1, 0.85, 0.25, 1, 0.75, 0.85, 0.25, 1, 0)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture_glint"]
+gradient = SubResource("Gradient_glint")
+width = 32
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_body_glint"]
+resource_local_to_scene = true
+shader = ExtResource("3_glint")
+shader_parameter/glint_gradient = SubResource("GradientTexture_glint")
+shader_parameter/frame_grid = Vector2(5, 5)
+shader_parameter/sweep_duration = 0.32
+shader_parameter/pause_duration = 0.75
+shader_parameter/shine_size = 0.14
+shader_parameter/shine_angle = 45.0
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_launcher_glint"]
+resource_local_to_scene = true
+shader = ExtResource("3_glint")
+shader_parameter/glint_gradient = SubResource("GradientTexture_glint")
+shader_parameter/frame_grid = Vector2(1, 1)
+shader_parameter/sweep_duration = 0.32
+shader_parameter/pause_duration = 0.75
+shader_parameter/shine_size = 0.14
+shader_parameter/shine_angle = 45.0
+
+[node name="KillingSpreeAura" type="Node2D" node_paths=PackedStringArray("_bodyGlint", "_aimPivot", "_launcherGlint")]
+visible = false
+script = ExtResource("1_spree")
 _afterimageShader = ExtResource("2_afterimage")
+_bodyGlint = NodePath("BodyGlint")
+_aimPivot = NodePath("AimPivot")
+_launcherGlint = NodePath("AimPivot/LauncherGlint")
 metadata/_custom_type_script = "uid://ct4sbtbgyshib"
+
+[node name="BodyGlint" type="Sprite2D" parent="."]
+material = SubResource("ShaderMaterial_body_glint")
+
+[node name="AimPivot" type="Node2D" parent="."]
+
+[node name="LauncherGlint" type="Sprite2D" parent="AimPivot"]
+material = SubResource("ShaderMaterial_launcher_glint")
