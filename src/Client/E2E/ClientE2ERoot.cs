@@ -1,6 +1,7 @@
 #if TOOLS
 using Godot;
 using Mortz.Client.Match;
+using Mortz.Net;
 using Mortz.Shared.E2E;
 
 namespace Mortz.Client.E2E;
@@ -14,13 +15,14 @@ namespace Mortz.Client.E2E;
 /// </summary>
 public static class ClientE2ERoot
 {
-    public static ClientE2EHandler Attach(Node parent)
+    public static ClientE2EHandler Attach(Node parent, NetworkManager network)
     {
         ArgumentNullException.ThrowIfNull(parent);
+        ArgumentNullException.ThrowIfNull(network);
         E2EDriver driver = new() { Name = "E2EDriver" };
         parent.AddChild(driver);
         ClientE2EHandler handler = new() { Name = "E2E" };
-        handler.Initialize(driver);
+        handler.Initialize(driver, network);
         parent.AddChild(handler);
         return handler;
     }

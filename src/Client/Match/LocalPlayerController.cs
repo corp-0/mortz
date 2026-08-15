@@ -2,7 +2,6 @@ using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
 using Mortz.Core.Input;
-using Mortz.Core.Match;
 using Mortz.Core.Match.Participation;
 using Mortz.Core.Net;
 using Mortz.Core.Replication;
@@ -47,6 +46,9 @@ public partial class LocalPlayerController : Node2D
     [Dependency]
     private INetwork Network => this.DependOn<INetwork>();
 
+    [Dependency]
+    private ClientMatchState MatchState => this.DependOn<ClientMatchState>();
+
     /// <summary>False until the first snapshot containing the local player arrives.</summary>
     public bool Initialized => _predictor.Initialized;
     public PlayerState State => _predictor.State;
@@ -57,16 +59,17 @@ public partial class LocalPlayerController : Node2D
     public bool Frozen { get; set; }
 
     /// <summary>Must be called right after instantiating, before entering the tree.</summary>
-    public void Initialize(Predictor predictor, MatchParticipation participation)
-    {
-        _predictor = predictor;
-        _participation = participation;
-    }
-
-    public void SetParticipation(MatchParticipation participation) =>
-        _participation = participation;
+    public void Initialize(Predictor predictor) => _predictor = predictor;
 
     public override void _Notification(int what) => this.Notify(what);
+
+    public void OnResolved()
+    {
+        _participation = MatchState.Participation;
+        MatchState.ParticipationChanged += OnParticipationChanged;
+    }
+
+    public void OnExitTree() => MatchState.ParticipationChanged -= OnParticipationChanged;
 
     /// <summary>The server's replicated modifier list for us; prediction must
     /// compose the same numbers the sim does.</summary>
@@ -142,6 +145,9 @@ public partial class LocalPlayerController : Node2D
 
     /// <summary>True if a predicted shell for this seq is still live.</summary>
     public bool HasPredictedShell(int spawnSeq) => _predictor.HasShell(spawnSeq);
+
+    private void OnParticipationChanged(MatchParticipation participation) =>
+        _participation = participation;
 
     private Vector2 BodyCenter() =>
         new(State.Position.X, State.Position.Y - SimConfig.PLAYER_HALF_HEIGHT);

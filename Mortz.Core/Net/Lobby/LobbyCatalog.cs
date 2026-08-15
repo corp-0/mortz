@@ -1,6 +1,7 @@
 namespace Mortz.Core.Net.Lobby;
 
-public readonly record struct ContentOption
+[NetRow]
+public readonly partial record struct ContentOption
 {
     public ContentOption(string id, string name)
     {

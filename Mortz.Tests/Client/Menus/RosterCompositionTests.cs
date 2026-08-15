@@ -9,6 +9,7 @@ using Mortz.Client.Setup;
 using Mortz.Client.Stats;
 using Mortz.Core.Match.Configuration;
 using Mortz.Core.Match.Teams;
+using Mortz.Core.Net;
 using Mortz.Core.Net.Lobby;
 using Mortz.Net;
 using Mortz.Tests.Net;
@@ -29,8 +30,8 @@ public class RosterCompositionTests : NodeServiceTest
         Control roster = lobby.GetNode<Control>(ROSTER_PATH);
         Assert.IsType<SingleColumnRoster>(roster.GetNode("SingleColumnRoster"));
 
-        Settings(teams: true).Broadcast();
-        new LobbyStateMsg(TwoBlueOneRed(), []).Broadcast();
+        Settings(teams: true).Broadcast(Router);
+        new LobbyStateMsg(TwoBlueOneRed(), []).Broadcast(Router);
 
         TeamColumnsRoster columns =
             Assert.IsType<TeamColumnsRoster>(roster.GetNode("TeamColumnsRoster"));
@@ -47,11 +48,11 @@ public class RosterCompositionTests : NodeServiceTest
 
         Assert.Equal("SWAP", MemberSlotButtons(team2)[0].Text);
         Assert.Empty(MemberSlotButtons(team1));
-        new LobbyStateMsg(TwoBlueOneRed(), [new SwapOffer(2, 1)]).Broadcast();
+        new LobbyStateMsg(TwoBlueOneRed(), [new SwapOffer(2, 1)]).Broadcast(Router);
         Assert.Equal("ACCEPT",
             MemberSlotButtons(columns.GetNode("Column/Teams/Team2/Slots"))[0].Text);
 
-        Settings(teams: false).Broadcast();
+        Settings(teams: false).Broadcast(Router);
         Assert.IsType<SingleColumnRoster>(roster.GetNode("SingleColumnRoster"));
         Assert.Null(roster.GetNodeOrNull("TeamColumnsRoster"));
     }
@@ -60,10 +61,10 @@ public class RosterCompositionTests : NodeServiceTest
     public void ValueUpdatesNeverRebuildTheActiveVariant()
     {
         Lobby lobby = MountLobby();
-        Settings(teams: true).Broadcast();
+        Settings(teams: true).Broadcast(Router);
         Node before = lobby.GetNode(ROSTER_PATH + "/TeamColumnsRoster");
 
-        Settings(teams: true, killTarget: 42).Broadcast();
+        Settings(teams: true, killTarget: 42).Broadcast(Router);
 
         Assert.Equal(before, lobby.GetNode(ROSTER_PATH + "/TeamColumnsRoster"));
     }
@@ -82,6 +83,7 @@ public class RosterCompositionTests : NodeServiceTest
         FakeNetwork network = new() { LocalPeerId = 1 };
         ClientAdmin admin = new();
         admin.FakeDependency<INetwork>(network);
+        admin.FakeDependency<IClientSender>(Sender);
         admin.FakeDependency(Router);
         ClientPlayers players = HostRouted(new ClientPlayers());
         Pings pings = new();
@@ -96,6 +98,7 @@ public class RosterCompositionTests : NodeServiceTest
             Players = players,
             Admin = Host(admin),
             Network = network,
+            Sender = Sender,
             Router = Router,
             SessionExit = new FakeSessionExit(),
         });
@@ -108,9 +111,9 @@ public class RosterCompositionTests : NodeServiceTest
     /// <summary>The layout the roster test seats: 1 and 3 blue, 2 red.</summary>
     private static LobbyMember[] TwoBlueOneRed() =>
     [
-        new LobbyMember(1, "A", false, Team.BLUE),
-        new LobbyMember(2, "B", false, Team.RED),
-        new LobbyMember(3, "C", false, Team.BLUE),
+        new(1, "A", false, Team.BLUE),
+        new(2, "B", false, Team.RED),
+        new(3, "C", false, Team.BLUE),
     ];
 
     private static List<Button> MemberSlotButtons(Node column) =>
@@ -129,8 +132,8 @@ public class RosterCompositionTests : NodeServiceTest
                 Victory = new KillsVictoryRules { Target = killTarget },
             },
         };
-        return new LobbySettingsMsg("castlewars", "hash", ["castlewars"], ["Castle Wars"],
-            [], [], "", config.ToBytes());
+        return new LobbySettingsMsg("castlewars", "hash",
+            [new ContentOption("castlewars", "Castle Wars")], [], "", config.ToBytes());
     }
 
     private static void AssertSceneType<T>(string name) where T : Node

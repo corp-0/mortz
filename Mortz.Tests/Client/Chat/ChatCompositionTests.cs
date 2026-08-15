@@ -12,6 +12,7 @@ using Mortz.Client.Spectating;
 using Mortz.Client.Stats;
 using Mortz.Client.Ui;
 using Mortz.Core.Match.Configuration;
+using Mortz.Core.Net;
 using Mortz.Core.Net.Lobby;
 using Mortz.Extensions;
 using Mortz.Net;
@@ -39,9 +40,10 @@ public class ChatCompositionTests : NodeServiceTest
         [
             new LobbyMember(1, "Host", true, null),
             new LobbyMember(2, "Guest", false, null),
-        ], []).Broadcast();
-        new LobbySettingsMsg("castlewars", "hash", ["castlewars"], ["Castle Wars"],
-            [], [], "", new MatchConfig().ToBytes()).Broadcast();
+        ], []).Broadcast(Router);
+        new LobbySettingsMsg("castlewars", "hash",
+            [new ContentOption("castlewars", "Castle Wars")], [], "",
+            new MatchConfig().ToBytes()).Broadcast(Router);
 
         UiPropertySheet rulesSheet = lobby.GetDescendantByType<UiPropertySheet>(
             sheet => sheet.BoundModelType == typeof(ModeRules));
@@ -187,6 +189,7 @@ public class ChatCompositionTests : NodeServiceTest
         FakeNetwork network = new() { LocalPeerId = 1 };
         ClientAdmin admin = new();
         admin.FakeDependency<INetwork>(network);
+        admin.FakeDependency<IClientSender>(Sender);
         admin.FakeDependency(Router);
         ClientPlayers players = HostRouted(new ClientPlayers());
         Pings pings = new();
@@ -201,6 +204,7 @@ public class ChatCompositionTests : NodeServiceTest
             Players = players,
             Admin = Host(admin),
             Network = network,
+            Sender = Sender,
             Router = Router,
             SessionExit = new FakeSessionExit(),
         });

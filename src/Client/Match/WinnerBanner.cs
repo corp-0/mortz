@@ -2,17 +2,14 @@ using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
 using Mortz.Client.Players;
-using Mortz.Core.Match;
 using Mortz.Core.Match.Scoring;
 using Mortz.Core.Match.Teams;
-using Mortz.Core.Net;
-using Mortz.Core.Net.Match;
 
 namespace Mortz.Client.Match;
 
 /// <summary>Mode-independent winner banner shown during the victory lap.</summary>
 [Meta(typeof(IAutoNode))]
-public partial class WinnerBanner : Control, IHandle<MatchEndMsg>
+public partial class WinnerBanner : Control
 {
     [Export] private Label _winnerLabel = null!;
 
@@ -20,27 +17,25 @@ public partial class WinnerBanner : Control, IHandle<MatchEndMsg>
     private ClientPlayers Players => this.DependOn<ClientPlayers>();
 
     [Dependency]
-    private NetRouter Router => this.DependOn<NetRouter>();
-
-    private NetRouter? _routed;
+    private ClientMatchState MatchState => this.DependOn<ClientMatchState>();
 
     public override void _Notification(int what) => this.Notify(what);
 
     public void OnResolved()
     {
-        _routed = Router;
-        _routed.Add(this);
+        MatchState.WinnerChanged += OnWinnerChanged;
+        if (MatchState.Winner is Victor winner)
+            OnWinnerChanged(winner);
     }
 
     public void OnExitTree()
     {
-        _routed?.Remove(this);
-        _routed = null;
+        MatchState.WinnerChanged -= OnWinnerChanged;
     }
 
-    public void Handle(in MatchEndMsg message)
+    private void OnWinnerChanged(Victor? winner)
     {
-        if (!MatchProtocol.TryDecode(message, out Victor? winner))
+        if (winner == null)
             return;
         _winnerLabel.Text = $"{Describe(winner)} wins!";
         _winnerLabel.Visible = true;

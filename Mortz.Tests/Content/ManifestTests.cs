@@ -66,6 +66,39 @@ public class ManifestTests
                 Victory = new KillsVictoryRules { Target = 6 },
             },
         }));
+        Assert.True(manifest.Matches(new MatchConfig
+        {
+            Rules = new ModeRules
+            {
+                Teams = true,
+                Victory = new KillsVictoryRules { Target = 5 },
+                FriendlyFire = false,
+            },
+            Physics = new Physics { Gravity = 123 },
+        }.ToSnapshot()));
+    }
+
+    [Fact]
+    public void ManifestProjectionProducesAnIndependentConfigSnapshot()
+    {
+        GameModeManifest manifest = new()
+        {
+            FormatVersion = 1,
+            Name = "Lead",
+            Rules = new ModeRules
+            {
+                Victory = new KillLeadVictoryRules { Target = 8 },
+            },
+        };
+
+        MatchConfigSnapshot snapshot = manifest.ToMatchConfigSnapshot();
+        MatchConfig draft = snapshot.ToMutable();
+        Assert.IsType<KillLeadVictoryRules>(draft.Rules.Victory).Target = 20;
+
+        Assert.Equal(8,
+            Assert.IsType<KillLeadVictoryRules>(manifest.Rules.Victory).Target);
+        Assert.Equal(8,
+            Assert.IsType<KillLeadVictoryRulesSnapshot>(snapshot.Rules.Victory).Target);
     }
 
     [Fact]

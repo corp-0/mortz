@@ -67,14 +67,14 @@ public class PlayerDisposalTests
     {
         ServerStateKeys serverKeys = new(generation: 1);
         ServerStateKey<First> serverKey = serverKeys.Claim<First>();
-        LobbyStateKeys lobbyKeys = new(generation: 2);
-        LobbyStateKey<Second> lobbyKey = lobbyKeys.Claim<Second>();
+        MatchStateKeys matchKeys = new(generation: 2);
+        MatchStateKey<Second> matchKey = matchKeys.Claim<Second>();
         Player player = new(1, "one", serverKeys.Count, serverKeys.Generation);
-        player.OpenLobby(lobbyKeys.Count, lobbyKeys.Generation);
+        player.OpenMatch(matchKeys.Count, matchKeys.Generation);
         player.State(serverKey);
-        player.State(lobbyKey);
+        player.State(matchKey);
 
-        player.CloseLobby();
+        player.CloseMatch();
 
         Assert.Equal(["Second"], _log);
     }
@@ -113,14 +113,14 @@ public class PlayerDisposalTests
     [Fact]
     public void APayloadIsDisposedOnceEvenIfThePhaseClosesTwice()
     {
-        LobbyStateKeys keys = new(generation: 2);
-        LobbyStateKey<First> key = keys.Claim<First>();
+        MatchStateKeys keys = new(generation: 2);
+        MatchStateKey<First> key = keys.Claim<First>();
         Player player = new(1, "one", 0, 1);
-        player.OpenLobby(keys.Count, keys.Generation);
+        player.OpenMatch(keys.Count, keys.Generation);
         player.State(key);
 
-        player.CloseLobby();
-        player.CloseLobby();
+        player.CloseMatch();
+        player.CloseMatch();
 
         Assert.Equal(["First"], _log);
     }

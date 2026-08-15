@@ -36,7 +36,7 @@ public class PlayerViewStatsTests : NodeServiceTest
         byte[] smallParry = ModifierWire.Serialize(
             [new StatsModifier(ModifierId.SPECIAL, Mul(Stat.PARRY_RADIUS, 0.5f))]);
 
-        new PlayerModifiersMsg(2, bigParry).Broadcast();
+        new PlayerModifiersMsg(2, bigParry).Broadcast(Router);
         manager.BeginFrame();
         manager.Place(2, ViewState());
         manager.Place(3, ViewState());
@@ -44,7 +44,7 @@ public class PlayerViewStatsTests : NodeServiceTest
         Assert.Equal(baseRadius * 4, manager.ViewForTest(2).StatsForTest.ParryRadius);
         Assert.Equal(baseRadius, manager.ViewForTest(3).StatsForTest.ParryRadius);
 
-        new PlayerModifiersMsg(3, smallParry).Broadcast();
+        new PlayerModifiersMsg(3, smallParry).Broadcast(Router);
         Assert.Equal(baseRadius * 0.5f, manager.ViewForTest(3).StatsForTest.ParryRadius);
         Assert.Equal(baseRadius * 4, manager.ViewForTest(2).StatsForTest.ParryRadius);
     }

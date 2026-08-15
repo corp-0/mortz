@@ -55,6 +55,15 @@ public class NetGeneratorSchemaTests
         public readonly partial record struct TintMsg(Tint? Colour);
         """;
 
+    private const string CLIENT_MESSAGE = """
+        using Mortz.Core.Net;
+
+        namespace GenTest;
+
+        [NetMessage(NetChannel.RELIABLE, NetDirection.CLIENT_TO_SERVER)]
+        public readonly partial record struct ReadyMsg(bool Ready);
+        """;
+
     [Fact]
     public void ReorderingARowsFieldsChangesTheSchemaHash()
     {
@@ -102,6 +111,17 @@ public class NetGeneratorSchemaTests
         Diagnostic reported = Assert.Single(result.Diagnostics, d => d.Id == "MZ0004");
         Assert.Equal(DiagnosticSeverity.Error, reported.Severity);
         Assert.Contains("GenTest.Tint", reported.GetMessage());
+    }
+
+    [Fact]
+    public void ClientConvenienceSendRequiresAnExplicitSender()
+    {
+        string generated = NetGenHarness.Run(CLIENT_MESSAGE).Sources;
+
+        Assert.Contains("SendToServer(IClientSender sender)", generated,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("NetTransport", generated, StringComparison.Ordinal);
+        Assert.DoesNotContain("SendToServer()", generated, StringComparison.Ordinal);
     }
 
     private static string Hash(string template, string fields) =>

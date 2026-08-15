@@ -50,6 +50,14 @@ public sealed class MapSourceSnapshot
             if (read.Value is not MapManifest manifest)
                 return new ContentReadResult<MapSourceSnapshot>(null, diagnostics);
 
+            diagnostics.AddRange(MapManifestValidator.Validate(manifest,
+                definition.ManifestPath));
+            if (diagnostics.Any(diagnostic =>
+                    diagnostic.Severity == ContentDiagnosticSeverity.ERROR))
+            {
+                return new ContentReadResult<MapSourceSnapshot>(null, diagnostics);
+            }
+
             return new ContentReadResult<MapSourceSnapshot>(
                 new MapSourceSnapshot(definition, manifest, background, solid, destructible,
                     manifestBytes), diagnostics);

@@ -62,9 +62,9 @@ public class WinsServiceTests
             .OfType<SessionWinsMsg>()
             .Last();
         Dictionary<int, int> table = new();
-        for (int i = 0; i < message.PeerIds.Length; i++)
+        foreach (PeerWins row in message.Rows)
         {
-            table[message.PeerIds[i]] = message.Wins[i];
+            table[row.PeerId] = row.Wins;
         }
         return table;
     }

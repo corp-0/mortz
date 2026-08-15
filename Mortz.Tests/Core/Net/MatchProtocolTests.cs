@@ -7,22 +7,9 @@ using Xunit;
 
 namespace Mortz.Tests.Core.Net;
 
-/// <summary>Round trips over the loopback NetTransport, same harness as
-/// NetMessageTests.</summary>
-[Collection("NetTransport")]
-public class MatchProtocolTests : IDisposable
+/// <summary>Round trips through the client router.</summary>
+public class MatchProtocolTests
 {
-    private readonly NetTransport.SendDelegate _original = NetTransport.Send;
-
-    public void Dispose() => NetTransport.Send = _original;
-
-    private static NetRouter UseLoopback()
-    {
-        NetRouter router = new();
-        NetTransport.Send = (id, payload, _, _) => Assert.True(router.Dispatch(id, payload));
-        return router;
-    }
-
     private static Victor? BroadcastEnd(Victor winner) =>
         SendRawEnd(MatchProtocol.Encode(winner));
 
@@ -33,20 +20,20 @@ public class MatchProtocolTests : IDisposable
     /// messages send by hand.</summary>
     private static Victor? SendRawEnd(MatchEndMsg message)
     {
-        NetRouter router = UseLoopback();
+        NetRouter router = new();
         ClientProbe<MatchEndMsg> probe = new();
         router.Add(probe);
-        message.Broadcast();
+        message.Broadcast(router);
         MatchEndMsg received = Assert.Single(probe.Messages);
         return MatchProtocol.TryDecode(received, out Victor? winner) ? winner : null;
     }
 
     private static MatchPoint? SendRawMatchPoint(MatchPointMsg message)
     {
-        NetRouter router = UseLoopback();
+        NetRouter router = new();
         ClientProbe<MatchPointMsg> probe = new();
         router.Add(probe);
-        message.Broadcast();
+        message.Broadcast(router);
         // The transition must reach consumers even when it carries no state.
         return MatchProtocol.Decode(Assert.Single(probe.Messages));
     }

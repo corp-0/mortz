@@ -72,7 +72,4 @@ public sealed partial class Combat
     [MatchRule(min: 0, max: 250)]
     public int BlastEdgeDamage { get; set; } = SimConfig.BLAST_EDGE_DAMAGE;
 
-    public byte[] ToBytes() => Serialize(this);
-
-    public static Combat FromBytes(byte[] data) => Deserialize(data);
 }

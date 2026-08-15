@@ -17,8 +17,6 @@ public sealed class Player(
     private const int CLOSED = -1;
 
     private readonly object?[] _server = new object?[serverKeyCount];
-    private object?[]? _lobby;
-    private int _lobbyGen = CLOSED;
     private object?[]? _match;
     private int _matchGen = CLOSED;
 
@@ -35,13 +33,6 @@ public sealed class Player(
         return (T)(_server[key.Index] ??= new T());
     }
 
-    public T State<T>(LobbyStateKey<T> key) where T : class, new()
-    {
-        if (key.Generation != _lobbyGen)
-            throw new InvalidOperationException($"Stale {typeof(T).Name} state key.");
-        return (T)(_lobby![key.Index] ??= new T());
-    }
-
     public T State<T>(MatchStateKey<T> key) where T : class, new()
     {
         if (key.Generation != _matchGen)
@@ -49,23 +40,10 @@ public sealed class Player(
         return (T)(_match![key.Index] ??= new T());
     }
 
-    public void OpenLobby(int keyCount, int generation)
-    {
-        _lobby = new object?[keyCount];
-        _lobbyGen = generation;
-    }
-
     public void OpenMatch(int keyCount, int generation)
     {
         _match = new object?[keyCount];
         _matchGen = generation;
-    }
-
-    public void CloseLobby()
-    {
-        DisposeReverse(_lobby);
-        _lobby = null;
-        _lobbyGen = CLOSED;
     }
 
     public void CloseMatch()
@@ -75,13 +53,10 @@ public sealed class Player(
         _matchGen = CLOSED;
     }
 
-    /// <summary>Disconnect and shutdown: the active phase's cells, then the
-    /// server ones, reverse claim order within each.</summary>
+    /// <summary>Disconnect and shutdown: match cells, then server cells, reverse claim order.</summary>
     public void Close(ServerPhaseKind active)
     {
-        if (active == ServerPhaseKind.LOBBY)
-            CloseLobby();
-        else
+        if (active == ServerPhaseKind.MATCH)
             CloseMatch();
         DisposeReverse(_server);
     }

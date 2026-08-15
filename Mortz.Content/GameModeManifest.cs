@@ -17,13 +17,20 @@ public sealed record GameModeManifest
     public Physics Physics { get; init; } = new();
     public Combat Combat { get; init; } = new();
 
-    public bool Matches(MatchConfig current) => TomlModel.PropertiesMatch(
+    public MatchConfigSnapshot ToMatchConfigSnapshot() => new(
+        Rules.ToSnapshot(),
+        Physics.ToSnapshot(),
+        Combat.ToSnapshot());
+
+    public bool Matches(MatchConfig current) => Matches(current.ToSnapshot());
+
+    public bool Matches(MatchConfigSnapshot current) => TomlModel.PropertiesMatch(
         this,
         new RulesetManifest
         {
-            Rules = current.Rules,
-            Physics = current.Physics,
-            Combat = current.Combat,
+            Rules = current.Rules.ToMutable(),
+            Physics = current.Physics.ToMutable(),
+            Combat = current.Combat.ToMutable(),
         },
         Identity);
 }
@@ -34,4 +41,9 @@ public sealed record RulesetManifest
     public ModeRules Rules { get; init; } = new();
     public Physics Physics { get; init; } = new();
     public Combat Combat { get; init; } = new();
+
+    public MatchConfigSnapshot ToMatchConfigSnapshot() => new(
+        Rules.ToSnapshot(),
+        Physics.ToSnapshot(),
+        Combat.ToSnapshot());
 }

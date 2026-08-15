@@ -46,8 +46,10 @@ public class BundledModeTests
             Assert.IsType<KillLeadVictoryRules>(teamKillLeadRules.Victory).Target);
         Assert.Equal(SuicidePenalty.REWARD_CLOSEST_ENEMY, teamKillLeadRules.SuicidePenalty);
 
-        MatchConfig customizedDeathmatch =
-            new() { Rules = ModeRules.FromBytes(deathmatch.Winner.Manifest.Rules.ToBytes()) };
+        MatchConfig customizedDeathmatch = new()
+        {
+            Rules = deathmatch.Winner.Manifest.Rules.ToSnapshot().ToMutable(),
+        };
         Assert.IsType<KillsVictoryRules>(customizedDeathmatch.Rules.Victory).Target = 100;
         Assert.True(deathmatch.Winner.Manifest.Matches(customizedDeathmatch));
         Assert.False(teams.Winner.Manifest.Matches(customizedDeathmatch));

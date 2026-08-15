@@ -39,7 +39,7 @@ public class GameServerConnectTests : IDisposable
 
         // Bob's own wins row is in the table he receives, so Sync ran after the join.
         SessionWinsMsg wins = _server.Link.Last<SessionWinsMsg>();
-        Assert.Equal([7, 8], wins.PeerIds);
+        Assert.Equal([7, 8], wins.Rows.Select(row => row.PeerId));
         LobbyStateMsg roster = _server.Link.Last<LobbyStateMsg>();
         Assert.Equal(2, roster.Members.Length);
     }

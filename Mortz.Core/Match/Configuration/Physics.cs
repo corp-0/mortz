@@ -107,7 +107,4 @@ public sealed partial class Physics
         convert: StatConvert.TICKS_BYTE)]
     public float RopeMissCooldown { get; set; } = SimConfig.ROPE_MISS_COOLDOWN;
 
-    public byte[] ToBytes() => Serialize(this);
-
-    public static Physics FromBytes(byte[] data) => Deserialize(data);
 }

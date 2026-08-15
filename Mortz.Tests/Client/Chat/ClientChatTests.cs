@@ -8,6 +8,7 @@ using Mortz.Core.Chat;
 using Mortz.Core.Net;
 using Mortz.Core.Net.Admin;
 using Mortz.Core.Net.Chat;
+using Mortz.Core.Text;
 using Mortz.Net;
 using Mortz.Tests.Net;
 using Xunit;
@@ -28,11 +29,13 @@ public class ClientChatTests : NodeServiceTest
         FakeNetwork network = new() { LocalPeerId = SENDER };
         ClientAdmin admin = new();
         admin.FakeDependency<INetwork>(network);
+        admin.FakeDependency<IClientSender>(Sender);
         admin.FakeDependency(Router);
         _admin = Host(admin);
         ClientChat chat = new();
         chat.FakeDependency(_admin);
         chat.FakeDependency<ISessionExit>(_sessionExit);
+        chat.FakeDependency<IClientSender>(Sender);
         chat.FakeDependency(Router);
         _chat = Host(chat);
     }
@@ -40,15 +43,14 @@ public class ClientChatTests : NodeServiceTest
     [Fact]
     public void AdminCommandNeverSerializesPasswordAsChatOrHistory()
     {
-        ushort sentId = 0;
-        byte[] sentPayload = [];
-        NetTransport.Send = (id, payload, _, _) => (sentId, sentPayload) = (id, payload);
+        Sender.Sent.Clear();
 
         Assert.True(_chat.Submit("/admin definitely-not-a-chat-secret"));
 
-        Assert.Equal(NetRegistry.ID_AdminAuthRequestMsg, sentId);
+        (ushort Id, byte[] Payload, NetChannel Channel) sent = Assert.Single(Sender.Sent);
+        Assert.Equal(NetRegistry.ID_AdminAuthRequestMsg, sent.Id);
         Assert.DoesNotContain("definitely-not-a-chat-secret",
-            Encoding.UTF8.GetString(sentPayload));
+            Encoding.UTF8.GetString(sent.Payload));
         Assert.DoesNotContain(_chat.Lines,
             entry => entry.Text.Contains("definitely-not-a-chat-secret",
                 StringComparison.Ordinal));
@@ -57,22 +59,20 @@ public class ClientChatTests : NodeServiceTest
     [Fact]
     public void AdminHandshakeOverTheWireGrantsSigningAuthority()
     {
-        ushort sentId = 0;
-        NetTransport.Send = (id, _, _, _) => sentId = id;
+        Sender.Sent.Clear();
         Assert.True(_chat.Submit("/admin \"correct horse battery staple\""));
-        Assert.Equal(NetRegistry.ID_AdminAuthRequestMsg, sentId);
+        Assert.Equal(NetRegistry.ID_AdminAuthRequestMsg, Assert.Single(Sender.Sent).Id);
 
         byte[] challenge = AdminCrypto.BuildChallenge(
             Enumerable.Repeat((byte)3, AdminCrypto.SESSION_ID_BYTES).ToArray(),
             Enumerable.Repeat((byte)7, AdminCrypto.NONCE_BYTES).ToArray());
-        byte[] challengePayload = Capture(() => new AdminChallengeMsg(challenge).SendTo(SENDER));
-        NetTransport.Send = (id, _, _, _) => sentId = id;
+        byte[] challengePayload = new AdminChallengeMsg(challenge).Payload();
+        Sender.Sent.Clear();
         Assert.True(Router.Dispatch(NetRegistry.ID_AdminChallengeMsg,
             challengePayload));
-        Assert.Equal(NetRegistry.ID_AdminProofMsg, sentId);
+        Assert.Equal(NetRegistry.ID_AdminProofMsg, Assert.Single(Sender.Sent).Id);
 
-        byte[] statePayload = Capture(
-            () => new AdminStateMsg(true, "Admin access granted.").SendTo(SENDER));
+        byte[] statePayload = new AdminStateMsg(true, "Admin access granted.").Payload();
         Assert.True(Router.Dispatch(NetRegistry.ID_AdminStateMsg,
             statePayload));
 
@@ -86,8 +86,7 @@ public class ClientChatTests : NodeServiceTest
     [Fact]
     public void RollLinesBecomeRollEntriesAndOutOfRangeValuesAreDropped()
     {
-        byte[] payload = Capture(
-            () => ChatProtocol.Encode(new ChatLine.Roll(SENDER, "Alice", 73)).Broadcast());
+        byte[] payload = ChatProtocol.Encode(new ChatLine.Roll(SENDER, "Alice", 73)).Payload();
         Assert.True(Router.Dispatch(NetRegistry.ID_ChatMsg,
             payload));
         ChatLine.Roll entry = Assert.IsType<ChatLine.Roll>(
@@ -104,9 +103,8 @@ public class ClientChatTests : NodeServiceTest
     [Fact]
     public void DropsUnknownServerLineKinds()
     {
-        byte[] payload = Capture(
-            () => ChatProtocol.Encode(
-                new ChatLine.Player(SENDER, "Alice", "hello")).Broadcast());
+        byte[] payload = ChatProtocol.Encode(
+            new ChatLine.Player(SENDER, "Alice", "hello")).Payload();
         payload[0] = byte.MaxValue;
 
         Assert.True(Router.Dispatch(NetRegistry.ID_ChatMsg,
@@ -117,10 +115,9 @@ public class ClientChatTests : NodeServiceTest
     [Fact]
     public void RichSystemLinesKeepTrustedServerFormatting()
     {
-        byte[] payload = Capture(
-            () => ChatProtocol.Encode(
-                new ChatLine.System(new Mortz.Core.Text.RichText()
-                    .Add("changed", new Mortz.Core.Text.Style().Bold()))).Broadcast());
+        byte[] payload = ChatProtocol.Encode(
+            new ChatLine.System(new RichText()
+                .Add("changed", new Style().Bold()))).Payload();
 
         Assert.True(Router.Dispatch(NetRegistry.ID_ChatMsg,
             payload));
@@ -157,14 +154,6 @@ public class ClientChatTests : NodeServiceTest
 
         Assert.True(_chat.Submit("/quit"));
         Assert.Equal("Left the server.", Assert.Single(_sessionExit.Reasons));
-    }
-
-    private static byte[] Capture(Action send)
-    {
-        byte[] payload = [];
-        NetTransport.Send = (_, bytes, _, _) => payload = bytes;
-        send();
-        return payload;
     }
 
     private static byte[] ChatPayload(

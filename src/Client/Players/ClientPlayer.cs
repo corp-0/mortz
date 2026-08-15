@@ -9,12 +9,9 @@ namespace Mortz.Client.Players;
 public sealed class ClientPlayer(
     int peerId,
     SessionStateKeys sessionKeys,
-    MatchStateKeys? matchKeys,
     PlayerStats? matchBaseStats)
 {
     private object?[]? _session;
-    private MatchStateKeys? _matchKeys = matchKeys;
-    private object?[]? _match;
 
     public int PeerId { get; } = peerId;
 
@@ -53,13 +50,6 @@ public sealed class ClientPlayer(
         return Cell<T>(ref _session, sessionKeys.Count, key.Index);
     }
 
-    public T State<T>(MatchStateKey<T> key) where T : class, new()
-    {
-        if (_matchKeys == null || key.Generation != _matchKeys.Generation)
-            throw new InvalidOperationException($"Stale {typeof(T).Name} state key.");
-        return Cell<T>(ref _match, _matchKeys.Count, key.Index);
-    }
-
     public bool Apply(LobbyMember member) => Confirm(_identity with
     {
         Name = member.Name,
@@ -86,19 +76,13 @@ public sealed class ClientPlayer(
         return changed;
     }
 
-    public void OpenMatch(MatchStateKeys keys, PlayerStats baseStats)
+    public void OpenMatch(PlayerStats baseStats)
     {
-        DisposeReverse(_match);
-        _matchKeys = keys;
-        _match = null;
         Match = new ClientMatchPlayer(baseStats);
     }
 
     public void CloseMatch()
     {
-        DisposeReverse(_match);
-        _match = null;
-        _matchKeys = null;
         Match = null;
     }
 

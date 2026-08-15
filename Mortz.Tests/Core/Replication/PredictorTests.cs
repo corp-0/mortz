@@ -40,6 +40,51 @@ public class PredictorTests
         }
     }
 
+    [Fact]
+    public void EffectiveStatsMatchServer_WithPersistentAndOverlappingZoneModifiers()
+    {
+        StatsModifier water = new(ModifierId.WATER,
+            new StatChange(Stat.GRAVITY, StatOp.MUL, 0.75f));
+        StatsModifier special = new(ModifierId.SPECIAL,
+            new StatChange(Stat.GROUND_ACCEL, StatOp.MUL, 1.4f));
+        StatsModifier[] replicated = [water, special];
+        MapZones zones = new(
+        [
+            new MapZone("first", [], ZoneShape.Rect(0, 0, TestWorlds.WIDTH, TestWorlds.HEIGHT),
+                new StatsModifier(ModifierId.ZONE,
+                    new StatChange(Stat.MAX_RUN_SPEED, StatOp.MUL, 0.8f))),
+            new MapZone("second", [], ZoneShape.Rect(0, 0, TestWorlds.WIDTH, TestWorlds.HEIGHT),
+                new StatsModifier(ModifierId.ZONE,
+                    new StatChange(Stat.GRAVITY, StatOp.MUL, 1.1f))),
+        ]);
+        SimWorld server = new(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig,
+            zones: zones);
+        server.AddPlayer(1);
+        server.AddModifier(1, special);
+        server.AddModifier(1, water);
+        Predictor predictor = new(server.Terrain,
+            TestWorlds.NoSpawnProtectionConfig, zones);
+        predictor.SetModifiers(replicated);
+        predictor.Reconcile(server.Players[1], -1);
+
+        for (int t = 0; t < 120; t++)
+        {
+            InputButtons buttons = InputButtons.RIGHT;
+            if (t % 20 == 0)
+                buttons |= InputButtons.JUMP;
+            PlayerInput input = new(buttons);
+            predictor.LocalTick(input);
+            server.EnqueueInput(1, t, input);
+            server.Step();
+
+            PlayerState authoritative = server.Players[1];
+            Assert.Equal(authoritative.Position, predictor.State.Position);
+            Assert.Equal(authoritative.Velocity, predictor.State.Velocity);
+            Assert.Equal(Vec2.Zero,
+                predictor.Reconcile(authoritative, authoritative.LastInputSeq));
+        }
+    }
+
     /// <summary>
     /// Same property through the real wire format: quantization means the
     /// replay starts up to 1/8 px off, so corrections must stay in that

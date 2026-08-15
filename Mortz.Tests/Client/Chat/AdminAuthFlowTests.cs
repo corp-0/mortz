@@ -5,44 +5,37 @@ using Mortz.Core.Admin;
 using Mortz.Core.Net;
 using Mortz.Core.Net.Admin;
 using Mortz.Tests.Core.Net;
+using Mortz.Tests.Net;
 using Xunit;
 
 namespace Mortz.Tests.Client.Chat;
 
-/// <summary>The admin handshake state machine against captured wire sends;
-/// engine-free, so it runs without the Godot fixture.</summary>
-[Collection("NetTransport")]
-public class AdminAuthFlowTests : IDisposable
+/// <summary>The admin handshake state machine against captured wire sends.</summary>
+public class AdminAuthFlowTests
 {
     private const int PEER = 42;
 
-    private readonly NetTransport.SendDelegate _original = NetTransport.Send;
-    private ushort _sentId;
-    private byte[] _sentPayload = [];
-
-    public AdminAuthFlowTests() =>
-        NetTransport.Send = (id, payload, _, _) => (_sentId, _sentPayload) = (id, payload);
-
-    public void Dispose() => NetTransport.Send = _original;
+    private readonly TestClientSender _sender = new();
 
     [Fact]
     public void HandshakeDerivesProofAndSignedSessionKey()
     {
         const string PASSWORD = "correct horse battery staple";
-        AdminAuthFlow flow = new();
+        AdminAuthFlow flow = new(_sender);
         flow.Begin(PASSWORD);
-        Assert.Equal(NetRegistry.ID_AdminAuthRequestMsg, _sentId);
+        Assert.Equal(NetRegistry.ID_AdminAuthRequestMsg, Assert.Single(_sender.Sent).Id);
 
         byte[] sessionId = Enumerable.Repeat((byte)3, AdminCrypto.SESSION_ID_BYTES).ToArray();
         byte[] nonce = Enumerable.Repeat((byte)7, AdminCrypto.NONCE_BYTES).ToArray();
         byte[] challenge = AdminCrypto.BuildChallenge(sessionId, nonce);
         Assert.True(flow.TryAnswerChallenge(PEER, new AdminChallengeMsg(challenge)));
-        Assert.Equal(NetRegistry.ID_AdminProofMsg, _sentId);
+        Assert.Equal(NetRegistry.ID_AdminProofMsg, _sender.Sent[^1].Id);
 
         NetRouter<int> router = new();
         Probe<AdminProofMsg> proofProbe = new();
         router.Add(proofProbe);
-        Assert.True(router.Dispatch(NetRegistry.ID_AdminProofMsg, PEER, _sentPayload));
+        Assert.True(router.Dispatch(NetRegistry.ID_AdminProofMsg, PEER,
+            _sender.Sent[^1].Payload));
         AdminProofMsg receivedProof = Assert.Single(proofProbe.Deliveries).Message;
 
         byte[] passwordKey = AdminCrypto.DerivePasswordKey(
@@ -63,7 +56,7 @@ public class AdminAuthFlowTests : IDisposable
     [Fact]
     public void MalformedChallengeDropsThePendingAttempt()
     {
-        AdminAuthFlow flow = new();
+        AdminAuthFlow flow = new(_sender);
         flow.Begin("hunter2");
 
         Assert.False(flow.TryAnswerChallenge(PEER, new AdminChallengeMsg([1, 2, 3])));
@@ -77,7 +70,7 @@ public class AdminAuthFlowTests : IDisposable
     [Fact]
     public void RevocationDropsAuthority()
     {
-        AdminAuthFlow flow = new();
+        AdminAuthFlow flow = new(_sender);
         flow.Begin("hunter2");
         byte[] challenge = AdminCrypto.BuildChallenge(
             new byte[AdminCrypto.SESSION_ID_BYTES], new byte[AdminCrypto.NONCE_BYTES]);
@@ -89,5 +82,24 @@ public class AdminAuthFlowTests : IDisposable
 
         Assert.False(flow.IsAdmin);
         Assert.False(flow.TrySign(PEER, 4, [1, 2, 3], out _, out _));
+    }
+
+    [Fact]
+    public void FlowsSendOnlyThroughTheirOwnSender()
+    {
+        TestClientSender firstSender = new();
+        TestClientSender secondSender = new();
+        AdminAuthFlow first = new(firstSender);
+        AdminAuthFlow second = new(secondSender);
+
+        first.Begin("first");
+
+        Assert.Single(firstSender.Sent);
+        Assert.Empty(secondSender.Sent);
+
+        second.Begin("second");
+
+        Assert.Single(firstSender.Sent);
+        Assert.Single(secondSender.Sent);
     }
 }

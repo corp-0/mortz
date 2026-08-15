@@ -67,7 +67,9 @@ public static class ConvertLxl
             new MapManifest { Name = name, SuggestedPlayers = players },
             layers.Background,
             layers.Solid,
-            layers.Destructible));
+            layers.Destructible,
+            w * scale,
+            h * scale));
 
         Console.WriteLine($"wrote {Path.Combine(outRoot, mapId)}");
     }

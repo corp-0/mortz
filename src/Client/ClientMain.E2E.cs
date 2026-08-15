@@ -1,6 +1,7 @@
 #if TOOLS
 using Chickensoft.AutoInject;
 using Mortz.Client.E2E;
+using Mortz.Shared.E2E;
 
 namespace Mortz.Client;
 
@@ -12,8 +13,8 @@ public partial class ClientMain : IProvide<IE2EClientBridge>
 
     partial void OnToolsReady()
     {
-        if (Shared.E2E.E2ELaunch.Enabled)
-            _bridge = ClientE2ERoot.Attach(this);
+        if (E2ELaunch.Enabled)
+            _bridge = ClientE2ERoot.Attach(this, _network);
     }
 }
 #endif

@@ -16,7 +16,7 @@ public sealed class GodotTransport(NetworkManager network) : IServerTransport
 
     public void Broadcast<TMsg>(in TMsg message) where TMsg : struct, INetMessage<TMsg> =>
         network.SendEnvelope(TMsg.MsgId, TMsg.Serialize(in message),
-            NetTransport.BROADCAST, TMsg.MsgChannel);
+            NetConfig.BROADCAST_PEER_ID, TMsg.MsgChannel);
 
     public void Disconnect(int peerId, string reason)
     {

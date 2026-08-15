@@ -16,7 +16,7 @@ public partial class MatchSetup : Node,
     IHandle<MatchLoadMsg>
 {
     private readonly List<SwapOffer> _swapOffers = [];
-    private byte[] _configBytes;
+    private MatchConfigSnapshot _configSnapshot;
 
     public event Action? ConfigChanged;
 
@@ -41,9 +41,9 @@ public partial class MatchSetup : Node,
 
     public IReadOnlyList<SwapOffer> SwapOffers => _swapOffers;
 
-    public MatchSetup() => _configBytes = Config.ToBytes();
+    public MatchSetup() => _configSnapshot = Config.ToSnapshot();
 
-    public MatchConfig CopyConfig() => MatchConfig.FromBytes(_configBytes);
+    public MatchConfig CopyConfig() => _configSnapshot.ToMutable();
 
     [Dependency]
     private NetRouter Router => this.DependOn<NetRouter>();
@@ -68,9 +68,13 @@ public partial class MatchSetup : Node,
     {
         if (LobbySettingsProtocol.TryDecode(message, out LobbySettings? settings,
                 out LobbySettingsRejectReason reason))
+        {
             ApplySettings(settings);
+        }
         else
+        {
             OnSettingsRejected(reason);
+        }
     }
 
     public void Handle(in LobbyStateMsg message) => ApplyOffers(message.Offers);
@@ -123,11 +127,11 @@ public partial class MatchSetup : Node,
 
     private void ApplyConfig(MatchConfig config, bool raiseSettings)
     {
-        byte[] bytes = config.ToBytes();
-        bool configChanged = !bytes.AsSpan().SequenceEqual(_configBytes);
+        MatchConfigSnapshot snapshot = config.ToSnapshot();
+        bool configChanged = snapshot != _configSnapshot;
         bool teamsToggled = Config.Rules.Teams != config.Rules.Teams;
         Config = config;
-        _configBytes = bytes;
+        _configSnapshot = snapshot;
         if (configChanged)
             ConfigChanged?.Invoke();
         if (teamsToggled)

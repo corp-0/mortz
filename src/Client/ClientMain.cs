@@ -12,6 +12,7 @@ namespace Mortz.Client;
 public partial class ClientMain : Node,
     IProvide<NetworkManager>,
     IProvide<INetwork>,
+    IProvide<IClientSender>,
     IProvide<NetRouter>,
     IProvide<ISfx>
 {
@@ -21,6 +22,7 @@ public partial class ClientMain : Node,
 
     NetworkManager IProvide<NetworkManager>.Value() => _network;
     INetwork IProvide<INetwork>.Value() => _network;
+    IClientSender IProvide<IClientSender>.Value() => _network;
     NetRouter IProvide<NetRouter>.Value() => _network.Router;
     ISfx IProvide<ISfx>.Value() => _sfx;
 

@@ -4,33 +4,29 @@ namespace Mortz.Core.Net.Stats;
 /// <summary>
 /// Record of wins of this player on current lobby
 /// </summary>
-public readonly record struct PeerWins(int PeerId, int Wins);
+[NetRow]
+public readonly partial record struct PeerWins(int PeerId, int Wins);
 
-/// <summary>Parallel per-player arrays sent on join and after each match win.</summary>
+/// <summary>Per-player wins sent on join and after each match win.</summary>
 [NetMessage(NetChannel.RELIABLE, NetDirection.SERVER_TO_CLIENT)]
-public readonly partial record struct SessionWinsMsg(int[] PeerIds, int[] Wins);
+public readonly partial record struct SessionWinsMsg(PeerWins[] Rows);
 
 public static class SessionStatsProtocol
 {
     public static SessionWinsMsg Encode(IReadOnlyList<PeerWins> wins)
     {
         ArgumentNullException.ThrowIfNull(wins);
-        return new SessionWinsMsg(
-            wins.Select(win => win.PeerId).ToArray(),
-            wins.Select(win => win.Wins).ToArray());
+        return new SessionWinsMsg([.. wins]);
     }
 
     public static bool TryDecode(
         SessionWinsMsg message,
         [NotNullWhen(true)] out PeerWins[]? wins)
     {
-        wins = null;
-        if (message.Wins.Length != message.PeerIds.Length)
-            return false;
-        wins = new PeerWins[message.PeerIds.Length];
-        for (int i = 0; i < wins.Length; i++)
+        wins = message.Rows;
+        if (wins == null)
         {
-            wins[i] = new PeerWins(message.PeerIds[i], message.Wins[i]);
+            return false;
         }
         return true;
     }

@@ -2,11 +2,10 @@ using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
 using Mortz.Client.Chat;
+using Mortz.Client.Match;
 using Mortz.Client.Players;
-using Mortz.Core.Match;
 using Mortz.Core.Match.Participation;
-using Mortz.Core.Net;
-using Mortz.Core.Net.Match;
+using Mortz.Core.Match.Scoring;
 using Mortz.Core.Replication;
 using Mortz.Core.Sim;
 using Mortz.Net;
@@ -14,8 +13,7 @@ using Mortz.Net;
 namespace Mortz.Client.Spectating;
 
 [Meta(typeof(IAutoNode))]
-public partial class SpectatorController : Node,
-    IHandle<MatchParticipationMsg>, IHandle<MatchEndMsg>
+public partial class SpectatorController : Node
 {
     [Export] private Camera2D _camera = null!;
     [Export] private SpectatorHud _hud = null!;
@@ -27,7 +25,7 @@ public partial class SpectatorController : Node,
     private ClientPlayers Players => this.DependOn<ClientPlayers>();
 
     [Dependency]
-    private NetRouter Router => this.DependOn<NetRouter>();
+    private ClientMatchState MatchState => this.DependOn<ClientMatchState>();
 
     private readonly List<int> _targets = [];
     private MatchParticipation _participation = MatchParticipation.Active;
@@ -35,50 +33,43 @@ public partial class SpectatorController : Node,
     private int? _targetPeerId;
     private bool _replayActive;
     private bool _matchEnded;
-    private NetRouter? _routed;
-
-    public event Action<MatchParticipation>? ParticipationChanged;
 
     public override void _Notification(int what) => this.Notify(what);
 
-    public void Initialize(MatchParticipation participation, Vector2 fallback)
+    public void Initialize(Vector2 fallback)
     {
-        _participation = participation;
         _fallback = fallback;
         _camera.GlobalPosition = fallback;
     }
 
     public void OnResolved()
     {
-        _routed = Router;
-        _routed.Add(this);
+        _participation = MatchState.Participation;
+        _matchEnded = MatchState.Winner != null;
+        MatchState.ParticipationChanged += OnParticipationChanged;
+        MatchState.WinnerChanged += OnWinnerChanged;
         ApplyPresentation();
     }
 
     public void OnExitTree()
     {
-        _routed?.Remove(this);
-        _routed = null;
+        MatchState.ParticipationChanged -= OnParticipationChanged;
+        MatchState.WinnerChanged -= OnWinnerChanged;
     }
 
-    public void Handle(in MatchParticipationMsg message)
+    private void OnParticipationChanged(MatchParticipation next)
     {
-        MatchParticipation next = new(
-            message.Seat, message.Activity, message.Reason, message.ReturnTick);
-        if (!next.IsValid)
-            return;
         _participation = next;
         if (next.Activity != MatchActivity.SPECTATING)
             _targetPeerId = null;
         ApplyPresentation();
-        ParticipationChanged?.Invoke(next);
     }
 
     /// <summary>Once the match ends nobody respawns; the winner banner owns
     /// the screen and the respawn countdown would be a lie.</summary>
-    public void Handle(in MatchEndMsg message)
+    private void OnWinnerChanged(Victor? winner)
     {
-        if (!MatchProtocol.TryDecode(message, out _))
+        if (winner == null)
             return;
         _matchEnded = true;
         _hud.HideStatus();

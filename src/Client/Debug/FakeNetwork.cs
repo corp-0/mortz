@@ -1,9 +1,10 @@
+using Mortz.Core.Net;
 using Mortz.Net;
 
 namespace Mortz.Client.Debug;
 
 /// <summary>Peer 1, so events aimed at the local player still fire.</summary>
-public sealed class FakeNetwork : INetwork
+public sealed class FakeNetwork : INetwork, IClientSender
 {
     public int LocalPeerId => 1;
 
@@ -14,6 +15,10 @@ public sealed class FakeNetwork : INetwork
     public event Action<byte[], int>? SnapshotReceived { add { } remove { } }
 
     public void SendInputs(byte[] packet)
+    {
+    }
+
+    public void Send<TMsg>(in TMsg message) where TMsg : struct, INetMessage<TMsg>
     {
     }
 }

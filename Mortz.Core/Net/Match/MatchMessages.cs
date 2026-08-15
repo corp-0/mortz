@@ -1,3 +1,4 @@
+using Mortz.Core.Admin;
 using Mortz.Core.Match.Events;
 using Mortz.Core.Match.Participation;
 
@@ -32,6 +33,13 @@ public enum EliminationFlags : byte
 public readonly partial record struct EndMatchRequestMsg(
     ulong Sequence,
     byte[] Tag);
+
+public static class EndMatchAction
+{
+    public const byte ACTION = AdminAction.END_MATCH;
+
+    public static byte[] SignablePayload() => [];
+}
 
 /// <summary>Tick selects the render-history frame; Death and optional Impact
 /// coordinates replay non-mortar deaths.</summary>

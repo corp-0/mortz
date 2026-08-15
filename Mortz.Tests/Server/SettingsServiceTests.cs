@@ -33,12 +33,12 @@ public sealed class SettingsServiceTests : IDisposable
             },
         };
 
-        bool applied = settings.TrySetRules(next.ToBytes(), out LobbySettingDelta[] deltas);
+        SettingsChange change = Applied(settings.SetRules(next.ToBytes()));
 
-        Assert.True(applied);
         Assert.Equal(42,
             Assert.IsType<KillsVictoryRules>(settings.Config.Rules.Victory).Target);
-        Assert.Contains(deltas, delta => delta.After == "42");
+        Assert.Contains(change.Deltas, delta => delta.After == "42");
+        Assert.False(change.TeamsRuleChanged);
     }
 
     [Fact]
@@ -47,11 +47,11 @@ public sealed class SettingsServiceTests : IDisposable
         SettingsService settings = Build();
         MatchConfig before = settings.Config;
 
-        bool applied = settings.TrySetRules([1, 2, 3], out LobbySettingDelta[] deltas);
+        SettingsMutationResult.Rejected rejected =
+            Assert.IsType<SettingsMutationResult.Rejected>(settings.SetRules([1, 2, 3]));
 
-        Assert.False(applied);
+        Assert.Equal(SettingsRejectReason.INVALID_RULES, rejected.Reason);
         Assert.Same(before, settings.Config);
-        Assert.Empty(deltas);
         Assert.Empty(_transport.Messages);
     }
 
@@ -60,12 +60,12 @@ public sealed class SettingsServiceTests : IDisposable
     {
         SettingsService settings = Build();
 
-        bool applied = settings.TrySetMode("teamdeathmatch", out LobbySettingDelta[] deltas);
+        SettingsChange change = Applied(settings.SetMode("teamdeathmatch"));
 
-        Assert.True(applied);
         Assert.True(settings.Config.Rules.Teams);
         Assert.Equal("Team Deathmatch", settings.ModeName);
-        LobbySettingDelta delta = Assert.Single(deltas);
+        Assert.True(change.TeamsRuleChanged);
+        LobbySettingDelta delta = Assert.Single(change.Deltas);
         Assert.Equal("Mode", delta.Name);
         Assert.Equal("Team Deathmatch", delta.After);
     }
@@ -77,12 +77,12 @@ public sealed class SettingsServiceTests : IDisposable
         MatchConfig before = settings.Config;
         string beforeName = settings.ModeName;
 
-        bool applied = settings.TrySetMode("brawl", out LobbySettingDelta[] deltas);
+        SettingsMutationResult.Rejected rejected =
+            Assert.IsType<SettingsMutationResult.Rejected>(settings.SetMode("brawl"));
 
-        Assert.False(applied);
+        Assert.Equal(SettingsRejectReason.UNKNOWN_MODE, rejected.Reason);
         Assert.Same(before, settings.Config);
         Assert.Equal(beforeName, settings.ModeName);
-        Assert.Empty(deltas);
     }
 
     [Fact]
@@ -91,11 +91,10 @@ public sealed class SettingsServiceTests : IDisposable
         _maps.Add(Snapshot("duel", "Duel"));
         SettingsService settings = Build();
 
-        bool applied = settings.TrySetMap("duel", out LobbySettingDelta[] deltas);
+        SettingsChange change = Applied(settings.SetMap("duel"));
 
-        Assert.True(applied);
         Assert.Equal("duel", settings.Map.MapId);
-        LobbySettingDelta delta = Assert.Single(deltas);
+        LobbySettingDelta delta = Assert.Single(change.Deltas);
         Assert.Equal("Map", delta.Name);
         Assert.Equal("Arena", delta.Before);
         Assert.Equal("Duel", delta.After);
@@ -108,11 +107,11 @@ public sealed class SettingsServiceTests : IDisposable
         SettingsService settings = Build();
         MapSnapshot before = settings.Map;
 
-        bool applied = settings.TrySetMap("elsewhere", out LobbySettingDelta[] deltas);
+        SettingsMutationResult.Rejected rejected =
+            Assert.IsType<SettingsMutationResult.Rejected>(settings.SetMap("elsewhere"));
 
-        Assert.False(applied);
+        Assert.Equal(SettingsRejectReason.UNKNOWN_MAP, rejected.Reason);
         Assert.Same(before, settings.Map);
-        Assert.Empty(deltas);
     }
 
     [Fact]
@@ -121,11 +120,38 @@ public sealed class SettingsServiceTests : IDisposable
         SettingsService settings = Build();
         MapSnapshot before = settings.Map;
 
-        bool applied = settings.TrySetMap("duel", out LobbySettingDelta[] deltas);
+        SettingsMutationResult.Rejected rejected =
+            Assert.IsType<SettingsMutationResult.Rejected>(settings.SetMap("duel"));
 
-        Assert.False(applied);
+        Assert.Equal(SettingsRejectReason.MAP_LOAD_FAILED, rejected.Reason);
         Assert.Same(before, settings.Map);
-        Assert.Empty(deltas);
+    }
+
+    [Fact]
+    public void SelectingTheCurrentModeIsAnAppliedNoOp()
+    {
+        SettingsService settings = Build();
+        Applied(settings.SetMode("teamdeathmatch"));
+
+        SettingsChange change = Applied(settings.SetMode("teamdeathmatch"));
+
+        Assert.Empty(change.Deltas);
+        Assert.False(change.TeamsRuleChanged);
+        Assert.Equal("teamdeathmatch", change.After.Selection.ModeId);
+    }
+
+    [Fact]
+    public void MapSelectionCannotChangeTheTeamsRule()
+    {
+        _maps.Add(Snapshot("duel", "Duel"));
+        SettingsService settings = Build();
+        Applied(settings.SetMode("teamdeathmatch"));
+
+        SettingsChange change = Applied(settings.SetMap("duel"));
+
+        Assert.True(change.Before.Config.Rules.Teams);
+        Assert.True(change.After.Config.Rules.Teams);
+        Assert.False(change.TeamsRuleChanged);
     }
 
     [Fact]
@@ -169,6 +195,9 @@ public sealed class SettingsServiceTests : IDisposable
         };
         return new SettingsService(boot, _maps, _link, Logger.None);
     }
+
+    private static SettingsChange Applied(SettingsMutationResult result) =>
+        Assert.IsType<SettingsMutationResult.Applied>(result).Change;
 
     private static MapSnapshot Snapshot(string id, string name) => new()
     {

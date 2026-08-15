@@ -1,7 +1,6 @@
 using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
-using Mortz.Client.Score;
 using Mortz.Net;
 
 namespace Mortz.Client.Match;
@@ -15,7 +14,7 @@ public partial class PlayerKillsHud : Control
     private bool _subscribed;
 
     [Dependency]
-    public MatchScore Score => this.DependOn<MatchScore>();
+    public ClientMatchState MatchState => this.DependOn<ClientMatchState>();
 
     [Dependency]
     private INetwork Network => this.DependOn<INetwork>();
@@ -24,7 +23,7 @@ public partial class PlayerKillsHud : Control
 
     public void OnResolved()
     {
-        Score.Changed += Render;
+        MatchState.ScoresChanged += OnScoresChanged;
         _subscribed = true;
         Render();
     }
@@ -33,7 +32,7 @@ public partial class PlayerKillsHud : Control
     {
         if (!_subscribed)
             return;
-        Score.Changed -= Render;
+        MatchState.ScoresChanged -= OnScoresChanged;
         _subscribed = false;
     }
 
@@ -43,6 +42,9 @@ public partial class PlayerKillsHud : Control
         if (!IsInsideTree())
             return;
         int localId = Network.LocalPeerId;
-        _scoreLabel.Text = $"K {Score.Kills(localId)} / D {Score.Deaths(localId)}";
+        _scoreLabel.Text =
+            $"K {MatchState.Scores.Kills(localId)} / D {MatchState.Scores.Deaths(localId)}";
     }
+
+    private void OnScoresChanged(MatchScoreSnapshot scores) => Render();
 }

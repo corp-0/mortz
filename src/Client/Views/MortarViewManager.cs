@@ -2,96 +2,51 @@ using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
 using Mortz.Client.Audio;
-using Mortz.Client.Replay;
 using Mortz.Core.Replication;
 using Mortz.Core.Sim;
-using Mortz.Net;
 
 namespace Mortz.Client.Views;
 
-/// <summary>
-/// Pools of mortar shell views. Everyone else's shells render from reliable
-/// lifecycle events, local ballistics, and low-rate corrections;
-/// the local player's own authoritative copies are hidden because the
-/// predicted ones are already on screen (and at present time, not
-/// interpolation-delay time).
-/// </summary>
+/// <summary>Pool of mortar views driven by immutable presented frames.</summary>
 [Meta(typeof(IAutoNode))]
 public partial class MortarViewManager : Node2D
 {
     [Export] private PackedScene _mortarScene = null!;
 
-    [Dependency]
-    private INetwork Network => this.DependOn<INetwork>();
-
-    [Dependency]
-    private ISfx Sfx => this.DependOn<ISfx>();
+    [Dependency] private ISfx Sfx => this.DependOn<ISfx>();
 
     public override void _Notification(int what) => this.Notify(what);
 
-    private readonly Dictionary<ushort, MortarView> _remote = new();
-    private readonly Dictionary<int, MortarView> _predicted = new();
-    private readonly Dictionary<long, MortarView> _replay = new();
-    private readonly HashSet<ushort> _seenRemote = new();
-    private readonly HashSet<int> _seenPredicted = new();
-    private readonly HashSet<long> _seenReplay = new();
-
-    public void SyncRemote(IReadOnlyList<RenderMortar> mortars, IReadOnlySet<int> completedSeqs)
-    {
-        int localId = Network.LocalPeerId;
-        _seenRemote.Clear();
-        foreach (RenderMortar m in mortars)
-        {
-            // Own shells are already on screen as predicted copies, and the
-            // authoritative copy trails by a round trip; once the owner watched
-            // the shot end, the late copy stays hidden too or it ghosts down
-            // the tail of the arc. Deflected shells are the exception: nobody
-            // predicted that trajectory.
-            if (!ShouldRenderAuthoritative(m, localId, _seenPredicted, completedSeqs))
-                continue;
-            _seenRemote.Add(m.Id);
-            Place(_remote, m.Id, new Vector2(m.Position.X, m.Position.Y), m.Velocity,
-                playFire: false);
-        }
-        Prune(_remote, _seenRemote);
-    }
+    private readonly Dictionary<PresentedMortarKey, MortarView> _views = new();
+    private readonly HashSet<PresentedMortarKey> _seen = new();
+    private MatchRenderMode? _mode;
 
     public static bool ShouldRenderAuthoritative(in RenderMortar mortar, int localId,
         IReadOnlySet<int> predictedSeqs, IReadOnlySet<int> completedSeqs) =>
-        mortar.OwnerId != localId || mortar.Deflected ||
-        (!predictedSeqs.Contains(mortar.SpawnSeq) && !completedSeqs.Contains(mortar.SpawnSeq));
+        LiveMatchFrameBuilder.ShouldRenderAuthoritative(
+            mortar, localId, predictedSeqs, completedSeqs);
 
-    /// <summary>Own shells, rendered from prediction (keyed by the input seq that fired).</summary>
-    public void SyncPredicted(IReadOnlyList<(int SpawnSeq, MortarState Shell)> shells)
+    public void Apply(IReadOnlyList<PresentedMortar> mortars, MatchRenderMode mode)
     {
-        _seenPredicted.Clear();
-        foreach ((int seq, MortarState shell) in shells)
+        if (_mode != mode)
         {
-            _seenPredicted.Add(seq);
-            Place(_predicted, seq, new Vector2(shell.Position.X, shell.Position.Y), shell.Velocity,
-                playFire: true);
+            Clear();
+            _mode = mode;
         }
-        Prune(_predicted, _seenPredicted);
-    }
 
-    public void BeginReplay()
-    {
-        Clear(_remote);
-        Clear(_predicted);
-    }
-
-    public void SyncReplay(IReadOnlyList<ReplayMortar> mortars)
-    {
-        _seenReplay.Clear();
-        foreach (ReplayMortar mortar in mortars)
+        _seen.Clear();
+        foreach (PresentedMortar mortar in mortars)
         {
-            _seenReplay.Add(mortar.Key);
-            Place(_replay, mortar.Key, mortar.Position, mortar.Velocity, playFire: false);
+            _seen.Add(mortar.Key);
+            bool playFire = mode == MatchRenderMode.LIVE &&
+                            mortar.Key.Source == PresentedMortarSource.PREDICTED;
+            Place(_views, mortar.Key, mortar.Position, mortar.Velocity, playFire);
         }
-        Prune(_replay, _seenReplay);
+
+        Prune(_views, _seen);
     }
 
-    public void EndReplay() => Clear(_replay);
+    public void Clear() => Clear(_views);
 
     private void Place<TKey>(Dictionary<TKey, MortarView> pool, TKey key, Vector2 position,
         Vec2 velocity, bool playFire)
@@ -112,6 +67,7 @@ public partial class MortarViewManager : Node2D
             pool[key] = view;
             return;
         }
+
         view.Position = position;
         view.Rotation = MathF.Atan2(velocity.Y, velocity.X);
     }
@@ -136,6 +92,7 @@ public partial class MortarViewManager : Node2D
             view.Visible = false;
             view.QueueFree();
         }
+
         pool.Clear();
     }
 }

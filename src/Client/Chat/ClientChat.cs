@@ -37,6 +37,9 @@ public partial class ClientChat : Node, IHandle<ChatMsg>
     [Dependency]
     private NetRouter Router => this.DependOn<NetRouter>();
 
+    [Dependency]
+    private IClientSender Sender => this.DependOn<IClientSender>();
+
     public override void _Notification(int what) => this.Notify(what);
 
     public void OnResolved()
@@ -73,7 +76,7 @@ public partial class ClientChat : Node, IHandle<ChatMsg>
                 AddPrivate(parseError);
                 return false;
             }
-            command!.Execute(new ClientCommandContext(this, Admin, SessionExit));
+            command!.Execute(new ClientCommandContext(this, Admin, SessionExit, Sender));
             return true;
         }
 
@@ -85,7 +88,7 @@ public partial class ClientChat : Node, IHandle<ChatMsg>
             AddPrivate(error);
             return false;
         }
-        new ChatSendMsg(text).SendToServer();
+        new ChatSendMsg(text).SendToServer(Sender);
         return true;
     }
 

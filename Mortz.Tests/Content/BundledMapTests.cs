@@ -34,6 +34,13 @@ public class BundledMapTests
                 $"{mapId} needs at least {package.SuggestedPlayers} spawn points");
             Assert.Equal(package.SpawnPoints.Length, package.SpawnPoints.Distinct().Count());
 
+            IReadOnlyList<ContentDiagnostic> report = MapManifestValidator.Validate(
+                resolved.Winner.Manifest,
+                resolved.Winner.ManifestPath,
+                new MapDimensions(package.Width, package.Height),
+                ContentValidationMode.REPORT);
+            Assert.Empty(report);
+
             SimWorld world = new(package.BuildMask(), new MatchConfig(), package.SpawnPoints);
             for (int slot = 1; slot <= package.SuggestedPlayers; slot++)
             {

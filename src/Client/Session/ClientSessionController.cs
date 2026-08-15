@@ -42,6 +42,7 @@ public partial class ClientSessionController : Node, ISessionExit,
     private ClientSettings _settings = new();
     private PendingMatchEntry? _pendingMatch;
     private ConnectedSession? _connectedSession;
+    private ClientMatchState? _matchState;
     private GameView? _gameView;
     private Lobby? _lobby;
     private MainMenu? _menu;
@@ -104,7 +105,7 @@ public partial class ClientSessionController : Node, ISessionExit,
     public void OnJoinRequested(string address, int port, string playerName, int skin = 0) =>
         StartConnecting(address, port, playerName, skin);
 
-    public void OnReadyToggled(bool ready) => new SetReadyMsg(ready).SendToServer();
+    public void OnReadyToggled(bool ready) => new SetReadyMsg(ready).SendToServer(Network);
 
     public void LeaveSession(string reason) => ReturnToMenu(reason, stopLocalServer: true);
 
@@ -249,11 +250,12 @@ public partial class ClientSessionController : Node, ISessionExit,
     {
         if (_connectedSession is not ConnectedSession connectedSession)
             return;
+        ClientMatchState matchState = new(entry.Generation, entry.Participation);
         GameView gameView = _gameViewScene.Instantiate<GameView>();
         try
         {
-            gameView.Initialize(entry.Generation, entry.Map, entry.Terrain.Config,
-                entry.Terrain.Encoding, terrainData, entry.Participation,
+            gameView.Initialize(matchState, entry.Map, entry.Terrain.Config,
+                entry.Terrain.Encoding, terrainData,
                 entry.InitialSnapshot, entry.InitialSnapshotAck);
         }
         catch (IOException exception)
@@ -269,6 +271,7 @@ public partial class ClientSessionController : Node, ISessionExit,
         DisposeLobby();
         DisposeGameView();
         connectedSession.Players.OpenMatch(entry.Terrain.Config);
+        _matchState = matchState;
         _gameView = gameView;
         connectedSession.AddChild(gameView);
         _pendingMatch = null;
@@ -404,6 +407,8 @@ public partial class ClientSessionController : Node, ISessionExit,
 
     private void DisposeGameView()
     {
+        _matchState?.Close();
+        _matchState = null;
         Detach(_gameView);
         _gameView = null;
     }

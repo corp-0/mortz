@@ -88,12 +88,7 @@ public static class ServerBootLoader
             return null;
         }
         _log.Information("ruleset '{Path}' loaded", path);
-        return new MatchConfig
-        {
-            Rules = result.Value.Rules,
-            Physics = result.Value.Physics,
-            Combat = result.Value.Combat,
-        };
+        return result.Value.ToMatchConfigSnapshot().ToMutable();
     }
 
     private static MatchConfig? LoadModeRules(string modeId, GameContent content)
@@ -105,13 +100,7 @@ public static class ServerBootLoader
             return null;
         }
         _log.Information("mode '{ModeId}' loaded", modeId);
-        GameModeManifest manifest = mode.Winner.Manifest;
-        return new MatchConfig
-        {
-            Rules = manifest.Rules,
-            Physics = manifest.Physics,
-            Combat = manifest.Combat,
-        };
+        return mode.Winner.Manifest.ToMatchConfigSnapshot().ToMutable();
     }
 
     private static void PrintDiagnostics(IReadOnlyList<ContentDiagnostic> diagnostics)

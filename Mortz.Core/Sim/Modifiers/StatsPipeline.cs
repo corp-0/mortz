@@ -1,4 +1,3 @@
-using Mortz.Core.Match;
 using Mortz.Core.Match.Configuration;
 
 namespace Mortz.Core.Sim.Modifiers;
@@ -19,7 +18,7 @@ public static partial class StatsPipeline
     {
         if (modifiers.Count == 0)
             return PlayerStats.Resolve(cfg);
-        MatchConfig modified = MatchConfig.FromBytes(cfg.ToBytes());
+        MatchConfig modified = cfg.ToSnapshot().ToMutable();
         Apply(modified, modifiers, StatOp.ADD);
         Apply(modified, modifiers, StatOp.MUL);
         modified.Clamp();

@@ -7,7 +7,6 @@ using Mortz.Client.Audio;
 using Mortz.Client.Chat;
 using Mortz.Client.Players;
 using Mortz.Client.Session;
-using Mortz.Core.Match;
 using Mortz.Core.Match.Events;
 using Mortz.Core.Match.Scoring;
 using Mortz.Core.Net;
@@ -24,6 +23,7 @@ public partial class AnnouncementsDebug : Control,
     IProvide<ClientAdmin>,
     IProvide<ClientChat>,
     IProvide<INetwork>,
+    IProvide<IClientSender>,
     IProvide<NetRouter>,
     IProvide<ISessionExit>,
     IProvide<ISfx>
@@ -46,6 +46,7 @@ public partial class AnnouncementsDebug : Control,
     ClientAdmin IProvide<ClientAdmin>.Value() => _admin;
     ClientChat IProvide<ClientChat>.Value() => _chat;
     INetwork IProvide<INetwork>.Value() => _network;
+    IClientSender IProvide<IClientSender>.Value() => _network;
     NetRouter IProvide<NetRouter>.Value() => _router;
     ISessionExit IProvide<ISessionExit>.Value() => _sessionExit;
     ISfx IProvide<ISfx>.Value() => _sfx;
@@ -54,8 +55,6 @@ public partial class AnnouncementsDebug : Control,
 
     public void OnReady()
     {
-        // No server here, so typed chat goes nowhere instead of throwing.
-        NetTransport.Send = static (_, _, _, _) => { };
         this.Provide();
     }
 

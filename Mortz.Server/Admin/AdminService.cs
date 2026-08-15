@@ -1,6 +1,8 @@
 using Mortz.Core.Admin;
 using Mortz.Core.Net;
 using Mortz.Core.Net.Admin;
+using Mortz.Core.Net.Lobby;
+using Mortz.Core.Net.Match;
 using Mortz.Server.Phases;
 using Mortz.Server.Players;
 using Serilog;
@@ -13,7 +15,7 @@ public sealed class AdminService(
     ServerStateKeys keys,
     IServerLink link,
     ServerClock clock,
-    CurrentPhase phase,
+    ICurrentPhase phase,
     ILogger log,
     string password)
     :
@@ -79,7 +81,23 @@ public sealed class AdminService(
 
     public bool IsAdmin(Player player) => _crypto.IsAdmin(player.State(_session));
 
-    public bool Authorize(Player player, ulong sequence, byte action,
+    public bool Authorize(Player player, in LobbyMapUpdateMsg message) =>
+        Authorize(player, message.Sequence, SetLobbyMapAction.ACTION,
+            SetLobbyMapAction.SignablePayload(message.MapId), message.Tag);
+
+    public bool Authorize(Player player, in LobbyModeUpdateMsg message) =>
+        Authorize(player, message.Sequence, SetLobbyModeAction.ACTION,
+            SetLobbyModeAction.SignablePayload(message.ModeId), message.Tag);
+
+    public bool Authorize(Player player, in LobbyRulesUpdateMsg message) =>
+        Authorize(player, message.Sequence, ReplaceLobbyRulesAction.ACTION,
+            ReplaceLobbyRulesAction.SignablePayload(message.Config), message.Tag);
+
+    public bool Authorize(Player player, in EndMatchRequestMsg message) =>
+        Authorize(player, message.Sequence, EndMatchAction.ACTION,
+            EndMatchAction.SignablePayload(), message.Tag);
+
+    private bool Authorize(Player player, ulong sequence, byte action,
         ReadOnlySpan<byte> payload, ReadOnlySpan<byte> tag) =>
         _crypto.VerifyCommand(player.State(_session), player.PeerId, sequence, action, payload, tag);
 

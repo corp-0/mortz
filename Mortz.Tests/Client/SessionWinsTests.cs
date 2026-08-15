@@ -2,7 +2,6 @@ using Chickensoft.AutoInject;
 using Mortz.Client.Players;
 using Mortz.Client.Stats;
 using Mortz.Core.Net.Stats;
-using Mortz.Net;
 using Mortz.Tests.Net;
 using Xunit;
 
@@ -28,7 +27,7 @@ public class SessionWinsTests : NodeServiceTest
         int changes = 0;
         _wins.Changed += () => changes++;
 
-        new SessionWinsMsg([7, 8], [3, 0]).Broadcast();
+        new SessionWinsMsg([new PeerWins(7, 3), new PeerWins(8, 0)]).Broadcast(Router);
 
         Assert.Equal(3, _wins.Of(_players.Find(7)!));
         Assert.Equal(0, _wins.Of(_players.Find(8)!));
@@ -38,8 +37,8 @@ public class SessionWinsTests : NodeServiceTest
     [Fact]
     public void EachBroadcastReplacesTheWholeTable()
     {
-        new SessionWinsMsg([7, 8], [3, 1]).Broadcast();
-        new SessionWinsMsg([8], [2]).Broadcast();
+        new SessionWinsMsg([new PeerWins(7, 3), new PeerWins(8, 1)]).Broadcast(Router);
+        new SessionWinsMsg([new PeerWins(8, 2)]).Broadcast(Router);
 
         Assert.Equal(0, _wins.Of(_players.Find(7)!));
         Assert.Equal(2, _wins.Of(_players.Find(8)!));

@@ -116,7 +116,8 @@ public sealed class ContentCatalog
         Dictionary<string, ResolvedContent<GameModeManifest>> modes = new(StringComparer.Ordinal);
         foreach (ContentPackDefinition pack in packs)
         {
-            Discover(pack, "map", TomlModel.ReadFile<MapManifest>, maps, diagnostics);
+            Discover(pack, "map", TomlModel.ReadFile<MapManifest>, maps, diagnostics,
+                (manifest, source) => MapManifestValidator.Validate(manifest, source));
             Discover(pack, "mode", TomlModel.ReadFile<GameModeManifest>,
                 modes, diagnostics);
         }
@@ -128,7 +129,9 @@ public sealed class ContentCatalog
     private static void Discover<TManifest>(ContentPackDefinition pack, string kind,
         Func<string, ContentReadResult<TManifest>> readManifest,
         Dictionary<string, ResolvedContent<TManifest>> definitions,
-        List<ContentDiagnostic> diagnostics) where TManifest : class
+        List<ContentDiagnostic> diagnostics,
+        Func<TManifest, string, IReadOnlyList<ContentDiagnostic>>? validate = null)
+        where TManifest : class
     {
         string kindDirectory = Path.Combine(pack.DirectoryPath, kind + "s");
         if (!Directory.Exists(kindDirectory))
@@ -166,6 +169,17 @@ public sealed class ContentCatalog
             diagnostics.AddRange(read.Diagnostics);
             if (read.Value is not TManifest manifest)
                 continue;
+            if (validate != null)
+            {
+                IReadOnlyList<ContentDiagnostic> semanticDiagnostics =
+                    validate(manifest, manifestPath);
+                diagnostics.AddRange(semanticDiagnostics);
+                if (semanticDiagnostics.Any(diagnostic =>
+                        diagnostic.Severity == ContentDiagnosticSeverity.ERROR))
+                {
+                    continue;
+                }
+            }
 
             ContentDefinition<TManifest> definition = new(id, manifest, directoryPath, manifestPath, pack);
             if (definitions.TryGetValue(id, out ResolvedContent<TManifest>? previous))

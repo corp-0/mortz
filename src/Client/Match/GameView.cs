@@ -25,6 +25,7 @@ namespace Mortz.Client.Match;
 [Meta(typeof(IAutoNode))]
 public partial class GameView : Node2D,
     IHandle<MatchStartMsg>,
+    IProvide<ClientMatchState>,
     IProvide<IAnnouncementDirector>,
     IProvide<ClientChat>,
     IProvide<GameMap>
@@ -40,16 +41,16 @@ public partial class GameView : Node2D,
     [Export] private ClientChat _chat = null!;
     [Export] private SpectatorController _spectator = null!;
 
-    [Dependency]
-    private INetwork Network => this.DependOn<INetwork>();
+    [Dependency] private INetwork Network => this.DependOn<INetwork>();
 
-    [Dependency]
-    private ClientPlayers Players => this.DependOn<ClientPlayers>();
+    [Dependency] private IClientSender Sender => this.DependOn<IClientSender>();
 
-    [Dependency]
-    private NetRouter Router => this.DependOn<NetRouter>();
+    [Dependency] private ClientPlayers Players => this.DependOn<ClientPlayers>();
+
+    [Dependency] private NetRouter Router => this.DependOn<NetRouter>();
 
     IAnnouncementDirector IProvide<IAnnouncementDirector>.Value() => _announcements;
+    ClientMatchState IProvide<ClientMatchState>.Value() => _matchState;
     ClientChat IProvide<ClientChat>.Value() => _chat;
     GameMap IProvide<GameMap>.Value() => _gameMap;
 
@@ -63,6 +64,9 @@ public partial class GameView : Node2D,
     private byte[] _initialSnapshot = [];
     private int _initialSnapshotAck;
     private int _generation;
+    private ClientMatchState _matchState = null!;
+    private LiveMatchFrameBuilder _frameBuilder = null!;
+    private MatchSceneRenderer _renderer = null!;
 
     /// <summary>The map this match is played on; set by Initialize.</summary>
     public string MapId { get; private set; } = "";
@@ -72,11 +76,15 @@ public partial class GameView : Node2D,
 
     /// <summary>Must be called right after instantiating, before entering the tree:
     /// it mounts the map the other nodes depend on.</summary>
-    public void Initialize(int generation, MapPackage map, MatchConfig config,
+    public void Initialize(ClientMatchState matchState, MapPackage map, MatchConfig config,
         TerrainSyncEncoding terrainEncoding, byte[] terrainData,
-        MatchParticipation participation, byte[] initialSnapshot, int initialSnapshotAck)
+        byte[] initialSnapshot, int initialSnapshotAck)
     {
-        _generation = generation;
+        _matchState = matchState;
+        _generation = matchState.Generation;
+        ClientMatchStateAdapter stateAdapter = new();
+        stateAdapter.Initialize(matchState);
+        AddChild(stateAdapter);
         MapId = map.MapId;
         _gameMap = _gameMapScene.Instantiate<GameMap>();
         _gameMap.Initialize(map, config.Combat, terrainEncoding, terrainData);
@@ -87,12 +95,16 @@ public partial class GameView : Node2D,
         MoveChild(_gameMap, 0);
         _initialSnapshot = initialSnapshot;
         _initialSnapshotAck = initialSnapshotAck;
-        _localPlayer.Initialize(new Predictor(_gameMap.Mask, config, map.Zones), participation);
+        _localPlayer.Initialize(new Predictor(_gameMap.Mask, config, map.Zones));
         _localPlayer.Frozen = true;
-        _spectator.Initialize(participation, new Vector2(map.Width / 2f, map.Height / 2f));
+        _spectator.Initialize(new Vector2(map.Width / 2f, map.Height / 2f));
         _mortarClient.Initialize(config.Combat, map.Zones, () => _interpolator.NewestTick);
+        _frameBuilder = new LiveMatchFrameBuilder((peerId, snapshotSkin) =>
+            Players.Find(peerId)?.Skin ?? snapshotSkin);
+        _renderer = new MatchSceneRenderer(_players, _mortarClient.ViewManager, _ropes);
+        _finalKillReplay.Initialize(_renderer);
         _hud.Configure(PlayerStats.Resolve(config));
-        _hud.Visible = participation.Activity == MatchActivity.ACTIVE;
+        _hud.Visible = matchState.Participation.Activity == MatchActivity.ACTIVE;
     }
 
     public void OnResolved()
@@ -101,9 +113,9 @@ public partial class GameView : Node2D,
         _routed = Router;
         _routed.Add(this);
         Players.MatchStatsChanged += OnMatchStatsChanged;
-        _spectator.ParticipationChanged += OnParticipationChanged;
+        _matchState.ParticipationChanged += OnParticipationChanged;
         this.Provide();
-        new PhaseReadyMsg(_generation).SendToServer();
+        new PhaseReadyMsg(_generation).SendToServer(Sender);
         OnSnapshotReceived(_initialSnapshot, _initialSnapshotAck);
         ClientPlayer? local = Players.Find(Network.LocalPeerId);
         if (local != null)
@@ -142,14 +154,13 @@ public partial class GameView : Node2D,
             return;
         Network.SnapshotReceived -= OnSnapshotReceived;
         Players.MatchStatsChanged -= OnMatchStatsChanged;
-        _spectator.ParticipationChanged -= OnParticipationChanged;
+        _matchState.ParticipationChanged -= OnParticipationChanged;
         _routed.Remove(this);
         _routed = null;
     }
 
     private void OnParticipationChanged(MatchParticipation participation)
     {
-        _localPlayer.SetParticipation(participation);
         _hud.Visible = participation.Activity == MatchActivity.ACTIVE;
     }
 
@@ -164,6 +175,7 @@ public partial class GameView : Node2D,
         {
             return; // reliable roster for a new slot has not arrived yet
         }
+
         Players.ApplySnapshot(matchSnapshot);
         _interpolator.Add(matchSnapshot);
         Snapshot snapshot = matchSnapshot.SimulationSnapshot;
@@ -195,73 +207,30 @@ public partial class GameView : Node2D,
             return;
 
         int localId = Network.LocalPeerId;
-        _ropes.Segments.Clear();
-        _players.BeginFrame();
-        List<ReplayPlayer> replayPlayers = [];
-        PlayerPresentationState localPresentation = default;
-
-        foreach (RenderPlayer player in state.Players)
-        {
-            if (player.PeerId == localId)
-            {
-                localPresentation = player.Presentation;
-                continue;
-            }
-            PlayerViewState viewState = new(
-                new Vector2(player.Position.X, player.Position.Y), player.Aim, player.Skin,
-                player.Ammo, player.ReloadTicks, player.Health, player.RespawnTicks,
-                player.ParryTicks, player.DashCooldown, player.SpawnImmunityTicks,
-                player.Presentation);
-            _players.Place(player.PeerId, viewState);
-            replayPlayers.Add(new ReplayPlayer(player.PeerId, viewState));
-            if (player.Rope != RopeMode.NONE)
-            {
-                _ropes.Segments.Add((BodyCenter(player.Position),
-                    new Vector2(player.RopePoint.X, player.RopePoint.Y)));
-            }
-        }
-
-        if (_localPlayer.Initialized)
-        {
-            PlayerState local = _localPlayer.State;
-            Vector2 feet = new Vector2(local.Position.X, local.Position.Y) + _localPlayer.CorrectionOffset;
-            PlayerViewState viewState = new(
-                feet, _localPlayer.Aim, local.Skin, local.Ammo, local.ReloadTicks,
-                local.Health, local.RespawnTicks, local.ParryTicks, local.DashCooldown,
-                local.SpawnImmunityTicks, localPresentation);
-            _players.Place(localId, viewState);
-            replayPlayers.Add(new ReplayPlayer(localId, viewState));
-            _hud.UpdateFrom(local);
-            if (local.Rope != RopeMode.NONE)
-            {
-                _ropes.Segments.Add((BodyCenter(local.Position) + _localPlayer.CorrectionOffset,
-                    new Vector2(local.RopePoint.X, local.RopePoint.Y)));
-            }
-        }
+        PlayerState? localState = _localPlayer.Initialized ? _localPlayer.State : null;
+        PresentedMatchFrame frame = _frameBuilder.Build(
+            RenderTick,
+            state,
+            localId,
+            localState,
+            _localPlayer.CorrectionOffset,
+            _localPlayer.Aim,
+            _mortarClient.SampleRemoteMortars(),
+            _localPlayer.Shells,
+            _localPlayer.CompletedShells);
+        _renderer.Apply(frame, MatchRenderMode.LIVE);
+        _finalKillReplay.Record(frame);
 
         Vector2? localCameraPosition = null;
-        if (_localPlayer.Initialized)
+        if (localState is PlayerState local)
         {
-            PlayerState local = _localPlayer.State;
+            _hud.UpdateFrom(local);
             localCameraPosition = new Vector2(
-                local.Position.X,
-                local.Position.Y - SimConfig.PLAYER_HALF_HEIGHT) +
-                _localPlayer.CorrectionOffset;
+                                      local.Position.X,
+                                      local.Position.Y - SimConfig.PLAYER_HALF_HEIGHT) +
+                                  _localPlayer.CorrectionOffset;
         }
+
         _spectator.Present(state.Players, localCameraPosition, NewestSnapshotTick);
-
-        _players.Prune();
-        IReadOnlyList<RenderMortar> remoteMortars = _mortarClient.RenderFrame();
-
-        _finalKillReplay.Record(
-            RenderTick,
-            replayPlayers,
-            remoteMortars,
-            _localPlayer.Shells,
-            _ropes.Segments,
-            localId);
     }
-
-    private static Vector2 BodyCenter(Vec2 feet) =>
-        new(feet.X, feet.Y - SimConfig.PLAYER_HALF_HEIGHT);
 }

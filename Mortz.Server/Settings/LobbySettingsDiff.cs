@@ -9,24 +9,31 @@ public readonly record struct LobbySettingDelta(string Name, string Before, stri
 public static class LobbySettingsDiff
 {
     public static LobbySettingDelta[] Between(MatchConfig before, MatchConfig after)
+        => Between(before.ToSnapshot(), after.ToSnapshot());
+
+    public static LobbySettingDelta[] Between(
+        MatchConfigSnapshot before,
+        MatchConfigSnapshot after)
     {
+        MatchConfig beforeDraft = before.ToMutable();
+        MatchConfig afterDraft = after.ToMutable();
         List<LobbySettingDelta> deltas = [];
 
         AddDeltas(
             deltas,
             ModeRulesUiMetadata.Categories,
-            before.Rules,
-            after.Rules);
+            beforeDraft.Rules,
+            afterDraft.Rules);
 
-        VictoryRuleDescriptor beforeVictory = VictoryRulesMetadata.For(before.Rules.Victory);
-        VictoryRuleDescriptor afterVictory = VictoryRulesMetadata.For(after.Rules.Victory);
+        VictoryRuleDescriptor beforeVictory = VictoryRulesMetadata.For(beforeDraft.Rules.Victory);
+        VictoryRuleDescriptor afterVictory = VictoryRulesMetadata.For(afterDraft.Rules.Victory);
         if (beforeVictory.RulesType == afterVictory.RulesType)
         {
             AddDeltas(
                 deltas,
                 afterVictory.Categories,
-                before.Rules.Victory,
-                after.Rules.Victory);
+                beforeDraft.Rules.Victory,
+                afterDraft.Rules.Victory);
         }
         else
         {
@@ -39,14 +46,14 @@ public static class LobbySettingsDiff
         AddDeltas(
             deltas,
             PhysicsUiMetadata.Categories,
-            before.Physics,
-            after.Physics);
+            beforeDraft.Physics,
+            afterDraft.Physics);
 
         AddDeltas(
             deltas,
             CombatUiMetadata.Categories,
-            before.Combat,
-            after.Combat);
+            beforeDraft.Combat,
+            afterDraft.Combat);
 
         return [.. deltas];
     }

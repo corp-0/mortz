@@ -186,7 +186,8 @@ public class GameServerEndMatchTests : IDisposable
 
     private void EndMatch(byte[] sessionKey)
     {
-        byte[] tag = AdminCrypto.ComputeCommandTag(sessionKey, ADMIN, 1, AdminAction.END_MATCH, []);
+        byte[] tag = AdminCrypto.ComputeCommandTag(sessionKey, ADMIN, 1,
+            EndMatchAction.ACTION, EndMatchAction.SignablePayload());
         _server.Receive(ADMIN, new EndMatchRequestMsg(1, tag));
         _server.Tick();
     }

@@ -29,17 +29,13 @@ public partial class MortarClient : Node,
     [Export] private MortarViewManager _views = null!;
     [Export] private FinalKillReplay _finalKillReplay = null!;
 
-    [Dependency]
-    private INetwork Network => this.DependOn<INetwork>();
+    [Dependency] private INetwork Network => this.DependOn<INetwork>();
 
-    [Dependency]
-    private ISfx Sfx => this.DependOn<ISfx>();
+    [Dependency] private ISfx Sfx => this.DependOn<ISfx>();
 
-    [Dependency]
-    private GameMap Map => this.DependOn<GameMap>();
+    [Dependency] private GameMap Map => this.DependOn<GameMap>();
 
-    [Dependency]
-    private NetRouter Router => this.DependOn<NetRouter>();
+    [Dependency] private NetRouter Router => this.DependOn<NetRouter>();
 
     private NetRouter? _routed;
 
@@ -57,6 +53,8 @@ public partial class MortarClient : Node,
     private MapZones _zones = MapZones.None;
     private Func<int> _newestSnapshotTick = null!;
     private readonly Dictionary<ushort, int> _parriesByMortar = new();
+
+    public MortarViewManager ViewManager => _views;
 
     /// <summary>Must be called before entering the tree.</summary>
     public void Initialize(Combat config, MapZones zones, Func<int> newestSnapshotTick)
@@ -85,13 +83,7 @@ public partial class MortarClient : Node,
             _remoteMortars.Tick();
     }
 
-    public IReadOnlyList<RenderMortar> RenderFrame()
-    {
-        IReadOnlyList<RenderMortar> remote = _remoteMortars.Render();
-        _views.SyncPredicted(_localPlayer.Shells);
-        _views.SyncRemote(remote, _localPlayer.CompletedShells);
-        return remote;
-    }
+    public IReadOnlyList<RenderMortar> SampleRemoteMortars() => _remoteMortars.Render();
 
     // Retire the predicted copy so it can't fly on and carve a ghost; deflected
     // shells carry -1 and are skipped.
@@ -120,6 +112,7 @@ public partial class MortarClient : Node,
             _log.Error("dropped malformed mortar lifecycle batch");
             return;
         }
+
         foreach (SimWorld.MortarEvent e in events)
         {
             switch (e.Kind)

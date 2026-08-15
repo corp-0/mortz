@@ -29,9 +29,9 @@ public class ClientPlayersTests : NodeServiceTest
     public void TheMatchStreamReplacesTheRoster()
     {
         ClientPlayers players = HostRouted(new ClientPlayers());
-        new RosterMsg([Entry(1, "Alice", slot: 1), Entry(2, "Bob", slot: 2)]).Broadcast();
+        new RosterMsg([Entry(1, "Alice", slot: 1), Entry(2, "Bob", slot: 2)]).Broadcast(Router);
 
-        new RosterMsg([Entry(2, "Bobby", skin: 3, team: Team.RED, slot: 1)]).Broadcast();
+        new RosterMsg([Entry(2, "Bobby", skin: 3, team: Team.RED, slot: 1)]).Broadcast(Router);
 
         Assert.Null(players.Find(1));
         ClientPlayer bobby = players.Find(2)!;
@@ -46,14 +46,14 @@ public class ClientPlayersTests : NodeServiceTest
     {
         ClientPlayers players = HostRouted(new ClientPlayers());
         Lobby(new LobbyMember(1, "Alice", true, Team.BLUE),
-            new LobbyMember(2, "Bob", false, Team.RED)).Broadcast();
+            new LobbyMember(2, "Bob", false, Team.RED)).Broadcast(Router);
 
         ClientPlayer alice = players.Find(1)!;
         Assert.Equal("Alice", alice.Name);
         Assert.True(alice.Ready);
         Assert.Equal(Team.BLUE, alice.Team);
 
-        Lobby(new LobbyMember(2, "Bob", false, Team.RED)).Broadcast();
+        Lobby(new LobbyMember(2, "Bob", false, Team.RED)).Broadcast(Router);
 
         Assert.Null(players.Find(1));
         Assert.Single(players);
@@ -64,13 +64,13 @@ public class ClientPlayersTests : NodeServiceTest
     {
         ClientPlayers players = HostRouted(new ClientPlayers());
 
-        Lobby(new LobbyMember(1, "Alice", true, Team.BLUE)).Broadcast();
-        new RosterMsg([Entry(1, "Alice", skin: 5, team: Team.BLUE)]).Broadcast();
+        Lobby(new LobbyMember(1, "Alice", true, Team.BLUE)).Broadcast(Router);
+        new RosterMsg([Entry(1, "Alice", skin: 5, team: Team.BLUE)]).Broadcast(Router);
         ClientPlayer alice = players.Find(1)!;
         Assert.True(alice.Ready);
         Assert.Equal(5, alice.Skin);
 
-        Lobby(new LobbyMember(1, "Alice", false, Team.BLUE)).Broadcast();
+        Lobby(new LobbyMember(1, "Alice", false, Team.BLUE)).Broadcast(Router);
         Assert.False(alice.Ready);
         Assert.Equal(5, alice.Skin);
     }
@@ -82,15 +82,15 @@ public class ClientPlayersTests : NodeServiceTest
         SessionStateKey<Counter> counter = players.SessionKeys.Claim<Counter>();
         players.GetOrCreate(7).State(counter).Value = 42;
 
-        new RosterMsg([Entry(1, "Alice")]).Broadcast();
+        new RosterMsg([Entry(1, "Alice")]).Broadcast(Router);
         Assert.NotNull(players.Find(7));
 
-        new RosterMsg([Entry(1, "Alice", slot: 1), Entry(7, "Grace", slot: 2)]).Broadcast();
+        new RosterMsg([Entry(1, "Alice", slot: 1), Entry(7, "Grace", slot: 2)]).Broadcast(Router);
         ClientPlayer grace = players.Find(7)!;
         Assert.Equal("Grace", grace.Name);
         Assert.Equal(42, grace.State(counter).Value);
 
-        new RosterMsg([Entry(1, "Alice")]).Broadcast();
+        new RosterMsg([Entry(1, "Alice")]).Broadcast(Router);
         Assert.Null(players.Find(7));
     }
 
@@ -113,13 +113,13 @@ public class ClientPlayersTests : NodeServiceTest
         int changed = 0;
         players.Changed += () => changed++;
 
-        new RosterMsg([Entry(1, "Alice", slot: 1), Entry(2, "Bob", slot: 2)]).Broadcast();
+        new RosterMsg([Entry(1, "Alice", slot: 1), Entry(2, "Bob", slot: 2)]).Broadcast(Router);
         Assert.Equal(1, changed);
 
-        new RosterMsg([Entry(1, "Alice", slot: 1), Entry(2, "Bob", slot: 2)]).Broadcast();
+        new RosterMsg([Entry(1, "Alice", slot: 1), Entry(2, "Bob", slot: 2)]).Broadcast(Router);
         Assert.Equal(1, changed);
 
-        new RosterMsg([Entry(1, "Alice", slot: 1), Entry(2, "Bobby", slot: 2)]).Broadcast();
+        new RosterMsg([Entry(1, "Alice", slot: 1), Entry(2, "Bobby", slot: 2)]).Broadcast(Router);
         Assert.Equal(2, changed);
     }
 
@@ -127,11 +127,11 @@ public class ClientPlayersTests : NodeServiceTest
     public void ADuplicateSlotLeavesThePreviousStateIntact()
     {
         ClientPlayers players = HostRouted(new ClientPlayers());
-        new RosterMsg([Entry(1, "Alice")]).Broadcast();
+        new RosterMsg([Entry(1, "Alice")]).Broadcast(Router);
         int changed = 0;
         players.Changed += () => changed++;
 
-        new RosterMsg([Entry(1, "Alice", slot: 1), Entry(2, "Bob", slot: 1)]).Broadcast();
+        new RosterMsg([Entry(1, "Alice", slot: 1), Entry(2, "Bob", slot: 1)]).Broadcast(Router);
 
         Assert.Equal("Alice", players.NameOf(1));
         Assert.Null(players.Find(2));
@@ -149,48 +149,13 @@ public class ClientPlayersTests : NodeServiceTest
         // Leave subscribers get their last look at the player's state.
         players.PlayerLeft += player => lastSeen = player.State(counter).Value;
 
-        new RosterMsg([Entry(1, "Alice")]).Broadcast();
+        new RosterMsg([Entry(1, "Alice")]).Broadcast(Router);
         players.Find(1)!.State(counter).Value = 9;
 
-        new RosterMsg([Entry(2, "Bob")]).Broadcast();
+        new RosterMsg([Entry(2, "Bob")]).Broadcast(Router);
 
         Assert.Equal([1, 2], joined);
         Assert.Equal(9, lastSeen);
-    }
-
-    [Fact]
-    public void MatchCellsDieWhenTheNextMatchOpens()
-    {
-        ClientPlayers players = HostRouted(new ClientPlayers());
-        players.OpenMatch(new MatchConfig());
-        MatchStateKey<Counter> first = players.MatchKeys.Claim<Counter>();
-        ClientPlayer seven = players.GetOrCreate(7);
-        seven.State(first).Value = 5;
-
-        players.OpenMatch(new MatchConfig());
-        MatchStateKey<Counter> second = players.MatchKeys.Claim<Counter>();
-
-        Assert.Throws<InvalidOperationException>(() => seven.State(first));
-        Assert.Equal(0, seven.State(second).Value);
-    }
-
-    [Fact]
-    public void ClaimingMatchKeysOutsideAMatchThrows()
-    {
-        ClientPlayers players = HostRouted(new ClientPlayers());
-        Assert.Throws<InvalidOperationException>(() => players.MatchKeys);
-    }
-
-    [Fact]
-    public void APlayerJoiningMidMatchGetsTheOpenMatchCells()
-    {
-        ClientPlayers players = HostRouted(new ClientPlayers());
-        players.OpenMatch(new MatchConfig());
-        MatchStateKey<Counter> counter = players.MatchKeys.Claim<Counter>();
-
-        new RosterMsg([Entry(9, "Late")]).Broadcast();
-
-        Assert.Equal(0, players.Find(9)!.State(counter).Value);
     }
 
     [Fact]
@@ -232,10 +197,10 @@ public class ClientPlayersTests : NodeServiceTest
     {
         ClientPlayers players = HostRouted(new ClientPlayers());
 
-        new TypingStateMsg(7, true).Broadcast();
+        new TypingStateMsg(7, true).Broadcast(Router);
         Assert.True(players.Find(7)!.IsTyping);
 
-        new TypingStateMsg(7, false).Broadcast();
+        new TypingStateMsg(7, false).Broadcast(Router);
         Assert.False(players.Find(7)!.IsTyping);
     }
 
@@ -244,11 +209,11 @@ public class ClientPlayersTests : NodeServiceTest
     {
         ClientPlayers players = HostRouted(new ClientPlayers());
         players.OpenMatch(new MatchConfig());
-        new RosterMsg([Entry(1, "Alice")]).Broadcast();
+        new RosterMsg([Entry(1, "Alice")]).Broadcast(Router);
         players.ApplySnapshot(Snapshot(12, 7));
 
-        new RosterMsg([Entry(2, "Bob")]).Broadcast();
-        new RosterMsg([Entry(1, "Alice")]).Broadcast();
+        new RosterMsg([Entry(2, "Bob")]).Broadcast(Router);
+        new RosterMsg([Entry(1, "Alice")]).Broadcast(Router);
 
         Assert.Equal(default, players.Find(1)!.Match!.LatestPresentation);
     }
@@ -259,6 +224,5 @@ public class ClientPlayersTests : NodeServiceTest
             new ReplicatedPlayer(
                 new PlayerState { PeerId = 1 },
                 new PlayerPresentationState { KillingSpreeMagnitude = magnitude }),
-        ],
-        []);
+        ]);
 }

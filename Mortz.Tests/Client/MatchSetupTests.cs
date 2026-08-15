@@ -24,8 +24,8 @@ public class MatchSetupTests : NodeServiceTest
 
     private static LobbySettingsMsg Settings(MatchConfig config,
         string mapId = "castlewars", string hash = "hash") =>
-        new(mapId, hash, [mapId], ["Castle Wars"],
-            ["deathmatch"], ["Deathmatch"], "", config.ToBytes());
+        new(mapId, hash, [new ContentOption(mapId, "Castle Wars")],
+            [new ContentOption("deathmatch", "Deathmatch")], "", config.ToBytes());
 
     [Fact]
     public void SettingsApplyAndEventsFireOnTransitionsOnly()
@@ -36,7 +36,7 @@ public class MatchSetupTests : NodeServiceTest
         setup.TeamsChanged += () => teams++;
         setup.SettingsChanged += () => settings++;
 
-        Settings(new MatchConfig { Rules = Rules(5, teams: true) }).Broadcast();
+        Settings(new MatchConfig { Rules = Rules(5, teams: true) }).Broadcast(Router);
 
         Assert.NotNull(setup.Selection);
         Assert.True(setup.Config.Rules.Teams);
@@ -47,10 +47,10 @@ public class MatchSetupTests : NodeServiceTest
         Assert.Equal([new ContentOption("castlewars", "Castle Wars")], selection.Maps.Options);
         Assert.Equal((1, 1, 1), (config, teams, settings));
 
-        Settings(new MatchConfig { Rules = Rules(5, teams: true) }).Broadcast();
+        Settings(new MatchConfig { Rules = Rules(5, teams: true) }).Broadcast(Router);
         Assert.Equal((1, 1, 1), (config, teams, settings));
 
-        Settings(new MatchConfig { Rules = Rules(6, teams: true) }).Broadcast();
+        Settings(new MatchConfig { Rules = Rules(6, teams: true) }).Broadcast(Router);
         Assert.Equal((2, 1, 2), (config, teams, settings));
     }
 
@@ -60,9 +60,11 @@ public class MatchSetupTests : NodeServiceTest
         MatchSetup setup = HostRouted(new MatchSetup());
         MatchConfig config = new();
 
-        new LobbySettingsMsg("castlewars", "hash", ["castlewars"], ["Castle Wars"],
-            ["deathmatch", "teamdeathmatch"], ["Deathmatch", "Team Deathmatch"],
-            "deathmatch", config.ToBytes()).Broadcast();
+        new LobbySettingsMsg("castlewars", "hash",
+            [new ContentOption("castlewars", "Castle Wars")],
+            [new ContentOption("deathmatch", "Deathmatch"),
+                new ContentOption("teamdeathmatch", "Team Deathmatch")],
+            "deathmatch", config.ToBytes()).Broadcast(Router);
         int settings = 0;
         setup.SettingsChanged += () => settings++;
 
@@ -74,9 +76,11 @@ public class MatchSetupTests : NodeServiceTest
         ], selection.Modes.Options);
 
         // same rules, no longer matching a preset server-side
-        new LobbySettingsMsg("castlewars", "hash", ["castlewars"], ["Castle Wars"],
-            ["deathmatch", "teamdeathmatch"], ["Deathmatch", "Team Deathmatch"],
-            "", config.ToBytes()).Broadcast();
+        new LobbySettingsMsg("castlewars", "hash",
+            [new ContentOption("castlewars", "Castle Wars")],
+            [new ContentOption("deathmatch", "Deathmatch"),
+                new ContentOption("teamdeathmatch", "Team Deathmatch")],
+            "", config.ToBytes()).Broadcast(Router);
 
         Assert.Null(setup.Selection!.ModeId);
         Assert.Equal(1, settings);
@@ -87,15 +91,18 @@ public class MatchSetupTests : NodeServiceTest
     {
         MatchSetup setup = HostRouted(new MatchSetup());
         MatchConfig config = new();
-        new LobbySettingsMsg("castlewars", "hash", ["castlewars"], ["Castle Wars"],
-            ["deathmatch"], ["Deathmatch"], "deathmatch", config.ToBytes()).Broadcast();
+        new LobbySettingsMsg("castlewars", "hash",
+            [new ContentOption("castlewars", "Castle Wars")],
+            [new ContentOption("deathmatch", "Deathmatch")],
+            "deathmatch", config.ToBytes()).Broadcast(Router);
         int settings = 0;
         setup.SettingsChanged += () => settings++;
 
         // same map, mode and config, one more map on offer
-        new LobbySettingsMsg("castlewars", "hash", ["castlewars", "arena"],
-            ["Castle Wars", "Arena"], ["deathmatch"], ["Deathmatch"], "deathmatch",
-            config.ToBytes()).Broadcast();
+        new LobbySettingsMsg("castlewars", "hash",
+            [new ContentOption("castlewars", "Castle Wars"), new ContentOption("arena", "Arena")],
+            [new ContentOption("deathmatch", "Deathmatch")], "deathmatch",
+            config.ToBytes()).Broadcast(Router);
 
         Assert.Equal(1, settings);
         Assert.Equal(2, setup.Selection!.Maps.Options.Count);
@@ -105,25 +112,29 @@ public class MatchSetupTests : NodeServiceTest
     public void CopyConfigGivesEditorsAnIndependentConfig()
     {
         MatchSetup setup = HostRouted(new MatchSetup());
-        Settings(new MatchConfig { Rules = Rules(9) }).Broadcast();
+        Settings(new MatchConfig { Rules = Rules(9) }).Broadcast(Router);
 
         MatchConfig copy = setup.CopyConfig();
         Assert.IsType<KillsVictoryRules>(copy.Rules.Victory).Target = 123;
+        copy.Physics.Gravity = 123;
+        copy.Combat.MortarDamage = 123;
 
         Assert.Equal(9,
             Assert.IsType<KillsVictoryRules>(setup.Config.Rules.Victory).Target);
+        Assert.NotEqual(123, setup.Config.Physics.Gravity);
+        Assert.NotEqual(123, setup.Config.Combat.MortarDamage);
     }
 
     [Fact]
     public void InvalidServerSettingsSurfaceAnErrorAndKeepState()
     {
         MatchSetup setup = HostRouted(new MatchSetup());
-        Settings(new MatchConfig { Rules = Rules(7) }).Broadcast();
+        Settings(new MatchConfig { Rules = Rules(7) }).Broadcast(Router);
         int settings = 0;
         setup.SettingsChanged += () => settings++;
 
-        new LobbySettingsMsg("x", "h", ["a"], ["A", "B"], [], [], "", new MatchConfig().ToBytes())
-            .Broadcast();
+        setup.Handle(new LobbySettingsMsg("x", "h", [default], [], "",
+            new MatchConfig().ToBytes()));
 
         Assert.Equal("Server sent an invalid map catalog.", setup.SettingsError);
         Assert.Equal(7,
@@ -131,11 +142,12 @@ public class MatchSetupTests : NodeServiceTest
         Assert.NotNull(setup.Selection);
         Assert.Equal(1, settings);
 
-        new LobbySettingsMsg("x", "h", ["a"], ["A"], [], [], "", [1, 2, 3]).Broadcast();
+        new LobbySettingsMsg("x", "h", [new ContentOption("a", "A")], [], "", [1, 2, 3])
+            .Broadcast(Router);
         Assert.Equal("Server sent invalid match settings.", setup.SettingsError);
         Assert.Equal(2, settings);
 
-        Settings(new MatchConfig { Rules = Rules(7) }).Broadcast();
+        Settings(new MatchConfig { Rules = Rules(7) }).Broadcast(Router);
         Assert.Null(setup.SettingsError);
         Assert.Equal(3, settings);
     }
@@ -152,14 +164,14 @@ public class MatchSetupTests : NodeServiceTest
             new LobbyMember(1, "A", false, Team.BLUE),
             new LobbyMember(2, "B", false, Team.RED),
         ];
-        new LobbyStateMsg(members, [new SwapOffer(1, 2)]).Broadcast();
+        new LobbyStateMsg(members, [new SwapOffer(1, 2)]).Broadcast(Router);
         Assert.Equal([new SwapOffer(1, 2)], setup.SwapOffers);
         Assert.Equal(1, offers);
 
-        new LobbyStateMsg(members, [new SwapOffer(1, 2)]).Broadcast();
+        new LobbyStateMsg(members, [new SwapOffer(1, 2)]).Broadcast(Router);
         Assert.Equal(1, offers);
 
-        new LobbyStateMsg(members, []).Broadcast();
+        new LobbyStateMsg(members, []).Broadcast(Router);
         Assert.Empty(setup.SwapOffers);
         Assert.Equal(2, offers);
     }
@@ -174,7 +186,7 @@ public class MatchSetupTests : NodeServiceTest
         new MatchLoadMsg("arena", "abc", new MatchConfig { Rules = new ModeRules { Teams = true } }.ToBytes(),
             (byte)TerrainSyncEncoding.CARVE_LOG, 1, 10, 1,
             MatchSeat.PLAYER, MatchActivity.ACTIVE, SpectateReason.NONE, -1,
-            new MatchSnapshot(0, [], []).SerializeFor(1), -1).SendTo(1);
+            new MatchSnapshot(0, []).SerializeFor(1), -1).SendTo(Router, 1);
 
         Assert.Null(setup.Selection);
         Assert.True(setup.Config.Rules.Teams);
@@ -187,7 +199,7 @@ public class MatchSetupTests : NodeServiceTest
         MatchSetup setup = HostRouted(new MatchSetup());
         setup.GetParent<Node>().RemoveChild(setup);
 
-        Settings(new MatchConfig()).Broadcast();
+        Settings(new MatchConfig()).Broadcast(Router);
 
         Assert.Null(setup.Selection);
     }

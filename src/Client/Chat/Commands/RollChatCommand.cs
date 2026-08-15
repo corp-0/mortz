@@ -15,5 +15,5 @@ public sealed class RollChatCommand : ClientChatCommand
 
     // The server owns the dice; the result comes back as a ROLL chat line.
     public override void Execute(ClientCommandContext context) =>
-        new RollRequestMsg().SendToServer();
+        new RollRequestMsg().SendToServer(context.Sender);
 }

@@ -1,9 +1,7 @@
 using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
-using Mortz.Client.Score;
 using Mortz.Client.Ui;
-using Mortz.Core.Match;
 using Mortz.Core.Match.Teams;
 
 namespace Mortz.Client.Match;
@@ -18,7 +16,7 @@ public partial class TeamKillsHud : Control
     private bool _subscribed;
 
     [Dependency]
-    public MatchScore Score => this.DependOn<MatchScore>();
+    public ClientMatchState MatchState => this.DependOn<ClientMatchState>();
 
     public override void _Notification(int what) => this.Notify(what);
 
@@ -30,7 +28,7 @@ public partial class TeamKillsHud : Control
 
     public void OnResolved()
     {
-        Score.Changed += Render;
+        MatchState.ScoresChanged += OnScoresChanged;
         _subscribed = true;
         Render();
     }
@@ -39,7 +37,7 @@ public partial class TeamKillsHud : Control
     {
         if (!_subscribed)
             return;
-        Score.Changed -= Render;
+        MatchState.ScoresChanged -= OnScoresChanged;
         _subscribed = false;
     }
 
@@ -48,7 +46,9 @@ public partial class TeamKillsHud : Control
     {
         if (!IsInsideTree())
             return;
-        _team1Label.Text = Score.TeamKills(Team.BLUE).ToString();
-        _team2Label.Text = Score.TeamKills(Team.RED).ToString();
+        _team1Label.Text = MatchState.Scores.TeamKills[Team.BLUE].ToString();
+        _team2Label.Text = MatchState.Scores.TeamKills[Team.RED].ToString();
     }
+
+    private void OnScoresChanged(MatchScoreSnapshot scores) => Render();
 }

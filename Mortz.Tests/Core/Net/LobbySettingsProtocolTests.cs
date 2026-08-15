@@ -7,15 +7,9 @@ using ModeRules = Mortz.Core.Match.Configuration.ModeRules;
 
 namespace Mortz.Tests.Core.Net;
 
-/// <summary>Round trips over the loopback NetTransport, same harness as
-/// MatchProtocolTests.</summary>
-[Collection("NetTransport")]
-public class LobbySettingsProtocolTests : IDisposable
+/// <summary>Round trips through the client router.</summary>
+public class LobbySettingsProtocolTests
 {
-    private readonly NetTransport.SendDelegate _original = NetTransport.Send;
-
-    public void Dispose() => NetTransport.Send = _original;
-
     private sealed record Outcome(LobbySettings? Settings, LobbySettingsRejectReason? Reason);
 
     private static Outcome Send(LobbySettingsMsg message)
@@ -23,10 +17,14 @@ public class LobbySettingsProtocolTests : IDisposable
         NetRouter router = new();
         ClientProbe<LobbySettingsMsg> probe = new();
         router.Add(probe);
-        NetTransport.Send = (id, payload, _, _) => Assert.True(router.Dispatch(id, payload));
-        message.Broadcast();
+        message.Broadcast(router);
         LobbySettingsMsg received = Assert.Single(probe.Messages);
-        return LobbySettingsProtocol.TryDecode(received, out LobbySettings? settings,
+        return Decode(received);
+    }
+
+    private static Outcome Decode(LobbySettingsMsg message)
+    {
+        return LobbySettingsProtocol.TryDecode(message, out LobbySettings? settings,
             out LobbySettingsRejectReason reason)
             ? new Outcome(settings, null)
             : new Outcome(null, reason);
@@ -50,9 +48,9 @@ public class LobbySettingsProtocolTests : IDisposable
             },
         });
 
-    private static LobbySettingsMsg Raw(string[] mapIds, string[] mapNames,
-        string[] modeIds, string[] modeNames, byte[]? config = null) =>
-        new("castlewars", "hash", mapIds, mapNames, modeIds, modeNames, "",
+    private static LobbySettingsMsg Raw(ContentOption[] maps, ContentOption[] modes,
+        byte[]? config = null) =>
+        new("castlewars", "hash", maps, modes, "",
             config ?? new MatchConfig().ToBytes());
 
     [Fact]
@@ -73,18 +71,18 @@ public class LobbySettingsProtocolTests : IDisposable
         Assert.Null(Send(Valid(null)).Settings!.Selection.ModeId);
 
     [Fact]
-    public void AMismatchedMapCatalogIsRejected()
+    public void ADefaultMapCatalogEntryIsRejected()
     {
-        Outcome outcome = Send(Raw(["a"], ["A", "B"], [], []));
+        Outcome outcome = Decode(Raw([default], []));
 
         Assert.Null(outcome.Settings);
         Assert.Equal(LobbySettingsRejectReason.MAP_CATALOG, outcome.Reason);
     }
 
     [Fact]
-    public void AMismatchedModeCatalogIsRejected()
+    public void ADefaultModeCatalogEntryIsRejected()
     {
-        Outcome outcome = Send(Raw(["a"], ["A"], ["m"], []));
+        Outcome outcome = Decode(Raw([], [default]));
 
         Assert.Null(outcome.Settings);
         Assert.Equal(LobbySettingsRejectReason.MODE_CATALOG, outcome.Reason);
@@ -93,25 +91,23 @@ public class LobbySettingsProtocolTests : IDisposable
     [Fact]
     public void AnOverCapCatalogIsRejected()
     {
-        string[] ids = Enumerable.Range(0, NetConfig.MAX_LOBBY_MAPS + 1)
-            .Select(i => $"map{i}").ToArray();
+        ContentOption[] rows = Enumerable.Range(0, NetConfig.MAX_LOBBY_MAPS + 1)
+            .Select(i => new ContentOption($"map{i}", $"Map {i}")).ToArray();
 
-        Assert.Equal(LobbySettingsRejectReason.MAP_CATALOG, Send(Raw(ids, ids, [], [])).Reason);
+        Assert.Equal(LobbySettingsRejectReason.MAP_CATALOG, Send(Raw(rows, [])).Reason);
     }
 
     [Fact]
-    public void ABlankCatalogEntryIsRejected()
+    public void AContentOptionRejectsBlankValues()
     {
-        Assert.Equal(LobbySettingsRejectReason.MAP_CATALOG,
-            Send(Raw([" "], ["A"], [], [])).Reason);
-        Assert.Equal(LobbySettingsRejectReason.MODE_CATALOG,
-            Send(Raw(["a"], ["A"], ["m"], [""])).Reason);
+        Assert.Throws<ArgumentException>(() => new ContentOption(" ", "Map"));
+        Assert.Throws<ArgumentException>(() => new ContentOption("map", ""));
     }
 
     [Fact]
     public void UnparseableConfigBytesAreRejected()
     {
-        Outcome outcome = Send(Raw(["a"], ["A"], [], [], [1, 2, 3]));
+        Outcome outcome = Send(Raw([new ContentOption("a", "A")], [], [1, 2, 3]));
 
         Assert.Null(outcome.Settings);
         Assert.Equal(LobbySettingsRejectReason.CONFIG, outcome.Reason);

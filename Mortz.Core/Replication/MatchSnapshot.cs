@@ -10,11 +10,10 @@ public readonly record struct ReplicatedPlayer(
 /// <summary>Simulation and presentation state sampled atomically at one server tick.</summary>
 public record MatchSnapshot(
     int Tick,
-    ReplicatedPlayer[] Players,
-    MortarState[] Mortars)
+    ReplicatedPlayer[] Players)
 {
     public Snapshot SimulationSnapshot =>
-        new(Tick, [.. Players.Select(player => player.Simulation)], Mortars);
+        new(Tick, [.. Players.Select(player => player.Simulation)], []);
 
     public byte[] Serialize() => MatchSnapshotWire.Serialize(this, localPeerId: null);
 

@@ -64,7 +64,7 @@ public sealed class ChatService(ServerStateKeys keys, IServerLink link, ServerCl
         Broadcast(new ChatLine.System(left));
     }
 
-    public void AnnounceSettings(string adminName, LobbySettingDelta[] deltas)
+    public void AnnounceSettings(string adminName, IReadOnlyList<LobbySettingDelta> deltas)
     {
         foreach (LobbySettingDelta delta in deltas)
         {

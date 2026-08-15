@@ -50,7 +50,8 @@ public sealed class Predictor
     {
         _modifiers = modifiers;
         _tier1 = StatsPipeline.Resolve(_cfg, modifiers);
-        _effective = Compose(_flags, _zoneMask);
+        _effective = PlayerStatComposition.ResolveEffective(
+            _cfg, _modifiers, _tier1, _flags, _zoneMask, _zones);
     }
 
     /// <summary>Recomputes only when the situation flips.</summary>
@@ -62,20 +63,10 @@ public sealed class Predictor
         {
             _flags = flags;
             _zoneMask = zoneMask;
-            _effective = Compose(flags, zoneMask);
+            _effective = PlayerStatComposition.ResolveEffective(
+                _cfg, _modifiers, _tier1, flags, zoneMask, _zones);
         }
         return _effective;
-    }
-
-    /// <summary>Mirrors SimWorld.Compose: persistent, situations, zones.</summary>
-    private PlayerStats Compose(Situations flags, ulong zoneMask)
-    {
-        if (flags == Situations.NONE && zoneMask == 0)
-            return _tier1;
-        List<StatsModifier> all = new(_modifiers);
-        SituationEffects.AppendModifiers(flags, all);
-        SituationEffects.AppendZoneModifiers(zoneMask, _zones, all);
-        return StatsPipeline.Resolve(_cfg, all);
     }
 
     /// <summary>False until the first snapshot containing the local player arrives.</summary>

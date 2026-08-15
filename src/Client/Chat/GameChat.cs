@@ -1,6 +1,7 @@
 using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
+using Mortz.Core.Net;
 using Mortz.Core.Net.Chat;
 
 namespace Mortz.Client.Chat;
@@ -31,6 +32,9 @@ public partial class GameChat : Control
     [Dependency]
     private ClientChat Chat => this.DependOn<ClientChat>();
 
+    [Dependency]
+    private IClientSender Sender => this.DependOn<IClientSender>();
+
     public override void _Notification(int what) => this.Notify(what);
 
     public void OnReady()
@@ -50,7 +54,7 @@ public partial class GameChat : Control
     public void OnExitTree()
     {
         if (_open)
-            new TypingMsg(false).SendToServer();
+            new TypingMsg(false).SendToServer(Sender);
         ChatInputGuard.SetTyping(this, false);
     }
 
@@ -162,13 +166,13 @@ public partial class GameChat : Control
     private void OnFocusEntered()
     {
         ChatInputGuard.SetTyping(this, true);
-        new TypingMsg(true).SendToServer();
+        new TypingMsg(true).SendToServer(Sender);
     }
 
     private void OnFocusExited()
     {
         ChatInputGuard.SetTyping(this, false);
-        new TypingMsg(false).SendToServer();
+        new TypingMsg(false).SendToServer(Sender);
     }
 
     private void OnVisibilityChanged()

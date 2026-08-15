@@ -1,164 +1,217 @@
-using Mortz.Core.Match;
+using System.Collections.Immutable;
 using Mortz.Core.Match.Teams;
 using Mortz.Core.Net.Lobby;
+using Mortz.Server.Phases;
 using Mortz.Server.Players;
 
 namespace Mortz.Server.Lobby;
 
-/// <summary>Ready-up state for the current lobby. Per-player state lives in
-/// lobby-lifetime cells on Player, a fresh key generation each lobby rather
-/// than a partial reset. Toggling teams recomputes everyone; leaving doesn't
-/// rebalance.</summary>
-public sealed class LobbySession(LobbyStateKeys keys, bool teamsEnabled = false)
+/// <summary>The authoritative participant state for one lobby lifetime.</summary>
+public sealed class LobbySession(bool teamsEnabled = false)
 {
-    // The wire speaks peer ids (swap targets), so this is the one translation
-    // point back to Player.
-    private readonly SortedDictionary<int, Player> _seated = [];
-    private readonly LobbyStateKey<SeatState> _seatKey = keys.Claim<SeatState>();
-    private readonly LobbyStateKey<SwapOfferState> _offerKey = keys.Claim<SwapOfferState>();
+    private readonly SortedDictionary<int, LobbyParticipant> _participants = [];
     private bool _teamsEnabled = teamsEnabled;
 
-    public int Count => _seated.Count;
+    public int Count => _participants.Count;
 
     public bool CanStart =>
-        _seated.Count > 0 && _seated.Values.All(member => SeatOf(member).Ready);
+        _participants.Count > 0 && _participants.Values.All(participant => participant.Ready);
 
-    public IReadOnlyCollection<Player> Members => _seated.Values;
+    public LobbySnapshot Snapshot => Freeze();
 
-    public LobbyMember[] Players =>
-        _seated.Values.Select(Snapshot).ToArray();
+    public SeatAssignment[] Seats =>
+    [
+        .. _participants.Values.Select(participant =>
+            new SeatAssignment(participant.Player, participant.Team))
+    ];
 
-    public Team? TeamOf(Player player) => SeatOf(player).Team;
-
-    /// <summary>Requires the player's lobby cells to be open already, so phase
-    /// factories must not call this; seating waits for Begin.</summary>
-    public void Add(Player player)
+    public LobbyUpdate Initialize(IEnumerable<Player> players)
     {
-        // Dealt before the newcomer is seated, so their unset seat never votes.
-        Team? team = _teamsEnabled ? SmallestTeam() : null;
-        _seated[player.PeerId] = player;
-        SeatOf(player).Team = team;
-    }
-
-    /// <summary>The leaver's own cells die with Player.Close; this scrubs the
-    /// references other players' offers still hold.</summary>
-    public bool Remove(Player player)
-    {
-        if (!_seated.Remove(player.PeerId))
-            return false;
-        foreach (Player member in _seated.Values)
+        foreach (Player player in players)
         {
-            SwapOfferState offer = OfferOf(member);
-            if (offer.Target == player)
-                offer.Target = null;
+            AddParticipant(player);
         }
-        return true;
+
+        return Updated(new LobbyChange.Initialized(_participants.Count));
     }
 
-    public bool SetReady(Player player, bool ready)
+    public LobbyUpdate? Join(Player player)
     {
-        if (!_seated.ContainsKey(player.PeerId))
-            return false;
-        SeatOf(player).Ready = ready;
-        return true;
+        if (_participants.ContainsKey(player.PeerId))
+            return null;
+
+        AddParticipant(player);
+        return Updated(new LobbyChange.Joined(player.PeerId, player.Name));
     }
 
-    /// <summary>A player's own move onto a team, granted only while that team
-    /// has a free slot.</summary>
-    public bool TrySetTeam(Player player, Team team)
+    public LobbyUpdate? Leave(Player player)
     {
-        if (!_teamsEnabled || !_seated.ContainsKey(player.PeerId))
-            return false;
-        SeatState seat = SeatOf(player);
-        if (seat.Team == team ||
-            _seated.Values.Count(other => SeatOf(other).Team == team) >=
+        if (!_participants.Remove(player.PeerId))
+            return null;
+
+        foreach (LobbyParticipant participant in _participants.Values)
+        {
+            if (participant.SwapTargetPeerId == player.PeerId)
+                participant.SwapTargetPeerId = null;
+        }
+
+        return Updated(new LobbyChange.Left(player.PeerId));
+    }
+
+    public LobbyUpdate? SetReady(Player player, bool ready)
+    {
+        if (!_participants.TryGetValue(player.PeerId, out LobbyParticipant? participant) ||
+            participant.Ready == ready)
+        {
+            return null;
+        }
+
+        participant.Ready = ready;
+        return Updated(new LobbyChange.ReadinessChanged(player.PeerId, ready));
+    }
+
+    /// <summary>A player's own move onto a team, granted only while that team has a free slot.</summary>
+    public LobbyUpdate? TrySetTeam(Player player, Team team)
+    {
+        if (!_teamsEnabled ||
+            !_participants.TryGetValue(player.PeerId, out LobbyParticipant? participant) ||
+            participant.Team == team ||
+            _participants.Values.Count(other => other.Team == team) >=
             TeamRules.SlotsPerTeam(Count))
         {
-            return false;
+            return null;
         }
-        seat.Team = team;
+
+        participant.Team = team;
         PruneOffers();
-        return true;
+        return Updated(new LobbyChange.TeamChanged(player.PeerId, team));
     }
 
-    public SwapOffer[] SwapOffers => _seated.Values
-        .Where(member => OfferOf(member).Target != null)
-        .Select(member => new SwapOffer(member.PeerId, OfferOf(member).Target!.PeerId))
-        .ToArray();
-
-    /// <summary>One outstanding offer per player. Repeating an offer cancels
-    /// it; offering to someone already offering back executes the swap.</summary>
-    public SwapResult RequestSwap(Player from, int targetPeerId)
+    /// <summary>One outstanding offer per player. Repeating one cancels it; a reciprocal offer swaps.</summary>
+    public LobbyUpdate? RequestSwap(Player from, int targetPeerId)
     {
-        if (_seated.GetValueOrDefault(targetPeerId) is not Player to ||
-            !CrossTeam(from, to))
+        if (!_participants.TryGetValue(from.PeerId, out LobbyParticipant? source) ||
+            !_participants.TryGetValue(targetPeerId, out LobbyParticipant? target) ||
+            !CrossTeam(source, target))
         {
-            return SwapResult.NONE;
+            return null;
         }
-        SwapOfferState outgoing = OfferOf(from);
-        if (outgoing.Target == to)
+
+        if (source.SwapTargetPeerId == targetPeerId)
         {
-            outgoing.Target = null;
-            return SwapResult.CANCELLED;
+            source.SwapTargetPeerId = null;
+            return Updated(new LobbyChange.SwapCancelled(from.PeerId, targetPeerId));
         }
-        SwapOfferState reciprocal = OfferOf(to);
-        if (reciprocal.Target == from)
+
+        if (target.SwapTargetPeerId == from.PeerId)
         {
-            SeatState a = SeatOf(from);
-            SeatState b = SeatOf(to);
-            (a.Team, b.Team) = (b.Team, a.Team);
-            reciprocal.Target = null;
+            (source.Team, target.Team) = (target.Team, source.Team);
+            target.SwapTargetPeerId = null;
             PruneOffers();
-            return SwapResult.SWAPPED;
+            return Updated(new LobbyChange.TeamsSwapped(from.PeerId, targetPeerId));
         }
-        outgoing.Target = to;
-        return SwapResult.OFFERED;
+
+        source.SwapTargetPeerId = targetPeerId;
+        return Updated(new LobbyChange.SwapOffered(from.PeerId, targetPeerId));
     }
 
-    /// <summary>Follows the Teams rule; returns whether anything changed and
-    /// therefore needs a broadcast.</summary>
-    public bool SetTeamsEnabled(bool enabled)
+    /// <summary>Follows the Teams rule and returns no update when the replicated state is unchanged.</summary>
+    public LobbyUpdate? SetTeamsEnabled(bool enabled)
     {
         if (enabled == _teamsEnabled)
-            return false;
+            return null;
+
         _teamsEnabled = enabled;
         int next = 0;
-        foreach (Player member in _seated.Values)
+        foreach (LobbyParticipant participant in _participants.Values)
         {
-            OfferOf(member).Target = null; // fresh assignment wipes manual arrangements
-            SeatOf(member).Team = enabled ? Teams.Deal(next) : null;
+            participant.SwapTargetPeerId = null;
+            participant.Team = enabled ? Teams.Deal(next) : null;
             next++;
         }
-        return _seated.Count > 0;
+
+        return _participants.Count == 0
+            ? null
+            : Updated(new LobbyChange.TeamsRuleChanged(enabled));
     }
 
-    private bool CrossTeam(Player from, Player to) =>
-        _teamsEnabled && from != to &&
-        _seated.ContainsKey(from.PeerId) && _seated.ContainsKey(to.PeerId) &&
-        SeatOf(from).Team is Team fromTeam && SeatOf(to).Team is Team toTeam &&
-        fromTeam != toTeam;
+    private void AddParticipant(Player player)
+    {
+        Team? team = _teamsEnabled ? SmallestTeam() : null;
+        _participants.Add(player.PeerId, new LobbyParticipant
+        {
+            Player = player,
+            Team = team,
+        });
+    }
 
-    /// <summary>Offers only survive while their pair still spans both teams.</summary>
+    private bool CrossTeam(LobbyParticipant from, LobbyParticipant to) =>
+        _teamsEnabled && from != to &&
+        from.Team is Team fromTeam && to.Team is Team toTeam && fromTeam != toTeam;
+
     private void PruneOffers()
     {
-        foreach (Player member in _seated.Values)
+        foreach (LobbyParticipant participant in _participants.Values)
         {
-            SwapOfferState offer = OfferOf(member);
-            if (offer.Target is Player target && !CrossTeam(member, target))
-                offer.Target = null;
+            if (participant.SwapTargetPeerId is int targetPeerId &&
+                (!_participants.TryGetValue(targetPeerId, out LobbyParticipant? target) ||
+                 !CrossTeam(participant, target)))
+            {
+                participant.SwapTargetPeerId = null;
+            }
         }
     }
 
     private Team SmallestTeam() =>
-        Teams.Smallest(_seated.Values.Select(member => SeatOf(member).Team));
+        Teams.Smallest(_participants.Values.Select(participant => participant.Team));
 
-    private SeatState SeatOf(Player player) => player.State(_seatKey);
-
-    private SwapOfferState OfferOf(Player player) => player.State(_offerKey);
-
-    private LobbyMember Snapshot(Player player)
+    private LobbyUpdate Updated(LobbyChange change)
     {
-        SeatState seat = SeatOf(player);
-        return new LobbyMember(player.PeerId, player.Name, seat.Ready, seat.Team);
+        LobbySnapshot snapshot = Freeze();
+        return new LobbyUpdate(snapshot, change, snapshot.CanStart);
     }
+
+    private LobbySnapshot Freeze() => new(
+        [.. _participants.Values.Select(participant => new LobbyMember(
+            participant.Player.PeerId,
+            participant.Player.Name,
+            participant.Ready,
+            participant.Team))],
+        [.. _participants.Values
+            .Where(participant => participant.SwapTargetPeerId.HasValue)
+            .Select(participant => new SwapOffer(
+                participant.Player.PeerId,
+                participant.SwapTargetPeerId!.Value))],
+        CanStart);
+}
+
+public sealed class LobbyParticipant
+{
+    public required Player Player { get; init; }
+    public bool Ready { get; set; }
+    public Team? Team { get; set; }
+    public int? SwapTargetPeerId { get; set; }
+}
+
+public sealed record LobbySnapshot(
+    ImmutableArray<LobbyMember> Members,
+    ImmutableArray<SwapOffer> Offers,
+    bool CanStart);
+
+public sealed record LobbyUpdate(
+    LobbySnapshot Snapshot,
+    LobbyChange Change,
+    bool CanStart);
+
+public abstract record LobbyChange
+{
+    public sealed record Initialized(int Count) : LobbyChange;
+    public sealed record Joined(int PeerId, string Name) : LobbyChange;
+    public sealed record Left(int PeerId) : LobbyChange;
+    public sealed record ReadinessChanged(int PeerId, bool Ready) : LobbyChange;
+    public sealed record TeamChanged(int PeerId, Team Team) : LobbyChange;
+    public sealed record SwapOffered(int PeerId, int TargetPeerId) : LobbyChange;
+    public sealed record SwapCancelled(int PeerId, int TargetPeerId) : LobbyChange;
+    public sealed record TeamsSwapped(int PeerId, int TargetPeerId) : LobbyChange;
+    public sealed record TeamsRuleChanged(bool Enabled) : LobbyChange;
 }

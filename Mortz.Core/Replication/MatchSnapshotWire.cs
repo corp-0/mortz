@@ -1,4 +1,5 @@
 using Mortz.Core.Net;
+using Mortz.Core.Sim;
 
 namespace Mortz.Core.Replication;
 
@@ -9,7 +10,8 @@ public static class MatchSnapshotWire
     {
         using MemoryStream stream = new();
         using BinaryWriter writer = new(stream);
-        SnapshotWire.Write(writer, snapshot.SimulationSnapshot, localPeerId);
+        SnapshotWire.WritePlayers(writer, snapshot.Tick,
+            [.. snapshot.Players.Select(player => player.Simulation)], localPeerId);
         foreach (ReplicatedPlayer player in snapshot.Players)
         {
             WritePresentation(writer, player.Presentation);
@@ -21,17 +23,17 @@ public static class MatchSnapshotWire
     {
         using MemoryStream stream = new(data, writable: false);
         using BinaryReader reader = new(stream);
-        Snapshot simulation = SnapshotWire.Read(reader, slots);
-        ReplicatedPlayer[] players = new ReplicatedPlayer[simulation.Players.Length];
+        (int tick, PlayerState[] simulationPlayers) = SnapshotWire.ReadPlayers(reader, slots);
+        ReplicatedPlayer[] players = new ReplicatedPlayer[simulationPlayers.Length];
         for (int i = 0; i < players.Length; i++)
         {
             players[i] = new ReplicatedPlayer(
-                simulation.Players[i],
+                simulationPlayers[i],
                 ReadPresentation(reader));
         }
         if (stream.Position != stream.Length)
             throw new InvalidDataException("Trailing bytes in match snapshot.");
-        return new MatchSnapshot(simulation.Tick, players, simulation.Mortars);
+        return new MatchSnapshot(tick, players);
     }
 
     private static void WritePresentation(BinaryWriter writer, in PlayerPresentationState presentation)

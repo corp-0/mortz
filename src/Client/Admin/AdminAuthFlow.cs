@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using Mortz.Core.Admin;
+using Mortz.Core.Net;
 using Mortz.Core.Net.Admin;
 
 namespace Mortz.Client.Admin;
@@ -8,7 +9,7 @@ namespace Mortz.Client.Admin;
 /// <summary>Client half of the admin challenge-response handshake: owns the
 /// derived secrets and the signing sequence, answers the wire messages its
 /// owner forwards, and never lets a password or key linger in memory.</summary>
-public sealed class AdminAuthFlow
+public sealed class AdminAuthFlow(IClientSender sender)
 {
     // Raw password, not a key: PBKDF2 is salted with the server challenge,
     // so derivation waits for it.
@@ -25,7 +26,7 @@ public sealed class AdminAuthFlow
     {
         Reset();
         _pendingPassword = Encoding.UTF8.GetBytes(password);
-        new AdminAuthRequestMsg().SendToServer();
+        new AdminAuthRequestMsg().SendToServer(sender);
     }
 
     /// <summary>Answers the server challenge with a proof; false when no
@@ -46,7 +47,7 @@ public sealed class AdminAuthFlow
         _pendingAdminKey = AdminCrypto.DeriveSessionKey(passwordKey, localPeerId,
             message.Challenge);
         CryptographicOperations.ZeroMemory(passwordKey);
-        new AdminProofMsg(proof).SendToServer();
+        new AdminProofMsg(proof).SendToServer(sender);
         CryptographicOperations.ZeroMemory(proof);
         return true;
     }

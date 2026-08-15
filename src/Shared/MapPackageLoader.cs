@@ -38,6 +38,15 @@ public static class MapPackageLoader
             return new MapPackageLoadResult(null, diagnostics);
         }
 
+        diagnostics.AddRange(MapManifestValidator.Validate(source.Manifest,
+            source.Definition.ManifestPath,
+            new MapDimensions(solid.GetWidth(), solid.GetHeight())));
+        if (diagnostics.Any(diagnostic =>
+                diagnostic.Severity == ContentDiagnosticSeverity.ERROR))
+        {
+            return new MapPackageLoadResult(null, diagnostics);
+        }
+
         SpawnPoint[] spawnPoints = source.Manifest.SpawnPoints
             .Select(point => new SpawnPoint(new Vec2(point.X, point.Y), point.Team))
             .ToArray();

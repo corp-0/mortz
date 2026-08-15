@@ -11,6 +11,7 @@ public sealed partial class ModeRules
     [MatchRule]
     public bool Teams { get; set; }
 
+    [ConfigValue(typeof(VictoryRulesSnapshot), typeof(VictoryRulesProjection))]
     public VictoryRules Victory { get; set; } = new KillsVictoryRules();
 
     // Self-damage always applies.
@@ -42,28 +43,4 @@ public sealed partial class ModeRules
 
     public bool FriendlyFireIsRelevant => Teams;
 
-    public byte[] ToBytes()
-    {
-        byte[] shared = Serialize(this);
-        byte[] victory = VictoryRulesMetadata.Serialize(Victory);
-        using MemoryStream stream = new();
-        using BinaryWriter writer = new(stream);
-        writer.Write(shared.Length);
-        writer.Write(shared);
-        writer.Write(victory);
-        return stream.ToArray();
-    }
-
-    public static ModeRules FromBytes(byte[] data)
-    {
-        using MemoryStream stream = new(data, writable: false);
-        using BinaryReader reader = new(stream);
-        int sharedLength = reader.ReadInt32();
-        if (sharedLength < 0 || sharedLength > stream.Length - stream.Position)
-            throw new InvalidDataException("Invalid shared match-rules length.");
-        ModeRules rules = Deserialize(reader.ReadBytes(sharedLength));
-        rules.Victory = VictoryRulesMetadata.Deserialize(
-            reader.ReadBytes(checked((int)(stream.Length - stream.Position))));
-        return rules;
-    }
 }

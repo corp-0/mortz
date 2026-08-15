@@ -1,6 +1,5 @@
 using Godot;
 using Mortz.Content;
-using Mortz.Core.Sim.Modifiers;
 using Mortz.Shared;
 
 namespace Mortz.Client.MapEditor;
@@ -117,20 +116,6 @@ public partial class MapEditor : Node
             return;
         }
 
-        MapZoneDef? invalidName = Document.Zones.FirstOrDefault(zone =>
-            !ContentId.IsValid(zone.Name));
-        if (invalidName != null)
-        {
-            SetStatus($"'{invalidName.Name}' is not a valid zone name.", true);
-            return;
-        }
-        if (Document.Zones.Count(zone => zone.Effects.Length > 0) >
-            MapZones.MAX_EFFECT_ZONES)
-        {
-            SetStatus($"A map can have at most {MapZones.MAX_EFFECT_ZONES} effect zones.", true);
-            return;
-        }
-
         try
         {
             MapManifest manifest = Document.BuildManifest();
@@ -140,12 +125,15 @@ public partial class MapEditor : Node
                 manifest,
                 _background.SavePngToBuffer(),
                 _solid.SavePngToBuffer(),
-                _destructible.SavePngToBuffer()));
+                _destructible.SavePngToBuffer(),
+                _solid.GetWidth(),
+                _solid.GetHeight()));
             _definition = _definition with { Manifest = manifest };
             SetDirty(false);
             SetStatus($"Saved {_definition.Id}");
         }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException
+            or ArgumentException)
         {
             SetStatus($"Save failed: {exception.Message}", true);
         }

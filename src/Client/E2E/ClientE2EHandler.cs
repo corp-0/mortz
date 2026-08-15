@@ -1,12 +1,10 @@
 #if TOOLS
 using Godot;
 using Mortz.Client.Match;
-using Mortz.Core.Match;
 using Mortz.Core.Match.Scoring;
 using Mortz.Core.Net;
 using Mortz.Core.Net.Lobby;
 using Mortz.Core.Net.Match;
-using Mortz.Core.Net.Roster;
 using Mortz.Core.Replication;
 using Mortz.Core.Sim;
 using Mortz.E2E.Protocol;
@@ -42,13 +40,16 @@ public partial class ClientE2EHandler : Node, IE2EHandler, IE2EClientBridge,
     public E2EProcessRole Role => E2EProcessRole.CLIENT;
 
     /// <summary>Must be called right after instantiating, before entering the tree.</summary>
-    public void Initialize(E2EDriver driver) => _driver = driver;
+    public void Initialize(E2EDriver driver, NetworkManager network)
+    {
+        _driver = driver;
+        _network = network;
+    }
 
     public override void _Ready()
     {
         if (!E2ELaunch.Enabled)
             return;
-        _network = GetNode<NetworkManager>(NetworkManager.AUTOLOAD_PATH);
         _responder = _driver.Responder;
         _network.Connected += OnConnected;
         _network.ConnectionFailed += OnConnectionFailed;
@@ -95,7 +96,7 @@ public partial class ClientE2EHandler : Node, IE2EHandler, IE2EClientBridge,
         switch (request)
         {
             case SetReadyRequest ready:
-                new SetReadyMsg(ready.Ready).SendToServer();
+                new SetReadyMsg(ready.Ready).SendToServer(_network);
                 responder.Respond(new ReadySentResponse(ready.Id));
                 return;
             case RunInputPlanRequest run:

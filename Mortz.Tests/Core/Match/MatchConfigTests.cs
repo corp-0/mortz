@@ -3,6 +3,7 @@ using Mortz.Core.Match.Configuration;
 using Mortz.Core.Match.Scoring;
 using Mortz.Core.Sim;
 using Mortz.Core.Ui;
+using Mortz.Server.Settings;
 using Xunit;
 using ModeRules = Mortz.Core.Match.Configuration.ModeRules;
 using Physics = Mortz.Core.Match.Configuration.Physics;
@@ -214,6 +215,98 @@ public class MatchConfigTests
         Assert.Equal(0, got.Physics.GroundFriction);
         Assert.Equal(2.25f, got.Rules.SpawnImmunity);
         Assert.Equal(SimConfig.MAX_RUN_SPEED, got.Physics.MaxRunSpeed);
+    }
+
+    [Fact]
+    public void SnapshotEqualityIncludesVictorySubtypeAndValues()
+    {
+        MatchConfigSnapshot kills = new MatchConfig
+        {
+            Rules = new ModeRules { Victory = new KillsVictoryRules { Target = 5 } },
+        }.ToSnapshot();
+        MatchConfigSnapshot same = new MatchConfig
+        {
+            Rules = new ModeRules { Victory = new KillsVictoryRules { Target = 5 } },
+        }.ToSnapshot();
+        MatchConfigSnapshot differentValue = new MatchConfig
+        {
+            Rules = new ModeRules { Victory = new KillsVictoryRules { Target = 6 } },
+        }.ToSnapshot();
+        MatchConfigSnapshot differentSubtype = new MatchConfig
+        {
+            Rules = new ModeRules { Victory = new KillLeadVictoryRules { Target = 5 } },
+        }.ToSnapshot();
+
+        Assert.Equal(kills, same);
+        Assert.NotEqual(kills, differentValue);
+        Assert.NotEqual(kills, differentSubtype);
+    }
+
+    [Fact]
+    public void SnapshotCopySharesNoMutableNestedObjects()
+    {
+        MatchConfig original = new()
+        {
+            Rules = new ModeRules { Victory = new KillLeadVictoryRules { Target = 7 } },
+        };
+
+        MatchConfig copy = original.ToSnapshot().ToMutable();
+
+        Assert.NotSame(original, copy);
+        Assert.NotSame(original.Rules, copy.Rules);
+        Assert.NotSame(original.Rules.Victory, copy.Rules.Victory);
+        Assert.NotSame(original.Physics, copy.Physics);
+        Assert.NotSame(original.Combat, copy.Combat);
+        Assert.Equal(original.ToSnapshot(), copy.ToSnapshot());
+    }
+
+    [Fact]
+    public void SnapshotWireProjectionMatchesTheExistingGoldenLayout()
+    {
+        MatchConfig config = new()
+        {
+            Rules = new ModeRules
+            {
+                Teams = true,
+                Victory = new KillLeadVictoryRules { Target = 17 },
+                FriendlyFire = false,
+                RespawnDelay = 1.25f,
+            },
+            Physics = new Physics
+            {
+                Gravity = 777,
+                TotalJumps = 3,
+            },
+            Combat = new Combat
+            {
+                MortarSpeed = 1234,
+                MortarDamage = 67,
+            },
+        };
+        byte[] expected = Convert.FromHexString(
+            "220000000C000000010000010000A03F0000E03F096B696C6C5F6C65616404000000110000005C00000000008C43000016450000E144000096440040424400006144030000000000C8430000C84300002043000002440000BE434C37893D3108AC3CCDCC4C3E000016441F852B3F0080A2440000024400401C45000016430000803E0000803F3800000000409A440000003F000048440000614430000000050000000000A03F00000C429A99193F0000204164000000430000000000003F23000000");
+
+        Assert.Equal(expected, config.ToBytes());
+        Assert.Equal(expected, config.ToSnapshot().ToBytes());
+    }
+
+    [Fact]
+    public void LobbyDeltasCoverEveryEditableValue()
+    {
+        MatchConfig before = new();
+        MatchConfig after = before.ToSnapshot().ToMutable();
+        ChangeWritableProperties(after.Rules);
+        ChangeWritableProperties(after.Physics);
+        ChangeWritableProperties(after.Combat);
+        int expected = ModeRulesUiMetadata.Categories.Sum(category => category.Properties.Count) +
+                       PhysicsUiMetadata.Categories.Sum(category => category.Properties.Count) +
+                       CombatUiMetadata.Categories.Sum(category => category.Properties.Count) + 1;
+
+        LobbySettingDelta[] deltas = LobbySettingsDiff.Between(
+            before.ToSnapshot(),
+            after.ToSnapshot());
+
+        Assert.Equal(expected, deltas.Length);
     }
 
     [Fact]

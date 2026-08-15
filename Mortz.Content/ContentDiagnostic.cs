@@ -14,6 +14,12 @@ public sealed record ContentDiagnostic(
     public override string ToString() => $"{Source}: {Severity.ToString().ToLowerInvariant()}: {Message}";
 }
 
+public sealed class ContentValidationException(IReadOnlyList<ContentDiagnostic> diagnostics)
+    : ArgumentException(string.Join(Environment.NewLine, diagnostics))
+{
+    public IReadOnlyList<ContentDiagnostic> Diagnostics { get; } = diagnostics;
+}
+
 public sealed class ContentReadResult<T>(T? value, IReadOnlyList<ContentDiagnostic> diagnostics)
     where T : class
 {

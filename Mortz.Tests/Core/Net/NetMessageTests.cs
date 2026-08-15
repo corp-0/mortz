@@ -23,36 +23,22 @@ namespace Mortz.Tests.Core.Net;
 /// <summary>The id and bytes one send put on the wire.</summary>
 public readonly record struct SentEnvelope(ushort Id, byte[] Payload);
 
-/// <summary>Full protocol round-trips over a loopback NetTransport, no socket:
+/// <summary>Full protocol round-trips over explicit loopback senders, no socket:
 /// down the wire it's serializer -> NetRouter -> IHandle, up the wire it's
-/// SendToServer -> NetRouter&lt;TSender&gt; -> IHandle. All tests share the
-/// NetTransport.Send static, so every class that swaps it joins the
-/// NetTransport collection (xunit runs it sequentially) and restores it
-/// after.</summary>
-[Collection("NetTransport")]
-public class NetMessageTests : IDisposable
+/// SendToServer -> NetRouter&lt;TSender&gt; -> IHandle.</summary>
+public class NetMessageTests
 {
     private const int SENDER = 42;
 
-    private readonly NetTransport.SendDelegate _original = NetTransport.Send;
-
-    public void Dispose() => NetTransport.Send = _original;
-
-    /// <summary>Loopback into a client router, where server-to-client lands.
-    /// Register the probes before sending.</summary>
-    private static NetRouter UseClientLoopback()
-    {
-        NetRouter router = new();
-        NetTransport.Send = (id, payload, _, _) => Assert.True(router.Dispatch(id, payload));
-        return router;
-    }
+    private static NetRouter UseClientLoopback() => new();
 
     /// <summary>Loopback into a server router, where client-to-server lands.
     /// Register the probes before sending.</summary>
-    private static NetRouter<int> UseServerLoopback()
+    private static NetRouter<int> UseServerLoopback(out TestClientSender sender)
     {
         NetRouter<int> router = new();
-        NetTransport.Send = (id, payload, _, _) => Assert.True(router.Dispatch(id, SENDER, payload));
+        sender = new TestClientSender((id, payload, _) =>
+            Assert.True(router.Dispatch(id, SENDER, payload)));
         return router;
     }
 
@@ -68,7 +54,7 @@ public class NetMessageTests : IDisposable
             new RosterEntry(1, "Gilles", 3, Team.BLUE, 1),
             new RosterEntry(1789001122, "Player 2", 7, Team.RED, 2),
         ];
-        new RosterMsg(entries).Broadcast();
+        new RosterMsg(entries).Broadcast(router);
 
         Assert.Equal(entries, Assert.Single(probe.Messages).Entries);
     }
@@ -80,7 +66,7 @@ public class NetMessageTests : IDisposable
         ClientProbe<PingUpdateMsg> probe = new();
         router.Add(probe);
 
-        new PingUpdateMsg([new PeerPing(11, 30), new PeerPing(1789001122, 120)]).Broadcast();
+        new PingUpdateMsg([new PeerPing(11, 30), new PeerPing(1789001122, 120)]).Broadcast(router);
 
         Assert.Equal([new PeerPing(11, 30), new PeerPing(1789001122, 120)],
             Assert.Single(probe.Messages).Pings);
@@ -93,7 +79,7 @@ public class NetMessageTests : IDisposable
         ClientProbe<PingUpdateMsg> probe = new();
         router.Add(probe);
 
-        new PingUpdateMsg([]).Broadcast();
+        new PingUpdateMsg([]).Broadcast(router);
 
         Assert.Empty(Assert.Single(probe.Messages).Pings);
     }
@@ -126,7 +112,7 @@ public class NetMessageTests : IDisposable
         router.Add(probe);
         byte[] blob = ModifierWire.Serialize([Modifiers.Water]);
 
-        new PlayerModifiersMsg(1789001122, blob).Broadcast();
+        new PlayerModifiersMsg(1789001122, blob).Broadcast(router);
 
         PlayerModifiersMsg received = Assert.Single(probe.Messages);
         Assert.Equal(1789001122, received.PeerId);
@@ -147,7 +133,7 @@ public class NetMessageTests : IDisposable
             new LobbyMember(5, "a", true, Team.BLUE),
             new LobbyMember(6, "", false, Team.RED),
         ];
-        new LobbyStateMsg(members, [new SwapOffer(5, 6)]).Broadcast();
+        new LobbyStateMsg(members, [new SwapOffer(5, 6)]).Broadcast(router);
 
         LobbyStateMsg received = Assert.Single(probe.Messages);
         Assert.Equal(members, received.Members);
@@ -161,7 +147,7 @@ public class NetMessageTests : IDisposable
         ClientProbe<ScoreSyncMsg> probe = new();
         router.Add(probe);
 
-        new ScoreSyncMsg([new ScoreRow(7, 4, 2), new ScoreRow(8, -1, 6)], 4, -1).SendTo(9);
+        new ScoreSyncMsg([new ScoreRow(7, 4, 2), new ScoreRow(8, -1, 6)], 4, -1).SendTo(router, 9);
 
         ScoreSyncMsg received = Assert.Single(probe.Messages);
         Assert.Equal([new ScoreRow(7, 4, 2), new ScoreRow(8, -1, 6)], received.Rows);
@@ -180,15 +166,20 @@ public class NetMessageTests : IDisposable
             Physics = new Physics { Gravity = 321 },
         }.ToBytes();
 
-        new LobbySettingsMsg("castlewars", "hash", ["arena", "castlewars"],
-            ["Arena", "Castle Wars"], ["deathmatch"], ["Deathmatch"], "deathmatch",
-            config).Broadcast();
+        ContentOption[] maps =
+        [
+            new ContentOption("arena", "Arena"),
+            new ContentOption("castlewars", "Castle Wars"),
+        ];
+        ContentOption[] modes = [new ContentOption("deathmatch", "Deathmatch")];
+        new LobbySettingsMsg("castlewars", "hash", maps, modes, "deathmatch",
+            config).Broadcast(router);
 
         LobbySettingsMsg received = Assert.Single(probe.Messages);
         Assert.Equal("castlewars", received.MapId);
         Assert.Equal("hash", received.MapHash);
-        Assert.Equal(["arena", "castlewars"], received.MapIds);
-        Assert.Equal(["Arena", "Castle Wars"], received.MapNames);
+        Assert.Equal(maps, received.MapOptions);
+        Assert.Equal(modes, received.ModeOptions);
         Assert.Equal(config, received.Config);
     }
 
@@ -203,7 +194,7 @@ public class NetMessageTests : IDisposable
         new MatchLoadMsg("castlewars", "abc123", config,
             (byte)TerrainSyncEncoding.CARVE_LOG, 17, 12345, 2,
             MatchSeat.SPECTATOR, MatchActivity.SPECTATING, SpectateReason.JIP, -1,
-            new Snapshot(12, [], []).SerializeFor(5), -1).SendTo(5);
+            new Snapshot(12, [], []).SerializeFor(5), -1).SendTo(router, 5);
 
         MatchLoadMsg received = Assert.Single(probe.Messages);
         Assert.Equal("castlewars", received.MapId);
@@ -225,7 +216,7 @@ public class NetMessageTests : IDisposable
         ClientProbe<CarveMsg> probe = new();
         router.Add(probe);
 
-        new CarveMsg(1986, 972, 12, 1646958266, -1).Broadcast();
+        new CarveMsg(1986, 972, 12, 1646958266, -1).Broadcast(router);
 
         Assert.Equal(new CarveMsg(1986, 972, 12, 1646958266, -1), Assert.Single(probe.Messages));
     }
@@ -237,7 +228,7 @@ public class NetMessageTests : IDisposable
         ClientProbe<ShellRetireMsg> probe = new();
         router.Add(probe);
 
-        new ShellRetireMsg(314).SendTo(7);
+        new ShellRetireMsg(314).SendTo(router, 7);
 
         Assert.Equal(new ShellRetireMsg(314), Assert.Single(probe.Messages));
     }
@@ -249,7 +240,7 @@ public class NetMessageTests : IDisposable
         ClientProbe<DeathMsg> probe = new();
         router.Add(probe);
 
-        new DeathMsg(1234567890, -5, 7).Broadcast();
+        new DeathMsg(1234567890, -5, 7).Broadcast(router);
 
         Assert.Equal(new DeathMsg(1234567890, -5, 7), Assert.Single(probe.Messages));
     }
@@ -263,7 +254,7 @@ public class NetMessageTests : IDisposable
 
         new EliminationMsg(1234567890, 42,
             EliminationFlags.FIRST_BLOOD | EliminationFlags.OWNED,
-            -2, 7, 9, 4, 5, 3).Broadcast();
+            -2, 7, 9, 4, 5, 3).Broadcast(router);
 
         Assert.Equal(new EliminationMsg(1234567890, 42,
             EliminationFlags.FIRST_BLOOD | EliminationFlags.OWNED,
@@ -277,7 +268,7 @@ public class NetMessageTests : IDisposable
         ClientProbe<MatchEndMsg> probe = new();
         router.Add(probe);
 
-        new MatchEndMsg(true, 2).Broadcast();
+        new MatchEndMsg(true, 2).Broadcast(router);
 
         Assert.Equal(new MatchEndMsg(true, 2), Assert.Single(probe.Messages));
     }
@@ -293,9 +284,9 @@ public class NetMessageTests : IDisposable
         router.Add(challenge);
         router.Add(state);
 
-        ChatProtocol.Encode(new ChatLine.Player(42, "Alice", "hello 🐛")).Broadcast();
-        new AdminChallengeMsg([1, 2, 3]).SendTo(42);
-        new AdminStateMsg(true, "granted").SendTo(42);
+        ChatProtocol.Encode(new ChatLine.Player(42, "Alice", "hello 🐛")).Broadcast(router);
+        new AdminChallengeMsg([1, 2, 3]).SendTo(router, 42);
+        new AdminStateMsg(true, "granted").SendTo(router, 42);
 
         Assert.True(ChatProtocol.TryDecode(Assert.Single(chat.Messages),
             out ChatLine.Remote? line));
@@ -315,7 +306,7 @@ public class NetMessageTests : IDisposable
             FinalKillFlags.EXPLOSION | FinalKillFlags.OWNED,
             -5, 700, 20, 680, 48);
 
-        expected.Broadcast();
+        expected.Broadcast(router);
 
         Assert.Equal(expected, Assert.Single(probe.Messages));
     }
@@ -323,14 +314,14 @@ public class NetMessageTests : IDisposable
     [Fact]
     public void ClientToServerMsgs_RoundTrip_WithSender()
     {
-        NetRouter<int> router = UseServerLoopback();
+        NetRouter<int> router = UseServerLoopback(out TestClientSender sender);
         Probe<SetReadyMsg> ready = new();
         Probe<TeamJoinRequestMsg> join = new();
         router.Add(ready);
         router.Add(join);
 
-        new SetReadyMsg(true).SendToServer();
-        new TeamJoinRequestMsg(2).SendToServer();
+        new SetReadyMsg(true).SendToServer(sender);
+        new TeamJoinRequestMsg(2).SendToServer(sender);
 
         Delivery<SetReadyMsg> readyDelivery = Assert.Single(ready.Deliveries);
         Assert.Equal(SENDER, readyDelivery.Sender);
@@ -343,7 +334,7 @@ public class NetMessageTests : IDisposable
     [Fact]
     public void ChatAndAdminClientMessages_RoundTrip_WithTransportSender()
     {
-        NetRouter<int> router = UseServerLoopback();
+        NetRouter<int> router = UseServerLoopback(out TestClientSender sender);
         Probe<ChatSendMsg> chat = new();
         Probe<AdminAuthRequestMsg> request = new();
         Probe<AdminProofMsg> proof = new();
@@ -351,9 +342,9 @@ public class NetMessageTests : IDisposable
         router.Add(request);
         router.Add(proof);
 
-        new ChatSendMsg("hello").SendToServer();
-        new AdminAuthRequestMsg().SendToServer();
-        new AdminProofMsg([7, 8, 9]).SendToServer();
+        new ChatSendMsg("hello").SendToServer(sender);
+        new AdminAuthRequestMsg().SendToServer(sender);
+        new AdminProofMsg([7, 8, 9]).SendToServer(sender);
 
         Delivery<ChatSendMsg> chatDelivery = Assert.Single(chat.Deliveries);
         Assert.Equal(SENDER, chatDelivery.Sender);
@@ -367,14 +358,14 @@ public class NetMessageTests : IDisposable
     [Fact]
     public void SignedLobbyUpdates_RoundTrip_WithUnsignedSequenceBitsIntact()
     {
-        NetRouter<int> router = UseServerLoopback();
+        NetRouter<int> router = UseServerLoopback(out TestClientSender sender);
         Probe<LobbyRulesUpdateMsg> rules = new();
         Probe<LobbyMapUpdateMsg> map = new();
         router.Add(rules);
         router.Add(map);
 
-        new LobbyRulesUpdateMsg([1, 2], ulong.MaxValue, [3, 4]).SendToServer();
-        new LobbyMapUpdateMsg("arena", ulong.MaxValue - 1, [5, 6]).SendToServer();
+        new LobbyRulesUpdateMsg([1, 2], ulong.MaxValue, [3, 4]).SendToServer(sender);
+        new LobbyMapUpdateMsg("arena", ulong.MaxValue - 1, [5, 6]).SendToServer(sender);
 
         Delivery<LobbyRulesUpdateMsg> rulesDelivery = Assert.Single(rules.Deliveries);
         Assert.Equal(SENDER, rulesDelivery.Sender);
@@ -391,11 +382,11 @@ public class NetMessageTests : IDisposable
     [Fact]
     public void RollRequestMsg_RoundTrips()
     {
-        NetRouter<int> router = UseServerLoopback();
+        NetRouter<int> router = UseServerLoopback(out TestClientSender sender);
         Probe<RollRequestMsg> roll = new();
         router.Add(roll);
 
-        new RollRequestMsg().SendToServer();
+        new RollRequestMsg().SendToServer(sender);
 
         Assert.Equal(SENDER, Assert.Single(roll.Deliveries).Sender);
     }
@@ -404,8 +395,6 @@ public class NetMessageTests : IDisposable
     public void Dispatch_DropsWrongDirection()
     {
         // A client-only message arriving at the server (spoof) and vice versa.
-        byte[] captured = [];
-        NetTransport.Send = (_, payload, _, _) => captured = payload;
         NetRouter<int> serverRouter = new();
         Probe<SetReadyMsg> ready = new();
         serverRouter.Add(ready);
@@ -413,10 +402,12 @@ public class NetMessageTests : IDisposable
         ClientProbe<RosterMsg> roster = new();
         clientRouter.Add(roster);
 
-        new RosterMsg([new RosterEntry(1, "x", 2, null, 1)]).Broadcast();
-        Assert.False(serverRouter.Dispatch(NetRegistry.ID_RosterMsg, SENDER, captured));
-        new SetReadyMsg(true).SendToServer();
-        Assert.False(clientRouter.Dispatch(NetRegistry.ID_SetReadyMsg, captured));
+        RosterMsg rosterMessage = new([new RosterEntry(1, "x", 2, null, 1)]);
+        Assert.False(serverRouter.Dispatch(NetRegistry.ID_RosterMsg, SENDER,
+            rosterMessage.Payload()));
+        SetReadyMsg readyMessage = new(true);
+        Assert.False(clientRouter.Dispatch(NetRegistry.ID_SetReadyMsg,
+            readyMessage.Payload()));
 
         Assert.Empty(roster.Messages);
         Assert.Empty(ready.Deliveries);
@@ -432,18 +423,14 @@ public class NetMessageTests : IDisposable
     public void Dispatch_RejectsEveryClientMessageTruncationAndTrailingBytes()
     {
         SentEnvelope[] messages = [
-            Capture(NetRegistry.ID_SetReadyMsg, () => new SetReadyMsg(true).SendToServer()),
-            Capture(NetRegistry.ID_ChatSendMsg, () => new ChatSendMsg("hello").SendToServer()),
-            Capture(NetRegistry.ID_AdminAuthRequestMsg, () => new AdminAuthRequestMsg().SendToServer()),
-            Capture(NetRegistry.ID_AdminProofMsg, () => new AdminProofMsg([1, 2, 3]).SendToServer()),
-            Capture(NetRegistry.ID_LobbyRulesUpdateMsg,
-                () => new LobbyRulesUpdateMsg([1, 2], 3, [4, 5]).SendToServer()),
-            Capture(NetRegistry.ID_LobbyMapUpdateMsg,
-                () => new LobbyMapUpdateMsg("arena", 3, [4, 5]).SendToServer()),
-            Capture(NetRegistry.ID_TeamJoinRequestMsg,
-                () => new TeamJoinRequestMsg(1).SendToServer()),
-            Capture(NetRegistry.ID_TeamSwapRequestMsg,
-                () => new TeamSwapRequestMsg(42).SendToServer()),
+            Capture(new SetReadyMsg(true)),
+            Capture(new ChatSendMsg("hello")),
+            Capture(new AdminAuthRequestMsg()),
+            Capture(new AdminProofMsg([1, 2, 3])),
+            Capture(new LobbyRulesUpdateMsg([1, 2], 3, [4, 5])),
+            Capture(new LobbyMapUpdateMsg("arena", 3, [4, 5])),
+            Capture(new TeamJoinRequestMsg(1)),
+            Capture(new TeamSwapRequestMsg(42)),
         ];
 
         RaiseCounter raised = new();
@@ -566,13 +553,9 @@ public class NetMessageTests : IDisposable
         public void Handle(int sender, in TeamSwapRequestMsg message) => Count++;
     }
 
-    private static SentEnvelope Capture(ushort id, Action send)
-    {
-        byte[] payload = [];
-        NetTransport.Send = (_, bytes, _, _) => payload = bytes;
-        send();
-        return new SentEnvelope(id, payload);
-    }
+    private static SentEnvelope Capture<TMsg>(TMsg message)
+        where TMsg : struct, INetMessage<TMsg> =>
+        new(TMsg.MsgId, TMsg.Serialize(in message));
 
     private static byte[] Bytes(Action<BinaryWriter> write)
     {

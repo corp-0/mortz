@@ -75,6 +75,29 @@ public sealed class MatchLoadingBarrierTests : IDisposable
     }
 
     [Fact]
+    public void JipReadySyncsOnlyTheJoinerAndDoesNotReleaseTheLobbyCohort()
+    {
+        BeginLoadingMatch();
+        _server.Server.Connect(9, "jip");
+        int generation = _server.Link.Messages.Select(sent => sent.Message)
+            .OfType<MatchLoadMsg>()
+            .Last()
+            .Generation;
+        _server.Link.Messages.Clear();
+
+        _server.Receive(9, new PhaseReadyMsg(generation));
+
+        Assert.NotEmpty(_server.Link.Messages);
+        Assert.All(_server.Link.Messages, sent => Assert.Equal(9, sent.Target));
+        Assert.DoesNotContain(_server.Link.Messages, sent => sent.Message is MatchStartMsg);
+
+        _server.Receive(7, new PhaseReadyMsg(generation));
+        Assert.DoesNotContain(_server.Link.Messages, sent => sent.Message is MatchStartMsg);
+        _server.Receive(8, new PhaseReadyMsg(generation));
+        Assert.Contains(_server.Link.Messages, sent => sent.Message is MatchStartMsg);
+    }
+
+    [Fact]
     public void LosingEveryoneReturnsToTheLobby()
     {
         BeginLoadingMatch();

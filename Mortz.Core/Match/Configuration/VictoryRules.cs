@@ -5,7 +5,10 @@ namespace Mortz.Core.Match.Configuration;
 
 [VictoryRuleCase("kills", "Kills", typeof(KillsVictoryRules))]
 [VictoryRuleCase("kill_lead", "Kill Lead", typeof(KillLeadVictoryRules))]
-public abstract class VictoryRules;
+public abstract class VictoryRules
+{
+    public abstract VictoryRulesSnapshot ToSnapshot();
+}
 
 public sealed partial class KillsVictoryRules : VictoryRules
 {

@@ -1,3 +1,4 @@
+using Mortz.Core.Match.Teams;
 using Mortz.Server.Admin;
 using Mortz.Server.Chat;
 using Mortz.Server.Lobby;
@@ -11,23 +12,25 @@ namespace Mortz.Server.Phases;
 public sealed class LobbyPhase : ServerPhase
 {
     private readonly LobbySession _session;
-    private readonly LobbyStateKeys _keys;
-    private readonly LobbyService _lobby;
+    private readonly LobbyReplication _replication;
     private readonly Roster _roster;
     private readonly ILogger _log;
-    private readonly PhaseControl _control;
+    private readonly IPhaseTransitionRequests _transitions;
     private readonly object[] _services;
 
-    private LobbyPhase(LobbySession session, LobbyStateKeys keys, LobbyService lobby,
-        LobbySettingsService lobbySettings, Roster roster, ILogger log, PhaseControl control)
+    private LobbyPhase(Roster roster, SettingsService settings, AdminService admin,
+        ChatService chat, IServerLink link, ILogger log, IPhaseTransitionRequests transitions)
     {
-        _session = session;
-        _keys = keys;
-        _lobby = lobby;
+        _session = new LobbySession(settings.Config.Rules.Teams);
+        _replication = new LobbyReplication(link);
         _roster = roster;
         _log = log;
-        _control = control;
-        _services = [_lobby, lobbySettings];
+        _transitions = transitions;
+
+        LobbyService lobby = new(_session, Apply);
+        LobbySettingsService lobbySettings = new(
+            settings, admin, chat, _session, Apply, log);
+        _services = [lobby, lobbySettings];
     }
 
     public override ServerPhaseKind Kind => ServerPhaseKind.LOBBY;
@@ -36,53 +39,69 @@ public sealed class LobbyPhase : ServerPhase
 
     public bool CanStart => _session.CanStart;
 
-    public SeatAssignment[] Seats => [
-        .._session.Members.Select(member => new SeatAssignment(member, _session.TeamOf(member)))
-    ];
+    public SeatAssignment[] Seats => _session.Seats;
 
     public static LobbyPhase Open(Roster roster, SettingsService settings, AdminService admin,
-        ChatService chat, IServerLink link, ILogger log, PhaseControl control, int generation)
-    {
-        LobbyStateKeys keys = new(generation);
-        LobbySession session = new(keys, settings.Config.Rules.Teams);
-        LobbyService lobby = new(session, link, log, control);
-        LobbySettingsService lobbySettings = new(settings, admin, chat, lobby, log);
-        return new LobbyPhase(session, keys, lobby, lobbySettings, roster, log, control);
-    }
+        ChatService chat, IServerLink link, ILogger log, IPhaseTransitionRequests transitions) =>
+        new(roster, settings, admin, chat, link, log, transitions);
 
-    public override void OpenPhaseKeys(Player player) =>
-        player.OpenLobby(_keys.Count, _keys.Generation);
+    public override void Begin() => Apply(_session.Initialize(_roster));
 
-    /// <summary>Seating writes lobby state, so it must wait until every roster
-    /// player has it open.</summary>
-    public override void Begin()
-    {
-        foreach (Player player in _roster)
-        {
-            _session.Add(player);
-        }
-        _lobby.BroadcastRoster();
-    }
+    public override void PlayerJoined(Player player) => Apply(_session.Join(player));
 
-    public override void PlayerJoined(Player player)
-    {
-        _session.Add(player);
-        _log.Information("player {PeerId} '{PlayerName}' entered lobby ({Waiting} waiting)",
-            player.PeerId, player.Name, _session.Count);
-        _lobby.BroadcastRoster();
-    }
+    public override void PlayerLeft(Player player) => Apply(_session.Leave(player));
 
-    public override void PlayerLeft(Player player)
-    {
-        if (!_session.Remove(player))
-            return;
-        _log.Information("player {PeerId} left lobby ({Waiting} waiting)", player.PeerId,
-            _session.Count);
-        _lobby.BroadcastRoster();
-        if (_session.CanStart)
-            _control.Request(PhaseRequest.START_MATCH);
-    }
-
-    /// <summary>Lobby transitions arrive through PhaseControl, never from here.</summary>
+    /// <summary>Lobby transitions arrive through the coordinator, never from here.</summary>
     public override PhaseRequest Advance(ServerTime time) => PhaseRequest.NONE;
+
+    private void Apply(LobbyUpdate? update)
+    {
+        if (update == null)
+            return;
+
+        Log(update.Change);
+        _replication.Publish(update);
+        if (update.CanStart)
+            _transitions.RequestStartMatch();
+    }
+
+    private void Log(LobbyChange change)
+    {
+        switch (change)
+        {
+            case LobbyChange.Initialized:
+                break;
+            case LobbyChange.Joined joined:
+                _log.Information("player {PeerId} '{PlayerName}' entered lobby ({Waiting} waiting)",
+                    joined.PeerId, joined.Name, _session.Count);
+                break;
+            case LobbyChange.Left left:
+                _log.Information("player {PeerId} left lobby ({Waiting} waiting)", left.PeerId,
+                    _session.Count);
+                break;
+            case LobbyChange.ReadinessChanged readiness:
+                _log.Information("player {PeerId} is {Readiness}", readiness.PeerId,
+                    readiness.Ready ? "ready" : "not ready");
+                break;
+            case LobbyChange.TeamChanged team:
+                _log.Information("player {PeerId} moved to {Team}", team.PeerId,
+                    Teams.Name(team.Team));
+                break;
+            case LobbyChange.SwapOffered offer:
+                _log.Information("player {PeerId} offers a team swap to {TargetPeerId}",
+                    offer.PeerId, offer.TargetPeerId);
+                break;
+            case LobbyChange.SwapCancelled cancellation:
+                _log.Information("player {PeerId} cancelled their swap offer",
+                    cancellation.PeerId);
+                break;
+            case LobbyChange.TeamsSwapped swap:
+                _log.Information("players {PeerId} and {TargetPeerId} swapped teams",
+                    swap.PeerId, swap.TargetPeerId);
+                break;
+            case LobbyChange.TeamsRuleChanged teams:
+                _log.Information("lobby teams {TeamsState}", teams.Enabled ? "assigned" : "cleared");
+                break;
+        }
+    }
 }

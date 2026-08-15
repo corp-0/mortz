@@ -160,16 +160,16 @@ public class MatchReplication(
         }
     }
 
-    public MatchSnapshot CaptureSnapshot(bool includeMortars = false)
+    public MatchSnapshot CaptureSnapshot()
     {
-        Snapshot simulation = runtime.World.TakeSnapshot(includeMortars);
+        Snapshot simulation = runtime.World.TakeSnapshot(includeMortars: false);
         ReplicatedPlayer[] players =
         [
             .. simulation.Players.Select(player => new ReplicatedPlayer(
                 player,
                 runtime.PresentationOf(player)))
         ];
-        return new MatchSnapshot(simulation.Tick, players, simulation.Mortars);
+        return new MatchSnapshot(simulation.Tick, players);
     }
 
     private void BroadcastSnapshot()

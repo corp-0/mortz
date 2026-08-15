@@ -15,15 +15,18 @@ public partial class ClientAdmin : Node,
     IHandle<AdminChallengeMsg>,
     IHandle<AdminStateMsg>
 {
-    private readonly AdminAuthFlow _flow = new();
+    private AdminAuthFlow _flow = null!;
     private bool _subscribed;
 
-    public bool IsAdmin => _flow.IsAdmin;
+    public bool IsAdmin => _flow is { IsAdmin: true };
     public event Action<bool>? AdminChanged;
     public event Action<string>? StatusLine;
 
     [Dependency]
     private INetwork Network => this.DependOn<INetwork>();
+
+    [Dependency]
+    private IClientSender Sender => this.DependOn<IClientSender>();
 
     [Dependency]
     private NetRouter Router => this.DependOn<NetRouter>();
@@ -32,6 +35,7 @@ public partial class ClientAdmin : Node,
 
     public void OnResolved()
     {
+        _flow = new AdminAuthFlow(Sender);
         Router.Add(this);
         _subscribed = true;
     }

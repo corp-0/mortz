@@ -15,21 +15,17 @@ public partial class PlayerViewManager : Node2D
 {
     [Export] private PackedScene _playerScene = null!;
 
-    [Dependency]
-    private INetwork Network => this.DependOn<INetwork>();
+    [Dependency] private INetwork Network => this.DependOn<INetwork>();
 
-    [Dependency]
-    private ISfx Sfx => this.DependOn<ISfx>();
+    [Dependency] private ISfx Sfx => this.DependOn<ISfx>();
 
-    [Dependency]
-    private ClientPlayers Players => this.DependOn<ClientPlayers>();
+    [Dependency] private ClientPlayers Players => this.DependOn<ClientPlayers>();
 
     /// <summary>A remote player's rendered feet position this frame (lag probe tap).</summary>
     public event Action<Vector2>? RemotePlaced;
 
     private readonly Dictionary<int, PlayerView> _views = [];
     private readonly HashSet<int> _placed = new();
-    private bool _replayActive;
     private bool _subscribed;
 
     public override void _Notification(int what) => this.Notify(what);
@@ -84,16 +80,16 @@ public partial class PlayerViewManager : Node2D
     /// <summary>
     /// Ran every rendering tick for every player
     /// </summary>
-    public void Place(int peerId, PlayerViewState state)
+    public void Place(
+        int peerId,
+        PlayerViewState state,
+        MatchRenderMode mode = MatchRenderMode.LIVE)
     {
         _placed.Add(peerId);
         bool isLocal = peerId == Network.LocalPeerId;
         ClientPlayer player = Players.GetOrCreate(peerId);
         ClientMatchPlayer match = player.Match ??
-            throw new InvalidOperationException("Cannot place a player outside a match.");
-        // Snapshots carry no skin on the slot-id path, so identity is the
-        // only source.
-        state = state with { Skin = player.Skin };
+                                  throw new InvalidOperationException("Cannot place a player outside a match.");
         if (!isLocal)
             RemotePlaced?.Invoke(state.Feet);
         if (!_views.TryGetValue(peerId, out PlayerView? view))
@@ -107,14 +103,10 @@ public partial class PlayerViewManager : Node2D
             AddChild(view);
             _views[peerId] = view;
         }
-        view.Apply(state, playTransitions: !_replayActive);
-        bool typing = isLocal ? ChatInputGuard.IsTyping : player.IsTyping;
-        view.SetTyping(!_replayActive && typing);
-    }
 
-    public void SetReplayActive(bool active)
-    {
-        _replayActive = active;
+        view.Apply(state, playTransitions: mode == MatchRenderMode.LIVE);
+        bool typing = isLocal ? ChatInputGuard.IsTyping : player.IsTyping;
+        view.SetTyping(mode == MatchRenderMode.LIVE && typing);
     }
 
     /// <summary>Despawn every view not placed since BeginFrame.</summary>

@@ -1,5 +1,6 @@
 using Godot;
 using Mortz.Content;
+using Mortz.Core.Net;
 using Mortz.Shared;
 
 namespace Mortz.Client.MapEditor;
@@ -139,11 +140,14 @@ public partial class MapEditorFlow : Node
                     new MapManifest
                     {
                         Name = name,
-                        SuggestedPlayers = Math.Clamp(suggestedPlayers, 1, 32),
+                        SuggestedPlayers = Math.Clamp(suggestedPlayers, 1,
+                            NetConfig.MAX_PLAYERS),
                     },
                     background.SavePngToBuffer(),
                     empty.SavePngToBuffer(),
-                    empty.SavePngToBuffer()));
+                    empty.SavePngToBuffer(),
+                    width,
+                    height));
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException
             or ArgumentException)

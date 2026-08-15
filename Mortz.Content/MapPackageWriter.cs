@@ -5,7 +5,9 @@ public sealed record MapPackageWriteRequest(
     MapManifest Manifest,
     ReadOnlyMemory<byte> BackgroundPng,
     ReadOnlyMemory<byte> SolidPng,
-    ReadOnlyMemory<byte> DestructiblePng);
+    ReadOnlyMemory<byte> DestructiblePng,
+    int? ImageWidth = null,
+    int? ImageHeight = null);
 
 /// <summary>Replaces a map package without exposing a half-written one.</summary>
 public static class MapPackageWriter
@@ -18,8 +20,27 @@ public static class MapPackageWriter
             throw new ArgumentException("map ID is not a valid logical ID", nameof(request));
         if (request.BackgroundPng.IsEmpty || request.SolidPng.IsEmpty || request.DestructiblePng.IsEmpty)
             throw new ArgumentException("all three PNG layers are required", nameof(request));
+        if (request.ImageWidth.HasValue != request.ImageHeight.HasValue ||
+            request.ImageWidth is <= 0 || request.ImageHeight is <= 0)
+        {
+            throw new ArgumentException(
+                "image width and height must both be omitted or positive", nameof(request));
+        }
 
         string root = Path.GetFullPath(mapsDirectory);
+        string manifestPath = Path.Combine(root, request.MapId, "map.toml");
+        MapDimensions? dimensions = request.ImageWidth is int width &&
+                                    request.ImageHeight is int height
+            ? new MapDimensions(width, height)
+            : null;
+        IReadOnlyList<ContentDiagnostic> diagnostics = MapManifestValidator.Validate(
+            request.Manifest, manifestPath, dimensions);
+        if (diagnostics.Any(diagnostic =>
+                diagnostic.Severity == ContentDiagnosticSeverity.ERROR))
+        {
+            throw new ContentValidationException(diagnostics);
+        }
+
         Directory.CreateDirectory(root);
         string target = Path.Combine(root, request.MapId);
         string transaction = Guid.NewGuid().ToString("N");

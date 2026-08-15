@@ -30,16 +30,22 @@ public static class SnapshotWire
 
     internal static void Write(BinaryWriter writer, Snapshot snapshot, int? localPeerId)
     {
-        writer.Write(snapshot.Tick);
-        if (snapshot.Players.Length > NetConfig.MAX_PLAYERS)
-            throw new InvalidDataException($"Too many players in snapshot: {snapshot.Players.Length}.");
+        WritePlayers(writer, snapshot.Tick, snapshot.Players, localPeerId);
+        WriteMortars(writer, snapshot.Mortars);
+    }
+
+    internal static void WritePlayers(BinaryWriter writer, int tick, PlayerState[] players,
+        int? localPeerId)
+    {
+        writer.Write(tick);
+        if (players.Length > NetConfig.MAX_PLAYERS)
+            throw new InvalidDataException($"Too many players in snapshot: {players.Length}.");
         bool slotIds = localPeerId != null;
-        writer.Write((byte)(snapshot.Players.Length | (slotIds ? SLOT_IDS_BIT : 0)));
-        foreach (PlayerState player in snapshot.Players)
+        writer.Write((byte)(players.Length | (slotIds ? SLOT_IDS_BIT : 0)));
+        foreach (PlayerState player in players)
         {
             WritePlayer(writer, player, localPeerId, slotIds);
         }
-        WriteMortars(writer, snapshot.Mortars);
     }
 
     public static Snapshot Deserialize(byte[] data, IPeerSlots? slots)
@@ -54,6 +60,14 @@ public static class SnapshotWire
 
     internal static Snapshot Read(BinaryReader reader, IPeerSlots? slots)
     {
+        (int tick, PlayerState[] players) = ReadPlayers(reader, slots);
+        MortarState[] mortars = ReadMortars(reader);
+        return new Snapshot(tick, players, mortars);
+    }
+
+    internal static (int Tick, PlayerState[] Players) ReadPlayers(
+        BinaryReader reader, IPeerSlots? slots)
+    {
         int tick = reader.ReadInt32();
         byte countAndFormat = reader.ReadByte();
         bool slotIds = (countAndFormat & SLOT_IDS_BIT) != 0;
@@ -65,8 +79,7 @@ public static class SnapshotWire
         {
             players[i] = ReadPlayer(reader, slotIds, slots);
         }
-        MortarState[] mortars = ReadMortars(reader);
-        return new Snapshot(tick, players, mortars);
+        return (tick, players);
     }
 
     private static void WritePlayer(BinaryWriter writer, in PlayerState player,

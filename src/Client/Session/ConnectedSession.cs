@@ -3,7 +3,6 @@ using Chickensoft.Introspection;
 using Godot;
 using Mortz.Client.Admin;
 using Mortz.Client.Players;
-using Mortz.Client.Score;
 using Mortz.Client.Setup;
 using Mortz.Client.Stats;
 
@@ -16,21 +15,18 @@ public partial class ConnectedSession : Node,
     IProvide<MatchSetup>,
     IProvide<Pings>,
     IProvide<SessionWins>,
-    IProvide<MatchScore>,
     IProvide<ClientPlayers>,
     IProvide<ClientAdmin>
 {
     [Export] private MatchSetup _matchSetup = null!;
     [Export] private Pings _pings = null!;
     [Export] private SessionWins _sessionWins = null!;
-    [Export] private MatchScore _matchScore = null!;
     [Export] private ClientPlayers _clientPlayers = null!;
     [Export] private ClientAdmin _clientAdmin = null!;
 
     MatchSetup IProvide<MatchSetup>.Value() => _matchSetup;
     Pings IProvide<Pings>.Value() => _pings;
     SessionWins IProvide<SessionWins>.Value() => _sessionWins;
-    MatchScore IProvide<MatchScore>.Value() => _matchScore;
     ClientPlayers IProvide<ClientPlayers>.Value() => _clientPlayers;
 
     /// <summary>For the session controller, which owns match lifecycle.</summary>

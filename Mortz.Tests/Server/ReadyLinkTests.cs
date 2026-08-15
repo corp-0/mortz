@@ -1,3 +1,4 @@
+using Mortz.Core.Match.Participation;
 using Mortz.Core.Net;
 using Mortz.Core.Net.Chat;
 using Mortz.Server;
@@ -34,6 +35,54 @@ public sealed class ReadyLinkTests
         link.Send(7, new LobbyLoadMsg(3));
 
         Assert.IsType<LobbyLoadMsg>(Assert.Single(wire.Messages).Message);
+    }
+
+    [Fact]
+    public void MatchBootstrapPassesWhileScreenTrafficWaits()
+    {
+        RecordingTransport wire = new();
+        ReadyLink link = new(wire);
+        link.BeginLoading(7, generation: 3, nowMs: 10);
+
+        link.Send(7, Message("waiting"));
+        link.Send(7, new MatchLoadMsg(
+            "arena", "hash", [], 0, 1, 0, 1,
+            MatchSeat.PLAYER, MatchActivity.ACTIVE, SpectateReason.NONE, -1,
+            [1], -1, 3));
+
+        Assert.IsType<MatchLoadMsg>(Assert.Single(wire.Messages).Message);
+    }
+
+    [Fact]
+    public void DuplicateReadyAcknowledgementDoesNothing()
+    {
+        RecordingTransport wire = new();
+        ReadyLink link = new(wire);
+        link.BeginLoading(7, generation: 3, nowMs: 10);
+        link.Send(7, Message("once"));
+
+        Assert.True(link.Ready(7, generation: 3));
+        Assert.False(link.Ready(7, generation: 3));
+
+        Assert.Equal(["once"], wire.Messages.Select(sent => ((ChatMsg)sent.Message).Text));
+    }
+
+    [Fact]
+    public void QueueOverflowDisconnectsAndDropsPendingTrafficOnce()
+    {
+        RecordingTransport wire = new();
+        ReadyLink link = new(wire);
+        link.BeginLoading(7, generation: 3, nowMs: 10);
+
+        for (int i = 0; i <= NetConfig.MAX_LOADING_MESSAGES; i++)
+        {
+            link.Send(7, Message($"message {i}"));
+        }
+        link.Send(7, Message("after overflow"));
+
+        Assert.Equal([7], wire.Disconnected);
+        Assert.Empty(wire.Messages);
+        Assert.False(link.Ready(7, generation: 3));
     }
 
     [Fact]

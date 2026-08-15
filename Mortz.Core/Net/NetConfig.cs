@@ -2,9 +2,13 @@ namespace Mortz.Core.Net;
 
 public static class NetConfig
 {
-    /// <summary>Bumped on semantic wire changes. Message shape changes are caught
-    /// automatically by NetRegistry.SCHEMA_HASH; both ride in Hello.</summary>
-    public const int PROTOCOL_VERSION = 42;
+    public const int BROADCAST_PEER_ID = 0;
+    public const int SERVER_PEER_ID = 1;
+
+    /// <summary>Version 43 intentionally rejects older clients after live snapshots
+    /// dropped mortars and lobby/session tables moved to typed rows. Message shape
+    /// changes are also caught by NetRegistry.SCHEMA_HASH; both ride in Hello.</summary>
+    public const int PROTOCOL_VERSION = 43;
 
     public const ulong PHASE_READY_TIMEOUT_MS = 30_000;
 

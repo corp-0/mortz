@@ -1,4 +1,3 @@
-using Mortz.Core.Admin;
 using Mortz.Core.Chat;
 using Mortz.Core.Net;
 using Mortz.Core.Net.Match;
@@ -15,15 +14,15 @@ namespace Mortz.Server.Match;
 public sealed class EndMatchService(
     AdminService admin,
     ChatService chat,
-    CurrentPhase phase,
-    PhaseControl control)
+    ICurrentPhase phase,
+    IPhaseTransitionRequests transitions)
     : IHandle<Player, EndMatchRequestMsg>, IObservePhase
 {
     private string? _pendingAnnounce;
 
     public void Handle(Player sender, in EndMatchRequestMsg message)
     {
-        if (!admin.Authorize(sender, message.Sequence, AdminAction.END_MATCH, [], message.Tag))
+        if (!admin.Authorize(sender, message))
             return;
         if (phase.Kind != ServerPhaseKind.MATCH)
         {
@@ -32,7 +31,7 @@ public sealed class EndMatchService(
         }
 
         _pendingAnnounce = sender.Name;
-        control.Request(PhaseRequest.RETURN_TO_LOBBY);
+        transitions.RequestReturnToLobby();
     }
 
     /// <summary>Deferred to the fresh lobby so the line lands in the lobby chats.</summary>

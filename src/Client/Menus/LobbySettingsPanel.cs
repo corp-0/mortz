@@ -1,12 +1,11 @@
-using System.Text;
 using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
 using Mortz.Client.Admin;
 using Mortz.Client.Setup;
 using Mortz.Client.Ui;
-using Mortz.Core.Admin;
 using Mortz.Core.Match.Configuration;
+using Mortz.Core.Net;
 using Mortz.Core.Net.Lobby;
 using Mortz.Shared;
 
@@ -37,6 +36,8 @@ public partial class LobbySettingsPanel : PanelContainer
     [Dependency] private ClientAdmin Admin => this.DependOn<ClientAdmin>();
 
     [Dependency] private MatchSetup Setup => this.DependOn<MatchSetup>();
+
+    [Dependency] private IClientSender Sender => this.DependOn<IClientSender>();
 
     public override void _Notification(int what) => this.Notify(what);
 
@@ -145,11 +146,11 @@ public partial class LobbySettingsPanel : PanelContainer
         if (index >= _modeIds.Count)
             return;
         string modeId = _modeIds[(int)index];
-        byte[] payload = Encoding.UTF8.GetBytes(modeId);
-        if (Admin.TrySignAdminAction(AdminAction.SET_LOBBY_MODE, payload,
+        if (Admin.TrySignAdminAction(SetLobbyModeAction.ACTION,
+                SetLobbyModeAction.SignablePayload(modeId),
                 out ulong sequence, out byte[] tag))
         {
-            new LobbyModeUpdateMsg(modeId, sequence, tag).SendToServer();
+            new LobbyModeUpdateMsg(modeId, sequence, tag).SendToServer(Sender);
         }
     }
 
@@ -158,10 +159,11 @@ public partial class LobbySettingsPanel : PanelContainer
         if (!Admin.IsAdmin)
             return;
         byte[] payload = _config.ToBytes();
-        if (Admin.TrySignAdminAction(AdminAction.SET_LOBBY_RULES, payload,
+        if (Admin.TrySignAdminAction(ReplaceLobbyRulesAction.ACTION,
+                ReplaceLobbyRulesAction.SignablePayload(payload),
                 out ulong sequence, out byte[] tag))
         {
-            new LobbyRulesUpdateMsg(payload, sequence, tag).SendToServer();
+            new LobbyRulesUpdateMsg(payload, sequence, tag).SendToServer(Sender);
         }
     }
 
@@ -176,11 +178,11 @@ public partial class LobbySettingsPanel : PanelContainer
         if (_applyingState || !Admin.IsAdmin || index < 0 || index >= _mapIds.Count)
             return;
         string mapId = _mapIds[(int)index];
-        byte[] payload = Encoding.UTF8.GetBytes(mapId);
-        if (Admin.TrySignAdminAction(AdminAction.SET_LOBBY_MAP, payload,
+        if (Admin.TrySignAdminAction(SetLobbyMapAction.ACTION,
+                SetLobbyMapAction.SignablePayload(mapId),
                 out ulong sequence, out byte[] tag))
         {
-            new LobbyMapUpdateMsg(mapId, sequence, tag).SendToServer();
+            new LobbyMapUpdateMsg(mapId, sequence, tag).SendToServer(Sender);
         }
     }
 

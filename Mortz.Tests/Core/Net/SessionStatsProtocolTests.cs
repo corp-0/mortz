@@ -5,40 +5,32 @@ using Xunit;
 
 namespace Mortz.Tests.Core.Net;
 
-/// <summary>Round trips over the loopback NetTransport, same harness as
-/// MatchProtocolTests.</summary>
-[Collection("NetTransport")]
-public class SessionStatsProtocolTests : IDisposable
+/// <summary>Round trips through the client router.</summary>
+public class SessionStatsProtocolTests
 {
-    private const int PEER = 42;
-
-    private readonly NetTransport.SendDelegate _original = NetTransport.Send;
-
-    public void Dispose() => NetTransport.Send = _original;
-
-    private static IReadOnlyList<PeerWins>? Wins(Action send)
+    private static IReadOnlyList<PeerWins>? Wins(SessionWinsMsg message)
     {
         NetRouter router = new();
         ClientProbe<SessionWinsMsg> probe = new();
         router.Add(probe);
-        NetTransport.Send = (id, payload, _, _) => Assert.True(router.Dispatch(id, payload));
-        send();
+        message.Broadcast(router);
         SessionWinsMsg received = Assert.Single(probe.Messages);
         return SessionStatsProtocol.TryDecode(received, out PeerWins[]? wins) ? wins : null;
     }
 
     [Fact]
-    public void WinsRoundTripOnBothSendPaths()
+    public void WinsRoundTrip()
     {
         PeerWins[] sent = [new PeerWins(11, 2), new PeerWins(22, 0)];
 
-        Assert.Equal(sent, Wins(() => SessionStatsProtocol.Encode(sent).Broadcast()));
-        Assert.Equal(sent, Wins(() => SessionStatsProtocol.Encode(sent).SendTo(PEER)));
+        Assert.Equal(sent, Wins(SessionStatsProtocol.Encode(sent)));
     }
 
     [Fact]
-    public void AMismatchedTableIsDropped()
+    public void TypedRowsRoundTripWithoutParallelArrayAlignment()
     {
-        Assert.Null(Wins(() => new SessionWinsMsg([1, 2], [1]).Broadcast()));
+        PeerWins[] rows = [new PeerWins(1, 2), new PeerWins(3, 4)];
+
+        Assert.Equal(rows, Wins(new SessionWinsMsg(rows)));
     }
 }

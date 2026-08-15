@@ -17,7 +17,7 @@ namespace Mortz.Net;
 
 /// <summary>Autoload owning the ENet peer: connection lifecycle, peer validation
 /// (Hello), and the envelope every generated [NetMessage] rides.</summary>
-public partial class NetworkManager : Node, INetwork
+public partial class NetworkManager : Node, INetwork, IClientSender
 {
     private static readonly ILogger _log = MortzLog.For("net");
 
@@ -68,7 +68,6 @@ public partial class NetworkManager : Node, INetwork
 
     public override void _Ready()
     {
-        NetTransport.Send = SendEnvelope;
         _fakeLagMs = CmdArgs.GetInt("--fake-lag", 0);
         if (_fakeLagMs > 0)
             _log.Information("simulating {LagMs} ms round-trip latency", _fakeLagMs);
@@ -185,10 +184,14 @@ public partial class NetworkManager : Node, INetwork
         SendEnvelopeNow(msgId, payload, target, channel);
     }
 
+    public void Send<TMsg>(in TMsg message) where TMsg : struct, INetMessage<TMsg> =>
+        SendEnvelope(TMsg.MsgId, TMsg.Serialize(in message), NetConfig.SERVER_PEER_ID,
+            TMsg.MsgChannel);
+
     private void SendEnvelopeNow(int msgId, byte[] payload, int target, NetChannel channel)
     {
         StringName endpoint = channel == NetChannel.RELIABLE ? MethodName.MsgReliable : MethodName.MsgUnreliable;
-        if (target == NetTransport.BROADCAST)
+        if (target == NetConfig.BROADCAST_PEER_ID)
         {
             foreach (int peer in _gate.ValidatedPeers)
             {
@@ -218,7 +221,7 @@ public partial class NetworkManager : Node, INetwork
                 !_gate.AllowMessage(sender, Time.GetTicksMsec(), NetAbusePolicy.EnvelopeCost(payload.Length)))
                 return;
         }
-        else if (sender != NetTransport.TO_SERVER)
+        else if (sender != NetConfig.SERVER_PEER_ID)
         {
             return;
         }

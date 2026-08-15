@@ -5,8 +5,8 @@ using Mortz.Client.Players;
 using Mortz.Client.Setup;
 using Mortz.Client.Stats;
 using Mortz.Client.Ui;
-using Mortz.Core.Match;
 using Mortz.Core.Match.Teams;
+using Mortz.Core.Net;
 using Mortz.Core.Net.Lobby;
 using Mortz.Core.Net.Roster;
 using Mortz.Net;
@@ -42,6 +42,9 @@ public partial class TeamColumnsRoster : ScrollContainer
 
     [Dependency]
     private INetwork Network => this.DependOn<INetwork>();
+
+    [Dependency]
+    private IClientSender Sender => this.DependOn<IClientSender>();
 
     public override void _Notification(int what) => this.Notify(what);
 
@@ -126,17 +129,17 @@ public partial class TeamColumnsRoster : ScrollContainer
         };
         if (incoming)
             button.Modulate = new Color("86efac"); // the READY accent
-        button.Pressed += () => new TeamSwapRequestMsg(peerId).SendToServer();
+        button.Pressed += () => new TeamSwapRequestMsg(peerId).SendToServer(Sender);
         return button;
     }
 
-    private static void AddEmptySlots(VBoxContainer column, Team team, int capacity,
+    private void AddEmptySlots(VBoxContainer column, Team team, int capacity,
         Team? localTeam)
     {
         for (int filled = column.GetChildCount(); filled < capacity; filled++)
         {
             column.AddChild(RosterSlots.BuildEmptySlot(localTeam != team,
-                () => new TeamJoinRequestMsg(TeamWire.ToByte(team)).SendToServer()));
+                () => new TeamJoinRequestMsg(TeamWire.ToByte(team)).SendToServer(Sender)));
         }
     }
 }

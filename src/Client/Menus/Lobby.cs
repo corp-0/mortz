@@ -21,6 +21,8 @@ public partial class Lobby : Control, IProvide<ClientChat>
     private bool _localReady;
     private int _generation;
 
+    [Dependency] private IClientSender Sender => this.DependOn<IClientSender>();
+
     ClientChat IProvide<ClientChat>.Value() => _chat;
 
     public override void _Notification(int what) => this.Notify(what);
@@ -30,7 +32,7 @@ public partial class Lobby : Control, IProvide<ClientChat>
     public void OnResolved()
     {
         this.Provide();
-        new PhaseReadyMsg(_generation).SendToServer();
+        new PhaseReadyMsg(_generation).SendToServer(Sender);
     }
 
     public void OnReadyPressed()

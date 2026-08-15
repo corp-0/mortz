@@ -621,7 +621,7 @@ public sealed class NetMessageGenerator : IIncrementalGenerator
         // Only client-to-server messages get a SendToServer convenience method.
         if (!toClient)
         {
-            sb.AppendLine($"    public void SendToServer() => NetTransport.Send(NetRegistry.ID_{m.Name}, Serialize(in this), NetTransport.TO_SERVER, NetChannel.{channel});");
+            sb.AppendLine("    public void SendToServer(IClientSender sender) => sender.Send(in this);");
             sb.AppendLine();
         }
         sb.AppendLine($"    public static byte[] Serialize(in {m.Name} m)");

@@ -8,7 +8,7 @@ public abstract class ServerPhase : IDisposable
 
     public abstract IReadOnlyList<object> Services { get; }
 
-    public abstract void OpenPhaseKeys(Player player);
+    public virtual void OpenPhaseKeys(Player player) { }
 
     /// <summary>Called once every roster player has this phase's state open. Joins after this use PlayerJoined instead.</summary>
     public abstract void Begin();

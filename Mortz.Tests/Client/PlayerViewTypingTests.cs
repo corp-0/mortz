@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Chickensoft.AutoInject;
 using Godot;
 using Mortz.Client.Audio;
@@ -32,7 +33,7 @@ public class PlayerViewTypingTests : NodeServiceTest
     [Fact]
     public void RemoteBalloonsFollowSessionTypingOnBothSidesOfTheSpawn()
     {
-        new TypingStateMsg(2, true).Broadcast();
+        new TypingStateMsg(2, true).Broadcast(Router);
         _manager.BeginFrame();
         _manager.Place(2, ViewState());
         _manager.Place(3, ViewState());
@@ -40,11 +41,11 @@ public class PlayerViewTypingTests : NodeServiceTest
         Assert.True(Balloon(2).Visible);
         Assert.False(Balloon(3).Visible);
 
-        new TypingStateMsg(3, true).Broadcast();
+        new TypingStateMsg(3, true).Broadcast(Router);
         _manager.Place(3, ViewState());
         Assert.True(Balloon(3).Visible);
 
-        new TypingStateMsg(3, false).Broadcast();
+        new TypingStateMsg(3, false).Broadcast(Router);
         _manager.Place(3, ViewState());
         Assert.False(Balloon(3).Visible);
     }
@@ -64,7 +65,7 @@ public class PlayerViewTypingTests : NodeServiceTest
             Assert.True(Balloon(1).Visible);
 
             ChatInputGuard.SetTyping(owner, false);
-            new TypingStateMsg(1, true).Broadcast();
+            new TypingStateMsg(1, true).Broadcast(Router);
             _manager.Place(1, ViewState());
             Assert.False(Balloon(1).Visible);
         }
@@ -75,15 +76,25 @@ public class PlayerViewTypingTests : NodeServiceTest
     }
 
     [Fact]
-    public void ReplayHidesLiveTypingState()
+    public void RendererReplayModeUsesRecordedStateAndHidesLiveTyping()
     {
-        new TypingStateMsg(2, true).Broadcast();
-        _manager.SetReplayActive(true);
+        new TypingStateMsg(2, true).Broadcast(Router);
+        MortarViewManager mortars = new();
+        RopeOverlay ropes = new();
+        MatchSceneRenderer renderer = new(_manager, mortars, ropes);
+        PresentedMatchFrame frame = new(
+            10,
+            [new PresentedPlayer(2, ViewState() with { Skin = 4 })],
+            ImmutableArray<PresentedMortar>.Empty,
+            ImmutableArray<RopeSegment>.Empty);
 
-        _manager.BeginFrame();
-        _manager.Place(2, ViewState());
+        renderer.Apply(frame, MatchRenderMode.REPLAY);
 
+        Sprite2D body = _manager.ViewForTest(2).GetNode<Sprite2D>("PlayerSprite");
+        Assert.Equal(4, body.Frame);
         Assert.False(Balloon(2).Visible);
+        mortars.Free();
+        ropes.Free();
     }
 
     private AnimatedSprite2D Balloon(int peerId) =>

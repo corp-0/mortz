@@ -1,5 +1,4 @@
 using System.Diagnostics.CodeAnalysis;
-using Mortz.Core.Match;
 using Mortz.Core.Match.Configuration;
 
 namespace Mortz.Core.Net.Lobby;
@@ -13,10 +12,8 @@ public static class LobbySettingsProtocol
         return new LobbySettingsMsg(
             selection.MapId,
             selection.MapHash,
-            selection.Maps.Options.Select(option => option.Id).ToArray(),
-            selection.Maps.Options.Select(option => option.Name).ToArray(),
-            selection.Modes.Options.Select(option => option.Id).ToArray(),
-            selection.Modes.Options.Select(option => option.Name).ToArray(),
+            [.. selection.Maps.Options],
+            [.. selection.Modes.Options],
             selection.ModeId ?? "",
             settings.Config.ToBytes());
     }
@@ -28,13 +25,13 @@ public static class LobbySettingsProtocol
         out LobbySettingsRejectReason reason)
     {
         settings = null;
-        if (!TryCatalog(message.MapIds, message.MapNames, NetConfig.MAX_LOBBY_MAPS,
+        if (!TryCatalog(message.MapOptions, NetConfig.MAX_LOBBY_MAPS,
                 out LobbyCatalog maps))
         {
             reason = LobbySettingsRejectReason.MAP_CATALOG;
             return false;
         }
-        if (!TryCatalog(message.ModeIds, message.ModeNames, NetConfig.MAX_LOBBY_MODES,
+        if (!TryCatalog(message.ModeOptions, NetConfig.MAX_LOBBY_MODES,
                 out LobbyCatalog modes))
         {
             reason = LobbySettingsRejectReason.MODE_CATALOG;
@@ -60,20 +57,18 @@ public static class LobbySettingsProtocol
         return true;
     }
 
-    private static bool TryCatalog(string[] ids, string[] names, int cap,
+    private static bool TryCatalog(ContentOption[] rows, int cap,
         out LobbyCatalog options)
     {
         options = LobbyCatalog.EMPTY;
-        if (ids.Length != names.Length || ids.Length > cap)
+        if (rows.Length > cap)
             return false;
-        ContentOption[] parsed = new ContentOption[ids.Length];
-        for (int i = 0; i < ids.Length; i++)
+        foreach (ContentOption row in rows)
         {
-            if (string.IsNullOrWhiteSpace(ids[i]) || string.IsNullOrWhiteSpace(names[i]))
+            if (string.IsNullOrWhiteSpace(row.Id) || string.IsNullOrWhiteSpace(row.Name))
                 return false;
-            parsed[i] = new ContentOption(ids[i], names[i]);
         }
-        options = new LobbyCatalog(parsed);
+        options = new LobbyCatalog(rows);
         return true;
     }
 }

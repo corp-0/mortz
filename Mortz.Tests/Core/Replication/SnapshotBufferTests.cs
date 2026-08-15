@@ -12,11 +12,11 @@ public class SnapshotBufferTests
             new ReplicatedPlayer(
                 new PlayerState { PeerId = 1, Position = new Vec2(x, 0) },
                 new PlayerPresentationState { KillingSpreeMagnitude = magnitude }),
-        ], []);
+        ]);
 
     private static MatchSnapshot Snap(
-        int tick, PlayerState[] players, MortarState[] mortars) =>
-        new(tick, [.. players.Select(player => new ReplicatedPlayer(player, default))], mortars);
+        int tick, PlayerState[] players) =>
+        new(tick, [.. players.Select(player => new ReplicatedPlayer(player, default))]);
 
     [Fact]
     public void Sample_InterpolatesBetweenBracketingSnapshots()
@@ -64,56 +64,31 @@ public class SnapshotBufferTests
     }
 
     [Fact]
-    public void Sample_InterpolatesMortarsById_AndDropsExploded()
-    {
-        SnapshotBuffer buf = new SnapshotBuffer();
-        buf.Add(Snap(10, [],
-        [
-            new MortarState { Id = 7, Position = new Vec2(100, 50) },
-            new MortarState { Id = 8, Position = new Vec2(0, 0) }, // gone by tick 12: exploded
-        ]));
-        buf.Add(Snap(12, [],
-        [
-            new MortarState { Id = 7, Position = new Vec2(120, 70) },
-            new MortarState { Id = 9, Position = new Vec2(300, 300) }, // just fired
-        ]));
-
-        InterpolatedState mid = buf.Sample(11f)!;
-        Assert.Equal(2, mid.Mortars.Count);
-        Assert.Equal(110, mid.Mortars.First(m => m.Id == 7).Position.X, 3);
-        Assert.Equal(300, mid.Mortars.First(m => m.Id == 9).Position.X, 3);
-        Assert.DoesNotContain(mid.Mortars, m => m.Id == 8);
-    }
-
-    [Fact]
     public void PlayerPresentOnlyInNewerSnapshot_UsesNewerPosition()
     {
         SnapshotBuffer buf = new SnapshotBuffer();
-        buf.Add(Snap(10, [new PlayerState { PeerId = 1, Position = new Vec2(100, 0) }], []));
+        buf.Add(Snap(10, [new PlayerState { PeerId = 1, Position = new Vec2(100, 0) }]));
         buf.Add(Snap(12,
         [
             new PlayerState { PeerId = 1, Position = new Vec2(200, 0) },
             new PlayerState { PeerId = 2, Position = new Vec2(500, 0) }, // just joined
-        ], []));
+        ]));
 
         InterpolatedState mid = buf.Sample(11f)!;
         Assert.Equal(500, mid.Players.First(p => p.PeerId == 2).Position.X, 3);
     }
 
     [Fact]
-    public void Sample_TakesSpawnImmunityAndShellSeq_FromTheNewerSnapshot()
+    public void Sample_TakesSpawnImmunityFromTheNewerSnapshot()
     {
         SnapshotBuffer buffer = new();
         buffer.Add(Snap(10,
-            [new PlayerState { PeerId = 1, SpawnImmunityTicks = 10 }],
-            [new MortarState { Id = 7, SpawnSeq = 41 }]));
+            [new PlayerState { PeerId = 1, SpawnImmunityTicks = 10 }]));
         buffer.Add(Snap(12,
-            [new PlayerState { PeerId = 1, SpawnImmunityTicks = 8 }],
-            [new MortarState { Id = 7, SpawnSeq = 41 }]));
+            [new PlayerState { PeerId = 1, SpawnImmunityTicks = 8 }]));
 
         InterpolatedState sample = buffer.Sample(11)!;
         Assert.Equal(8, Assert.Single(sample.Players).SpawnImmunityTicks);
-        Assert.Equal(41, Assert.Single(sample.Mortars).SpawnSeq);
     }
 
     [Fact]

@@ -33,20 +33,11 @@ public partial class ClientPlayers : Node,
     private static int _nextGeneration;
 
     private readonly SortedDictionary<int, ClientPlayer> _players = [];
-    private int _matchGeneration;
 
     public SessionStateKeys SessionKeys { get; } = new(++_nextGeneration);
 
-    private MatchStateKeys? _matchKeys;
     private MatchConfig? _matchConfig;
     private PlayerStats? _matchBaseStats;
-
-    /// <summary>Keys for the open match. The session controller opens a match
-    /// before mounting its scene; match cells then live until the next open or
-    /// the end of the session, because teardown is deferred (QueueFree) and
-    /// messages keep landing on dying handlers for the rest of the frame.</summary>
-    public MatchStateKeys MatchKeys =>
-        _matchKeys ?? throw new InvalidOperationException("No match is open.");
 
     /// <summary>Latest match roster broadcast, kept for the slot-id wire path
     /// (snapshots address players by slot).</summary>
@@ -78,7 +69,7 @@ public partial class ClientPlayers : Node,
     {
         if (_players.TryGetValue(peerId, out ClientPlayer? player))
             return player;
-        player = new ClientPlayer(peerId, SessionKeys, _matchKeys, _matchBaseStats);
+        player = new ClientPlayer(peerId, SessionKeys, _matchBaseStats);
         _players[peerId] = player;
         PlayerJoined?.Invoke(player);
         return player;
@@ -91,13 +82,11 @@ public partial class ClientPlayers : Node,
     public void OpenMatch(MatchConfig config)
     {
         ArgumentNullException.ThrowIfNull(config);
-        MatchStateKeys keys = new(++_matchGeneration);
-        _matchKeys = keys;
         _matchConfig = config;
         _matchBaseStats = PlayerStats.Resolve(config);
         foreach (ClientPlayer player in _players.Values)
         {
-            player.OpenMatch(keys, _matchBaseStats);
+            player.OpenMatch(_matchBaseStats);
         }
     }
 

@@ -25,16 +25,17 @@ public class BandwidthTests
             simulation.Tick,
             [.. simulation.Players.Select(player => new ReplicatedPlayer(
                 player,
-                default))],
-            simulation.Mortars);
+                default))]);
         byte[] data = snapshot.SerializeFor(localPeerId: 1);
+        byte[] fullData = snapshot.Serialize();
         RosterSnapshot roster = new([.. simulation.Players
             .Select(p => new RosterEntry(p.PeerId, $"Player {p.PeerId}",
                 p.Skin, p.Team, p.NetSlot))
         ]);
         MatchSnapshot restored = MatchSnapshot.Deserialize(data, roster);
 
-        Assert.True(data.Length < snapshot.Serialize().Length);
+        Assert.Equal(156, data.Length); // one local record, seven compact remote records
+        Assert.Equal(301, fullData.Length); // eight full records
         Assert.Equal(NetConfig.MAX_PLAYERS, restored.Players.Length);
         // Static identity values come from RosterMsg on the slot-id path.
         Assert.Equal(0, restored.Players[0].Simulation.Skin);
@@ -48,6 +49,15 @@ public class BandwidthTests
         Assert.Equal(0, restored.Players[1].Simulation.Skin);
         Assert.Equal(Vec2.Zero,
             restored.Players[1].Simulation.Velocity); // render-only remote record
+    }
+
+    [Fact]
+    public void LiveMatchSnapshot_RejectsTrailingBytes()
+    {
+        byte[] data = new MatchSnapshot(9, []).Serialize();
+
+        Assert.Throws<InvalidDataException>(() =>
+            MatchSnapshot.Deserialize([.. data, 0, 0]));
     }
 
     [Fact]

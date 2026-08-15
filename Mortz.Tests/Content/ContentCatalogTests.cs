@@ -196,6 +196,26 @@ public sealed class ContentCatalogTests : IDisposable
     }
 
     [Fact]
+    public void InvalidMapSemanticsUseTheSharedValidatorAndExcludeTheMap()
+    {
+        string pack = AddPack("Base", "base", 0);
+        string mapDirectory = AddMap(pack, "arena", "Arena");
+        File.WriteAllText(Path.Combine(mapDirectory, "map.toml"),
+            TomlModel.Write(new MapManifest { Name = "Arena", SuggestedPlayers = 0 }));
+
+        ContentCatalogResult result = ContentCatalog.Load(_root);
+
+        ContentCatalog catalog = Assert.IsType<ContentCatalog>(result.Catalog);
+        Assert.Empty(catalog.Maps);
+        ContentDiagnostic expected = Assert.Single(MapManifestValidator.Validate(
+            new MapManifest { Name = "Arena", SuggestedPlayers = 0 },
+            Path.Combine(mapDirectory, "map.toml")));
+        Assert.Contains(result.Diagnostics, diagnostic =>
+            diagnostic.Message == expected.Message &&
+            diagnostic.Severity == expected.Severity);
+    }
+
+    [Fact]
     public void MissingContentRootIsExplicit()
     {
         ContentCatalogResult result = ContentCatalog.Load(Path.Combine(_root, "missing"));

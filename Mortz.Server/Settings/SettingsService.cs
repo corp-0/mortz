@@ -7,13 +7,10 @@ using Mortz.Server.Phases;
 using Mortz.Server.Players;
 using Mortz.Server.Services;
 using Serilog;
-using Combat = Mortz.Core.Match.Configuration.Combat;
-using ModeRules = Mortz.Core.Match.Configuration.ModeRules;
-using Physics = Mortz.Core.Match.Configuration.Physics;
 
 namespace Mortz.Server.Settings;
 
-/// <summary>Lobby-owned map and rules for the next match.</summary>
+/// <summary>Server-lifetime map and rules for the next match.</summary>
 public sealed class SettingsService : IObservePlayers, IObservePhase
 {
     private sealed record ModeOption(string Id, GameModeManifest Manifest)
@@ -57,9 +54,8 @@ public sealed class SettingsService : IObservePlayers, IObservePhase
 
     public void Broadcast() => _link.Broadcast(LobbySettingsProtocol.Encode(CreateState()));
 
-    public bool TrySetRules(byte[] config, out LobbySettingDelta[] deltas)
+    public SettingsMutationResult SetRules(byte[] config)
     {
-        deltas = [];
         MatchConfig next;
         try
         {
@@ -67,50 +63,63 @@ public sealed class SettingsService : IObservePlayers, IObservePhase
         }
         catch (Exception exception) when (exception is IOException or InvalidDataException)
         {
-            return false;
+            return new SettingsMutationResult.Rejected(SettingsRejectReason.INVALID_RULES);
         }
 
-        deltas = LobbySettingsDiff.Between(Config, next);
-        Config = next;
-        return true;
+        LobbySettings before = CreateState();
+        MatchConfigSnapshot nextSnapshot = next.ToSnapshot();
+        LobbySettingDelta[] deltas = LobbySettingsDiff.Between(Config.ToSnapshot(), nextSnapshot);
+        Config = nextSnapshot.ToMutable();
+        return Applied(before, deltas);
     }
 
-    public bool TrySetMode(string modeId, out LobbySettingDelta[] deltas)
+    public SettingsMutationResult SetMode(string modeId)
     {
-        deltas = [];
         ModeOption? mode = _modes.Find(option => StringComparer.Ordinal.Equals(option.Id, modeId));
         if (mode == null)
-            return false;
+            return new SettingsMutationResult.Rejected(SettingsRejectReason.UNKNOWN_MODE);
 
+        LobbySettings before = CreateState();
         string previousMode = ModeName;
-        Config = new MatchConfig
-        {
-            Rules = ModeRules.FromBytes(mode.Manifest.Rules.ToBytes()),
-            Physics = Physics.FromBytes(mode.Manifest.Physics.ToBytes()),
-            Combat = Combat.FromBytes(mode.Manifest.Combat.ToBytes()),
-        };
+        MatchConfig next = mode.Manifest.ToMatchConfigSnapshot().ToMutable();
+        next.Clamp();
+        Config = next.ToSnapshot().ToMutable();
         string nextMode = ModeName;
-        if (previousMode != nextMode)
-            deltas = [new LobbySettingDelta("Mode", previousMode, nextMode)];
-        return true;
+        LobbySettingDelta[] deltas = previousMode == nextMode
+            ? []
+            : [new LobbySettingDelta("Mode", previousMode, nextMode)];
+        return Applied(before, deltas);
     }
 
-    public bool TrySetMap(string mapId, out LobbySettingDelta[] deltas)
+    public SettingsMutationResult SetMap(string mapId)
     {
-        deltas = [];
         if (!_maps.ContainsKey(mapId))
-            return false;
+            return new SettingsMutationResult.Rejected(SettingsRejectReason.UNKNOWN_MAP);
 
         MapSnapshot? selected = _mapSource.Load(mapId);
         if (selected == null)
         {
             _log.Warning("failed to load map '{MapId}'", mapId);
-            return false;
+            return new SettingsMutationResult.Rejected(SettingsRejectReason.MAP_LOAD_FAILED);
         }
 
-        deltas = [new LobbySettingDelta("Map", Map.DisplayName, selected.DisplayName)];
+        LobbySettings before = CreateState();
+        LobbySettingDelta[] deltas =
+            [new("Map", Map.DisplayName, selected.DisplayName)];
         Map = selected;
-        return true;
+        return Applied(before, deltas);
+    }
+
+    private SettingsMutationResult Applied(
+        LobbySettings before,
+        IReadOnlyList<LobbySettingDelta> deltas)
+    {
+        LobbySettings after = CreateState();
+        return new SettingsMutationResult.Applied(new SettingsChange(
+            before,
+            after,
+            deltas,
+            before.Config.Rules.Teams != after.Config.Rules.Teams));
     }
 
     private void LoadCatalog(ContentCatalog catalog)

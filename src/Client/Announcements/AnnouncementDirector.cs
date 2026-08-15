@@ -1,8 +1,8 @@
 using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
+using Mortz.Client.Match;
 using Mortz.Client.Players;
-using Mortz.Core.Match;
 using Mortz.Core.Match.Events;
 using Mortz.Core.Match.Scoring;
 using Mortz.Core.Match.Teams;
@@ -15,14 +15,16 @@ namespace Mortz.Client.Announcements;
 /// match-point state for late subscribers.</summary>
 [Meta(typeof(IAutoNode))]
 public partial class AnnouncementDirector : Node, IAnnouncementDirector,
-    IHandle<GameEventMsg>,
-    IHandle<MatchPointMsg>
+    IHandle<GameEventMsg>
 {
     [Dependency]
     private ClientPlayers Players => this.DependOn<ClientPlayers>();
 
     [Dependency]
     private NetRouter Router => this.DependOn<NetRouter>();
+
+    [Dependency]
+    private ClientMatchState MatchState => this.DependOn<ClientMatchState>();
 
     private readonly List<GameEventMsg> _pending = new();
 
@@ -39,12 +41,15 @@ public partial class AnnouncementDirector : Node, IAnnouncementDirector,
     {
         _routed = Router;
         _routed.Add(this);
+        MatchState.MatchPointChanged += OnMatchPointChanged;
+        OnMatchPointChanged(MatchState.MatchPoint);
     }
 
     public void OnExitTree()
     {
         _routed?.Remove(this);
         _routed = null;
+        MatchState.MatchPointChanged -= OnMatchPointChanged;
     }
 
     public override void _Process(double delta)
@@ -58,9 +63,8 @@ public partial class AnnouncementDirector : Node, IAnnouncementDirector,
 
     public void Handle(in GameEventMsg msg) => _pending.Add(msg);
 
-    public void Handle(in MatchPointMsg msg)
+    private void OnMatchPointChanged(MatchPoint? state)
     {
-        MatchPoint? state = MatchProtocol.Decode(msg);
         MatchPoint = state is MatchPoint held ? Describe(held, Players.NameOf, Players.TeamOf) : null;
         MatchPointChanged?.Invoke(MatchPoint);
     }
@@ -113,7 +117,7 @@ public partial class AnnouncementDirector : Node, IAnnouncementDirector,
     /// speaks the longer of the two magnitudes.</summary>
     private static IReadOnlyList<GameEventMsg> FoldHolyShit(IReadOnlyList<GameEventMsg> batch)
     {
-        if (!batch.Any(e => e.Kind == GameEventKind.HOLY_SHIT))
+        if (batch.All(e => e.Kind != GameEventKind.HOLY_SHIT))
             return batch;
         List<GameEventMsg> folded = new(batch.Count);
         foreach (GameEventMsg e in batch)

@@ -1,5 +1,3 @@
-using System.Text;
-using Mortz.Core.Admin;
 using Mortz.Core.Net;
 using Mortz.Core.Net.Lobby;
 using Mortz.Server.Admin;
@@ -16,7 +14,8 @@ public sealed class LobbySettingsService(
     SettingsService settings,
     AdminService admin,
     ChatService chat,
-    LobbyService lobby,
+    LobbySession lobby,
+    Action<LobbyUpdate?> applyLobbyUpdate,
     ILogger log)
     :
         IHandle<Player, LobbyRulesUpdateMsg>,
@@ -25,53 +24,58 @@ public sealed class LobbySettingsService(
 {
     public void Handle(Player sender, in LobbyRulesUpdateMsg message)
     {
-        if (!admin.Authorize(sender, message.Sequence, AdminAction.SET_LOBBY_RULES,
-                message.Config, message.Tag) ||
-            !settings.TrySetRules(message.Config, out LobbySettingDelta[] deltas))
+        if (!admin.Authorize(sender, message))
         {
-            settings.SendTo(sender.PeerId);
+            Commit(sender,
+                new SettingsMutationResult.Rejected(SettingsRejectReason.UNAUTHORIZED));
             return;
         }
 
-        settings.Broadcast();
-        log.Information("lobby rules updated by admin {PeerId}", sender.PeerId);
-        chat.AnnounceSettings(sender.Name, deltas);
-        lobby.ApplyTeamsRule(settings.Config.Rules.Teams);
+        Commit(sender, settings.SetRules(message.Config));
     }
 
     public void Handle(Player sender, in LobbyModeUpdateMsg message)
     {
-        byte[] payload = Encoding.UTF8.GetBytes(message.ModeId);
-        if (!admin.Authorize(sender, message.Sequence, AdminAction.SET_LOBBY_MODE,
-                payload, message.Tag) ||
-            !settings.TrySetMode(message.ModeId, out LobbySettingDelta[] deltas))
+        if (!admin.Authorize(sender, message))
         {
-            settings.SendTo(sender.PeerId);
+            Commit(sender,
+                new SettingsMutationResult.Rejected(SettingsRejectReason.UNAUTHORIZED));
             return;
         }
 
-        settings.Broadcast();
-        log.Information("lobby mode set to '{Mode}' by admin {PeerId}", settings.ModeName,
-            sender.PeerId);
-        chat.AnnounceSettings(sender.Name, deltas);
-        lobby.ApplyTeamsRule(settings.Config.Rules.Teams);
+        Commit(sender, settings.SetMode(message.ModeId));
     }
 
     /// <summary>No teams reseat here: a map change cannot move the Teams rule.</summary>
     public void Handle(Player sender, in LobbyMapUpdateMsg message)
     {
-        byte[] payload = Encoding.UTF8.GetBytes(message.MapId);
-        if (!admin.Authorize(sender, message.Sequence, AdminAction.SET_LOBBY_MAP,
-                payload, message.Tag) ||
-            !settings.TrySetMap(message.MapId, out LobbySettingDelta[] deltas))
+        if (!admin.Authorize(sender, message))
         {
+            Commit(sender,
+                new SettingsMutationResult.Rejected(SettingsRejectReason.UNAUTHORIZED));
+            return;
+        }
+
+        Commit(sender, settings.SetMap(message.MapId));
+    }
+
+    private void Commit(Player sender, SettingsMutationResult result)
+    {
+        if (result is SettingsMutationResult.Rejected rejected)
+        {
+            log.Information("lobby settings mutation rejected for admin {PeerId}: {Reason}",
+                sender.PeerId, rejected.Reason);
             settings.SendTo(sender.PeerId);
             return;
         }
 
+        SettingsChange change = ((SettingsMutationResult.Applied)result).Change;
         settings.Broadcast();
-        log.Information("lobby map changed to '{MapId}' by admin {PeerId}", settings.Map.MapId,
-            sender.PeerId);
-        chat.AnnounceSettings(sender.Name, deltas);
+        log.Information("lobby settings updated by admin {PeerId}: {@Change}", sender.PeerId,
+            change);
+        chat.AnnounceSettings(sender.Name, change.Deltas);
+
+        if (change.TeamsRuleChanged)
+            applyLobbyUpdate(lobby.SetTeamsEnabled(change.After.Config.Rules.Teams));
     }
 }

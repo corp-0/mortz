@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
@@ -7,7 +8,6 @@ using Mortz.Client.Spectating;
 using Mortz.Client.Views;
 using Mortz.Core.Net;
 using Mortz.Core.Net.Match;
-using Mortz.Core.Replication;
 using Mortz.Core.Sim;
 using Mortz.Net;
 
@@ -21,14 +21,11 @@ public partial class FinalKillReplay : Node, IHandle<FinalKillMsg>
     private const float IMPACT_HOLD_SECONDS = 0.12f;
     private const float REPLAY_ZOOM = 1.65f;
 
-    [Dependency]
-    private INetwork Network => this.DependOn<INetwork>();
+    [Dependency] private INetwork Network => this.DependOn<INetwork>();
 
-    [Dependency]
-    private GameMap Map => this.DependOn<GameMap>();
+    [Dependency] private GameMap Map => this.DependOn<GameMap>();
 
-    [Dependency]
-    private NetRouter Router => this.DependOn<NetRouter>();
+    [Dependency] private NetRouter Router => this.DependOn<NetRouter>();
 
     [Export] private EffectsSpawner _effects = null!;
     [Export] private RopeOverlay _ropes = null!;
@@ -47,6 +44,7 @@ public partial class FinalKillReplay : Node, IHandle<FinalKillMsg>
     private bool _impactPlayed;
     private bool _replaying;
     private bool _matchFrozen;
+    private MatchSceneRenderer? _renderer;
     private Vector2 _cameraStart;
     private Vector2 _cameraStartZoom;
     private Vector2 _cameraStartOffset;
@@ -57,6 +55,13 @@ public partial class FinalKillReplay : Node, IHandle<FinalKillMsg>
     private NetRouter? _routed;
 
     public override void _Notification(int what) => this.Notify(what);
+
+    public void Initialize(MatchSceneRenderer renderer)
+    {
+        if (!renderer.Uses(_players, _mortars, _ropes))
+            throw new InvalidOperationException("Replay must use the live match renderer.");
+        _renderer = renderer;
+    }
 
     public void OnResolved()
     {
@@ -72,29 +77,7 @@ public partial class FinalKillReplay : Node, IHandle<FinalKillMsg>
         _replayCamera.Enabled = false;
     }
 
-    public void Record(
-        float tick,
-        IReadOnlyList<ReplayPlayer> players,
-        IReadOnlyList<RenderMortar> remoteMortars,
-        IReadOnlyList<(int SpawnSeq, MortarState Shell)> predictedMortars,
-        IReadOnlyList<(Vector2 From, Vector2 To)> ropes,
-        int localId)
-    {
-        ReplayMortar[] mortars =
-        [
-            .. remoteMortars
-                .Where(mortar => mortar.OwnerId != localId || mortar.Deflected)
-                .Select(mortar => new ReplayMortar(
-                    mortar.Id,
-                    new Vector2(mortar.Position.X, mortar.Position.Y),
-                    mortar.Velocity)),
-            .. predictedMortars.Select(entry => new ReplayMortar(
-                (1L << 32) | (uint)entry.SpawnSeq,
-                new Vector2(entry.Shell.Position.X, entry.Shell.Position.Y),
-                entry.Shell.Velocity)),
-        ];
-        _history.Add(new ReplayFrame(tick, players.ToArray(), mortars, ropes.ToArray()));
-    }
+    public void Record(PresentedMatchFrame frame) => _history.Add(frame);
 
     /// <summary>Advances replay work. True means live rendering stays frozen.</summary>
     public bool ConsumeFrame(float delta)
@@ -104,6 +87,7 @@ public partial class FinalKillReplay : Node, IHandle<FinalKillMsg>
             Begin(finalKill);
             _pendingFinalKill = null;
         }
+
         if (_replaying)
             Advance(delta);
         return _matchFrozen;
@@ -136,13 +120,11 @@ public partial class FinalKillReplay : Node, IHandle<FinalKillMsg>
         _replaying = true;
         ClientClock.BeginReplay();
         _effects.BeginReplay();
-        _mortars.BeginReplay();
         Map.BeginReplayTerrain(finalKill);
 
-        ReplayFrame first = clip.Sample(clip.StartTick);
+        PresentedMatchFrame first = clip.Sample(clip.StartTick);
         CloneGameplayCamera(first, finalKill);
         _replayCamera.Enabled = true;
-        _players.SetReplayActive(true);
         Render(first, hideVictim: false);
     }
 
@@ -174,20 +156,24 @@ public partial class FinalKillReplay : Node, IHandle<FinalKillMsg>
         _impactHold = IMPACT_HOLD_SECONDS;
     }
 
-    private void Render(ReplayFrame frame, bool hideVictim)
+    private void Render(PresentedMatchFrame frame, bool hideVictim)
     {
-        _players.BeginFrame();
-        foreach (ReplayPlayer player in frame.Players)
+        if (hideVictim)
         {
-            PlayerViewState state = player.State;
-            if (hideVictim && player.PeerId == _finalKill.VictimId)
-                state = state with { RespawnTicks = 1, Health = 0 };
-            _players.Place(player.PeerId, state);
+            frame = frame with
+            {
+                Players = frame.Players.Select(player =>
+                    player.PeerId == _finalKill.VictimId
+                        ? player with
+                        {
+                            State = player.State with { RespawnTicks = 1, Health = 0 },
+                        }
+                        : player).ToImmutableArray(),
+            };
         }
-        _players.Prune();
-        _mortars.SyncReplay(frame.Mortars);
-        _ropes.Segments.Clear();
-        _ropes.Segments.AddRange(frame.Ropes);
+
+        (_renderer ?? throw new InvalidOperationException("Replay renderer was not initialized."))
+            .Apply(frame, MatchRenderMode.REPLAY);
     }
 
     private void UpdateCamera(float progress)
@@ -200,7 +186,7 @@ public partial class FinalKillReplay : Node, IHandle<FinalKillMsg>
         _replayCamera.GlobalRotation = Mathf.LerpAngle(_cameraStartRotation, 0, eased);
     }
 
-    private void CloneGameplayCamera(ReplayFrame first, FinalKillMsg finalKill)
+    private void CloneGameplayCamera(PresentedMatchFrame first, FinalKillMsg finalKill)
     {
         Camera2D? gameplayCamera = GetViewport().GetCamera2D();
         if (gameplayCamera != null && gameplayCamera != _replayCamera)
@@ -214,7 +200,15 @@ public partial class FinalKillReplay : Node, IHandle<FinalKillMsg>
         else
         {
             int localId = Network.LocalPeerId;
-            int localIndex = Array.FindIndex(first.Players, player => player.PeerId == localId);
+            int localIndex = -1;
+            for (int i = 0; i < first.Players.Length; i++)
+            {
+                if (first.Players[i].PeerId != localId)
+                    continue;
+                localIndex = i;
+                break;
+            }
+
             _replayCamera.GlobalPosition = localIndex >= 0
                 ? first.Players[localIndex].State.Feet -
                   new Vector2(0, SimConfig.PLAYER_HALF_HEIGHT)
@@ -233,7 +227,7 @@ public partial class FinalKillReplay : Node, IHandle<FinalKillMsg>
     private void FinishPlayback()
     {
         _replaying = false;
-        _mortars.EndReplay();
+        _renderer!.EndReplay();
         _effects.EndReplay();
         Map.EndReplayTerrain();
         _clip = null;

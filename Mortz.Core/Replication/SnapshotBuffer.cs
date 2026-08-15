@@ -83,25 +83,6 @@ public sealed class SnapshotBuffer
                 np.ParryTicks, np.DashCooldown, next.Presentation));
         }
 
-        // Full-snapshot path for tests and recordings; live traffic uses
-        // MortarReplicaSet. Shells matched by id like players. New this interval:
-        // rendered at the newer position. Gone from the newer snapshot: exploded,
-        // drop it (the carve event is the visual).
-        List<RenderMortar> mortars = new List<RenderMortar>();
-        foreach (MortarState nm in newer.Mortars)
-        {
-            Vec2 pos = nm.Position;
-            foreach (MortarState om in older.Mortars)
-            {
-                if (om.Id == nm.Id)
-                {
-                    pos = Vec2.Lerp(om.Position, nm.Position, t);
-                    break;
-                }
-            }
-            mortars.Add(new RenderMortar(nm.Id, nm.OwnerId, nm.Deflected, nm.SpawnSeq,
-                pos, nm.Velocity));
-        }
-        return new InterpolatedState(result, mortars);
+        return new InterpolatedState(result);
     }
 }

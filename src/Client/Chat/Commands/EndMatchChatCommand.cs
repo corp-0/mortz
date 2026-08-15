@@ -1,4 +1,3 @@
-using Mortz.Core.Admin;
 using Mortz.Core.Chat.Commands;
 using Mortz.Core.Net.Match;
 
@@ -21,13 +20,14 @@ public sealed class EndMatchChatCommand : ClientChatCommand
 
     public override void Execute(ClientCommandContext context)
     {
-        if (!context.Admin.TrySignAdminAction(AdminAction.END_MATCH, [],
+        if (!context.Admin.TrySignAdminAction(EndMatchAction.ACTION,
+                EndMatchAction.SignablePayload(),
                 out ulong sequence, out byte[] tag))
         {
             context.Chat.AddPrivate(
                 "Admin access required. Authenticate with /admin <password> in the lobby.");
             return;
         }
-        new EndMatchRequestMsg(sequence, tag).SendToServer();
+        new EndMatchRequestMsg(sequence, tag).SendToServer(context.Sender);
     }
 }

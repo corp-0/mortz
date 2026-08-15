@@ -130,19 +130,9 @@ public sealed class SimWorld(
     private void RecomputeStats(int peerId)
     {
         _stats[peerId] = StatsPipeline.Resolve(Config, _modifiers[peerId]);
-        _effective[peerId] = Compose(peerId, _situations[peerId], _zoneMasks[peerId]);
-    }
-
-    /// <summary>Persistent (sorted by id), then situations (flag order), then
-    /// zones (declaration order); the Predictor must compose identically.</summary>
-    private PlayerStats Compose(int peerId, Situations flags, ulong zoneMask)
-    {
-        if (flags == Situations.NONE && zoneMask == 0)
-            return _stats[peerId];
-        List<StatsModifier> all = new(_modifiers[peerId]);
-        SituationEffects.AppendModifiers(flags, all);
-        SituationEffects.AppendZoneModifiers(zoneMask, Zones, all);
-        return StatsPipeline.Resolve(Config, all);
+        _effective[peerId] = PlayerStatComposition.ResolveEffective(
+            Config, _modifiers[peerId], _stats[peerId],
+            _situations[peerId], _zoneMasks[peerId], Zones);
     }
 
     /// <summary>Recomputes only when the situation flips, not every tick.</summary>
@@ -154,7 +144,8 @@ public sealed class SimWorld(
         {
             _situations[id] = flags;
             _zoneMasks[id] = zoneMask;
-            _effective[id] = Compose(id, flags, zoneMask);
+            _effective[id] = PlayerStatComposition.ResolveEffective(
+                Config, _modifiers[id], _stats[id], flags, zoneMask, Zones);
         }
         return _effective[id];
     }
