@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using Mortz.Core.Match.Scoring;
 using Mortz.Core.Sim;
 using Mortz.Server.Match.Events;
+using Mortz.Server.Match.Scoring;
 
 namespace Mortz.Server.Match;
 
@@ -16,9 +17,9 @@ public class MatchUpdate
         ImmutableArray<ShellRetirement> shellRetirements,
         ImmutableArray<Death> deaths,
         ImmutableArray<ScoredKill> eliminations,
+        MatchStanding standing,
         ImmutableArray<Judgment> gameEvents,
         ImmutableArray<MatchParticipationChange> participationChanges,
-        MatchPointChange? matchPoint,
         Victor? matchEnded,
         FinalKillEvent? finalKill,
         bool returnToLobby)
@@ -30,9 +31,9 @@ public class MatchUpdate
         ShellRetirements = shellRetirements;
         Deaths = deaths;
         Eliminations = eliminations;
+        Standing = standing;
         GameEvents = gameEvents;
         ParticipationChanges = participationChanges;
-        MatchPoint = matchPoint;
         MatchEnded = matchEnded;
         FinalKill = finalKill;
         ReturnToLobby = returnToLobby;
@@ -52,11 +53,11 @@ public class MatchUpdate
 
     public ImmutableArray<ScoredKill> Eliminations { get; }
 
+    public MatchStanding Standing { get; }
+
     public ImmutableArray<Judgment> GameEvents { get; }
 
     public ImmutableArray<MatchParticipationChange> ParticipationChanges { get; }
-
-    public MatchPointChange? MatchPoint { get; }
 
     public Victor? MatchEnded { get; }
 

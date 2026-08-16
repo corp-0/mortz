@@ -87,7 +87,7 @@ public record struct PlayerState
     /// non-inferable from the ack.</summary>
     public InputButtons PrevButtons;
 
-    public readonly bool IsAlive => RespawnTicks == 0;
+    public readonly bool IsAlive => Health > 0 && RespawnTicks == 0;
 
     public readonly bool IsAtCriticalHealth(byte maxHealth) =>
         IsAlive && Health * 3 <= maxHealth;

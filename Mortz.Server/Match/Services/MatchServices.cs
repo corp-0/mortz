@@ -4,7 +4,8 @@ using Mortz.Server.Players;
 
 namespace Mortz.Server.Match.Services;
 
-/// <summary>The services whose lifetime is exactly one match.</summary>
+/// <summary>The services whose lifetime is exactly one match. Services sharing a
+/// lifecycle interface run in registration order.</summary>
 public sealed class MatchServices
 {
     private readonly IObserveMatchRoster[] _rosterObservers;
@@ -71,17 +72,23 @@ public sealed class MatchServices
 
     public static MatchServices Open(MatchRuntime runtime, MapSnapshot map, MatchDependencies dependencies)
     {
+        TerrainHistory terrainHistory = new();
         MatchReplication replication = new(
             runtime,
             dependencies.Roster,
             map,
+            terrainHistory,
             dependencies.Link,
             dependencies.Log,
             dependencies.NetStats);
 
         IMatchService[] services =
         [
+            new TerrainHistoryService(terrainHistory),
             replication,
+            new MatchPointService(dependencies.Link, dependencies.Log),
+            new MatchWinRecorder(runtime, dependencies.Wins),
+            new MatchUpdateObserver(dependencies.Observer),
             new EmptyMatchTimeout(runtime, dependencies.Clock),
         ];
         return new MatchServices(services);

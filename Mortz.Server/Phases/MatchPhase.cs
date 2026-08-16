@@ -1,5 +1,4 @@
 using Mortz.Core.Input;
-using Mortz.Core.Match.Scoring;
 using Mortz.Core.Match.Teams;
 using Mortz.Core.Sim;
 using Mortz.Server.Content;
@@ -7,7 +6,6 @@ using Mortz.Server.Diagnostics;
 using Mortz.Server.Match;
 using Mortz.Server.Match.Services;
 using Mortz.Server.Players;
-using Mortz.Server.Wins;
 using Serilog;
 
 namespace Mortz.Server.Phases;
@@ -20,10 +18,8 @@ public sealed class MatchPhase : ServerPhase
     private readonly MatchRuntime _runtime;
     private readonly MatchStateKeys _keys;
     private readonly MatchServices _services;
-    private readonly WinsService _wins;
     private readonly MapSnapshot _map;
     private readonly ILogger _log;
-    private readonly IMatchObserver _observer;
     private readonly IMatchControl _control;
     private readonly bool _allowJoinInProgress;
     private readonly IReadOnlyList<SeatAssignment> _seats;
@@ -33,10 +29,8 @@ public sealed class MatchPhase : ServerPhase
         int generation,
         MatchDependencies dependencies)
     {
-        _wins = dependencies.Wins;
         _map = dependencies.Settings.Map;
         _log = dependencies.Log;
-        _observer = dependencies.Observer;
         _control = dependencies.Control;
         _allowJoinInProgress = dependencies.AllowJoinInProgress;
         _seats = seats;
@@ -126,12 +120,6 @@ public sealed class MatchPhase : ServerPhase
         MatchUpdate update = _runtime.Advance(time);
         _control.CompleteAfter(_runtime.World);
         _services.MatchUpdated(update, time);
-        if (update.MatchEnded is Victor winner)
-        {
-            _wins.Record(_runtime.Winners(winner));
-        }
-
-        _observer.MatchAdvanced(update);
         return update.ReturnToLobby ? PhaseRequest.RETURN_TO_LOBBY : PhaseRequest.NONE;
     }
 

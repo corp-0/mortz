@@ -26,6 +26,7 @@ public class MatchReplication(
     MatchRuntime runtime,
     Roster roster,
     MapSnapshot map,
+    TerrainHistory terrainHistory,
     IServerLink link,
     ILogger log,
     bool printNetStats)
@@ -56,12 +57,6 @@ public class MatchReplication(
         int peerId = jipPlayer.PeerId;
         SendScores(peerId);
         SendLiveMortars(peerId);
-        if (runtime.ActiveMatchPoint is MatchPoint matchPoint)
-        {
-            link.Send(peerId,
-                MatchProtocol.Encode(matchPoint));
-        }
-
         if (runtime.Winner is Victor winner)
             link.Send(peerId, MatchProtocol.Encode(winner));
         if (runtime.FinalKill is FinalKillEvent finalKill)
@@ -136,12 +131,6 @@ public class MatchReplication(
                 Name(judgment.ActorId), judgment.Magnitude > 0 ? $" x{judgment.Magnitude}" : "");
             link.Broadcast(new GameEventMsg(judgment.Kind, judgment.ActorId, judgment.VictimId,
                 judgment.Magnitude, judgment.Detail));
-        }
-
-        if (update.MatchPoint is MatchPointChange change)
-        {
-            log.Information("match point {MatchPointState}", change.Held != null ? "on" : "off");
-            link.Broadcast(MatchProtocol.Encode(change.Held));
         }
 
         if (update.Tick % NetConfig.TICKS_PER_SNAPSHOT == 0 && runtime.World.Players.Count > 0)
@@ -248,7 +237,7 @@ public class MatchReplication(
     private void SendWelcome(Player jipPlayer, int generation)
     {
         int peerId = jipPlayer.PeerId;
-        TerrainSyncPayload terrain = runtime.TerrainHistory.Build(runtime.World.Terrain);
+        TerrainSyncPayload terrain = terrainHistory.Build(runtime.World.Terrain);
         if (terrain.Data.Length > NetConfig.MAX_TERRAIN_SYNC_BYTES)
             throw new InvalidDataException($"Terrain sync is too large: {terrain.Data.Length} bytes.");
         int chunkCount = Math.Max(1,
@@ -274,7 +263,7 @@ public class MatchReplication(
         log.Information(
             "terrain sync to {PeerId}: {Encoding}, {Bytes} B in {Chunks} chunk(s), {Carves} carve(s)",
             peerId, terrain.Encoding, terrain.Data.Length, chunkCount,
-            runtime.TerrainHistory.CarveCount);
+            terrainHistory.CarveCount);
     }
 
     private void SendScores(int peerId)
@@ -292,9 +281,11 @@ public class MatchReplication(
     {
         if (runtime.World.Mortars.Count == 0)
             return;
-        SimWorld.MortarEvent[] spawns = runtime.World.Mortars
-            .Select(mortar => new SimWorld.MortarEvent(SimWorld.MortarEventKind.SPAWN, mortar))
-            .ToArray();
+        SimWorld.MortarEvent[] spawns =
+        [
+            .. runtime.World.Mortars
+                .Select(mortar => new SimWorld.MortarEvent(SimWorld.MortarEventKind.SPAWN, mortar))
+        ];
         foreach (byte[] events in MortarWire.SerializeLifecycleBatches(runtime.World.Tick, spawns))
         {
             link.Send(peerId, new MortarLifecycleMsg(events));

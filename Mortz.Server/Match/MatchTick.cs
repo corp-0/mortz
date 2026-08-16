@@ -7,27 +7,20 @@ using Mortz.Server.Match.Scoring;
 namespace Mortz.Server.Match;
 
 /// <summary>Typed, write-once outputs passed between stages of one match tick.</summary>
-public class MatchTick
+public class MatchTick(MatchContext match, ServerTime time)
 {
     private readonly Output<SimulationOutput> _simulation = new(nameof(SimulationOutput));
     private readonly Output<ScoringOutput> _scoring = new(nameof(ScoringOutput));
     private readonly Output<ImmutableArray<MatchParticipationChange>> _participationChanges =
         new(nameof(ParticipationChanges));
     private readonly Output<ImmutableArray<Judgment>> _gameEvents = new(nameof(GameEvents));
-    private readonly Output<MatchPointChange?> _matchPoint = new(nameof(MatchPoint));
     private readonly Output<EndingOutput> _ending = new(nameof(EndingOutput));
     private readonly Output<bool> _returnToLobby = new(nameof(ReturnToLobby));
     private bool _completed;
 
-    public MatchTick(MatchContext match, ServerTime time)
-    {
-        Match = match;
-        Time = time;
-    }
+    public MatchContext Match { get; } = match;
 
-    public MatchContext Match { get; }
-
-    public ServerTime Time { get; }
+    public ServerTime Time { get; } = time;
 
     public IReadOnlyList<SimWorld.MortarEvent> MortarEvents => _simulation.Value.MortarEvents;
 
@@ -48,8 +41,6 @@ public class MatchTick
         _participationChanges.Value;
 
     public IReadOnlyList<Judgment> GameEvents => _gameEvents.Value;
-
-    public MatchPointChange? MatchPoint => _matchPoint.Value;
 
     public Victor? MatchEnded => _ending.Value.MatchEnded;
 
@@ -89,12 +80,6 @@ public class MatchTick
         _gameEvents.Set([.. events]);
     }
 
-    public void SetMatchPoint(MatchPointChange? change)
-    {
-        EnsureOpen();
-        _matchPoint.Set(change);
-    }
-
     public void SetEnding(Victor? winner, FinalKillEvent? finalKill)
     {
         EnsureOpen();
@@ -111,11 +96,11 @@ public class MatchTick
     {
         EnsureOpen();
         SimulationOutput simulation = _simulation.Value;
-        ImmutableArray<ScoredKill> eliminations = _scoring.Value.Eliminations;
+        ScoringOutput scoring = _scoring.Value;
+        ImmutableArray<ScoredKill> eliminations = scoring.Eliminations;
         ImmutableArray<Judgment> gameEvents = _gameEvents.Value;
         ImmutableArray<MatchParticipationChange> participationChanges =
             _participationChanges.Value;
-        MatchPointChange? matchPoint = _matchPoint.Value;
         EndingOutput ending = _ending.Value;
         bool returnToLobby = _returnToLobby.Value;
         _completed = true;
@@ -127,9 +112,9 @@ public class MatchTick
             simulation.ShellRetirements,
             simulation.Deaths,
             eliminations,
+            scoring.Standing,
             gameEvents,
             participationChanges,
-            matchPoint,
             ending.MatchEnded,
             ending.FinalKill,
             returnToLobby);

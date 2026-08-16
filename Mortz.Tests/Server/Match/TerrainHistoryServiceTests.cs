@@ -2,36 +2,35 @@ using Mortz.Core.Match.Configuration;
 using Mortz.Core.Sim;
 using Mortz.Core.Terrain;
 using Mortz.Server.Match;
+using Mortz.Server.Match.Scoring;
+using Mortz.Server.Match.Services;
 using Mortz.Server.Players;
 using Xunit;
 
 namespace Mortz.Tests.Server.Match;
 
-public class TerrainStepTests
+public class TerrainHistoryServiceTests
 {
     [Fact]
-    public void RecordsEveryExplosionFromTheSimulationOutput()
+    public void RecordsEveryExplosionFromTheMatchUpdate()
     {
         TerrainHistory history = new();
-        TerrainStep terrain = new(history);
+        TerrainHistoryService service = new(history);
         MatchTick tick = NewTick();
         tick.SetSimulationOutputs(
             [],
             [new Explosion(10, 20, 4, 1, 2), new Explosion(30, 40, 8, 3, 4)],
             [],
             []);
+        tick.SetScoring([], new MatchStanding(null, 1), null);
+        tick.SetParticipationChanges([]);
+        tick.SetGameEvents([]);
+        tick.SetEnding(null, null);
+        tick.SetReturnToLobby(false);
 
-        terrain.Advance(tick);
+        service.MatchUpdated(tick.Complete(), default);
 
         Assert.Equal(2, history.CarveCount);
-    }
-
-    [Fact]
-    public void RequiresSimulationToRunFirst()
-    {
-        TerrainStep terrain = new(new TerrainHistory());
-
-        Assert.Throws<InvalidOperationException>(() => terrain.Advance(NewTick()));
     }
 
     private static MatchTick NewTick()

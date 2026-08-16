@@ -41,13 +41,13 @@ public class MatchTickTests
         tick.SetScoring([], new MatchStanding(null, 1), null);
         tick.SetParticipationChanges([]);
         tick.SetGameEvents([]);
-        tick.SetMatchPoint(null);
         tick.SetEnding(null, null);
         tick.SetReturnToLobby(false);
 
         MatchUpdate update = tick.Complete();
 
         Assert.Equal(expected, Assert.Single(update.Explosions));
+        Assert.Equal(new MatchStanding(null, 1), update.Standing);
         Assert.Equal(new ServerTime(100, 0.5), update.Time);
         Assert.Throws<InvalidOperationException>(() => tick.SetReturnToLobby(true));
         Assert.Throws<InvalidOperationException>(() => tick.Complete());

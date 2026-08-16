@@ -20,9 +20,7 @@ public sealed class MatchRuntime : IDisposable
     private readonly ScoringStep _scoring;
     private readonly ParticipationStep _participation;
     private readonly GameEventsStep _gameEvents;
-    private readonly TerrainStep _terrain;
     private readonly EndingStep _ending;
-    private readonly MatchPointStep _matchPoint;
     private bool _disposed;
 
     public int SeatedPlayerCount => _seated.Count;
@@ -39,28 +37,22 @@ public sealed class MatchRuntime : IDisposable
         _scoring = new ScoringStep(config.Rules, keys, _seated);
         _gameEvents = new GameEventsStep(
             new GameEventJudge(keys, _seated, _scoring.TeamOf));
-        _terrain = new TerrainStep(new TerrainHistory());
         _ending = new EndingStep(victoryLapTicks);
-        _matchPoint = new MatchPointStep();
 
         // order in this array determines execution order!
         _steps =
         [
             simulation,
-            _terrain,
             _scoring,
             _participation,
             _gameEvents,
             _ending,
-            _matchPoint,
         ];
     }
 
     public MatchContext Context { get; }
 
     public SimWorld World { get; }
-
-    public TerrainHistory TerrainHistory => _terrain.History;
 
     public MatchStage Stage => Context.Stage;
 
@@ -71,9 +63,6 @@ public sealed class MatchRuntime : IDisposable
     public MatchConfig Config => World.Config;
 
     public TeamKills TeamKills => _scoring.TeamKills;
-
-    /// <summary>For catching up late joiners; live changes ride MatchUpdate.</summary>
-    public MatchPoint? ActiveMatchPoint => _matchPoint.Active;
 
     public PlayerScore ScoreOf(Player player) => _scoring.ScoreOf(player);
 
@@ -185,7 +174,6 @@ public sealed class MatchRuntime : IDisposable
         tick.SetScoring([], _scoring.Standing(), null);
         tick.SetParticipationChanges([]);
         tick.SetGameEvents([]);
-        _matchPoint.Advance(tick);
         _ending.AdvanceVictoryLap(tick);
     }
 
