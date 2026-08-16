@@ -1,0 +1,32 @@
+[gd_scene format=3 uid="uid://dwnh2f53lyhdn"]
+
+[ext_resource type="Script" uid="uid://byylps0e4tpvq" path="res://src/Client/Match/PlayerHud/ShellCounter.cs" id="1_kmmpr"]
+[ext_resource type="PackedScene" uid="uid://bcum3r2lhwax7" path="res://src/Shared/UI/Hud/ShellIcon.tscn" id="2_l8c61"]
+
+[node name="ShellCounter" type="HBoxContainer" unique_id=998023542]
+custom_maximum_size = Vector2(-1, 16)
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 32.0
+grow_horizontal = 2
+theme_override_constants/separation = 16
+script = ExtResource("1_kmmpr")
+_shellIcon = ExtResource("2_l8c61")
+_spentColor = Color(0.38928655, 0.38928664, 0.38928658, 1)
+_availableColor = Color(1, 1, 1, 1)
+metadata/_custom_type_script = "uid://byylps0e4tpvq"
+
+[node name="ShellIcon" parent="." unique_id=1318300634 instance_placeholder="res://src/Shared/UI/Hud/ShellIcon.tscn"]
+layout_mode = 2
+
+[node name="ShellIcon2" parent="." unique_id=913552390 instance_placeholder="res://src/Shared/UI/Hud/ShellIcon.tscn"]
+layout_mode = 2
+
+[node name="ShellIcon3" parent="." unique_id=2022864021 instance_placeholder="res://src/Shared/UI/Hud/ShellIcon.tscn"]
+layout_mode = 2
+
+[node name="ShellIcon4" parent="." unique_id=1141409584 instance_placeholder="res://src/Shared/UI/Hud/ShellIcon.tscn"]
+layout_mode = 2
+
+[node name="ShellIcon5" parent="." unique_id=409841465 instance_placeholder="res://src/Shared/UI/Hud/ShellIcon.tscn"]
+layout_mode = 2

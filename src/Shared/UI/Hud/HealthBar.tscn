@@ -1,0 +1,37 @@
+[gd_scene format=3 uid="uid://d2ajxvokfldtx"]
+
+[ext_resource type="Script" uid="uid://d31n47xwy00by" path="res://src/Client/Match/PlayerHud/HealthBar.cs" id="1_56ykk"]
+[ext_resource type="Texture2D" uid="uid://ofctjh2q6cq3" path="res://addons/game-icons/ffffff/transparent/1x1/skoll/hearts.svg" id="1_ngkho"]
+
+[node name="HealthBar" type="HBoxContainer" unique_id=953249354 node_paths=PackedStringArray("_healthBar")]
+custom_maximum_size = Vector2(-1, 16)
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 16.0
+grow_horizontal = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("1_56ykk")
+_emptyHealth = Color(0.37692162, 0.03967416, 0.034494877, 1)
+_halfHealth = Color(0.49293232, 0.34274668, 0.020453837, 1)
+_fullHealth = Color(0.0966394, 0.38128147, 0.15384364, 1)
+_healthBar = NodePath("HBoxContainer/ProgressBar")
+metadata/_custom_type_script = "uid://d31n47xwy00by"
+
+[node name="HBoxContainer" type="HBoxContainer" parent="." unique_id=298598669]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="HeartIcon" type="TextureRect" parent="HBoxContainer" unique_id=1680360182]
+custom_maximum_size = Vector2(16, 16)
+layout_mode = 2
+texture = ExtResource("1_ngkho")
+
+[node name="ProgressBar" type="ProgressBar" parent="HBoxContainer" unique_id=2077768451]
+custom_maximum_size = Vector2(-1, 16)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 1
+value = 90.0

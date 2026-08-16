@@ -3,6 +3,7 @@ using Chickensoft.Introspection;
 using Godot;
 using Mortz.Client.Announcements;
 using Mortz.Client.Chat;
+using Mortz.Client.Match.PlayerHud;
 using Mortz.Client.Players;
 using Mortz.Client.Replay;
 using Mortz.Client.Spectating;

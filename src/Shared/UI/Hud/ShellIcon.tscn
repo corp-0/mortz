@@ -1,0 +1,19 @@
+[gd_scene format=3 uid="uid://bcum3r2lhwax7"]
+
+[ext_resource type="Texture2D" uid="uid://cudbxkwoybswa" path="res://addons/game-icons/ffffff/transparent/1x1/delapouite/bullet-bill.svg" id="1_60ad0"]
+
+[node name="ShellIcon" type="Control" unique_id=913552390]
+custom_maximum_size = Vector2(16, 16)
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="Icon" type="TextureRect" parent="." unique_id=1318300634]
+custom_maximum_size = Vector2(16, 16)
+layout_mode = 0
+offset_top = 16.0
+offset_right = 16.0
+offset_bottom = 32.0
+rotation = -1.5707964
+texture = ExtResource("1_60ad0")

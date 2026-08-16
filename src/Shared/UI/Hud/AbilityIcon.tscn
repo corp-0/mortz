@@ -1,0 +1,103 @@
+[gd_scene format=3 uid="uid://dmt4q1q5ddhyt"]
+
+[ext_resource type="Script" uid="uid://csw8ia86wlpgd" path="res://src/Client/Match/PlayerHud/AbilityIcon.cs" id="1_mglo0"]
+[ext_resource type="Texture2D" uid="uid://cvclryfq7sqhn" path="res://addons/game-icons/ffffff/transparent/1x1/delapouite/plain-circle.svg" id="2_k4au6"]
+[ext_resource type="Texture2D" uid="uid://ia8qd7b6gmsb" path="res://addons/game-icons/ffffff/transparent/1x1/delapouite/propeller-beanie.svg" id="2_mglo0"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_mglo0"]
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
+bg_color = Color(0.08468992, 0.08468994, 0.08468988, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.08468992, 0.08468994, 0.08468988, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+anti_aliasing = false
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_5pyjr"]
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
+bg_color = Color(1, 1, 1, 0)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+anti_aliasing = false
+
+[node name="AbilityIcon" type="Panel" unique_id=1925833887 node_paths=PackedStringArray("_icon", "_cooldown", "_border")]
+clip_children = 2
+custom_minimum_size = Vector2(32, 32)
+custom_maximum_size = Vector2(32, 32)
+clip_contents = true
+offset_right = 32.0
+offset_bottom = 32.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_mglo0")
+script = ExtResource("1_mglo0")
+_borderAvailable = Color(1, 1, 1, 1)
+_borderUnavailable = Color(0.2666667, 0.2745098, 0.2980392, 1)
+_active = Color(0.3019608, 0.8509804, 1, 1)
+Icon = ExtResource("2_mglo0")
+_icon = NodePath("CenterContainer/Icon")
+_cooldown = NodePath("ProgressBar")
+_border = NodePath("Border")
+metadata/_custom_type_script = "uid://csw8ia86wlpgd"
+
+[node name="CenterContainer" type="CenterContainer" parent="." unique_id=2099952832]
+custom_maximum_size = Vector2(32, 32)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Icon" type="TextureRect" parent="CenterContainer" unique_id=151543811]
+custom_maximum_size = Vector2(26, 26)
+layout_mode = 2
+mouse_filter = 2
+texture = ExtResource("2_mglo0")
+
+[node name="ProgressBar" type="TextureProgressBar" parent="." unique_id=345326962]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+offset_transform_enabled = true
+offset_transform_scale = Vector2(1.5, 1.5)
+mouse_filter = 2
+max_value = 1.0
+step = 0.001
+value = 0.5
+fill_mode = 4
+radial_initial_angle = 270.0
+nine_patch_stretch = true
+texture_progress = ExtResource("2_k4au6")
+tint_progress = Color(0.05882353, 0.07058824, 0.09803922, 0.78039217)
+
+[node name="Border" type="Panel" parent="." unique_id=132251172]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_5pyjr")

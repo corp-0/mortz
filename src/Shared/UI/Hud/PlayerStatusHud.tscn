@@ -1,9 +1,43 @@
-[gd_scene format=3 uid="uid://dbenqcrci8x3w"]
+[gd_scene format=3 uid="uid://deqqno8148ut7"]
 
-[ext_resource type="Script" uid="uid://bgioe7kfejn27" path="res://src/Client/Match/PlayerStatusHud.cs" id="1_status"]
-[ext_resource type="Script" uid="uid://bmyqbmcpf8of4" path="res://src/Client/Match/ShellRow.cs" id="2_shells"]
+[ext_resource type="Script" uid="uid://bgioe7kfejn27" path="res://src/Client/Match/PlayerHud/PlayerStatusHud.cs" id="1_5bgnw"]
+[ext_resource type="PackedScene" uid="uid://dwnh2f53lyhdn" path="res://src/Shared/UI/Hud/ShellCounter.tscn" id="3_ydria"]
+[ext_resource type="PackedScene" uid="uid://d2ajxvokfldtx" path="res://src/Shared/UI/Hud/HealthBar.tscn" id="3_yq8ke"]
+[ext_resource type="PackedScene" uid="uid://cp33jfr5yx3lf" path="res://src/Shared/UI/Hud/AbilityIcon.tscn" id="4_ydria"]
+[ext_resource type="Texture2D" uid="uid://dvv1uxmehsvag" path="res://addons/game-icons/ffffff/transparent/1x1/lorc/shield-reflect.svg" id="5_rumg4"]
+[ext_resource type="Texture2D" uid="uid://cqlltx6od8p6e" path="res://addons/game-icons/ffffff/transparent/1x1/delapouite/rope-dart.svg" id="6_40kel"]
 
-[node name="PlayerStatusHud" type="Control" unique_id=217297512 node_paths=PackedStringArray("_healthLabel", "_shells", "_damageFlash")]
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ydria"]
+bg_color = Color(0.00043676668, 0.00043676668, 0.00043676668, 0.57254905)
+skew = Vector2(0.2, 0)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_40kel"]
+bg_color = Color(0.08468992, 0.08468994, 0.08468988, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xy4yy"]
+bg_color = Color(0.08468992, 0.08468994, 0.08468988, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[node name="PlayerStatusHud" type="Control" unique_id=1497648685 node_paths=PackedStringArray("_healthBar", "_shells", "_parry", "_rope", "_damageFlash")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -11,34 +45,82 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-script = ExtResource("1_status")
-_healthLabel = NodePath("Corner/HealthLabel")
-_shells = NodePath("Corner/Shells")
+script = ExtResource("1_5bgnw")
+_healthBar = NodePath("PanelContainer/MarginContainer/HBoxContainer/HpAndShells/HealthBar")
+_shells = NodePath("PanelContainer/MarginContainer/HBoxContainer/HpAndShells/ShellCounter")
+_parry = NodePath("PanelContainer/MarginContainer/HBoxContainer/Abilities/Row/Parry")
+_rope = NodePath("PanelContainer/MarginContainer/HBoxContainer/Abilities/Row/Rope")
 _damageFlash = NodePath("DamageFlash")
+metadata/_custom_type_script = "uid://bgioe7kfejn27"
+metadata/_edit_vertical_guides_ = [640.0]
+metadata/_edit_horizontal_guides_ = [624.0]
 
 [node name="DamageFlash" type="ColorRect" parent="." unique_id=1627692645]
-layout_mode = 0
+layout_mode = 1
+anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 mouse_filter = 2
 color = Color(1, 0, 0, 0)
 
-[node name="Corner" type="HBoxContainer" parent="." unique_id=365974948]
-layout_mode = 0
+[node name="PanelContainer" type="PanelContainer" parent="." unique_id=1822032411]
+custom_maximum_size = Vector2(525, 64)
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
 anchor_top = 1.0
+anchor_right = 0.5
 anchor_bottom = 1.0
-offset_left = 12.0
-offset_top = -44.0
-offset_right = 360.0
-offset_bottom = -12.0
-theme_override_constants/separation = 12
+offset_left = -320.0
+offset_top = -95.0
+offset_right = 320.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_ydria")
 
-[node name="HealthLabel" type="Label" parent="Corner" unique_id=1802223846]
+[node name="MarginContainer" type="MarginContainer" parent="PanelContainer" unique_id=1644450111]
 layout_mode = 2
-theme_override_font_sizes/font_size = 28
-text = "100"
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 5
 
-[node name="Shells" type="Control" parent="Corner" unique_id=1654770270]
+[node name="HBoxContainer" type="HBoxContainer" parent="PanelContainer/MarginContainer" unique_id=1555500615]
 layout_mode = 2
-size_flags_vertical = 4
-script = ExtResource("2_shells")
+
+[node name="HpAndShells" type="VBoxContainer" parent="PanelContainer/MarginContainer/HBoxContainer" unique_id=216298972]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 16
+
+[node name="HealthBar" parent="PanelContainer/MarginContainer/HBoxContainer/HpAndShells" unique_id=1273915921 instance=ExtResource("3_yq8ke")]
+layout_mode = 2
+
+[node name="ShellCounter" parent="PanelContainer/MarginContainer/HBoxContainer/HpAndShells" unique_id=998023542 instance=ExtResource("3_ydria")]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Abilities" type="VBoxContainer" parent="PanelContainer/MarginContainer/HBoxContainer" unique_id=1936071448]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.5
+theme_override_constants/separation = 4
+alignment = 1
+
+[node name="Row" type="HBoxContainer" parent="PanelContainer/MarginContainer/HBoxContainer/Abilities" unique_id=1285336008]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="Parry" parent="PanelContainer/MarginContainer/HBoxContainer/Abilities/Row" unique_id=1925833887 instance=ExtResource("4_ydria")]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_40kel")
+Icon = ExtResource("5_rumg4")
+
+[node name="Rope" parent="PanelContainer/MarginContainer/HBoxContainer/Abilities/Row" unique_id=1261067927 instance=ExtResource("4_ydria")]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_xy4yy")
+Icon = ExtResource("6_40kel")

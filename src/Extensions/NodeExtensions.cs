@@ -76,4 +76,12 @@ public static class NodeExtensions
 
         return null;
     }
+
+    public static void KillDescendants(this Node node)
+    {
+        foreach (Node child in node.GetChildren())
+        {
+            child.QueueFree();
+        }
+    }
 }
