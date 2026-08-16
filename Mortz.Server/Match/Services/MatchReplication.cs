@@ -18,7 +18,7 @@ using Mortz.Server.Services;
 using Serilog;
 using ModeRules = Mortz.Core.Match.Configuration.ModeRules;
 
-namespace Mortz.Server.Match;
+namespace Mortz.Server.Match.Services;
 
 /// <summary>Turns match state into the wire protocol: transfer ids, replication
 /// cadence, payload accounting, and late-join sync.</summary>
@@ -29,7 +29,11 @@ public class MatchReplication(
     IServerLink link,
     ILogger log,
     bool printNetStats)
-    : ISyncJip
+    : IObserveMatchRoster,
+        IEnterMatch,
+        IObserveMatchInput,
+        IObserveMatchUpdate,
+        ISyncJip
 {
     private readonly ILogger _statsLog = log.ForContext("Area", "stats");
     private long _snapshotPayloadBytes;
@@ -57,13 +61,14 @@ public class MatchReplication(
             link.Send(peerId,
                 MatchProtocol.Encode(matchPoint));
         }
+
         if (runtime.Winner is Victor winner)
             link.Send(peerId, MatchProtocol.Encode(winner));
         if (runtime.FinalKill is FinalKillEvent finalKill)
             link.Send(peerId, ToMessage(finalKill));
     }
 
-    public void BroadcastRoster()
+    public void RosterChanged()
     {
         List<RosterEntry> entries = [];
         foreach (Player player in roster)
@@ -73,6 +78,7 @@ public class MatchReplication(
             entries.Add(new RosterEntry(player.PeerId, player.Name,
                 state.Skin, state.Team, state.NetSlot));
         }
+
         link.Broadcast(new RosterMsg([.. entries]));
         foreach (RosterEntry entry in entries)
         {
@@ -81,7 +87,7 @@ public class MatchReplication(
         }
     }
 
-    public void Publish(in MatchUpdate update, ServerTime time)
+    public void MatchUpdated(in MatchUpdate update, ServerTime time)
     {
         // Tick is frozen during VictoryLap; skip periodic snapshot/correction broadcasts.
         if (runtime.Stage == MatchStage.VICTORY_LAP && update.MatchEnded == null)
@@ -98,10 +104,12 @@ public class MatchReplication(
             log.Information("mortar exploded at ({X},{Y})", explosion.X, explosion.Y);
             BroadcastCarve(explosion);
         }
+
         foreach (ShellRetirement retirement in update.ShellRetirements)
         {
             link.Send(retirement.FiredBy, new ShellRetireMsg(retirement.SpawnSeq));
         }
+
         foreach (Death death in update.Deaths)
         {
             log.Information("player {PeerId} gibbed at ({X},{Y}){Owned:l}", death.PeerId,
@@ -109,16 +117,19 @@ public class MatchReplication(
             link.Broadcast(new DeathMsg(death.PeerId, PackCoordinate((int)death.Position.X),
                 PackCoordinate((int)death.Position.Y)));
         }
+
         foreach (MatchParticipationChange participationChange in update.ParticipationChanges)
         {
             MatchParticipation state = participationChange.State;
             link.Send(participationChange.PeerId, new MatchParticipationMsg(
                 state.Seat, state.Activity, state.Reason, state.ReturnTick));
         }
+
         foreach (ScoredKill elimination in update.Eliminations)
         {
             BroadcastElimination(elimination, runtime.Config.Rules);
         }
+
         foreach (Judgment judgment in update.GameEvents)
         {
             log.Information("game event {Kind} by {Actor}{Magnitude:l}", judgment.Kind,
@@ -126,6 +137,7 @@ public class MatchReplication(
             link.Broadcast(new GameEventMsg(judgment.Kind, judgment.ActorId, judgment.VictimId,
                 judgment.Magnitude, judgment.Detail));
         }
+
         if (update.MatchPoint is MatchPointChange change)
         {
             log.Information("match point {MatchPointState}", change.Held != null ? "on" : "off");
@@ -146,7 +158,7 @@ public class MatchReplication(
         }
     }
 
-    public void RecordInputPayload(int bytes) => _inputPayloadBytes += bytes;
+    public void InputReceived(int payloadBytes) => _inputPayloadBytes += payloadBytes;
 
     private void BroadcastMortarEvents(int tick, IReadOnlyList<SimWorld.MortarEvent> mortarEvents,
         int playerCount)
@@ -258,6 +270,7 @@ public class MatchReplication(
             byte[] chunk = terrain.Data.AsSpan(offset, Math.Max(0, length)).ToArray();
             link.Send(peerId, new TerrainChunkMsg(transferId, (short)i, (short)chunkCount, chunk));
         }
+
         log.Information(
             "terrain sync to {PeerId}: {Encoding}, {Bytes} B in {Chunks} chunk(s), {Carves} carve(s)",
             peerId, terrain.Encoding, terrain.Data.Length, chunkCount,

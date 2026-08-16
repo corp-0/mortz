@@ -25,6 +25,8 @@ public sealed class MatchRuntime : IDisposable
     private readonly MatchPointStep _matchPoint;
     private bool _disposed;
 
+    public int SeatedPlayerCount => _seated.Count;
+
     public MatchRuntime(TerrainMask terrain, MatchConfig config, int victoryLapTicks,
         MatchStateKeys keys, IReadOnlyList<SpawnPoint>? spawnPoints = null,
         MapZones? zones = null)
@@ -88,6 +90,7 @@ public sealed class MatchRuntime : IDisposable
             team = lobbyTeam ?? Teams.Smallest(
                 World.Players.Values.Select(member => member.Team));
         }
+
         World.AddPlayer(player.PeerId, team, player.Skin);
         _seated[player.PeerId] = player;
         _scoring.Seat(player, team);
@@ -147,6 +150,7 @@ public sealed class MatchRuntime : IDisposable
         {
             step.Advance(tick);
         }
+
         return tick.Complete();
     }
 
@@ -171,6 +175,7 @@ public sealed class MatchRuntime : IDisposable
         {
             return;
         }
+
         _disposed = true;
     }
 

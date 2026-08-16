@@ -109,8 +109,11 @@ public class GameServerPhaseTests : IDisposable
         // match screen to hear it; the unicast after the terrain is theirs.
         string[] trace = _server.Link.Trace();
         int lastChunk = Array.LastIndexOf(trace, "9:TerrainChunkMsg");
-        int[] modifiers = [.. Enumerable.Range(0, trace.Length)
-            .Where(index => trace[index] == "9:PlayerModifiersMsg")];
+        int[] modifiers =
+        [
+            .. Enumerable.Range(0, trace.Length)
+                .Where(index => trace[index] == "9:PlayerModifiersMsg")
+        ];
         Assert.Equal(3, modifiers.Length);
         Assert.True(lastChunk >= 0 && modifiers.All(index => index > lastChunk),
             $"modifiers must follow the terrain sync, got {string.Join(", ", trace)}");
@@ -194,6 +197,73 @@ public class GameServerPhaseTests : IDisposable
     }
 
     [Fact]
+    public void AnEmptyRunningMatchReturnsToTheLobbyAfterTenSeconds()
+    {
+        Seat(7, 8);
+        _server.Tick(1_000);
+
+        _server.Server.Disconnect(7);
+        _server.Server.Disconnect(8);
+
+        _server.Tick(10_999);
+        Assert.Equal(ServerPhaseKind.MATCH, _server.Server.Phase);
+
+        _server.Tick(11_000);
+        Assert.Equal(ServerPhaseKind.LOBBY, _server.Server.Phase);
+    }
+
+    [Fact]
+    public void AJoinInProgressSpectatorDoesNotCancelTheEmptyMatchTimeout()
+    {
+        using TestServer server = new(allowJoinInProgress: false);
+        Seat(server, 7);
+        server.Tick(1_000);
+
+        server.Server.Disconnect(7);
+        server.Tick(5_000);
+        server.Connect(8, "spectator");
+
+        server.Tick(10_999);
+        Assert.Equal(ServerPhaseKind.MATCH, server.Server.Phase);
+
+        server.Tick(11_000);
+        Assert.Equal(ServerPhaseKind.LOBBY, server.Server.Phase);
+        Assert.Equal(1, server.Server.PlayerCount);
+    }
+
+    [Fact]
+    public void ASeatedJoinerRestartsTheEmptyMatchTimeout()
+    {
+        Seat(7);
+        _server.Tick(1_000);
+        _server.Server.Disconnect(7);
+
+        _server.Tick(5_000);
+        _server.Connect(8, "bob");
+        _server.Server.Disconnect(8);
+
+        _server.Tick(14_999);
+        Assert.Equal(ServerPhaseKind.MATCH, _server.Server.Phase);
+
+        _server.Tick(15_000);
+        Assert.Equal(ServerPhaseKind.LOBBY, _server.Server.Phase);
+    }
+
+    [Fact]
+    public void ASeatedJoinerCancelsTheEmptyMatchTimeoutWhileConnected()
+    {
+        Seat(7);
+        _server.Tick(1_000);
+        _server.Server.Disconnect(7);
+
+        _server.Tick(5_000);
+        _server.Connect(8, "bob");
+
+        _server.Tick(11_000);
+        Assert.Equal(ServerPhaseKind.MATCH, _server.Server.Phase);
+    }
+
+    [Fact]
     public void AMatchLeaverIsDroppedFromTheMatchRoster()
     {
         Seat(7, 8);
@@ -218,6 +288,7 @@ public class GameServerPhaseTests : IDisposable
         {
             server.Connect(peerId, $"player{peerId}");
         }
+
         foreach (int peerId in peerIds)
         {
             server.Receive(peerId, new SetReadyMsg(true));

@@ -22,7 +22,6 @@ public sealed class GameServer : IDisposable, IHandle<Player, PhaseReadyMsg>
     private readonly ReadyLink _link;
     private readonly ILogger _log;
     private readonly IMatchObserver _matchObserver;
-    private readonly IMatchControl _matchControl;
     private readonly ServerClock _clock;
     private readonly PhaseTransitionCoordinator _host;
     private readonly Roster _roster;
@@ -32,7 +31,7 @@ public sealed class GameServer : IDisposable, IHandle<Player, PhaseReadyMsg>
     private readonly SettingsService _settings;
     private readonly AdminService _admin;
     private readonly ChatService _chat;
-    private readonly WinsService _wins;
+    private readonly MatchDependencies _matchDependencies;
 
     private IObservePlayers[] _observePlayers = [];
     private IObservePhase[] _observePhase = [];
@@ -48,7 +47,6 @@ public sealed class GameServer : IDisposable, IHandle<Player, PhaseReadyMsg>
         _link = new ReadyLink(transport);
         _log = log;
         _matchObserver = observer;
-        _matchControl = control;
 
         _host = new PhaseTransitionCoordinator(generation: 1);
         var slots = new ServerStateKeys(_host.Generation);
@@ -59,10 +57,23 @@ public sealed class GameServer : IDisposable, IHandle<Player, PhaseReadyMsg>
         _admin = new AdminService(slots, _link, _clock, _host, log, boot.AdminPassword);
         _chat = new ChatService(slots, _link, _clock, new Random(boot.Seed));
         TypingService typing = new(slots, _link);
-        _wins = new WinsService(slots, _roster, _link, log);
+        WinsService wins = new(slots, _roster, _link, log);
         PingService pings = new(_link);
         EndMatchService endMatch = new(_admin, _chat, _host, _host);
-        _services = [_settings, _admin, _chat, typing, _wins, pings, endMatch];
+        _services = [_settings, _admin, _chat, typing, wins, pings, endMatch];
+        _matchDependencies = new MatchDependencies
+        {
+            Settings = _settings,
+            Wins = wins,
+            Roster = _roster,
+            Link = _link,
+            Log = _log,
+            Observer = _matchObserver,
+            Control = control,
+            Clock = _clock,
+            NetStats = _boot.NetStats,
+            AllowJoinInProgress = _boot.AllowJoinInProgress,
+        };
 
         _host.OpenInitial(LobbyPhase.Open(
             _roster, _settings, _admin, _chat, _link, log, _host));
@@ -82,6 +93,7 @@ public sealed class GameServer : IDisposable, IHandle<Player, PhaseReadyMsg>
         {
             _observePlayers[i].PlayerJoined(player);
         }
+
         _host.PlayerJoined(player);
         _matchObserver.PlayerJoined(player, _host.Kind);
         Execute(_host.Load(player));
@@ -99,6 +111,7 @@ public sealed class GameServer : IDisposable, IHandle<Player, PhaseReadyMsg>
         {
             _observePlayers[i].PlayerLeft(player);
         }
+
         _matchObserver.PlayerLeft(player, _host.Kind);
         player.Close(_host.Kind);
         Execute(_host.PlayerDisconnected(peerId, _roster.Count));
@@ -165,6 +178,7 @@ public sealed class GameServer : IDisposable, IHandle<Player, PhaseReadyMsg>
         {
             player.Close(_host.Kind);
         }
+
         _host.Dispose();
         DisposeReverse(_services);
     }
@@ -172,9 +186,7 @@ public sealed class GameServer : IDisposable, IHandle<Player, PhaseReadyMsg>
     private void StartMatch(IReadOnlyList<SeatAssignment> seats)
     {
         _log.Information("all {Players} player(s) ready, starting match", seats.Count);
-        EnterPhase(MatchPhase.Open(seats,
-            _settings, _wins, _roster, _link, _log, _boot.NetStats, _host.NextGeneration,
-            _matchObserver, _matchControl, _boot.AllowJoinInProgress));
+        EnterPhase(MatchPhase.Open(seats, _host.NextGeneration, _matchDependencies));
     }
 
     private void ReturnToLobby()
@@ -185,6 +197,7 @@ public sealed class GameServer : IDisposable, IHandle<Player, PhaseReadyMsg>
         {
             player.CloseMatch();
         }
+
         _log.Information("back to lobby ({Players} player(s))", _roster.Count);
         EnterPhase(LobbyPhase.Open(_roster, _settings, _admin, _chat, _link, _log, _host));
     }
@@ -198,6 +211,7 @@ public sealed class GameServer : IDisposable, IHandle<Player, PhaseReadyMsg>
         {
             _link.BeginLoading(player.PeerId, generation, _clock.Ms);
         }
+
         IReadOnlyList<PhaseHostAction> loads = _host.TransitionTo(next, players);
         Recompose();
         Execute(loads);
@@ -205,6 +219,7 @@ public sealed class GameServer : IDisposable, IHandle<Player, PhaseReadyMsg>
         {
             _observePhase[i].PhaseChanged(next.Kind);
         }
+
         _matchObserver.PhaseChanged(next.Kind);
     }
 
@@ -225,6 +240,7 @@ public sealed class GameServer : IDisposable, IHandle<Player, PhaseReadyMsg>
                 {
                     _syncJip[i].Sync(sync.Player);
                 }
+
                 break;
             case PhaseHostAction.SendMatchStart start:
                 _link.Send(start.Player.PeerId, new MatchStartMsg(start.Generation));
@@ -264,6 +280,7 @@ public sealed class GameServer : IDisposable, IHandle<Player, PhaseReadyMsg>
         {
             _router.Add(service);
         }
+
         _log.Information("{Routes}", _router.Describe());
     }
 
