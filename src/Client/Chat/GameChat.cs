@@ -160,7 +160,8 @@ public partial class GameChat : Control
     {
         _input.Clear();
         Chat.Submit(text);
-        Close();
+        if (IsInsideTree())
+            Close();
     }
 
     private void OnFocusEntered()

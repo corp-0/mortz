@@ -56,7 +56,8 @@ public partial class LobbyChat : PanelContainer
     {
         _input.Clear();
         Chat.Submit(text);
-        _input.GrabFocus();
+        if (_input.IsInsideTree())
+            _input.GrabFocus();
     }
 
     private void OnFocusEntered() => ChatInputGuard.SetTyping(this, true);
