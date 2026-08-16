@@ -12,6 +12,7 @@ using Mortz.Net;
 using Mortz.Shared;
 using Mortz.Shared.Logging;
 using Serilog;
+using CryptoRandom = System.Security.Cryptography.RandomNumberGenerator;
 #if TOOLS
 using Mortz.Shared.E2E;
 #endif
@@ -47,6 +48,7 @@ public partial class ClientSessionController : Node, ISessionExit,
     private Lobby? _lobby;
     private MainMenu? _menu;
     private MapEditorScreen? _mapEditor;
+    private string? _pendingLocalAdminPassword;
     private bool _spawnedLocalServer;
     private bool _subscribed;
 
@@ -93,11 +95,15 @@ public partial class ClientSessionController : Node, ISessionExit,
     public void OnHostRequested(int port, string playerName, string adminPassword,
         string serverName, int skin = 0, bool allowJoinInProgress = true)
     {
-        if (!ServerLauncher.Spawn(port, adminPassword, serverName, allowJoinInProgress))
+        string localAdminPassword = adminPassword.Length > 0
+            ? adminPassword
+            : Convert.ToHexString(CryptoRandom.GetBytes(32));
+        if (!ServerLauncher.Spawn(port, localAdminPassword, serverName, allowJoinInProgress))
         {
             _menu?.SetStatus("Failed to start local server.");
             return;
         }
+        _pendingLocalAdminPassword = localAdminPassword;
         _spawnedLocalServer = true;
         StartConnecting("127.0.0.1", port, playerName, skin);
     }
@@ -299,6 +305,7 @@ public partial class ClientSessionController : Node, ISessionExit,
         DisposeLobby();
         DisposeConnectedSession();
         _pendingMatch = null;
+        _pendingLocalAdminPassword = null;
         _session.ReturnToMenu();
         CreateMenu(autoStartIntro: true);
         _menu!.ShowHome();
@@ -397,6 +404,11 @@ public partial class ClientSessionController : Node, ISessionExit,
         _lobby.Initialize(generation);
         _lobby.ReadyToggled += OnReadyToggled;
         connectedSession.AddChild(_lobby);
+        if (_pendingLocalAdminPassword is string password)
+        {
+            _pendingLocalAdminPassword = null;
+            connectedSession.Admin.BeginAuthentication(password);
+        }
     }
 
     private void DisposeLobby()

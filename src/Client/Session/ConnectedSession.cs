@@ -31,6 +31,10 @@ public partial class ConnectedSession : Node,
 
     /// <summary>For the session controller, which owns match lifecycle.</summary>
     public ClientPlayers Players => _clientPlayers;
+
+    /// <summary>For authenticating the player who launched a local server.</summary>
+    public ClientAdmin Admin => _clientAdmin;
+
     ClientAdmin IProvide<ClientAdmin>.Value() => _clientAdmin;
 
     public override void _Notification(int what) => this.Notify(what);
