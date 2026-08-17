@@ -1,10 +1,18 @@
 name = "brt garden"
 suggested_players = 2
-
 [[spawn_points]]
-x = 426
-y = 360
-
+x = 78
+y = 604
+team = "blue"
 [[spawn_points]]
-x = 853
-y = 104
+x = 171
+y = 603
+team = "blue"
+[[spawn_points]]
+x = 1092
+y = 591
+team = "red"
+[[spawn_points]]
+x = 1187
+y = 591
+team = "red"

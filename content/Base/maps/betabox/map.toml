@@ -1,10 +1,18 @@
 name = "Beta Box DE"
 suggested_players = 2
-
 [[spawn_points]]
-x = 426
-y = 112
-
+x = 89
+y = 282
+team = "blue"
 [[spawn_points]]
-x = 853
-y = 112
+x = 1199
+y = 480
+team = "red"
+[[spawn_points]]
+x = 135
+y = 281
+team = "blue"
+[[spawn_points]]
+x = 1231
+y = 479
+team = "red"

@@ -1,10 +1,10 @@
 name = "X Arena"
 suggested_players = 2
-
 [[spawn_points]]
-x = 426
-y = 740
-
+x = 32
+y = 236
+team = "blue"
 [[spawn_points]]
-x = 853
-y = 740
+x = 1248
+y = 236
+team = "red"

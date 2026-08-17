@@ -1,10 +1,26 @@
 name = "Duel"
 suggested_players = 2
-
 [[spawn_points]]
-x = 426
-y = 704
-
+x = 101
+y = 559
+team = "blue"
 [[spawn_points]]
-x = 853
-y = 704
+x = 1204
+y = 560
+team = "red"
+[[spawn_points]]
+x = 288
+y = 340
+team = "blue"
+[[spawn_points]]
+x = 992
+y = 340
+team = "red"
+[[spawn_points]]
+x = 216
+y = 679
+team = "blue"
+[[spawn_points]]
+x = 1064
+y = 679
+team = "red"
