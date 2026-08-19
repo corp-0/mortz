@@ -7,7 +7,8 @@ namespace Mortz.Shared;
 
 public sealed record MapPackageLoadResult(
     MapPackage? Package,
-    IReadOnlyList<ContentDiagnostic> Diagnostics)
+    IReadOnlyList<ContentDiagnostic> Diagnostics,
+    MapSourceSnapshot? Source = null)
 {
     public bool HasErrors => Diagnostics.Any(d => d.Severity == ContentDiagnosticSeverity.ERROR);
 }
@@ -66,7 +67,7 @@ public static class MapPackageLoader
             Solid = solid,
             Destructible = destructible,
             InitialTerrain = initialTerrain,
-        }, diagnostics);
+        }, diagnostics, source);
     }
 
     private static Image? DecodePng(ReadOnlyMemory<byte> bytes, string fileName,

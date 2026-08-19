@@ -9,18 +9,32 @@ namespace Mortz.Tests.Client.MapEditor;
 public sealed class MapEditorCompositionTests
 {
     [Fact]
-    public void ScreenContainsFlowEditorAndBothHuds()
+    public void ScreenContainsFlowAndBothSeparateHuds()
     {
         MapEditorScreen screen = Instantiate<MapEditorScreen>(
             "res://src/Shared/Scenes/MapEditor/MapEditor.tscn");
 
-        Assert.IsType<Mortz.Client.MapEditor.MapEditorFlow>(screen.GetNode("Flow"));
-        Assert.IsType<Mortz.Client.MapEditor.MapEditor>(screen.GetNode("Editor"));
+        Assert.IsType<MapEditorFlow>(screen.GetNode("Flow"));
+        Assert.DoesNotContain(screen.GetChildren(), child => child.Name == "Editor");
         Assert.IsType<MapEditorFlowHud>(screen.GetNode("Hud/MapEditorFlowHud"));
         Assert.IsType<MapEditorHud>(screen.GetNode("Hud/MapEditorHud"));
         Assert.True(screen.GetNode<Control>("Hud/MapEditorFlowHud").Visible);
         Assert.False(screen.GetNode<Control>("Hud/MapEditorHud").Visible);
         screen.Free();
+    }
+
+    [Fact]
+    public void ScreenOwnsWorkspaceAndStoreWhileHudOwnsNeither()
+    {
+        FieldInfo[] screenFields = typeof(MapEditorScreen).GetFields(
+            BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+        FieldInfo[] hudFields = typeof(MapEditorHud).GetFields(
+            BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+
+        Assert.Contains(screenFields, field => field.FieldType == typeof(MapEditorWorkspace));
+        Assert.Contains(screenFields, field => field.FieldType == typeof(IMapEditorStore));
+        Assert.DoesNotContain(hudFields, field => field.FieldType == typeof(MapEditorWorkspace));
+        Assert.DoesNotContain(hudFields, field => field.FieldType == typeof(IMapEditorStore));
     }
 
     [Theory]
