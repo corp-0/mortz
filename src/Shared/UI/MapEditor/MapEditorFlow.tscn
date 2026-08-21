@@ -88,7 +88,7 @@ theme_override_constants/separation = 6
 [node name="Empty" type="Label" parent="PackScreen/Margin/Column/Scroll/Rows" unique_id=161419938]
 custom_minimum_size = Vector2(0, 120)
 layout_mode = 2
-text = "No content packs yet. Create one to start making maps."
+text = "No content packs yet. Create one to organize your maps."
 horizontal_alignment = 1
 vertical_alignment = 1
 
@@ -144,7 +144,7 @@ text = "MAPS"
 [node name="Hint" type="Label" parent="MapScreen/Margin/Column" unique_id=2016621897]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.72, 0.72, 0.75, 1)
-text = "Choose a map, or create a blank one."
+text = "Choose a map or create one."
 
 [node name="Scroll" type="ScrollContainer" parent="MapScreen/Margin/Column" unique_id=755275848]
 layout_mode = 2
@@ -159,7 +159,7 @@ theme_override_constants/separation = 6
 [node name="Empty" type="Label" parent="MapScreen/Margin/Column/Scroll/Rows" unique_id=2028845276]
 custom_minimum_size = Vector2(0, 120)
 layout_mode = 2
-text = "This content pack has no maps yet. Create its first map."
+text = "No maps yet. Create one."
 horizontal_alignment = 1
 vertical_alignment = 1
 
@@ -218,7 +218,7 @@ placeholder_text = "My maps"
 
 [node name="IdLabel" type="Label" parent="CreatePackDialog/Fields" unique_id=1654173861]
 layout_mode = 2
-text = "Pack ID"
+text = "Unique ID"
 
 [node name="Id" type="LineEdit" parent="CreatePackDialog/Fields" unique_id=1881728982]
 layout_mode = 2
@@ -227,7 +227,7 @@ placeholder_text = "com.example.my-maps"
 [node name="IdHint" type="Label" parent="CreatePackDialog/Fields" unique_id=1759742349]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.72, 0.72, 0.75, 1)
-text = "Use a reverse-domain ID. It cannot be changed later."
+text = "Use an ID like com.example.my-maps. You can't change it later."
 
 [node name="CreateMapDialog" type="ConfirmationDialog" parent="." unique_id=1284616874]
 title = "Create map"
@@ -259,7 +259,7 @@ placeholder_text = "my-arena"
 
 [node name="DimensionsLabel" type="Label" parent="CreateMapDialog/Fields" unique_id=902197369]
 layout_mode = 2
-text = "Canvas size"
+text = "Map size"
 
 [node name="Dimensions" type="HBoxContainer" parent="CreateMapDialog/Fields" unique_id=699064024]
 layout_mode = 2
@@ -285,7 +285,7 @@ suffix = " px high"
 
 [node name="PlayersLabel" type="Label" parent="CreateMapDialog/Fields" unique_id=313174941]
 layout_mode = 2
-text = "Suggested players"
+text = "Recommended players"
 
 [node name="SuggestedPlayers" type="SpinBox" parent="CreateMapDialog/Fields" unique_id=1724986236]
 layout_mode = 2
@@ -297,7 +297,7 @@ rounded = true
 [node name="BlankHint" type="Label" parent="CreateMapDialog/Fields" unique_id=1022614684]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.72, 0.72, 0.75, 1)
-text = "The new map starts blank. Add each layer image in the editor."
+text = "The new map starts blank and ready to draw."
 
 [connection signal="pressed" from="PackScreen/Margin/Column/Actions/Create" to="." method="OnCreatePackPressed"]
 [connection signal="pressed" from="PackScreen/Margin/Column/Actions/Back" to="." method="OnPackBackPressed"]

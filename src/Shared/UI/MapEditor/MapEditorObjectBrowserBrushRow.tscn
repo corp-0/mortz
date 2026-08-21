@@ -1,0 +1,67 @@
+[gd_scene format=3 uid="uid://ccl6y7mxt1njt"]
+
+[ext_resource type="Script" uid="uid://ctt23swuasx0y" path="res://src/Client/MapEditor/MapEditorObjectBrowserBrushRow.cs" id="1_h437g"]
+
+[node name="BrushRow" type="VBoxContainer" unique_id=1513619370 node_paths=PackedStringArray("_select", "_visibility", "_order", "_lower", "_raise", "_details")]
+offset_right = 320.0
+offset_bottom = 72.0
+size_flags_horizontal = 3
+theme_override_constants/separation = 3
+script = ExtResource("1_h437g")
+_select = NodePath("Primary/Select")
+_visibility = NodePath("Primary/Visibility")
+_order = NodePath("Primary/Order")
+_lower = NodePath("Primary/Order/Lower")
+_raise = NodePath("Primary/Order/Raise")
+_details = NodePath("Details")
+
+[node name="Primary" type="HBoxContainer" parent="." unique_id=1092881401]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Select" type="Button" parent="Primary" unique_id=502934012]
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Rectangle · 1 of 1"
+accessibility_name = "Select brush Wall"
+toggle_mode = true
+text = "Wall"
+alignment = 0
+
+[node name="Visibility" type="CheckButton" parent="Primary" unique_id=459341447]
+custom_minimum_size = Vector2(30, 30)
+layout_mode = 2
+tooltip_text = "Hide Wall in the editor and saved map"
+accessibility_name = "Toggle visibility of Wall"
+button_pressed = true
+flat = true
+
+[node name="Order" type="HBoxContainer" parent="Primary" unique_id=1919097270]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="Lower" type="Button" parent="Primary/Order" unique_id=589128586]
+custom_minimum_size = Vector2(30, 30)
+layout_mode = 2
+size_flags_horizontal = 8
+tooltip_text = "Move Wall down. It will be drawn earlier."
+accessibility_name = "Move Wall down in the object list"
+text = "↓"
+flat = true
+
+[node name="Raise" type="Button" parent="Primary/Order" unique_id=871166154]
+custom_minimum_size = Vector2(30, 30)
+layout_mode = 2
+size_flags_horizontal = 8
+tooltip_text = "Move Wall up. It will be drawn later."
+accessibility_name = "Move Wall up in the object list"
+text = "↑"
+flat = true
+
+[node name="Details" type="Label" parent="." unique_id=2119323573]
+modulate = Color(0.62, 0.67, 0.74, 1)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Rectangle · Texture ready · 1/1"
+autowrap_mode = 3

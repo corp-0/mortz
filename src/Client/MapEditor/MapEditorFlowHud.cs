@@ -116,12 +116,13 @@ public partial class MapEditorFlowHud : Control
         _packScreen.Hide();
         _mapScreen.Show();
         _mapTitle.Text = pack.Definition.Manifest.Name;
-        _mapHint.Text = $"Choose a map from {pack.Definition.Manifest.Id}, or create a blank one.";
+        _mapHint.Text = $"Choose a map from {pack.Definition.Manifest.Id}, or create one.";
         Rebuild(_mapRows, maps.Count, index => Flow.SelectMap(index), index =>
         {
             MapChoice map = maps[index];
             int players = map.Definition.Manifest.SuggestedPlayers;
-            return $"{map.Definition.Manifest.Name}\n{map.Definition.Id} - {players} suggested players";
+            string playerCount = players == 1 ? "1 player" : $"{players} players";
+            return $"{map.Definition.Manifest.Name}\n{map.Definition.Id} - {playerCount}";
         });
         _mapEmpty.Visible = maps.Count == 0;
     }

@@ -1,0 +1,107 @@
+[gd_scene format=3 uid="uid://cuvp0mk5cu5lg"]
+
+[ext_resource type="Script" uid="uid://bbkv3mnm7ay1o" path="res://src/Client/MapEditor/MapEditorObjectBrowser.cs" id="1_1fe7e"]
+[ext_resource type="PackedScene" uid="uid://ccl6y7mxt1njt" path="res://src/Shared/UI/MapEditor/MapEditorObjectBrowserBrushRow.tscn" id="2_ruhvg"]
+[ext_resource type="PackedScene" uid="uid://c1eashgiqvbth" path="res://src/Shared/UI/MapEditor/MapEditorObjectBrowserItemRow.tscn" id="3_cpl5q"]
+[ext_resource type="PackedScene" uid="uid://dj6ubr8ry7t1w" path="res://src/Shared/UI/MapEditor/MapEditorObjectBrowserLayer.tscn" id="4_f8jl0"]
+
+[node name="ObjectBrowser" type="VBoxContainer" unique_id=2145259449 node_paths=PackedStringArray("_initializationWarning", "_initializationDetail", "_initializationButton", "_backgroundLayer", "_backgroundSeparator", "_solidLayer", "_solidSeparator", "_destructibleLayer", "_zonesVisibility", "_zonesEmpty", "_spawnsVisibility", "_spawnsEmpty")]
+offset_right = 320.0
+offset_bottom = 600.0
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+script = ExtResource("1_1fe7e")
+_initializationWarning = NodePath("BrushInitializationWarning")
+_initializationDetail = NodePath("RasterOnlyDetail")
+_initializationButton = NodePath("InitializeBrushLayers")
+_backgroundLayer = NodePath("LayerBACKGROUND")
+_backgroundSeparator = NodePath("BackgroundSeparator")
+_solidLayer = NodePath("LayerSOLID")
+_solidSeparator = NodePath("SolidSeparator")
+_destructibleLayer = NodePath("LayerDESTRUCTIBLE")
+_zonesVisibility = NodePath("ZonesVisibility")
+_zonesEmpty = NodePath("ZonesEmpty")
+_spawnsVisibility = NodePath("SpawnsVisibility")
+_spawnsEmpty = NodePath("SpawnsEmpty")
+_brushRowScene = ExtResource("2_ruhvg")
+_itemRowScene = ExtResource("3_cpl5q")
+
+[node name="BrushInitializationWarning" type="Label" parent="." unique_id=65488568]
+visible = false
+layout_mode = 2
+text = "This map's layers aren't editable yet."
+autowrap_mode = 3
+
+[node name="RasterOnlyDetail" type="Label" parent="." unique_id=654590596]
+visible = false
+modulate = Color(0.62, 0.67, 0.74, 1)
+layout_mode = 2
+text = "Enable editing to draw new shapes. Existing images will stay as a reference."
+autowrap_mode = 3
+
+[node name="InitializeBrushLayers" type="Button" parent="." unique_id=740086568]
+visible = false
+layout_mode = 2
+tooltip_text = "Start with empty editable layers. Existing images won't become editable."
+accessibility_name = "Enable layer editing"
+text = "Enable editing"
+
+[node name="LayerBACKGROUND" parent="." unique_id=1379590161 instance=ExtResource("4_f8jl0")]
+layout_mode = 2
+
+[node name="BackgroundSeparator" type="HSeparator" parent="." unique_id=230649510]
+layout_mode = 2
+
+[node name="LayerSOLID" parent="." unique_id=623795366 instance=ExtResource("4_f8jl0")]
+layout_mode = 2
+
+[node name="SolidSeparator" type="HSeparator" parent="." unique_id=142178018]
+layout_mode = 2
+
+[node name="LayerDESTRUCTIBLE" parent="." unique_id=1762247315 instance=ExtResource("4_f8jl0")]
+layout_mode = 2
+
+[node name="ZonesVisibility" type="CheckButton" parent="." unique_id=238946680]
+visible = false
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Show or hide zones. This doesn't change the map."
+accessibility_name = "Zones visibility"
+theme_override_colors/font_color = Color(0.9, 0.92, 0.96, 1)
+button_pressed = true
+text = "Zones: Shown"
+
+[node name="ZonesEmpty" type="Label" parent="." unique_id=288087511]
+visible = false
+modulate = Color(0.62, 0.67, 0.74, 1)
+layout_mode = 2
+text = "No zones yet. Choose a shape above to add one."
+autowrap_mode = 3
+
+[node name="ZonePreview" parent="." unique_id=699397042 instance=ExtResource("3_cpl5q")]
+visible = false
+layout_mode = 2
+
+[node name="SpawnsVisibility" type="CheckButton" parent="." unique_id=660381592]
+visible = false
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Show or hide spawn points. This doesn't change the map."
+accessibility_name = "Spawns visibility"
+theme_override_colors/font_color = Color(0.9, 0.92, 0.96, 1)
+button_pressed = true
+text = "Spawns: Shown"
+
+[node name="SpawnsEmpty" type="Label" parent="." unique_id=1322663969]
+visible = false
+modulate = Color(0.62, 0.67, 0.74, 1)
+layout_mode = 2
+text = "No spawn points yet. Choose Spawn above to add one."
+autowrap_mode = 3
+
+[node name="SpawnPreview" parent="." unique_id=882179552 instance=ExtResource("3_cpl5q")]
+visible = false
+layout_mode = 2
+text = "Spawn 1 · Any team · (20, 24)"

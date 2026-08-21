@@ -1,0 +1,11 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/Client/MapEditor/MapEditorStampDock.cs" id="1_8yi21"]
+[ext_resource type="PackedScene" path="res://src/Shared/UI/MapEditor/MapEditorStampLibrary.tscn" id="2_ij7ea"]
+
+[node name="StampDock" type="ScrollContainer" unique_id=1938447199]
+custom_minimum_size = Vector2(600, 184)
+horizontal_scroll_mode = 2
+vertical_scroll_mode = 0
+script = ExtResource("1_8yi21")
+_libraryScene = ExtResource("2_ij7ea")

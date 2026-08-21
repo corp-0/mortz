@@ -1,38 +1,38 @@
-[gd_scene format=3 uid="uid://d3jzoneeffectscene"]
+[gd_scene format=3 uid="uid://cvbvnrldvpr6u"]
 
-[ext_resource type="Script" uid="uid://d3jzoneeffectrow" path="res://src/Client/MapEditor/ZoneEffectRow.cs" id="1_row"]
+[ext_resource type="Script" uid="uid://cpnvcs15c0ubu" path="res://src/Client/MapEditor/ZoneEffectRow.cs" id="1_row"]
 
-[node name="ZoneEffectRow" type="VBoxContainer" node_paths=PackedStringArray("_stat", "_op", "_value")]
+[node name="ZoneEffectRow" type="VBoxContainer" unique_id=2134151803 node_paths=PackedStringArray("_stat", "_op", "_value")]
 theme_override_constants/separation = 5
 script = ExtResource("1_row")
 _stat = NodePath("StatRow/Stat")
 _op = NodePath("ValueRow/Op")
 _value = NodePath("ValueRow/Value")
 
-[node name="StatRow" type="HBoxContainer" parent="."]
+[node name="StatRow" type="HBoxContainer" parent="." unique_id=713801761]
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="Stat" type="OptionButton" parent="StatRow"]
+[node name="Stat" type="OptionButton" parent="StatRow" unique_id=1021600409]
 layout_mode = 2
 size_flags_horizontal = 3
 fit_to_longest_item = false
 
-[node name="Remove" type="Button" parent="StatRow"]
+[node name="Remove" type="Button" parent="StatRow" unique_id=437518299]
 custom_minimum_size = Vector2(72, 0)
 layout_mode = 2
 text = "Remove"
 
-[node name="ValueRow" type="HBoxContainer" parent="."]
+[node name="ValueRow" type="HBoxContainer" parent="." unique_id=170558887]
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="Op" type="OptionButton" parent="ValueRow"]
+[node name="Op" type="OptionButton" parent="ValueRow" unique_id=1573726402]
 custom_minimum_size = Vector2(112, 0)
 layout_mode = 2
 fit_to_longest_item = false
 
-[node name="Value" type="SpinBox" parent="ValueRow"]
+[node name="Value" type="SpinBox" parent="ValueRow" unique_id=1817112049]
 layout_mode = 2
 size_flags_horizontal = 3
 min_value = -100000.0
@@ -42,7 +42,7 @@ value = 1.0
 allow_greater = true
 allow_lesser = true
 
-[node name="Separator" type="HSeparator" parent="."]
+[node name="Separator" type="HSeparator" parent="." unique_id=1380532772]
 layout_mode = 2
 
 [connection signal="pressed" from="StatRow/Remove" to="." method="OnRemovePressed"]

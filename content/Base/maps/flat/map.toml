@@ -1,54 +1,48 @@
 name = "Flat"
 suggested_players = 8
-
 [[spawn_points]]
 x = 128
 y = 656
-
 [[spawn_points]]
 x = 274
 y = 656
-
 [[spawn_points]]
 x = 420
 y = 656
-
 [[spawn_points]]
 x = 566
 y = 656
-
 [[spawn_points]]
 x = 714
 y = 656
-
 [[spawn_points]]
 x = 860
 y = 656
-
 [[spawn_points]]
 x = 1006
 y = 656
-
 [[spawn_points]]
 x = 1152
 y = 656
-
 [[zones]]
 name = "space"
 tags = ["space"]
-shape = { type = "rect", x = 440, y = 0, width = 400, height = 560 }
-
+[zones.shape]
+type = "rect"
+x = 440
+y = 0
+width = 400
+height = 560
+rotation = 0.0
 [[zones.effects]]
 stat = "gravity"
 op = "mul"
-value = -1
-
+value = -1.0
 [[zones.effects]]
 stat = "mortar_gravity"
 op = "mul"
-value = -1
-
+value = -1.0
 [[zones.effects]]
 stat = "total_jumps"
 op = "add"
-value = 2
+value = 2.0

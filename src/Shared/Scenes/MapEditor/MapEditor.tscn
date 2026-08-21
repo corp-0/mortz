@@ -1,22 +1,22 @@
-[gd_scene load_steps=5 format=3 uid="uid://d3jmapeditorscreen"]
+[gd_scene format=3 uid="uid://c5kp5htpp8cfd"]
 
 [ext_resource type="Script" uid="uid://bl5js2wxao6wm" path="res://src/Client/MapEditor/MapEditorScreen.cs" id="1_screen"]
-[ext_resource type="PackedScene" uid="uid://d3jmapeditorscene" path="res://src/Shared/UI/MapEditor/MapEditor.tscn" id="3_hud"]
-[ext_resource type="Script" path="res://src/Client/MapEditor/MapEditorFlow.cs" id="4_flow"]
-[ext_resource type="PackedScene" uid="uid://d3jmapeditorflowhud" path="res://src/Shared/UI/MapEditor/MapEditorFlow.tscn" id="5_flow_hud"]
+[ext_resource type="PackedScene" uid="uid://cmgp4xl7q0v3k" path="res://src/Shared/UI/MapEditor/MapEditor.tscn" id="3_hud"]
+[ext_resource type="Script" uid="uid://8pnpto4rivjs" path="res://src/Client/MapEditor/MapEditorFlow.cs" id="4_flow"]
+[ext_resource type="PackedScene" uid="uid://bxjeqfdo1sml8" path="res://src/Shared/UI/MapEditor/MapEditorFlow.tscn" id="5_flow_hud"]
 
-[node name="MapEditor" type="Node2D" node_paths=PackedStringArray("_flow", "_flowHud", "_editorHud")]
+[node name="MapEditor" type="Node2D" unique_id=1963896194 node_paths=PackedStringArray("_flow", "_flowHud", "_editorHud")]
 script = ExtResource("1_screen")
 _flow = NodePath("Flow")
 _flowHud = NodePath("Hud/MapEditorFlowHud")
 _editorHud = NodePath("Hud/MapEditorHud")
 
-[node name="Flow" type="Node" parent="."]
+[node name="Flow" type="Node" parent="." unique_id=30356727]
 script = ExtResource("4_flow")
 
-[node name="Hud" type="CanvasLayer" parent="."]
+[node name="Hud" type="CanvasLayer" parent="." unique_id=1402779844]
 
-[node name="MapEditorFlowHud" parent="Hud" instance=ExtResource("5_flow_hud")]
+[node name="MapEditorFlowHud" parent="Hud" unique_id=1485863144 instance=ExtResource("5_flow_hud")]
 
-[node name="MapEditorHud" parent="Hud" instance=ExtResource("3_hud")]
+[node name="MapEditorHud" parent="Hud" unique_id=1164176460 instance=ExtResource("3_hud")]
 visible = false

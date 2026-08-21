@@ -1,37 +1,43 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://bkbbv8vmb0s10"]
 
-[ext_resource type="Script" path="res://src/Client/Ui/VictoryRulesSheet.cs" id="1_sheet"]
+[ext_resource type="Script" uid="uid://s32ifsnoltsr" path="res://src/Client/Ui/VictoryRulesSheet.cs" id="1_sheet"]
 [ext_resource type="PackedScene" uid="uid://pbne52ymu80j" path="res://src/Shared/UI/Controls/UiPropertySheet.tscn" id="2_properties"]
 
-[node name="VictoryRulesSheet" type="VBoxContainer" node_paths=PackedStringArray("_variant", "_properties")]
+[node name="VictoryRulesSheet" type="VBoxContainer" unique_id=529084953 node_paths=PackedStringArray("_variant", "_properties")]
 theme_override_constants/separation = 7
 script = ExtResource("1_sheet")
 _variant = NodePath("Variant/Value")
 _properties = NodePath("Properties")
 
-[node name="Heading" type="Label" parent="."]
+[node name="Heading" type="Label" parent="." unique_id=1575485970]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.796078, 0.835294, 0.882353, 1)
 theme_override_font_sizes/font_size = 18
 text = "Victory"
 
-[node name="Separator" type="HSeparator" parent="."]
+[node name="Separator" type="HSeparator" parent="." unique_id=958400881]
 layout_mode = 2
 
-[node name="Variant" type="HBoxContainer" parent="."]
+[node name="Variant" type="HBoxContainer" parent="." unique_id=543611745]
 custom_minimum_size = Vector2(0, 34)
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="Label" type="Label" parent="Variant"]
+[node name="Label" type="Label" parent="Variant" unique_id=1851709228]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Win Condition"
 vertical_alignment = 1
 
-[node name="Value" type="OptionButton" parent="Variant"]
+[node name="Value" type="OptionButton" parent="Variant" unique_id=860994235]
 custom_minimum_size = Vector2(190, 0)
 layout_mode = 2
+selected = 0
+item_count = 2
+popup/item_0/text = "Kills"
+popup/item_0/id = 0
+popup/item_1/text = "Kill Lead"
+popup/item_1/id = 1
 
-[node name="Properties" parent="." instance=ExtResource("2_properties")]
+[node name="Properties" parent="." unique_id=2001500915 instance=ExtResource("2_properties")]
 layout_mode = 2

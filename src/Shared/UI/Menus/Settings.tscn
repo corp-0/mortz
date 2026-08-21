@@ -68,46 +68,46 @@ layout_mode = 2
 placeholder_text = "The name other players see"
 max_length = 24
 
-[node name="SkinLabel" type="Label" parent="Center/Panel/Margin/Column"]
+[node name="SkinLabel" type="Label" parent="Center/Panel/Margin/Column" unique_id=629366485]
 layout_mode = 2
 text = "Player skin"
 
-[node name="SkinPicker" type="HBoxContainer" parent="Center/Panel/Margin/Column"]
+[node name="SkinPicker" type="HBoxContainer" parent="Center/Panel/Margin/Column" unique_id=1330907984]
 layout_mode = 2
 theme_override_constants/separation = 18
 alignment = 1
 
-[node name="Previous" type="Button" parent="Center/Panel/Margin/Column/SkinPicker"]
+[node name="Previous" type="Button" parent="Center/Panel/Margin/Column/SkinPicker" unique_id=315331798]
 custom_minimum_size = Vector2(64, 64)
 layout_mode = 2
 theme_override_font_sizes/font_size = 30
 text = "<"
 
-[node name="PreviewPanel" type="PanelContainer" parent="Center/Panel/Margin/Column/SkinPicker"]
+[node name="PreviewPanel" type="PanelContainer" parent="Center/Panel/Margin/Column/SkinPicker" unique_id=1480250889]
 custom_minimum_size = Vector2(184, 184)
 layout_mode = 2
 
-[node name="PreviewMargin" type="MarginContainer" parent="Center/Panel/Margin/Column/SkinPicker/PreviewPanel"]
+[node name="PreviewMargin" type="MarginContainer" parent="Center/Panel/Margin/Column/SkinPicker/PreviewPanel" unique_id=412624248]
 layout_mode = 2
 theme_override_constants/margin_left = 12
 theme_override_constants/margin_top = 12
 theme_override_constants/margin_right = 12
 theme_override_constants/margin_bottom = 12
 
-[node name="SkinPreview" type="TextureRect" parent="Center/Panel/Margin/Column/SkinPicker/PreviewPanel/PreviewMargin"]
+[node name="SkinPreview" type="TextureRect" parent="Center/Panel/Margin/Column/SkinPicker/PreviewPanel/PreviewMargin" unique_id=892470063]
 texture_filter = 1
 custom_minimum_size = Vector2(160, 160)
 layout_mode = 2
 expand_mode = 1
 stretch_mode = 5
 
-[node name="Next" type="Button" parent="Center/Panel/Margin/Column/SkinPicker"]
+[node name="Next" type="Button" parent="Center/Panel/Margin/Column/SkinPicker" unique_id=266940892]
 custom_minimum_size = Vector2(64, 64)
 layout_mode = 2
 theme_override_font_sizes/font_size = 30
 text = ">"
 
-[node name="SkinPosition" type="Label" parent="Center/Panel/Margin/Column"]
+[node name="SkinPosition" type="Label" parent="Center/Panel/Margin/Column" unique_id=1082779715]
 layout_mode = 2
 text = "1 / 25"
 horizontal_alignment = 1
@@ -134,7 +134,7 @@ custom_minimum_size = Vector2(0, 42)
 layout_mode = 2
 text = "Back"
 
-[connection signal="pressed" from="Center/Panel/Margin/Column/SaveButton" to="." method="OnSavePressed"]
-[connection signal="pressed" from="Center/Panel/Margin/Column/BackButton" to="." method="OnBackPressed"]
 [connection signal="pressed" from="Center/Panel/Margin/Column/SkinPicker/Previous" to="." method="OnPreviousSkinPressed"]
 [connection signal="pressed" from="Center/Panel/Margin/Column/SkinPicker/Next" to="." method="OnNextSkinPressed"]
+[connection signal="pressed" from="Center/Panel/Margin/Column/SaveButton" to="." method="OnSavePressed"]
+[connection signal="pressed" from="Center/Panel/Margin/Column/BackButton" to="." method="OnBackPressed"]

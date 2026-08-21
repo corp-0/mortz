@@ -1,0 +1,111 @@
+[gd_scene format=3 uid="uid://c8vybs2nmi3d4"]
+
+[ext_resource type="Script" uid="uid://dy5pksx3c323p" path="res://src/Client/MapEditor/MapEditorSpawnInspector.cs" id="1_h0x1j"]
+[ext_resource type="Theme" uid="uid://cmgp4xl7r5v2k" path="res://src/Shared/UI/MapEditor/MapEditorTheme.tres" id="3_theme"]
+[ext_resource type="PackedScene" uid="uid://47j7m8k2w77e" path="res://src/Shared/UI/MapEditor/MapEditorInspectorField.tscn" id="4_field"]
+
+[node name="SpawnInspector" type="ScrollContainer" unique_id=1836821655 node_paths=PackedStringArray("_title", "_x", "_y", "_team", "_delete")]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme = ExtResource("3_theme")
+horizontal_scroll_mode = 0
+script = ExtResource("1_h0x1j")
+_title = NodePath("Margin/Content/Title")
+_x = NodePath("Margin/Content/X")
+_y = NodePath("Margin/Content/Y")
+_team = NodePath("Margin/Content/Team")
+_delete = NodePath("Margin/Content/Delete")
+
+[node name="Margin" type="MarginContainer" parent="." unique_id=109732895]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 18
+
+[node name="Content" type="VBoxContainer" parent="Margin" unique_id=2126160164]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="Margin/Content" unique_id=737940178]
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8862745, 0.91764706, 0.9529412, 1)
+theme_override_font_sizes/font_size = 20
+vertical_alignment = 1
+
+[node name="@Control@426" type="Control" parent="Margin/Content" unique_id=289293851]
+custom_minimum_size = Vector2(0, 4)
+layout_mode = 2
+
+[node name="PositionSection" type="PanelContainer" parent="Margin/Content" unique_id=303186833]
+layout_mode = 2
+
+[node name="@Label@427" type="Label" parent="Margin/Content/PositionSection" unique_id=1865000473]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.44705883, 0.7176471, 0.9098039, 1)
+theme_override_font_sizes/font_size = 12
+text = "POSITION"
+
+[node name="X" parent="Margin/Content" unique_id=527274392 instance=ExtResource("4_field")]
+layout_mode = 2
+
+[node name="Y" parent="Margin/Content" unique_id=112893260 instance=ExtResource("4_field")]
+layout_mode = 2
+
+[node name="@Control@434" type="Control" parent="Margin/Content" unique_id=1392462393]
+custom_minimum_size = Vector2(0, 4)
+layout_mode = 2
+
+[node name="TeamSection" type="PanelContainer" parent="Margin/Content" unique_id=729994357]
+layout_mode = 2
+
+[node name="@Label@435" type="Label" parent="Margin/Content/TeamSection" unique_id=1649816902]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.44705883, 0.7176471, 0.9098039, 1)
+theme_override_font_sizes/font_size = 12
+text = "TEAM"
+
+[node name="Team" type="OptionButton" parent="Margin/Content" unique_id=195254120]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.8862745, 0.91764706, 0.9529412, 1)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_disabled_color = Color(0.40784314, 0.4745098, 0.54509807, 1)
+selected = 0
+item_count = 3
+popup/item_0/text = "Any team"
+popup/item_0/id = 0
+popup/item_1/text = "Blue"
+popup/item_1/id = 1
+popup/item_2/text = "Red"
+popup/item_2/id = 2
+
+[node name="@Control@436" type="Control" parent="Margin/Content" unique_id=635996606]
+custom_minimum_size = Vector2(0, 4)
+layout_mode = 2
+
+[node name="ActionsSection" type="PanelContainer" parent="Margin/Content" unique_id=113771510]
+layout_mode = 2
+
+[node name="@Label@437" type="Label" parent="Margin/Content/ActionsSection" unique_id=460477921]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.44705883, 0.7176471, 0.9098039, 1)
+theme_override_font_sizes/font_size = 12
+text = "ACTIONS"
+
+[node name="Delete" type="Button" parent="Margin/Content" unique_id=372811831]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 0.54509807, 0.50980395, 1)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 0.8235294, 0.80784315, 1)
+theme_override_colors/font_disabled_color = Color(0.40784314, 0.4745098, 0.54509807, 1)
+text = "Delete spawn"

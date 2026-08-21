@@ -3,8 +3,8 @@
 [ext_resource type="Script" uid="uid://ca7dhedcdj2cq" path="res://src/Client/Menus/MainMenu.cs" id="1_menu"]
 [ext_resource type="Script" uid="uid://bingu8fm6o7on" path="res://src/Client/Menus/MainMenuAmbient/MenuBackdrop.cs" id="2_go2oq"]
 [ext_resource type="FontFile" uid="uid://tah7qwxd4iyq" path="res://Assets/Fonts/Metal_Mania/MetalMania-Regular.ttf" id="3_lt8ac"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/Menus/ServerBrowser.tscn" id="4_browser"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/Menus/Settings.tscn" id="5_settings"]
+[ext_resource type="PackedScene" uid="uid://dd6fbi60r5yiv" path="res://src/Shared/UI/Menus/ServerBrowser.tscn" id="4_browser"]
+[ext_resource type="PackedScene" uid="uid://b86jqbl2lr84v" path="res://src/Shared/UI/Menus/Settings.tscn" id="5_settings"]
 
 [sub_resource type="Animation" id="Animation_duaim"]
 length = 0.001
@@ -145,7 +145,7 @@ layout_mode = 2
 placeholder_text = "Leave blank for none"
 secret = true
 
-[node name="AllowJip" type="CheckButton" parent="MenuCenter/Menu/HostPanel"]
+[node name="AllowJip" type="CheckButton" parent="MenuCenter/Menu/HostPanel" unique_id=1998571867]
 layout_mode = 2
 button_pressed = true
 text = "Allow players to join matches in progress"

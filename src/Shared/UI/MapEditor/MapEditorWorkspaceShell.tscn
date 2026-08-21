@@ -1,0 +1,456 @@
+[gd_scene format=3 uid="uid://fxcrhc0rrkep"]
+
+[ext_resource type="Script" path="res://src/Client/MapEditor/MapEditorWorkspaceShell.cs" id="1_lehyi"]
+[ext_resource type="PackedScene" path="res://src/Shared/UI/MapEditor/MapEditorCanvas.tscn" id="3_canvas"]
+[ext_resource type="PackedScene" path="res://src/Shared/UI/MapEditor/MapEditorStampDock.tscn" id="3_hva3d"]
+[ext_resource type="Material" path="res://src/Shared/Shaders/MapEditorBrushPreviewMaterial.tres" id="4_g20nt"]
+[ext_resource type="PackedScene" path="res://src/Shared/UI/MapEditor/MapEditorObjectBrowser.tscn" id="4_j388r"]
+[ext_resource type="PackedScene" path="res://src/Shared/UI/MapEditor/MapEditorToolbar.tscn" id="4_toolbar"]
+[ext_resource type="Script" path="res://src/Client/MapEditor/MapEditorCanvas.cs" id="5_hva3d"]
+[ext_resource type="PackedScene" path="res://src/Shared/UI/MapEditor/MapEditorViewControls.tscn" id="5_view"]
+[ext_resource type="Texture2D" path="res://Assets/ScifiCritters4.PNG" id="6_633ll"]
+[ext_resource type="PackedScene" path="res://src/Shared/UI/MapEditor/MapEditorBrushInspector.tscn" id="6_brush"]
+[ext_resource type="PackedScene" path="res://src/Shared/UI/MapEditor/MapEditorZoneInspector.tscn" id="7_zone"]
+[ext_resource type="Script" path="res://src/Client/MapEditor/MapEditorObjectBrowser.cs" id="8_itte6"]
+[ext_resource type="PackedScene" path="res://src/Shared/UI/MapEditor/MapEditorSpawnInspector.tscn" id="8_spawn"]
+[ext_resource type="Theme" path="res://src/Shared/UI/MapEditor/MapEditorTheme.tres" id="9_theme"]
+[ext_resource type="PackedScene" path="res://src/Shared/UI/MapEditor/MapEditorObjectBrowserBrushRow.tscn" id="9_u7lxn"]
+[ext_resource type="PackedScene" path="res://src/Shared/UI/MapEditor/MapEditorObjectBrowserItemRow.tscn" id="10_73yu1"]
+[ext_resource type="Script" path="res://src/Client/MapEditor/MapEditorBrushInspector.cs" id="12_0euf3"]
+[ext_resource type="Script" path="res://src/Client/MapEditor/MapEditorZoneInspector.cs" id="14_5ol06"]
+[ext_resource type="Script" path="res://src/Client/MapEditor/MapEditorSpawnInspector.cs" id="16_p6wi0"]
+[ext_resource type="Script" path="res://src/Client/MapEditor/MapEditorToolbar.cs" id="18_4x1gr"]
+[ext_resource type="Script" path="res://src/Client/MapEditor/MapEditorViewControls.cs" id="20_grw15"]
+
+[node name="WorkspaceShell" type="Control" unique_id=421552827 node_paths=PackedStringArray("_chrome", "_toolRow", "_canvasHost", "_canvas", "_objectDock", "_objectBrowserScroll", "_objectBrowser", "_inspectorFrame", "_inspectorStack", "_brushInspector", "_zoneInspector", "_spawnInspector", "_toolbar", "_viewControls", "_propertiesDock", "_statusBar", "_statusRow", "_modeStatus", "_viewStatus", "_boundsStatus", "_problemsButton", "_problemsDrawer", "_problemsList", "_problemsClose", "_drawerOpen", "_drawerClose", "_propertiesOpen", "_stampOpen", "_propertiesClose", "_dockResize", "_propertiesResize")]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 1280.0
+offset_bottom = 658.0
+mouse_filter = 2
+theme = ExtResource("9_theme")
+script = ExtResource("1_lehyi")
+_chrome = NodePath("Chrome")
+_toolRow = NodePath("Chrome/ToolBar/Margin/ToolRow")
+_canvasHost = NodePath("CanvasHost")
+_canvas = NodePath("CanvasHost/Canvas")
+_objectDock = NodePath("LeftDock")
+_objectBrowserScroll = NodePath("LeftDock/Margin/DockColumn/ObjectBrowserScroll")
+_objectBrowser = NodePath("LeftDock/Margin/DockColumn/ObjectBrowserScroll/ObjectBrowser")
+_inspectorFrame = NodePath("RightDock/Margin/PropertiesColumn/InspectorFrame")
+_inspectorStack = NodePath("RightDock/Margin/PropertiesColumn/InspectorFrame/InspectorStack")
+_brushInspector = NodePath("RightDock/Margin/PropertiesColumn/InspectorFrame/InspectorStack/BrushInspector")
+_zoneInspector = NodePath("RightDock/Margin/PropertiesColumn/InspectorFrame/InspectorStack/ZoneInspector")
+_spawnInspector = NodePath("RightDock/Margin/PropertiesColumn/InspectorFrame/InspectorStack/SpawnInspector")
+_toolbar = NodePath("Chrome/ToolBar/Margin/ToolRow/Toolbar")
+_viewControls = NodePath("Chrome/ToolBar/Margin/ToolRow/ViewControls")
+_propertiesDock = NodePath("RightDock")
+_statusBar = NodePath("StatusBar")
+_statusRow = NodePath("StatusBar/Margin/StatusRow")
+_modeStatus = NodePath("StatusBar/Margin/StatusRow/ModeStatus")
+_viewStatus = NodePath("StatusBar/Margin/StatusRow/ViewStatus")
+_boundsStatus = NodePath("StatusBar/Margin/StatusRow/BoundsStatus")
+_problemsButton = NodePath("StatusBar/Margin/StatusRow/ProblemsButton")
+_problemsDrawer = NodePath("ProblemsDrawer")
+_problemsList = NodePath("ProblemsDrawer/Margin/Column/ProblemsScroll/ProblemsList")
+_problemsClose = NodePath("ProblemsDrawer/Margin/Column/Header/CloseProblems")
+_drawerOpen = NodePath("Chrome/ToolBar/Margin/ToolRow/OpenObjectDrawer")
+_drawerClose = NodePath("LeftDock/Margin/DockColumn/Header/CloseObjectDrawer")
+_propertiesOpen = NodePath("Chrome/ToolBar/Margin/ToolRow/OpenPropertiesDrawer")
+_stampOpen = NodePath("Chrome/ToolBar/Margin/ToolRow/OpenStampLibrary")
+_propertiesClose = NodePath("RightDock/Margin/PropertiesColumn/Header/ClosePropertiesDrawer")
+_dockResize = NodePath("DockResizeHandle")
+_propertiesResize = NodePath("PropertiesResizeHandle")
+_stampDockScene = ExtResource("3_hva3d")
+
+[node name="CanvasHost" type="Control" parent="." unique_id=372329157]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 356.0
+offset_top = 60.0
+offset_right = -356.0
+offset_bottom = -46.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Canvas" type="Control" parent="CanvasHost" unique_id=1016804261 instance=ExtResource("3_canvas")]
+texture_filter = 1
+material = ExtResource("4_g20nt")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("5_hva3d")
+_playerTexture = ExtResource("6_633ll")
+
+[node name="LeftDock" type="PanelContainer" parent="." unique_id=891624788]
+layout_mode = 0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 60.0
+offset_right = 348.0
+offset_bottom = -46.0
+
+[node name="Margin" type="MarginContainer" parent="LeftDock" unique_id=26109035]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="DockColumn" type="VBoxContainer" parent="LeftDock/Margin" unique_id=847548243]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Header" type="HBoxContainer" parent="LeftDock/Margin/DockColumn" unique_id=632611403]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="LeftDock/Margin/DockColumn/Header" unique_id=1759751265]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 12
+text = "OBJECTS"
+
+[node name="CloseObjectDrawer" type="Button" parent="LeftDock/Margin/DockColumn/Header" unique_id=1323733404]
+layout_mode = 2
+tooltip_text = "Hide the objects panel"
+accessibility_name = "Hide objects panel"
+text = "Close"
+
+[node name="ObjectBrowserScroll" type="ScrollContainer" parent="LeftDock/Margin/DockColumn" unique_id=468194413]
+custom_minimum_size = Vector2(0, 150)
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="ObjectBrowser" type="VBoxContainer" parent="LeftDock/Margin/DockColumn/ObjectBrowserScroll" unique_id=2145259449 node_paths=PackedStringArray("_initializationWarning", "_initializationDetail", "_initializationButton", "_backgroundLayer", "_backgroundSeparator", "_solidLayer", "_solidSeparator", "_destructibleLayer", "_zonesVisibility", "_zonesEmpty", "_spawnsVisibility", "_spawnsEmpty") instance=ExtResource("4_j388r")]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+script = ExtResource("8_itte6")
+_initializationWarning = NodePath("BrushInitializationWarning")
+_initializationDetail = NodePath("RasterOnlyDetail")
+_initializationButton = NodePath("InitializeBrushLayers")
+_backgroundLayer = NodePath("LayerBACKGROUND")
+_backgroundSeparator = NodePath("BackgroundSeparator")
+_solidLayer = NodePath("LayerSOLID")
+_solidSeparator = NodePath("SolidSeparator")
+_destructibleLayer = NodePath("LayerDESTRUCTIBLE")
+_zonesVisibility = NodePath("ZonesVisibility")
+_zonesEmpty = NodePath("ZonesEmpty")
+_spawnsVisibility = NodePath("SpawnsVisibility")
+_spawnsEmpty = NodePath("SpawnsEmpty")
+_brushRowScene = ExtResource("9_u7lxn")
+_itemRowScene = ExtResource("10_73yu1")
+
+[node name="RightDock" type="PanelContainer" parent="." unique_id=2006254479]
+layout_mode = 0
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -348.0
+offset_top = 60.0
+offset_right = -8.0
+offset_bottom = -46.0
+
+[node name="Margin" type="MarginContainer" parent="RightDock" unique_id=1270709373]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="PropertiesColumn" type="VBoxContainer" parent="RightDock/Margin" unique_id=886933229]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Header" type="HBoxContainer" parent="RightDock/Margin/PropertiesColumn" unique_id=1427028296]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="RightDock/Margin/PropertiesColumn/Header" unique_id=344445797]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 12
+text = "PROPERTIES"
+
+[node name="ClosePropertiesDrawer" type="Button" parent="RightDock/Margin/PropertiesColumn/Header" unique_id=63162158]
+layout_mode = 2
+tooltip_text = "Hide the properties panel"
+accessibility_name = "Hide properties panel"
+text = "Close"
+
+[node name="InspectorFrame" type="PanelContainer" parent="RightDock/Margin/PropertiesColumn" unique_id=754905679]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="InspectorStack" type="Control" parent="RightDock/Margin/PropertiesColumn/InspectorFrame" unique_id=547802778]
+layout_mode = 2
+
+[node name="BrushInspector" type="ScrollContainer" parent="RightDock/Margin/PropertiesColumn/InspectorFrame/InspectorStack" unique_id=1772946175 node_paths=PackedStringArray("_title", "_name", "_layer", "_visible", "_shape", "_x", "_y", "_width", "_height", "_rotation", "_vertices", "_material", "_materialStatus", "_projectionMode", "_originX", "_originY", "_scaleX", "_scaleY", "_projectionRotation", "_diagnostic", "_duplicate", "_delete") instance=ExtResource("6_brush")]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme = ExtResource("9_theme")
+horizontal_scroll_mode = 0
+script = ExtResource("12_0euf3")
+_title = NodePath("Margin/Content/Title")
+_name = NodePath("Margin/Content/Name")
+_layer = NodePath("Margin/Content/Layer")
+_visible = NodePath("Margin/Content/Visible")
+_shape = NodePath("Margin/Content/ShapeKind")
+_x = NodePath("Margin/Content/X")
+_y = NodePath("Margin/Content/Y")
+_width = NodePath("Margin/Content/Width")
+_height = NodePath("Margin/Content/Height")
+_rotation = NodePath("Margin/Content/Rotation")
+_vertices = NodePath("Margin/Content/Vertices")
+_material = NodePath("Margin/Content/MaterialSection/MaterialContent/Picker")
+_materialStatus = NodePath("Margin/Content/MaterialSection/MaterialContent/Status")
+_projectionMode = NodePath("Margin/Content/ProjectionMode")
+_originX = NodePath("Margin/Content/OriginX")
+_originY = NodePath("Margin/Content/OriginY")
+_scaleX = NodePath("Margin/Content/ScaleX")
+_scaleY = NodePath("Margin/Content/ScaleY")
+_projectionRotation = NodePath("Margin/Content/ProjectionRotation")
+_diagnostic = NodePath("Margin/Content/Diagnostic")
+_duplicate = NodePath("Margin/Content/Actions/Duplicate")
+_delete = NodePath("Margin/Content/Actions/Delete")
+
+[node name="ZoneInspector" type="ScrollContainer" parent="RightDock/Margin/PropertiesColumn/InspectorFrame/InspectorStack" unique_id=1327228011 node_paths=PackedStringArray("_title", "_name", "_shape", "_x", "_y", "_sizeA", "_sizeB", "_rotation", "_tags", "_effects", "_diagnostic", "_addEffect", "_delete") instance=ExtResource("7_zone")]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme = ExtResource("9_theme")
+horizontal_scroll_mode = 0
+script = ExtResource("14_5ol06")
+_title = NodePath("Margin/Content/Title")
+_name = NodePath("Margin/Content/Name")
+_shape = NodePath("Margin/Content/ShapeKind")
+_x = NodePath("Margin/Content/X")
+_y = NodePath("Margin/Content/Y")
+_sizeA = NodePath("Margin/Content/SizeA")
+_sizeB = NodePath("Margin/Content/SizeB")
+_rotation = NodePath("Margin/Content/Rotation")
+_tags = NodePath("Margin/Content/Tags")
+_effects = NodePath("Margin/Content/EffectRows")
+_diagnostic = NodePath("Margin/Content/Diagnostic")
+_addEffect = NodePath("Margin/Content/AddEffect")
+_delete = NodePath("Margin/Content/Delete")
+
+[node name="SpawnInspector" type="ScrollContainer" parent="RightDock/Margin/PropertiesColumn/InspectorFrame/InspectorStack" unique_id=653249865 node_paths=PackedStringArray("_title", "_x", "_y", "_team", "_delete") instance=ExtResource("8_spawn")]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme = ExtResource("9_theme")
+horizontal_scroll_mode = 0
+script = ExtResource("16_p6wi0")
+_title = NodePath("Margin/Content/Title")
+_x = NodePath("Margin/Content/X")
+_y = NodePath("Margin/Content/Y")
+_team = NodePath("Margin/Content/Team")
+_delete = NodePath("Margin/Content/Delete")
+
+[node name="DockResizeHandle" type="Button" parent="." unique_id=306158734]
+layout_mode = 0
+anchor_bottom = 1.0
+offset_left = 342.0
+offset_top = 60.0
+offset_right = 354.0
+offset_bottom = -46.0
+tooltip_text = "Drag or use arrow keys to resize the objects panel"
+mouse_default_cursor_shape = 10
+accessibility_name = "Resize objects panel"
+accessibility_description = "Use left and right arrow keys or drag to resize the objects panel."
+text = "⋮"
+flat = true
+
+[node name="PropertiesResizeHandle" type="Button" parent="." unique_id=103659754]
+layout_mode = 0
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -354.0
+offset_top = 60.0
+offset_right = -342.0
+offset_bottom = -46.0
+tooltip_text = "Drag or use arrow keys to resize the properties panel"
+mouse_default_cursor_shape = 10
+accessibility_name = "Resize properties panel"
+accessibility_description = "Use left and right arrow keys or drag to resize the properties panel."
+text = "⋮"
+flat = true
+
+[node name="StatusBar" type="PanelContainer" parent="." unique_id=1606281313]
+layout_mode = 0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = -38.0
+offset_right = -8.0
+offset_bottom = -8.0
+
+[node name="Margin" type="MarginContainer" parent="StatusBar" unique_id=640310826]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_right = 10
+
+[node name="StatusRow" type="HBoxContainer" parent="StatusBar/Margin" unique_id=1406409097]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ModeStatus" type="Label" parent="StatusBar/Margin/StatusRow" unique_id=327875603]
+layout_mode = 2
+size_flags_horizontal = 0
+
+[node name="ModeDivider" type="VSeparator" parent="StatusBar/Margin/StatusRow" unique_id=536173661]
+layout_mode = 2
+
+[node name="ViewStatus" type="Label" parent="StatusBar/Margin/StatusRow" unique_id=673477826]
+layout_mode = 2
+size_flags_horizontal = 0
+
+[node name="ViewDivider" type="VSeparator" parent="StatusBar/Margin/StatusRow" unique_id=890159649]
+layout_mode = 2
+
+[node name="BoundsStatus" type="Label" parent="StatusBar/Margin/StatusRow" unique_id=1125688661]
+layout_mode = 2
+size_flags_horizontal = 0
+
+[node name="ProblemsButton" type="Button" parent="StatusBar/Margin/StatusRow" unique_id=893285251]
+layout_mode = 2
+tooltip_text = "No map problems"
+accessibility_name = "Open map problems"
+text = "Problems 0"
+
+[node name="ProblemsDrawer" type="PanelContainer" parent="." unique_id=2042806335]
+visible = false
+layout_mode = 0
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = -370.0
+offset_right = 636.0
+offset_bottom = -46.0
+
+[node name="Margin" type="MarginContainer" parent="ProblemsDrawer" unique_id=667097930]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 10
+
+[node name="Column" type="VBoxContainer" parent="ProblemsDrawer/Margin" unique_id=976721932]
+layout_mode = 2
+
+[node name="Header" type="HBoxContainer" parent="ProblemsDrawer/Margin/Column" unique_id=1031009413]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="ProblemsDrawer/Margin/Column/Header" unique_id=379128262]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "PROBLEMS"
+
+[node name="CloseProblems" type="Button" parent="ProblemsDrawer/Margin/Column/Header" unique_id=1114846330]
+layout_mode = 2
+accessibility_name = "Close map problems"
+text = "Close"
+
+[node name="ProblemsScroll" type="ScrollContainer" parent="ProblemsDrawer/Margin/Column" unique_id=849017278]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="ProblemsList" type="VBoxContainer" parent="ProblemsDrawer/Margin/Column/ProblemsScroll" unique_id=1226863949]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Chrome" type="VBoxContainer" parent="." unique_id=1327448920]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = 52.0
+grow_horizontal = 2
+theme_override_constants/separation = 8
+
+[node name="ToolBar" type="PanelContainer" parent="Chrome" unique_id=163933587]
+layout_mode = 2
+
+[node name="Margin" type="MarginContainer" parent="Chrome/ToolBar" unique_id=1808063987]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 5
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 5
+
+[node name="ToolRow" type="HBoxContainer" parent="Chrome/ToolBar/Margin" unique_id=1372493277]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Toolbar" type="HBoxContainer" parent="Chrome/ToolBar/Margin/ToolRow" unique_id=1753316472 node_paths=PackedStringArray("_geometryDomain", "_zonesDomain", "_spawnsDomain", "_selectTool", "_zoneRectangleTool", "_zoneEllipseTool", "_spawnTool", "_brushRectangleTool", "_brushEllipseTool", "_brushPolygonTool") instance=ExtResource("4_toolbar")]
+layout_mode = 2
+theme_override_constants/separation = 6
+script = ExtResource("18_4x1gr")
+_geometryDomain = NodePath("GeometryDomain")
+_zonesDomain = NodePath("ZonesDomain")
+_spawnsDomain = NodePath("SpawnsDomain")
+_selectTool = NodePath("Select")
+_zoneRectangleTool = NodePath("Square")
+_zoneEllipseTool = NodePath("Circle")
+_spawnTool = NodePath("Spawn")
+_brushRectangleTool = NodePath("RectangleBrush")
+_brushEllipseTool = NodePath("EllipseBrush")
+_brushPolygonTool = NodePath("PolygonBrush")
+
+[node name="ViewControls" type="HBoxContainer" parent="Chrome/ToolBar/Margin/ToolRow" unique_id=895827706 node_paths=PackedStringArray("_snap", "_view") instance=ExtResource("5_view")]
+layout_mode = 2
+script = ExtResource("20_grw15")
+_snap = NodePath("UniversalSnap")
+_view = NodePath("ViewOverflow")
+
+[node name="OpenObjectDrawer" type="Button" parent="Chrome/ToolBar/Margin/ToolRow" unique_id=959512674]
+layout_mode = 2
+tooltip_text = "Hide the objects panel"
+accessibility_name = "Toggle objects panel"
+toggle_mode = true
+text = "Objects"
+
+[node name="OpenPropertiesDrawer" type="Button" parent="Chrome/ToolBar/Margin/ToolRow" unique_id=1515714861]
+layout_mode = 2
+tooltip_text = "Hide the properties panel"
+accessibility_name = "Toggle properties panel"
+toggle_mode = true
+text = "Properties"
+
+[node name="OpenStampLibrary" type="Button" parent="Chrome/ToolBar/Margin/ToolRow" unique_id=2120670671]
+layout_mode = 2
+tooltip_text = "Show the stamp library"
+accessibility_name = "Show the stamp library"
+toggle_mode = true
+text = "Stamps"

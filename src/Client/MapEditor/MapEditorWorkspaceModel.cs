@@ -33,14 +33,21 @@ public readonly record struct MapEditorSpawn(
 
 public sealed class MapEditorLayerAsset
 {
-    private readonly byte[] _png;
+    private readonly ReadOnlyMemory<byte> _png;
 
     public MapEditorLayerAsset(ReadOnlySpan<byte> png, int width, int height)
+        : this((ReadOnlyMemory<byte>)png.ToArray(), width, height)
+    {
+    }
+
+    private MapEditorLayerAsset(ReadOnlyMemory<byte> png, int width, int height)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(height);
+        if (png.IsEmpty)
+            throw new ArgumentException("PNG data is required.", nameof(png));
 
-        _png = png.ToArray();
+        _png = png;
         Width = width;
         Height = height;
     }
@@ -48,8 +55,11 @@ public sealed class MapEditorLayerAsset
     public int Width { get; }
     public int Height { get; }
 
-    // Do not let presentation code recover and mutate the adopted backing array.
-    public ReadOnlyMemory<byte> Png => _png.ToArray();
+    public ReadOnlyMemory<byte> Png => _png;
+
+    // The caller gives up mutable access to the buffer after this call.
+    internal static MapEditorLayerAsset AdoptOwnedPng(ReadOnlyMemory<byte> png,
+        int width, int height) => new(png, width, height);
 }
 
 public sealed record MapEditorLayers(
@@ -68,12 +78,27 @@ public sealed record MapEditorSnapshot(
     int Height,
     long Revision,
     long SavedRevision,
-    ImmutableArray<ContentDiagnostic> Diagnostics)
+    ImmutableArray<ContentDiagnostic> Diagnostics,
+    MapEditorRasterSourceStatus SourceStatus = MapEditorRasterSourceStatus.OBSOLETE,
+    MapEditorBrushDocument? BrushDocument = null,
+    bool CanUndo = false,
+    bool CanRedo = false,
+    long StateId = -1,
+    long SavedStateId = -1,
+    long OriginX = 0,
+    long OriginY = 0,
+    MapEditorMapBounds? FittedBounds = null)
 {
-    public bool Dirty => Revision != SavedRevision;
+    public MapEditorMapBounds Bounds => FittedBounds ?? new(OriginX, OriginY, Width, Height);
 
-    public bool CanSave => Dirty && Diagnostics.All(
-        diagnostic => diagnostic.Severity != ContentDiagnosticSeverity.ERROR);
+    public bool Dirty => StateId >= 0
+        ? StateId != SavedStateId
+        : Revision != SavedRevision;
+
+    public bool CanSave =>
+        Dirty && Diagnostics.All(diagnostic => diagnostic.Severity != ContentDiagnosticSeverity.ERROR);
+
+    public bool CanEditBrushes => SourceStatus == MapEditorRasterSourceStatus.BRUSH_SOURCE;
 }
 
 public sealed record MapEditorUpdate(
@@ -100,7 +125,34 @@ public sealed record MapEditorSpawnReplaced(MapEditorSpawnId Id) : MapEditorChan
 
 public sealed record MapEditorSpawnRemoved(MapEditorSpawnId Id) : MapEditorChange;
 
-public sealed record MapEditorLayerReplaced(MapEditorLayer Layer) : MapEditorChange;
+public sealed record MapEditorBrushSourceInitialized : MapEditorChange;
+
+public sealed record MapEditorBrushAdded(MapEditorBrushId Id) : MapEditorChange;
+
+public sealed record MapEditorBrushesAdded(
+    ImmutableArray<MapEditorBrushId> Ids) : MapEditorChange;
+
+public sealed record MapEditorBrushReplaced(MapEditorBrushId Id) : MapEditorChange;
+
+public sealed record MapEditorBrushRemoved(MapEditorBrushId Id) : MapEditorChange;
+
+public sealed record MapEditorBrushesRemoved(
+    ImmutableArray<MapEditorBrushId> Ids) : MapEditorChange;
+
+public sealed record MapEditorBrushReordered(MapEditorBrushId Id) : MapEditorChange;
+
+public sealed record MapEditorBrushMovedToLayer(
+    MapEditorBrushId Id,
+    MapEditorLayer From,
+    MapEditorLayer To) : MapEditorChange;
+
+public sealed record MapEditorStampSaved(MapEditorStampId Id) : MapEditorChange;
+
+public sealed record MapEditorStampRemoved(MapEditorStampId Id) : MapEditorChange;
+
+public sealed record MapEditorUndoApplied(MapEditorChange OriginalChange) : MapEditorChange;
+
+public sealed record MapEditorRedoApplied(MapEditorChange OriginalChange) : MapEditorChange;
 
 public abstract record MapEditorOperationFailure;
 
@@ -109,13 +161,17 @@ public sealed record MapEditorContentFailure(
 
 public sealed record MapEditorIoFailure(string Message) : MapEditorOperationFailure;
 
-public sealed record MapEditorInvalidPngFailure(string Path, string Reason) : MapEditorOperationFailure;
+public sealed record MapEditorBrushEditingUnavailableFailure : MapEditorOperationFailure;
 
-public sealed record MapEditorLayerSizeFailure(
-    int ExpectedWidth,
-    int ExpectedHeight,
-    int ActualWidth,
-    int ActualHeight) : MapEditorOperationFailure;
+public sealed record MapEditorUnresolvedBrushesFailure(
+    ImmutableArray<MapEditorUnresolvedBrush> Brushes) : MapEditorOperationFailure;
+
+public sealed record MapEditorCompositionFailure(
+    MapEditorLayer Layer,
+    string Message) : MapEditorOperationFailure;
+
+public sealed record MapEditorIdentityOverflowFailure(string ObjectType) :
+    MapEditorOperationFailure;
 
 public sealed record MapEditorOperationResult(
     MapEditorUpdate? Update,
@@ -127,6 +183,13 @@ public sealed record MapEditorOperationResult(
 
     public static MapEditorOperationResult Failed(MapEditorOperationFailure failure) =>
         new(null, failure);
+}
+
+public sealed record MapEditorRuntimeManifestResult(
+    MapManifest? Manifest,
+    MapEditorOperationFailure? Failure)
+{
+    public bool Succeeded => Manifest != null;
 }
 
 public sealed record MapEditorOpenResult(

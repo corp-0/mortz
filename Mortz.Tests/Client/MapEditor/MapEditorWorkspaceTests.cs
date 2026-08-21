@@ -37,7 +37,6 @@ public sealed class MapEditorWorkspaceTests
         png[0] = 9;
         byte[] exposedPng = workspace.Snapshot.Layers.Background.Png.ToArray();
         exposedPng[1] = 9;
-
         MapEditorZone zone = Assert.Single(workspace.Snapshot.Zones);
         Assert.Equal("original", Assert.Single(zone.Tags));
         Assert.Equal(2, Assert.Single(zone.Effects).Value);
@@ -150,6 +149,46 @@ public sealed class MapEditorWorkspaceTests
         Assert.Equal(3, zoneRemoved.Snapshot.Revision);
         Assert.Equal(0, zoneRemoved.Snapshot.SavedRevision);
         Assert.True(zoneRemoved.Snapshot.Dirty);
+    }
+
+    [Fact]
+    public void DuplicateZoneAndSpawnPreserveValuesOffsetAndSelectTypedAddedIdentity()
+    {
+        MapZoneEffect effect = new(Stat.GRAVITY, StatOp.MUL, 0.5f);
+        MapEditorWorkspace workspace = CreateWorkspace(new MapManifest
+        {
+            Name = "Map",
+            SuggestedPlayers = 2,
+            Zones =
+            [
+                new MapZoneDef
+                {
+                    Name = "hazard",
+                    Tags = ["damage"],
+                    Shape = new CircleMapZoneShape(20, 30, 5),
+                    Effects = [effect],
+                }
+            ],
+            SpawnPoints = [new MapSpawnPoint(10, 12, Team.RED)],
+        });
+        MapEditorZone originalZone = workspace.Snapshot.Zones[0];
+        MapEditorSpawn originalSpawn = workspace.Snapshot.SpawnPoints[0];
+
+        MapEditorOperationResult zoneResult = workspace.DuplicateZone(originalZone.Id, 8);
+        MapEditorOperationResult spawnResult = workspace.DuplicateSpawn(originalSpawn.Id, 8);
+
+        MapEditorZoneAdded zoneAdded = Assert.IsType<MapEditorZoneAdded>(zoneResult.Update!.Change);
+        MapEditorSpawnAdded spawnAdded = Assert.IsType<MapEditorSpawnAdded>(spawnResult.Update!.Change);
+        MapEditorZone duplicateZone = workspace.Snapshot.Zones[1];
+        MapEditorSpawn duplicateSpawn = workspace.Snapshot.SpawnPoints[1];
+        Assert.Equal(zoneAdded.Id, duplicateZone.Id);
+        Assert.Equal("hazard copy", duplicateZone.Name);
+        Assert.Equal(originalZone.Tags, duplicateZone.Tags);
+        Assert.Equal(originalZone.Effects, duplicateZone.Effects);
+        Assert.Equal(new CircleMapZoneShape(28, 38, 5), duplicateZone.Shape);
+        Assert.Equal(spawnAdded.Id, duplicateSpawn.Id);
+        Assert.Equal(new MapSpawnPoint(18, 20, Team.RED), duplicateSpawn.Value);
+        Assert.Equal(2, workspace.Snapshot.Revision);
     }
 
     [Fact]

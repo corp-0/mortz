@@ -104,13 +104,13 @@ theme_override_constants/margin_bottom = 12
 
 [node name="AssetsContainer" type="VBoxContainer" parent="MarginContainer/VBoxContainer/HBoxContainer/VBoxContainer2/ScrollContainer/MarginContainer" unique_id=1891322710]
 unique_name_in_owner = true
+visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 12
 
 [node name="EmptyAssetsEmptyView" type="CenterContainer" parent="MarginContainer/VBoxContainer/HBoxContainer/VBoxContainer2/ScrollContainer/MarginContainer" unique_id=998271125]
 unique_name_in_owner = true
-visible = false
 layout_mode = 2
 
 [node name="HBoxContainer" type="VBoxContainer" parent="MarginContainer/VBoxContainer/HBoxContainer/VBoxContainer2/ScrollContainer/MarginContainer/EmptyAssetsEmptyView" unique_id=1538550001]
@@ -152,13 +152,13 @@ theme_override_constants/margin_bottom = 12
 
 [node name="ActiveCollectionsContainer" type="VBoxContainer" parent="MarginContainer/VBoxContainer/HBoxContainer/VBoxContainer/ScrollContainer/MarginContainer" unique_id=1524682924]
 unique_name_in_owner = true
+visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
 [node name="NoActiveCollectionsEmptyView" type="CenterContainer" parent="MarginContainer/VBoxContainer/HBoxContainer/VBoxContainer/ScrollContainer/MarginContainer" unique_id=1926878836]
 unique_name_in_owner = true
-visible = false
 layout_mode = 2
 
 [node name="HBoxContainer" type="VBoxContainer" parent="MarginContainer/VBoxContainer/HBoxContainer/VBoxContainer/ScrollContainer/MarginContainer/NoActiveCollectionsEmptyView" unique_id=1040800401]
@@ -195,13 +195,13 @@ theme_override_constants/margin_bottom = 12
 
 [node name="InactiveCollectionsContainer" type="VBoxContainer" parent="MarginContainer/VBoxContainer/HBoxContainer/VBoxContainer/ScrollContainer2/MarginContainer2" unique_id=1027100907]
 unique_name_in_owner = true
+visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
 [node name="NoInActiveCollectionsEmptyView" type="CenterContainer" parent="MarginContainer/VBoxContainer/HBoxContainer/VBoxContainer/ScrollContainer2/MarginContainer2" unique_id=466825031]
 unique_name_in_owner = true
-visible = false
 layout_mode = 2
 
 [node name="HBoxContainer" type="VBoxContainer" parent="MarginContainer/VBoxContainer/HBoxContainer/VBoxContainer/ScrollContainer2/MarginContainer2/NoInActiveCollectionsEmptyView" unique_id=837999328]

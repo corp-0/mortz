@@ -1,0 +1,72 @@
+[gd_scene format=3 uid="uid://dj6ubr8ry7t1w"]
+
+[ext_resource type="Script" uid="uid://2sur2n5wxvjt" path="res://src/Client/MapEditor/MapEditorObjectBrowserLayer.cs" id="1_qi6mj"]
+[ext_resource type="PackedScene" uid="uid://ccl6y7mxt1njt" path="res://src/Shared/UI/MapEditor/MapEditorObjectBrowserBrushRow.tscn" id="2_4un45"]
+
+[node name="Layer" type="VBoxContainer" unique_id=1379590161 node_paths=PackedStringArray("_expand", "_select", "_visibility", "_summary", "_brushes", "_empty")]
+offset_right = 320.0
+offset_bottom = 180.0
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+script = ExtResource("1_qi6mj")
+_expand = NodePath("Header/Expand")
+_select = NodePath("Header/Select")
+_visibility = NodePath("Header/Visibility")
+_summary = NodePath("Summary")
+_brushes = NodePath("Brushes")
+_empty = NodePath("Brushes/Empty")
+
+[node name="Header" type="HBoxContainer" parent="." unique_id=1843410734]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Expand" type="Button" parent="Header" unique_id=240174601]
+custom_minimum_size = Vector2(30, 30)
+layout_mode = 2
+size_flags_horizontal = 8
+tooltip_text = "Show or hide brushes in this layer."
+accessibility_name = "Collapse layer"
+text = "▾"
+flat = true
+
+[node name="Select" type="Button" parent="Header" unique_id=1588568271]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Draw new shapes on this layer."
+accessibility_name = "Select layer"
+toggle_mode = true
+button_pressed = true
+text = "Layer"
+alignment = 0
+
+[node name="Visibility" type="CheckButton" parent="Header" unique_id=1715499267]
+custom_minimum_size = Vector2(30, 30)
+layout_mode = 2
+tooltip_text = "Show or hide this layer. This doesn't change the map."
+accessibility_name = "Layer visibility"
+button_pressed = true
+flat = true
+
+[node name="Summary" type="Label" parent="." unique_id=716519442]
+modulate = Color(0.62, 0.67, 0.74, 1)
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "1 brush · Saved · 0 missing · 0 problems"
+text = "1 brush · Saved · 0 missing · 0 problems"
+autowrap_mode = 3
+
+[node name="Brushes" type="VBoxContainer" parent="." unique_id=1958386929]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="Empty" type="Label" parent="Brushes" unique_id=1281236087]
+visible = false
+modulate = Color(0.62, 0.67, 0.74, 1)
+layout_mode = 2
+text = "No brushes yet."
+autowrap_mode = 3
+
+[node name="BrushPreview" parent="Brushes" unique_id=1513619370 instance=ExtResource("2_4un45")]
+layout_mode = 2

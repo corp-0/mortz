@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
@@ -15,7 +16,8 @@ public enum MapEditorPendingAction
 [Meta(typeof(IAutoNode))]
 public partial class MapEditorScreen : Node2D, IProvide<MapEditorFlow>
 {
-    [Signal] public delegate void ClosedEventHandler();
+    [Signal]
+    public delegate void ClosedEventHandler();
 
     [Export] private MapEditorFlow _flow = null!;
     [Export] private MapEditorFlowHud _flowHud = null!;
@@ -41,10 +43,24 @@ public partial class MapEditorScreen : Node2D, IProvide<MapEditorFlow>
         _editorHud.ZoneAddRequested += AddZone;
         _editorHud.ZoneReplaceRequested += ReplaceZone;
         _editorHud.ZoneRemoveRequested += RemoveZone;
+        _editorHud.ZoneDuplicateRequested += DuplicateZone;
         _editorHud.SpawnAddRequested += AddSpawn;
         _editorHud.SpawnReplaceRequested += ReplaceSpawn;
         _editorHud.SpawnRemoveRequested += RemoveSpawn;
-        _editorHud.LayerReplaceRequested += ReplaceLayer;
+        _editorHud.SpawnDuplicateRequested += DuplicateSpawn;
+        _editorHud.BrushSourceInitializationRequested += InitializeBrushSource;
+        _editorHud.BrushAddRequested += AddBrush;
+        _editorHud.BrushBatchAddRequested += AddBrushes;
+        _editorHud.BrushBatchRemoveRequested += RemoveBrushes;
+        _editorHud.BrushReplaceRequested += ReplaceBrush;
+        _editorHud.BrushRemoveRequested += RemoveBrush;
+        _editorHud.BrushDuplicateRequested += DuplicateBrush;
+        _editorHud.BrushReorderRequested += ReorderBrush;
+        _editorHud.BrushMoveToLayerRequested += MoveBrushToLayer;
+        _editorHud.StampSaveRequested += SaveStamp;
+        _editorHud.StampRemoveRequested += RemoveStamp;
+        _editorHud.UndoRequested += Undo;
+        _editorHud.RedoRequested += Redo;
         this.Provide();
     }
 
@@ -60,10 +76,24 @@ public partial class MapEditorScreen : Node2D, IProvide<MapEditorFlow>
         _editorHud.ZoneAddRequested -= AddZone;
         _editorHud.ZoneReplaceRequested -= ReplaceZone;
         _editorHud.ZoneRemoveRequested -= RemoveZone;
+        _editorHud.ZoneDuplicateRequested -= DuplicateZone;
         _editorHud.SpawnAddRequested -= AddSpawn;
         _editorHud.SpawnReplaceRequested -= ReplaceSpawn;
         _editorHud.SpawnRemoveRequested -= RemoveSpawn;
-        _editorHud.LayerReplaceRequested -= ReplaceLayer;
+        _editorHud.SpawnDuplicateRequested -= DuplicateSpawn;
+        _editorHud.BrushSourceInitializationRequested -= InitializeBrushSource;
+        _editorHud.BrushAddRequested -= AddBrush;
+        _editorHud.BrushBatchAddRequested -= AddBrushes;
+        _editorHud.BrushBatchRemoveRequested -= RemoveBrushes;
+        _editorHud.BrushReplaceRequested -= ReplaceBrush;
+        _editorHud.BrushRemoveRequested -= RemoveBrush;
+        _editorHud.BrushDuplicateRequested -= DuplicateBrush;
+        _editorHud.BrushReorderRequested -= ReorderBrush;
+        _editorHud.BrushMoveToLayerRequested -= MoveBrushToLayer;
+        _editorHud.StampSaveRequested -= SaveStamp;
+        _editorHud.StampRemoveRequested -= RemoveStamp;
+        _editorHud.UndoRequested -= Undo;
+        _editorHud.RedoRequested -= Redo;
         _workspace = null;
         _pendingAction = MapEditorPendingAction.NONE;
     }
@@ -75,7 +105,10 @@ public partial class MapEditorScreen : Node2D, IProvide<MapEditorFlow>
         _flowHud.HideForEditor();
         _editorHud.ShowForEditor();
 
-        MapEditorOpenResult result = MapEditorWorkspace.Open(definition, _store);
+        MapEditorTextureSourceRegistry textureSources =
+            MapEditorTextureSourceRegistry.CreateDefault(definition);
+        MapEditorTextureResolver textureResolver = new(textureSources);
+        MapEditorOpenResult result = MapEditorWorkspace.Open(definition, _store, textureResolver);
         if (!result.Succeeded)
         {
             ShowFailure("Could not open map", result.Failure);
@@ -83,6 +116,7 @@ public partial class MapEditorScreen : Node2D, IProvide<MapEditorFlow>
         }
 
         _workspace = result.Workspace;
+        _editorHud.ConfigureTextureSources(textureResolver, textureSources);
         _editorHud.Apply(result.Update!);
         _editorHud.ShowStatus(new MapEditorStatus($"Editing {result.Update!.Snapshot.MapId}"));
     }
@@ -105,6 +139,12 @@ public partial class MapEditorScreen : Node2D, IProvide<MapEditorFlow>
             ApplyEdit(_workspace.RemoveZone(id));
     }
 
+    private void DuplicateZone(MapEditorZoneId id, int offset)
+    {
+        if (_workspace != null)
+            ApplyOperation(_workspace.DuplicateZone(id, offset), "Could not duplicate zone");
+    }
+
     private void AddSpawn(MapSpawnPoint spawn)
     {
         if (_workspace != null)
@@ -123,22 +163,143 @@ public partial class MapEditorScreen : Node2D, IProvide<MapEditorFlow>
             ApplyEdit(_workspace.RemoveSpawn(id));
     }
 
-    private void ReplaceLayer(MapEditorLayer layer, string path)
+    private void DuplicateSpawn(MapEditorSpawnId id, int offset)
+    {
+        if (_workspace != null)
+            ApplyOperation(_workspace.DuplicateSpawn(id, offset), "Could not duplicate spawn");
+    }
+
+    private void InitializeBrushSource()
     {
         if (_workspace == null)
             return;
-        MapEditorOperationResult result = _workspace.ReplaceLayer(layer, path);
+        MapEditorOperationResult result = _workspace.InitializeBrushSource();
         if (result.Failure != null)
         {
-            ShowFailure($"Could not replace {LayerName(layer).ToLowerInvariant()} image",
-                result.Failure);
+            ShowFailure("Could not enable layer editing", result.Failure);
             return;
         }
+
         if (result.Update != null)
         {
             _editorHud.Apply(result.Update);
-            _editorHud.ShowStatus(new MapEditorStatus($"{LayerName(layer)} image replaced"));
+            _editorHud.ShowStatus(new MapEditorStatus(
+                "Layer editing enabled. Existing images remain as a reference until you save."));
         }
+    }
+
+    private void AddBrush(MapEditorBrushDraft draft)
+    {
+        if (_workspace != null)
+            ApplyOperation(_workspace.AddBrush(draft), "Could not add brush");
+    }
+
+    private void AddBrushes(ImmutableArray<MapEditorBrushDraft> drafts)
+    {
+        if (_workspace != null)
+            ApplyOperation(_workspace.AddBrushes(drafts), "Could not paint stamp stroke");
+    }
+
+    private void RemoveBrushes(ImmutableArray<MapEditorBrushId> ids)
+    {
+        if (_workspace != null)
+            ApplyOperation(_workspace.RemoveBrushes(ids.ToHashSet()),
+                "Could not erase stamp stroke");
+    }
+
+    private void ReplaceBrush(MapEditorBrushId id, MapEditorBrushDraft draft)
+    {
+        if (_workspace != null)
+            ApplyOperation(_workspace.ReplaceBrush(id, draft), "Could not edit brush");
+    }
+
+    private void RemoveBrush(MapEditorBrushId id)
+    {
+        if (_workspace != null)
+            ApplyOperation(_workspace.RemoveBrush(id), "Could not delete brush");
+    }
+
+    private void DuplicateBrush(MapEditorBrushId id, int offset)
+    {
+        if (_workspace == null)
+            return;
+        MapEditorOperationResult result = _workspace.DuplicateBrush(id, offset);
+        ApplyOperation(result, "Could not duplicate brush");
+        if (result.Update?.Change is MapEditorBrushAdded added &&
+            TryFindBrushLayer(added.Id, out MapEditorLayer layer))
+        {
+            _editorHud.SelectBrush(layer, added.Id);
+        }
+    }
+
+    private void MoveBrushToLayer(MapEditorBrushId id, MapEditorLayer destination)
+    {
+        if (_workspace == null)
+            return;
+        MapEditorOperationResult result = _workspace.MoveBrushToLayer(id, destination);
+        ApplyOperation(result, "Could not move brush");
+        if (result.Update != null)
+            _editorHud.SelectBrush(destination, id);
+    }
+
+    private void SaveStamp(MapEditorBrushId id)
+    {
+        if (_workspace != null)
+            ApplyOperation(_workspace.SaveStamp(id), "Could not save stamp");
+    }
+
+    private void RemoveStamp(MapEditorStampId id)
+    {
+        if (_workspace != null)
+            ApplyOperation(_workspace.RemoveStamp(id), "Could not remove stamp");
+    }
+
+    private bool TryFindBrushLayer(MapEditorBrushId id, out MapEditorLayer layer)
+    {
+        if (_workspace?.Snapshot.BrushDocument != null)
+        {
+            foreach (MapEditorLayer candidate in Enum.GetValues<MapEditorLayer>())
+            {
+                if (_workspace.Snapshot.BrushDocument.Layers.Get(candidate).Brushes.Any(brush => brush.Id == id))
+                {
+                    layer = candidate;
+                    return true;
+                }
+            }
+        }
+
+        layer = default;
+        return false;
+    }
+
+    private void ReorderBrush(MapEditorBrushId id, int destinationIndex)
+    {
+        if (_workspace != null)
+            ApplyOperation(_workspace.ReorderBrush(id, destinationIndex), "Could not reorder brush");
+    }
+
+    private void ApplyOperation(MapEditorOperationResult result, string failurePrefix)
+    {
+        if (result.Failure != null)
+        {
+            ShowFailure(failurePrefix, result.Failure);
+            return;
+        }
+
+        if (result.Update != null)
+            _editorHud.Apply(result.Update);
+    }
+
+    private void Undo()
+    {
+        if (_workspace != null)
+            ApplyOperation(_workspace.Undo(), "Could not undo");
+    }
+
+    private void Redo()
+    {
+        if (_workspace != null)
+            ApplyOperation(_workspace.Redo(), "Could not redo");
     }
 
     private void Save()
@@ -151,6 +312,7 @@ public partial class MapEditorScreen : Node2D, IProvide<MapEditorFlow>
             ShowFailure("Save failed", result.Failure);
             return;
         }
+
         if (result.Update != null)
         {
             _editorHud.Apply(result.Update);
@@ -167,6 +329,7 @@ public partial class MapEditorScreen : Node2D, IProvide<MapEditorFlow>
             RequestDiscard(MapEditorPendingAction.RELOAD);
             return;
         }
+
         Reload();
     }
 
@@ -177,6 +340,7 @@ public partial class MapEditorScreen : Node2D, IProvide<MapEditorFlow>
             RequestDiscard(MapEditorPendingAction.BACK);
             return;
         }
+
         ReturnToFlow();
     }
 
@@ -213,6 +377,7 @@ public partial class MapEditorScreen : Node2D, IProvide<MapEditorFlow>
             ShowFailure("Reload failed", result.Failure);
             return;
         }
+
         if (result.Update != null)
         {
             _editorHud.Apply(result.Update);
@@ -241,22 +406,18 @@ public partial class MapEditorScreen : Node2D, IProvide<MapEditorFlow>
             MapEditorContentFailure content when !content.Diagnostics.IsEmpty =>
                 string.Join("; ", content.Diagnostics.Select(diagnostic => diagnostic.Message)),
             MapEditorIoFailure io => io.Message,
-            MapEditorInvalidPngFailure png => $"'{png.Path}' is not a valid PNG ({png.Reason}).",
-            MapEditorLayerSizeFailure size =>
-                $"Layer must be {size.ExpectedWidth} x {size.ExpectedHeight} px; " +
-                $"this image is {size.ActualWidth} x {size.ActualHeight} px.",
-            _ => "The operation failed.",
+            MapEditorUnresolvedBrushesFailure unresolved => string.Join("; ",
+                unresolved.Brushes.Select(brush =>
+                    $"Brush '{brush.Name}': {brush.Message}")),
+            MapEditorCompositionFailure composition =>
+                $"Could not build the {composition.Layer.ToString().ToLowerInvariant()} layer: " +
+                composition.Message,
+            MapEditorIdentityOverflowFailure overflow =>
+                $"This map has reached the {overflow.ObjectType} limit.",
+            _ => "Something went wrong.",
         };
         _editorHud.ShowStatus(new MapEditorStatus($"{prefix}: {detail}", true));
     }
 
     private void OnFlowClosed() => EmitSignal(SignalName.Closed);
-
-    private static string LayerName(MapEditorLayer layer) => layer switch
-    {
-        MapEditorLayer.BACKGROUND => "Background",
-        MapEditorLayer.SOLID => "Solid",
-        MapEditorLayer.DESTRUCTIBLE => "Destructible",
-        _ => throw new ArgumentOutOfRangeException(nameof(layer)),
-    };
 }

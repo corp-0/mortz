@@ -3,7 +3,7 @@
 [ext_resource type="Script" uid="uid://bgioe7kfejn27" path="res://src/Client/Match/PlayerHud/PlayerStatusHud.cs" id="1_5bgnw"]
 [ext_resource type="PackedScene" uid="uid://dwnh2f53lyhdn" path="res://src/Shared/UI/Hud/ShellCounter.tscn" id="3_ydria"]
 [ext_resource type="PackedScene" uid="uid://d2ajxvokfldtx" path="res://src/Shared/UI/Hud/HealthBar.tscn" id="3_yq8ke"]
-[ext_resource type="PackedScene" uid="uid://cp33jfr5yx3lf" path="res://src/Shared/UI/Hud/AbilityIcon.tscn" id="4_ydria"]
+[ext_resource type="PackedScene" uid="uid://dmt4q1q5ddhyt" path="res://src/Shared/UI/Hud/AbilityIcon.tscn" id="4_ydria"]
 [ext_resource type="Texture2D" uid="uid://dvv1uxmehsvag" path="res://addons/game-icons/ffffff/transparent/1x1/lorc/shield-reflect.svg" id="5_rumg4"]
 [ext_resource type="Texture2D" uid="uid://cqlltx6od8p6e" path="res://addons/game-icons/ffffff/transparent/1x1/delapouite/rope-dart.svg" id="6_40kel"]
 

@@ -1,0 +1,294 @@
+{
+  "version": 1,
+  "nextBrushId": 10,
+  "origin": [
+    0,
+    0
+  ],
+  "layers": [
+    {
+      "layer": "BACKGROUND",
+      "brushes": [
+        {
+          "id": 1,
+          "name": "Grid backdrop",
+          "shape": {
+            "kind": "RECTANGLE",
+            "x": 0,
+            "y": 0,
+            "width": 1280,
+            "height": 720,
+            "rotation": 0
+          },
+          "material": {
+            "kind": "TEXTURE",
+            "source": "project",
+            "path": "Assets/MapEditor/flat_background.svg"
+          },
+          "projection": {
+            "mode": "STRETCH",
+            "origin": [
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1
+            ],
+            "rotation": 0
+          },
+          "visible": true
+        }
+      ]
+    },
+    {
+      "layer": "SOLID",
+      "brushes": [
+        {
+          "id": 2,
+          "name": "Ceiling",
+          "shape": {
+            "kind": "RECTANGLE",
+            "x": 0,
+            "y": 0,
+            "width": 1280,
+            "height": 30,
+            "rotation": 0
+          },
+          "material": {
+            "kind": "TEXTURE",
+            "source": "project",
+            "path": "Assets/MapEditor/flat_wall.svg"
+          },
+          "projection": {
+            "mode": "REPEAT",
+            "origin": [
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1
+            ],
+            "rotation": 0
+          },
+          "visible": true
+        },
+        {
+          "id": 3,
+          "name": "Left wall",
+          "shape": {
+            "kind": "RECTANGLE",
+            "x": 0,
+            "y": 30,
+            "width": 30,
+            "height": 626,
+            "rotation": 0
+          },
+          "material": {
+            "kind": "TEXTURE",
+            "source": "project",
+            "path": "Assets/MapEditor/flat_wall.svg"
+          },
+          "projection": {
+            "mode": "REPEAT",
+            "origin": [
+              0,
+              30
+            ],
+            "scale": [
+              1,
+              1
+            ],
+            "rotation": 0
+          },
+          "visible": true
+        },
+        {
+          "id": 4,
+          "name": "Right wall",
+          "shape": {
+            "kind": "RECTANGLE",
+            "x": 1250,
+            "y": 30,
+            "width": 30,
+            "height": 626,
+            "rotation": 0
+          },
+          "material": {
+            "kind": "TEXTURE",
+            "source": "project",
+            "path": "Assets/MapEditor/flat_wall.svg"
+          },
+          "projection": {
+            "mode": "REPEAT",
+            "origin": [
+              1250,
+              30
+            ],
+            "scale": [
+              1,
+              1
+            ],
+            "rotation": 0
+          },
+          "visible": true
+        },
+        {
+          "id": 5,
+          "name": "Floor",
+          "shape": {
+            "kind": "RECTANGLE",
+            "x": 0,
+            "y": 656,
+            "width": 1280,
+            "height": 64,
+            "rotation": 0
+          },
+          "material": {
+            "kind": "TEXTURE",
+            "source": "project",
+            "path": "Assets/MapEditor/flat_wall.svg"
+          },
+          "projection": {
+            "mode": "REPEAT",
+            "origin": [
+              0,
+              656
+            ],
+            "scale": [
+              1,
+              1
+            ],
+            "rotation": 0
+          },
+          "visible": true
+        },
+        {
+          "id": 6,
+          "name": "Ceiling edge",
+          "shape": {
+            "kind": "RECTANGLE",
+            "x": 30,
+            "y": 29,
+            "width": 1220,
+            "height": 1,
+            "rotation": 0
+          },
+          "material": {
+            "kind": "TEXTURE",
+            "source": "project",
+            "path": "Assets/MapEditor/flat_edge.svg"
+          },
+          "projection": {
+            "mode": "REPEAT",
+            "origin": [
+              30,
+              29
+            ],
+            "scale": [
+              1,
+              1
+            ],
+            "rotation": 0
+          },
+          "visible": true
+        },
+        {
+          "id": 7,
+          "name": "Left edge",
+          "shape": {
+            "kind": "RECTANGLE",
+            "x": 29,
+            "y": 30,
+            "width": 1,
+            "height": 626,
+            "rotation": 0
+          },
+          "material": {
+            "kind": "TEXTURE",
+            "source": "project",
+            "path": "Assets/MapEditor/flat_edge.svg"
+          },
+          "projection": {
+            "mode": "REPEAT",
+            "origin": [
+              29,
+              30
+            ],
+            "scale": [
+              1,
+              1
+            ],
+            "rotation": 0
+          },
+          "visible": true
+        },
+        {
+          "id": 8,
+          "name": "Right edge",
+          "shape": {
+            "kind": "RECTANGLE",
+            "x": 1250,
+            "y": 30,
+            "width": 1,
+            "height": 626,
+            "rotation": 0
+          },
+          "material": {
+            "kind": "TEXTURE",
+            "source": "project",
+            "path": "Assets/MapEditor/flat_edge.svg"
+          },
+          "projection": {
+            "mode": "REPEAT",
+            "origin": [
+              1250,
+              30
+            ],
+            "scale": [
+              1,
+              1
+            ],
+            "rotation": 0
+          },
+          "visible": true
+        },
+        {
+          "id": 9,
+          "name": "Floor edge",
+          "shape": {
+            "kind": "RECTANGLE",
+            "x": 30,
+            "y": 656,
+            "width": 1220,
+            "height": 1,
+            "rotation": 0
+          },
+          "material": {
+            "kind": "TEXTURE",
+            "source": "project",
+            "path": "Assets/MapEditor/flat_edge.svg"
+          },
+          "projection": {
+            "mode": "REPEAT",
+            "origin": [
+              30,
+              656
+            ],
+            "scale": [
+              1,
+              1
+            ],
+            "rotation": 0
+          },
+          "visible": true
+        }
+      ]
+    },
+    {
+      "layer": "DESTRUCTIBLE",
+      "brushes": []
+    }
+  ]
+}

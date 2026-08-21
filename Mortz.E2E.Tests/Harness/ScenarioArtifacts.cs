@@ -67,6 +67,12 @@ public sealed class ScenarioArtifacts : IDisposable
             JsonSerializer.Serialize(manifest, _manifestFormat));
     }
 
+    public string GodotLogPath(string processName) =>
+        Path.Combine(Directory, $"{Sanitize(processName)}.godot.log");
+
+    public string UserDataPath(string processName) =>
+        Path.Combine(Directory, "user", Sanitize(processName));
+
     public void Dispose()
     {
         lock (_gate)

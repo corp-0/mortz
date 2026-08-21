@@ -1,6 +1,6 @@
+using System.Collections.Immutable;
 using Godot;
 using Mortz.Content;
-using Mortz.Core.Match.Teams;
 using SimVec2 = Mortz.Core.Sim.Vec2;
 
 namespace Mortz.Client.MapEditor;
@@ -11,30 +11,52 @@ public enum MapEditorTool
     RECT,
     CIRCLE,
     SPAWN,
+    BRUSH_RECT,
+    BRUSH_ELLIPSE,
+    BRUSH_POLYGON,
+    STAMP,
 }
 
-public partial class MapEditorCanvas : Control
+public partial class MapEditorCanvas(IMapEditorTextureResolver previewResolver) : Control
 {
-    private const float CAMERA_SPEED = 700f;
-    private const float HANDLE_RADIUS = 7f;
+    private const float HANDLE_HIT_RADIUS = 12f;
+    private const float DRAG_THRESHOLD = 4f;
     private const float ZOOM_STEP = 1.2f;
+    public const int GRID_SIZE = 32;
 
-    private static readonly Color _zoneFill = new(0.15f, 0.65f, 1f, 0.16f);
-    private static readonly Color _zoneLine = new(0.25f, 0.8f, 1f, 0.9f);
-    private static readonly Color _selectedFill = new(1f, 0.65f, 0.1f, 0.2f);
-    private static readonly Color _selectedLine = new(1f, 0.75f, 0.2f, 1f);
-
-    private ImageTexture? _background;
-    private ImageTexture? _solid;
-    private ImageTexture? _destructible;
     [Export] private Texture2D _playerTexture = null!;
     private readonly MapEditorInteraction _interaction = new();
+    private MapEditorCanvasResources _resources = new(previewResolver);
+    private readonly MapEditorCanvasPicker _picker = new();
+    private readonly MapEditorCanvasCamera _camera = new();
+    private MapEditorCanvasCursorResolver? _cursorResolver;
+    private MapEditorCanvasDraftFactory? _draftFactory;
+    private MapEditorCanvasRenderer? _renderer;
     private MapEditorSnapshot? _snapshot;
-    private Vector2I _mapSize;
-    private Vector2 _cameraPosition;
+    private MapEditorBrushDraft? _inspectorBrushPreview;
+    private MapEditorZoneDraft? _inspectorZonePreview;
+    private MapSpawnPoint? _inspectorSpawnPreview;
+    private MapEditorStamp? _selectedStamp;
+    private MapEditorBrushDraft? _stampPreview;
+    private MapEditorPoint? _lastStampedCell;
+    private readonly List<MapEditorBrushDraft> _stampStroke = [];
+    private readonly HashSet<string> _stampPlacementNames = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, int> _stampNextName = new(StringComparer.Ordinal);
+    private readonly HashSet<MapEditorBrushId> _stampEraseIds = [];
+    private MapEditorPoint? _lastErasedCell;
+    private bool _stampErasing;
     private Vector2 _cursorMapPosition;
     private bool _panning;
+    private bool _spaceHeld;
+    private bool _spacePanning;
+    private bool _bodyDragPending;
+    private bool _pointerInteractionActive;
+    private Vector2 _pointerPressLocal;
     private bool _cursorVisible;
+
+    public MapEditorCanvas() : this(new MapEditorTextureResolver())
+    {
+    }
 
     public event Action<MapEditorZoneId?>? SelectionChanged;
     public event Action<MapEditorSpawnId?>? SpawnSelectionChanged;
@@ -44,8 +66,21 @@ public partial class MapEditorCanvas : Control
     public event Action<MapEditorZoneId, MapEditorZoneDraft>? ZoneReplaceRequested;
     public event Action<MapSpawnPoint>? SpawnAddRequested;
     public event Action<MapEditorSpawnId, MapSpawnPoint>? SpawnReplaceRequested;
+    public event Action<MapEditorLayer>? LayerSelectionChanged;
+    public event Action<MapEditorBrushId?>? BrushSelectionChanged;
+    public event Action<MapEditorBrushDraft?>? BrushPreviewChanged;
+    public event Action<MapEditorBrushDraft>? BrushAddRequested;
+    public event Action<ImmutableArray<MapEditorBrushDraft>>? BrushBatchAddRequested;
+    public event Action<ImmutableArray<MapEditorBrushId>>? BrushBatchRemoveRequested;
+    public event Action<MapEditorBrushId, MapEditorBrushDraft>? BrushReplaceRequested;
+    public event Action<string?>? BrushDiagnosticChanged;
     public event Action<int, int>? CursorMoved;
     public event Action<float>? ZoomChanged;
+    public event Action<MapEditorEditDomain>? EditDomainChanged;
+    public event Action<MapEditorTool>? ToolChanged;
+    public event Action? PointerInteractionFinished;
+
+    public bool PointerInteractionActive => _pointerInteractionActive;
 
     private MapEditorTool _tool;
 
@@ -54,24 +89,103 @@ public partial class MapEditorCanvas : Control
         get => _tool;
         set
         {
+            if (_tool == value)
+            {
+                EnsureToolOverlayVisible(value);
+                QueueRedraw();
+                return;
+            }
+
+            CancelPointerInteraction();
+            ResetOverlapCycle();
+            MapEditorEditDomain? domain = DomainForTool(value);
+            if (domain != null)
+                SetEditDomain(domain.Value);
             _tool = value;
+            if (value != MapEditorTool.STAMP)
+            {
+                _selectedStamp = null;
+                _lastStampedCell = null;
+                _stampPreview = null;
+            }
             MouseDefaultCursorShape = value == MapEditorTool.SELECT
-                ? CursorShape.Arrow : CursorShape.Cross;
-            if (value != MapEditorTool.SELECT)
-                Select(null);
-            if (value != MapEditorTool.SPAWN)
-                SelectSpawn(null);
+                ? CursorShape.Arrow
+                : CursorShape.Cross;
+            ClearIncompatibleSelection(value);
+            EnsureToolOverlayVisible(value);
+            ToolChanged?.Invoke(value);
             QueueRedraw();
         }
     }
+
     public MapEditorZoneId? SelectedZoneId => _interaction.SelectedZoneId;
     public MapEditorSpawnId? SelectedSpawnId => _interaction.SelectedSpawnId;
-    public bool ShowBackground { get; set; } = true;
-    public bool ShowSolid { get; set; } = true;
-    public bool ShowDestructible { get; set; } = true;
-    public bool ShowZones { get; set; } = true;
-    public bool ShowSpawns { get; set; } = true;
-    private float Zoom { get; set; } = 1f;
+    public MapEditorBrushId? SelectedBrushId => _interaction.SelectedBrushId;
+    public MapEditorStampId? SelectedStampId => _selectedStamp?.Id;
+    public bool HasCancellableInteraction => _interaction.Dragging || _interaction.PolygonCreating;
+    public bool IsCreatingPolygon => _interaction.PolygonCreating;
+    public string? BrushDiagnostic => _interaction.BrushDiagnostic;
+    public MapEditorLayer SelectedLayer => _interaction.SelectedLayer;
+    public MapEditorEditDomain EditDomain => _interaction.EditDomain;
+
+    public MapEditorSnap Snap
+    {
+        get => _interaction.Snap;
+        set
+        {
+            _interaction.Snap = value;
+            UpdateStampPreview(_cursorMapPosition);
+        }
+    }
+
+    private bool _showBackground = true;
+    private bool _showSolid = true;
+    private bool _showDestructible = true;
+
+    public bool ShowBackground
+    {
+        get => _showBackground;
+        set => SetLayerVisibility(ref _showBackground, value);
+    }
+
+    public bool ShowSolid
+    {
+        get => _showSolid;
+        set => SetLayerVisibility(ref _showSolid, value);
+    }
+
+    public bool ShowDestructible
+    {
+        get => _showDestructible;
+        set => SetLayerVisibility(ref _showDestructible, value);
+    }
+
+    private bool _showZones = true;
+    private bool _showSpawns = true;
+
+    public bool ShowZones
+    {
+        get => _showZones;
+        set
+        {
+            _showZones = value;
+            QueueRedraw();
+        }
+    }
+
+    public bool ShowSpawns
+    {
+        get => _showSpawns;
+        set
+        {
+            _showSpawns = value;
+            QueueRedraw();
+        }
+    }
+
+    public bool ShowBrushOutlines { get; set; } = true;
+    public bool ShowGrid { get; set; } = true;
+    private float Zoom => _camera.Zoom;
 
     public override void _Ready()
     {
@@ -83,36 +197,90 @@ public partial class MapEditorCanvas : Control
         _interaction.ZoneReplaceRequested += (id, draft) => ZoneReplaceRequested?.Invoke(id, draft);
         _interaction.SpawnAddRequested += spawn => SpawnAddRequested?.Invoke(spawn);
         _interaction.SpawnReplaceRequested += (id, spawn) => SpawnReplaceRequested?.Invoke(id, spawn);
+        _interaction.LayerSelectionChanged += layer => LayerSelectionChanged?.Invoke(layer);
+        _interaction.BrushSelectionChanged += OnBrushSelectionChanged;
+        _interaction.BrushPreviewChanged += OnBrushPreviewChanged;
+        _interaction.BrushAddRequested += draft => BrushAddRequested?.Invoke(draft);
+        _interaction.BrushReplaceRequested += (id, draft) => BrushReplaceRequested?.Invoke(id, draft);
+        _interaction.BrushDiagnosticChanged += diagnostic => BrushDiagnosticChanged?.Invoke(diagnostic);
+        _interaction.EditDomainChanged += domain => EditDomainChanged?.Invoke(domain);
         Tool = MapEditorTool.SELECT;
+        TextureFilter = TextureFilterEnum.Nearest;
+        TextureRepeat = TextureRepeatEnum.Enabled;
         ClipContents = true;
+        SetProcessUnhandledInput(true);
         Resized += OnResized;
     }
 
-    public override void _ExitTree() => Resized -= OnResized;
+    public override void _ExitTree()
+    {
+        Resized -= OnResized;
+        Material = null;
+        _resources.Dispose();
+    }
+
+    public void ConfigureTextureResolver(IMapEditorTextureResolver resolver)
+    {
+        ArgumentNullException.ThrowIfNull(resolver);
+        _resources.Dispose();
+        _resources = new MapEditorCanvasResources(resolver);
+        _draftFactory = null;
+        _renderer = null;
+        QueueRedraw();
+    }
 
     public void Apply(MapEditorUpdate update)
     {
         bool resetView = update.Change is MapEditorOpened or MapEditorReloaded;
-        foreach (MapEditorLayer layer in MapEditorCanvasLayerPlan.LayersToDecode(update.Change))
+        if (resetView)
+            _resources.InvalidatePreviews();
+        HashSet<MapEditorLayer> changedLayers = MapEditorCanvasResources.ChangedBakedLayers(
+            _snapshot, update.Snapshot);
+        _snapshot = update.Snapshot;
+        _camera.ApplyBounds(update.Snapshot.Bounds, resetView);
+        _interaction.Apply(update);
+        if (resetView)
         {
-            ImageTexture texture = DecodeTexture(update.Snapshot.Layers, layer);
-            switch (layer)
+            _selectedStamp = null;
+            _stampPreview = null;
+        }
+        else if (_selectedStamp != null)
+        {
+            _selectedStamp = update.Snapshot.BrushDocument?.Stamps
+                .FirstOrDefault(stamp => stamp.Id == _selectedStamp.Id);
+            if (_selectedStamp == null)
             {
-                case MapEditorLayer.BACKGROUND:
-                    _background = texture;
-                    break;
-                case MapEditorLayer.SOLID:
-                    _solid = texture;
-                    break;
-                case MapEditorLayer.DESTRUCTIBLE:
-                    _destructible = texture;
-                    break;
+                _stampPreview = null;
+                if (_tool == MapEditorTool.STAMP)
+                    Tool = MapEditorTool.SELECT;
+            }
+            else if (_tool == MapEditorTool.STAMP)
+            {
+                _interaction.SelectBrush(null);
+                UpdateStampPreview(_cursorMapPosition);
             }
         }
+        ResetOverlapCycle();
+        if (resetView)
+        {
+            _resources.ClearMaterials();
+        }
+        else
+        {
+            RememberChangedMaterial(update);
+        }
 
-        _snapshot = update.Snapshot;
-        _mapSize = new Vector2I(update.Snapshot.Width, update.Snapshot.Height);
-        _interaction.Apply(update);
+        if (resetView)
+        {
+            _tool = MapEditorTool.SELECT;
+            MouseDefaultCursorShape = CursorShape.Arrow;
+            ToolChanged?.Invoke(_tool);
+        }
+
+        if (resetView || update.Change is MapEditorBrushReplaced or
+                MapEditorBrushRemoved or MapEditorBrushMovedToLayer)
+            _inspectorBrushPreview = null;
+        RefreshBakedTextures(changedLayers);
         switch (update.Change)
         {
             case MapEditorZoneReplaced zoneReplaced when
@@ -127,90 +295,217 @@ public partial class MapEditorCanvas : Control
 
         if (resetView)
         {
-            _cameraPosition = new Vector2(_mapSize.X / 2f, _mapSize.Y / 2f);
-            Zoom = 1f;
             ZoomChanged?.Invoke(Zoom);
         }
+
         QueueRedraw();
     }
 
-    public void Select(MapEditorZoneId? id) => _interaction.SelectZone(id);
+    public void Select(MapEditorZoneId? id)
+    {
+        _inspectorZonePreview = null;
+        _interaction.SelectZone(id);
+    }
 
-    public void SelectSpawn(MapEditorSpawnId? id) => _interaction.SelectSpawn(id);
+    public void SelectSpawn(MapEditorSpawnId? id)
+    {
+        _inspectorSpawnPreview = null;
+        _interaction.SelectSpawn(id);
+    }
+
+    public void SelectBrush(MapEditorBrushId? id)
+    {
+        _inspectorBrushPreview = null;
+        _interaction.SelectBrush(id);
+        if (id != null && SelectedBrush() is { } brush)
+            RememberResolvedMaterial(brush);
+    }
+
+    public void SelectStamp(MapEditorStamp stamp)
+    {
+        ArgumentNullException.ThrowIfNull(stamp);
+        _selectedStamp = stamp;
+        SelectLayer(stamp.Brush.Layer);
+        Tool = MapEditorTool.STAMP;
+        UpdateStampPreview(_cursorMapPosition);
+    }
+
+    public void PreviewSelectedBrush(MapEditorBrushDraft? preview)
+    {
+        _inspectorBrushPreview = SelectedBrushId == null ? null : preview;
+        QueueRedraw();
+    }
+
+    public void PreviewSelectedZone(MapEditorZoneDraft? preview)
+    {
+        _inspectorZonePreview = SelectedZoneId == null ? null : preview;
+        QueueRedraw();
+    }
+
+    public void PreviewSelectedSpawn(MapSpawnPoint? preview)
+    {
+        _inspectorSpawnPreview = SelectedSpawnId == null ? null : preview;
+        QueueRedraw();
+    }
+
+    public void SelectLayer(MapEditorLayer layer)
+    {
+        ResetOverlapCycle();
+        _interaction.SelectLayer(layer);
+        RefreshBakedTextures(null);
+        QueueRedraw();
+    }
+
+    public void SetEditDomain(MapEditorEditDomain domain)
+    {
+        ResetOverlapCycle();
+        _inspectorBrushPreview = null;
+        _inspectorZonePreview = null;
+        _inspectorSpawnPreview = null;
+        _interaction.SetEditDomain(domain);
+        if (DomainForTool(_tool) is { } toolDomain && toolDomain != domain)
+        {
+            _tool = MapEditorTool.SELECT;
+            _selectedStamp = null;
+            _stampPreview = null;
+            ToolChanged?.Invoke(_tool);
+        }
+
+        MouseDefaultCursorShape = _tool == MapEditorTool.SELECT
+            ? CursorShape.Arrow
+            : CursorShape.Cross;
+        QueueRedraw();
+    }
 
     public void CancelInteraction()
     {
-        _interaction.Cancel();
+        CancelPointerInteraction();
         QueueRedraw();
     }
 
+    public bool TryCancelInteraction()
+    {
+        if (!HasCancellableInteraction)
+            return false;
+        CancelInteraction();
+        return true;
+    }
+
+    public bool TryClosePolygon() => _interaction.TryCommitPolygonCreation();
+
+    public bool TryRemoveLastPolygonVertex() => _interaction.RemoveLastPolygonVertex();
+
     public void ZoomIn() => SetZoom(Zoom * ZOOM_STEP, Size / 2f);
     public void ZoomOut() => SetZoom(Zoom / ZOOM_STEP, Size / 2f);
+
     public void ResetView()
     {
-        if (_mapSize.X == 0)
-            return;
-        ApplyView(MapEditorGeometry.ResetView(_mapSize.X, _mapSize.Y));
+        if (_camera.Reset())
+            ViewChanged();
     }
 
     public void FrameMap()
     {
-        if (_mapSize.X == 0 || Size.X <= 0 || Size.Y <= 0)
-            return;
-        ApplyView(MapEditorGeometry.FrameView(_mapSize.X, _mapSize.Y, Size.X, Size.Y));
+        if (_camera.FrameMap(Size))
+            ViewChanged();
     }
 
-    private void ApplyView(MapEditorView view)
+    public bool FrameSelection()
     {
-        _cameraPosition = new Vector2(view.CameraPosition.X, view.CameraPosition.Y);
-        Zoom = view.Zoom;
+        if (SelectedBrushId is { } brushId)
+        {
+            FrameBrush(SelectedLayer, brushId);
+            return true;
+        }
+
+        if (SelectedZoneId is { } zoneId)
+        {
+            FrameZone(zoneId);
+            return true;
+        }
+
+        if (SelectedSpawnId is { } spawnId)
+        {
+            FrameSpawn(spawnId);
+            return true;
+        }
+
+        return false;
+    }
+
+    public void FrameBrush(MapEditorLayer layer, MapEditorBrushId id)
+    {
+        MapEditorBrush? brush = _snapshot?.BrushDocument?.Layers.Get(layer).Brushes
+            .FirstOrDefault(candidate => candidate.Id == id);
+        if (brush != null)
+            FrameBounds(MapEditorGeometry.Bounds(brush.Shape));
+    }
+
+    public void FrameZone(MapEditorZoneId id)
+    {
+        MapEditorZone? zone = _snapshot?.Zones.FirstOrDefault(candidate => candidate.Id == id);
+        if (zone != null)
+            FrameBounds(ZoneBounds(zone.Shape));
+    }
+
+    public void FrameSpawn(MapEditorSpawnId id)
+    {
+        if (_snapshot == null)
+            return;
+        MapEditorSpawn? spawn = _snapshot.SpawnPoints.FirstOrDefault(candidate => candidate.Id == id);
+        if (spawn != null)
+            FrameBounds(new MapEditorBounds(spawn.Value.Value.X - 16, spawn.Value.Value.Y - 16,
+                spawn.Value.Value.X + 16, spawn.Value.Value.Y + 16));
+    }
+
+    private void FrameBounds(MapEditorBounds bounds)
+    {
+        if (_camera.Frame(bounds, Size))
+            ViewChanged();
+    }
+
+    private static MapEditorBounds ZoneBounds(MapZoneShape shape) => shape switch
+    {
+        RectMapZoneShape rect => MapEditorGeometry.Bounds(new MapEditorRectBrushShape(
+            rect.X, rect.Y, rect.Width, rect.Height, rect.Rotation)),
+        CircleMapZoneShape circle => new MapEditorBounds(circle.X - circle.Radius,
+            circle.Y - circle.Radius, circle.X + circle.Radius, circle.Y + circle.Radius),
+        EllipseMapZoneShape ellipse => MapEditorGeometry.Bounds(new MapEditorEllipseBrushShape(
+            ellipse.X, ellipse.Y, ellipse.RadiusX, ellipse.RadiusY, ellipse.Rotation)),
+        _ => throw new ArgumentOutOfRangeException(nameof(shape)),
+    };
+
+    private void ViewChanged()
+    {
         ZoomChanged?.Invoke(Zoom);
         QueueRedraw();
     }
 
     public override void _Draw()
     {
-        Rect2 mapRect = MapRect();
-        DrawRect(new Rect2(Vector2.Zero, Size), new Color(0.035f, 0.04f, 0.05f));
-        if (_background != null && ShowBackground)
-            DrawTextureRect(_background, mapRect, false);
-        if (_solid != null && ShowSolid)
-            DrawTextureRect(_solid, mapRect, false);
-        if (_destructible != null && ShowDestructible)
-            DrawTextureRect(_destructible, mapRect, false);
-        if (_snapshot == null)
-            return;
-
-        if (ShowZones)
-        {
-            foreach (MapEditorZone zone in _snapshot.Zones)
-            {
-                MapEditorZoneDraft displayed = zone.Id == SelectedZoneId &&
-                    _interaction.ZonePreview is { } preview ? preview : Draft(zone);
-                DrawZone(displayed, zone.Id == SelectedZoneId);
-            }
-            if (_interaction.ZonePreview is { } newZone && SelectedZoneId == null)
-                DrawZone(newZone, true);
-        }
-        if (ShowSpawns)
-            DrawSpawns();
-        if (_interaction.SpawnPreview == null && Tool == MapEditorTool.SPAWN && _cursorVisible)
-            DrawSpawnPreview();
+        _renderer ??= new MapEditorCanvasRenderer(this, _resources);
+        _renderer.Draw(new MapEditorCanvasRenderFrame(
+            _snapshot, _camera, _playerTexture, SelectedLayer, EditDomain, Tool,
+            SelectedZoneId, SelectedSpawnId, SelectedBrushId,
+            _interaction.ZonePreview, _interaction.SpawnPreview, _interaction.BrushPreview,
+            _stampStroke, _stampEraseIds,
+            _inspectorZonePreview, _inspectorSpawnPreview,
+            _stampPreview ?? _inspectorBrushPreview,
+            _interaction.PolygonCreating, ShowBackground, ShowSolid, ShowDestructible,
+            ShowZones, ShowSpawns, ShowGrid, ShowBrushOutlines, _cursorVisible,
+            _cursorMapPosition));
     }
 
     public override void _GuiInput(InputEvent @event)
     {
-        if (_snapshot == null || _mapSize.X == 0)
+        if (_snapshot == null || _camera.Bounds.Width <= 0 || _camera.Bounds.Height <= 0)
             return;
-        if (_interaction.Dragging && @event.IsActionPressed("ui_cancel"))
-        {
-            CancelInteraction();
-            AcceptEvent();
-            return;
-        }
         switch (@event)
         {
-            case InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.WheelUp or MouseButton.WheelDown } wheel:
+            case InputEventMouseButton
+            {
+                Pressed: true, ButtonIndex: MouseButton.WheelUp or MouseButton.WheelDown
+            } wheel:
                 {
                     float factor = wheel.ButtonIndex == MouseButton.WheelUp ? ZOOM_STEP : 1f / ZOOM_STEP;
                     SetZoom(Zoom * factor, wheel.Position);
@@ -219,88 +514,351 @@ public partial class MapEditorCanvas : Control
                 }
             case InputEventMouseButton { ButtonIndex: MouseButton.Middle } middle:
                 _panning = middle.Pressed;
+                MouseDefaultCursorShape = middle.Pressed ? CursorShape.Drag : CursorShape.Arrow;
                 AcceptEvent();
                 return;
             case InputEventMouseButton { ButtonIndex: MouseButton.Left } button:
                 {
+                    if (_spaceHeld)
+                    {
+                        _spacePanning = button.Pressed;
+                        MouseDefaultCursorShape = button.Pressed ? CursorShape.Drag : CursorShape.Arrow;
+                        AcceptEvent();
+                        return;
+                    }
+
                     if (button.Pressed)
                     {
-                        if (!MapRect().HasPoint(button.Position))
-                            return;
-                        BeginDrag(LocalToMap(button.Position));
+                        _pointerInteractionActive = true;
+                        _pointerPressLocal = button.Position;
+                        BeginDrag(LocalToMap(button.Position), button.AltPressed);
                     }
                     else if (_interaction.Dragging)
-                        EndDrag(LocalToMap(button.Position));
+                    {
+                        if (_bodyDragPending)
+                        {
+                            _bodyDragPending = false;
+                            CancelPointerInteraction();
+                        }
+                        else
+                            EndDrag(LocalToMap(button.Position));
+                    }
+                    else if (!button.Pressed && Tool == MapEditorTool.STAMP)
+                    {
+                        CommitStampStroke();
+                    }
+
+                    if (!button.Pressed)
+                    {
+                        FinishPointerInteraction();
+                    }
+
                     AcceptEvent();
                     return;
                 }
-            case InputEventMouseMotion motion when _panning:
+            case InputEventMouseButton { ButtonIndex: MouseButton.Right } right:
+                if (Tool == MapEditorTool.STAMP)
+                {
+                    if (right.Pressed)
+                    {
+                        _pointerInteractionActive = true;
+                        _stampErasing = true;
+                        _stampEraseIds.Clear();
+                        _lastErasedCell = null;
+                        EraseStampAt(LocalToMap(right.Position));
+                    }
+                    else
+                    {
+                        CommitStampErase();
+                        FinishPointerInteraction();
+                    }
+                    AcceptEvent();
+                }
+                else if (right.Pressed && EditDomain == MapEditorEditDomain.GEOMETRY &&
+                         TryRemovePolygonVertex(LocalToMap(right.Position)))
+                {
+                    AcceptEvent();
+                }
+                return;
+            case InputEventMouseMotion motion when _panning || _spacePanning:
                 ReportCursor(motion.Position);
                 MoveCamera(-motion.Relative);
                 AcceptEvent();
                 return;
+            case InputEventMouseMotion stampMotion when
+                _pointerInteractionActive && Tool == MapEditorTool.STAMP && !_stampErasing:
+                ReportCursor(stampMotion.Position);
+                PaintStamp(LocalToMap(stampMotion.Position));
+                AcceptEvent();
+                return;
+            case InputEventMouseMotion eraseMotion when
+                _pointerInteractionActive && Tool == MapEditorTool.STAMP && _stampErasing:
+                ReportCursor(eraseMotion.Position);
+                EraseStampAt(LocalToMap(eraseMotion.Position));
+                AcceptEvent();
+                return;
             case InputEventMouseMotion dragMotion when _interaction.Dragging:
                 ReportCursor(dragMotion.Position);
+                if (_bodyDragPending && dragMotion.Position.DistanceTo(_pointerPressLocal) <
+                    DRAG_THRESHOLD)
+                    return;
+                _bodyDragPending = false;
                 UpdateDrag(LocalToMap(dragMotion.Position));
                 AcceptEvent();
                 return;
             case InputEventMouseMotion hoverMotion:
+                _picker.ResetIfPointerMoved(hoverMotion.Position);
                 ReportCursor(hoverMotion.Position);
                 break;
         }
     }
 
-    public override void _Process(double delta)
+    public override void _UnhandledInput(InputEvent @event)
     {
-        if (GetViewport().GuiGetFocusOwner() is LineEdit)
+        if (_snapshot == null)
             return;
-        Vector2 direction = Vector2.Zero;
-        if (Input.IsPhysicalKeyPressed(Key.A)) direction.X--;
-        if (Input.IsPhysicalKeyPressed(Key.D)) direction.X++;
-        if (Input.IsPhysicalKeyPressed(Key.W)) direction.Y--;
-        if (Input.IsPhysicalKeyPressed(Key.S)) direction.Y++;
-        if (direction == Vector2.Zero)
-            return;
-        MoveCamera(direction.Normalized() * CAMERA_SPEED * (float)delta);
+        if (@event is InputEventKey { Keycode: Key.Space, Echo: false } space)
+        {
+            _spaceHeld = space.Pressed;
+            if (!space.Pressed)
+                _spacePanning = false;
+            MouseDefaultCursorShape = space.Pressed
+                ? CursorShape.PointingHand
+                : (_tool == MapEditorTool.SELECT ? CursorShape.Arrow : CursorShape.Cross);
+            GetViewport().SetInputAsHandled();
+        }
+        else if (@event is InputEventMouseMotion motion && (_panning || _spacePanning))
+        {
+            ReportCursor(GetLocalMousePosition());
+            MoveCamera(-motion.Relative);
+            GetViewport().SetInputAsHandled();
+        }
+        else if (@event is InputEventMouseMotion && _interaction.Dragging)
+        {
+            ReportCursor(GetLocalMousePosition());
+            if (_bodyDragPending && GetLocalMousePosition().DistanceTo(_pointerPressLocal) <
+                DRAG_THRESHOLD)
+                return;
+            _bodyDragPending = false;
+            UpdateDrag(LocalToMap(GetLocalMousePosition()));
+            GetViewport().SetInputAsHandled();
+        }
+        else if (@event is InputEventMouseButton
+        {
+            ButtonIndex: MouseButton.Left,
+            Pressed: false,
+        } && _pointerInteractionActive)
+        {
+            if (_interaction.Dragging && _bodyDragPending)
+            {
+                _bodyDragPending = false;
+                CancelPointerInteraction();
+            }
+            else if (_interaction.Dragging)
+            {
+                EndDrag(LocalToMap(GetLocalMousePosition()));
+            }
+            else if (Tool == MapEditorTool.STAMP)
+            {
+                CommitStampStroke();
+            }
+
+            FinishPointerInteraction();
+            GetViewport().SetInputAsHandled();
+        }
+        else if (@event is InputEventMouseButton
+        {
+            ButtonIndex: MouseButton.Middle,
+            Pressed: false,
+        })
+        {
+            _panning = false;
+        }
+        else if (@event is InputEventMouseButton
+        {
+            ButtonIndex: MouseButton.Left,
+            Pressed: false,
+        } && _spacePanning)
+        {
+            _spacePanning = false;
+        }
+        else if (@event is InputEventMouseButton
+        {
+            ButtonIndex: MouseButton.Right,
+            Pressed: false,
+        } && _pointerInteractionActive && _stampErasing)
+        {
+            CommitStampErase();
+            FinishPointerInteraction();
+            GetViewport().SetInputAsHandled();
+        }
     }
 
-    private void BeginDrag(Vector2 point)
+    private void BeginDrag(Vector2 point, bool cycleOverlap)
     {
-        point = ClampToMap(point);
+        EnsureToolOverlayVisible(Tool);
+        if (!cycleOverlap)
+            ResetOverlapCycle();
         switch (Tool)
         {
+            case MapEditorTool.STAMP:
+                if (_lastStampedCell == null)
+                    BeginStampStroke();
+                PaintStamp(point);
+                return;
             case MapEditorTool.SPAWN:
                 {
-                    MapEditorSpawn? hit = HitTestSpawn(point);
+                    MapEditorSpawn? hit = ShowSpawns ? PickSpawn(point, cycleOverlap) : null;
                     if (hit == null)
                     {
-                        MapSpawnPoint spawn = new((int)point.X, (int)point.Y);
+                        MapEditorPoint snapped = MapEditorGeometry.Snap(MapPoint(point), Snap);
+                        MapSpawnPoint spawn = new(snapped.X, snapped.Y);
                         _interaction.BeginSpawnCreation(spawn, Sim(point));
                     }
                     else
+                    {
                         _interaction.BeginSpawnMove(hit.Value.Id, Sim(point));
+                        _bodyDragPending = true;
+                    }
+
                     return;
                 }
             case MapEditorTool.SELECT:
                 {
-                    if (ShowSpawns)
+                    if (EditDomain == MapEditorEditDomain.GEOMETRY)
                     {
-                        MapEditorSpawn? spawn = HitTestSpawn(point);
-                        if (spawn != null)
+                        MapEditorBrush? selectedBrush = SelectedBrush();
+                        if (selectedBrush?.Shape is MapEditorRectBrushShape selectedRect)
                         {
-                            _interaction.BeginSpawnMove(spawn.Value.Id, Sim(point));
+                            MapEditorRectHandle handle = MapEditorGeometry.PickRectBrushHandle(
+                                selectedRect, MapPoint(point), HANDLE_HIT_RADIUS / Zoom);
+                            if (handle is not (MapEditorRectHandle.NONE or MapEditorRectHandle.MOVE) &&
+                                _interaction.BeginBrushDrag(selectedBrush.Id, Draft(selectedBrush),
+                                    handle, MapPoint(point)))
+                                return;
+                        }
+
+                        if (selectedBrush?.Shape is MapEditorEllipseBrushShape selectedEllipse)
+                        {
+                            MapEditorEllipseHandle handle = MapEditorGeometry.PickEllipseBrushHandle(
+                                selectedEllipse, MapPoint(point), HANDLE_HIT_RADIUS / Zoom);
+                            if (handle is not (MapEditorEllipseHandle.NONE or
+                                    MapEditorEllipseHandle.MOVE) &&
+                                _interaction.BeginBrushDrag(selectedBrush.Id, Draft(selectedBrush),
+                                    handle, MapPoint(point)))
+                                return;
+                        }
+
+                        if (selectedBrush?.Shape is MapEditorPolygonBrushShape selectedPolygon)
+                        {
+                            int vertex = MapEditorGeometry.PickPolygonVertex(selectedPolygon,
+                                MapPoint(point), HANDLE_HIT_RADIUS / Zoom);
+                            if (vertex >= 0 && _interaction.BeginPolygonVertexDrag(selectedBrush.Id,
+                                    vertex, MapPoint(point)))
+                                return;
+                            int edge = MapEditorGeometry.PickPolygonEdge(selectedPolygon,
+                                MapPoint(point), HANDLE_HIT_RADIUS / Zoom);
+                            if (edge >= 0 && _interaction.BeginPolygonEdgeInsertion(selectedBrush.Id,
+                                    edge, MapPoint(point)))
+                                return;
+                        }
+
+                        MapEditorBrush? brush = PickBrush(point, cycleOverlap);
+                        if (brush != null)
+                        {
+                            SelectBrush(brush.Id);
+                            BeginBrushMove(brush, MapPoint(point));
+                            _bodyDragPending = true;
                             return;
                         }
-                    }
-                    SelectSpawn(null);
-                    MapEditorZone? selected = SelectedZone();
-                    if (selected != null && TryStartHandleDrag(selected, point))
+
+                        SelectBrush(null);
                         return;
-                    MapEditorZone? hit = HitTestZone(point);
+                    }
+
+                    if (EditDomain == MapEditorEditDomain.SPAWNS)
+                    {
+                        MapEditorSpawn? spawn = ShowSpawns ? PickSpawn(point, cycleOverlap) : null;
+                        if (spawn != null)
+                        {
+                            SelectSpawn(spawn.Value.Id);
+                            _interaction.BeginSpawnMove(spawn.Value.Id, Sim(point));
+                            _bodyDragPending = true;
+                            return;
+                        }
+
+                        SelectSpawn(null);
+                        return;
+                    }
+
+                    if (!ShowZones)
+                    {
+                        Select(null);
+                        return;
+                    }
+
+                    MapEditorZone? selected = SelectedZone();
+                    if (selected != null && TryStartScaleHandleDrag(selected, point))
+                        return;
+                    MapEditorZone? hit = PickZone(point, cycleOverlap);
                     Select(hit?.Id);
                     if (hit == null)
                         return;
-                    TryStartHandleDrag(hit, point);
+                    _interaction.BeginZoneDrag(hit.Id, MapEditorZoneDrag.MOVE, Sim(point));
+                    _bodyDragPending = true;
+                    return;
+                }
+            case MapEditorTool.BRUSH_RECT:
+                {
+                    if (_snapshot?.CanEditBrushes == true)
+                    {
+                        MapEditorPoint anchor = MapEditorGeometry.Snap(MapPoint(point), Snap);
+                        MapEditorRectBrushShape rect = new(anchor.X, anchor.Y,
+                            Snap == MapEditorSnap.NONE ? 1 : (int)Snap,
+                            Snap == MapEditorSnap.NONE ? 1 : (int)Snap, 0);
+                        MapEditorBrushDraft brushDraft = NewBrushDraft(UniqueBrushName(), rect,
+                            anchor);
+                        _interaction.BeginBrushCreation(brushDraft, anchor);
+                    }
+
+                    return;
+                }
+            case MapEditorTool.BRUSH_ELLIPSE:
+                {
+                    if (_snapshot?.CanEditBrushes == true)
+                    {
+                        MapEditorPoint anchor = MapEditorGeometry.Snap(MapPoint(point), Snap);
+                        int radius = Snap == MapEditorSnap.NONE ? 1 : (int)Snap;
+                        MapEditorEllipseBrushShape ellipse = new(anchor.X, anchor.Y,
+                            radius, radius, 0);
+                        MapEditorBrushDraft brushDraft = NewBrushDraft(
+                            UniqueBrushName("ellipse"), ellipse, anchor);
+                        _interaction.BeginBrushCreation(brushDraft, anchor);
+                    }
+
+                    return;
+                }
+            case MapEditorTool.BRUSH_POLYGON:
+                {
+                    if (_snapshot?.CanEditBrushes != true)
+                        return;
+                    MapEditorPoint vertex = MapEditorGeometry.Snap(MapPoint(point), Snap);
+                    if (!_interaction.PolygonCreating)
+                    {
+                        MapEditorPolygonBrushShape polygon = new([]);
+                        _interaction.BeginPolygonCreation(NewBrushDraft(
+                            UniqueBrushName("polygon"), polygon, vertex));
+                    }
+                    else if (_interaction.BrushPreview?.Shape is MapEditorPolygonBrushShape pending &&
+                             pending.Vertices.Length >= 3 &&
+                             Distance(vertex, pending.Vertices[0]) <= HANDLE_HIT_RADIUS / Zoom)
+                    {
+                        _interaction.TryCommitPolygonCreation();
+                        return;
+                    }
+
+                    _interaction.AppendPolygonVertex(vertex);
+                    QueueRedraw();
                     return;
                 }
         }
@@ -311,211 +869,175 @@ public partial class MapEditorCanvas : Control
             : new EllipseMapZoneShape((int)point.X, (int)point.Y, 1, 1);
         MapEditorZoneDraft draft = new(name, [], shape, []);
         _interaction.BeginZoneCreation(
-            Tool == MapEditorTool.RECT ? MapEditorZoneDrag.CREATE_RECT :
-                MapEditorZoneDrag.CREATE_CIRCLE,
+            Tool == MapEditorTool.RECT ? MapEditorZoneDrag.CREATE_RECT : MapEditorZoneDrag.CREATE_CIRCLE,
             draft, Sim(point));
     }
 
-    private bool TryStartHandleDrag(MapEditorZone zone, Vector2 point)
+    private bool TryStartScaleHandleDrag(MapEditorZone zone, Vector2 point)
     {
         MapZoneHandle handle = MapEditorGeometry.PickHandle(zone.Shape,
-            Sim(point), HANDLE_RADIUS, out SimVec2 anchor);
-        if (handle == MapZoneHandle.NONE)
+            Sim(point), HANDLE_HIT_RADIUS / Zoom, out SimVec2 anchor);
+        if (handle != MapZoneHandle.SCALE)
             return false;
         return _interaction.BeginZoneDrag(zone.Id,
-            handle == MapZoneHandle.MOVE ? MapEditorZoneDrag.MOVE : MapEditorZoneDrag.SCALE,
-            Sim(point), anchor);
+            MapEditorZoneDrag.SCALE, Sim(point), anchor);
     }
 
     private void UpdateDrag(Vector2 point)
     {
-        point = ClampToMap(point);
         _interaction.Update(Sim(point));
         QueueRedraw();
     }
 
     private void EndDrag(Vector2 point)
     {
-        point = ClampToMap(point);
         _interaction.Commit(Sim(point));
         QueueRedraw();
     }
 
-    private void DrawZone(MapEditorZoneDraft zone, bool selected)
+    private void RefreshBakedTextures(IReadOnlySet<MapEditorLayer>? changedLayers)
     {
-        Color fill = selected ? _selectedFill : _zoneFill;
-        Color line = selected ? _selectedLine : _zoneLine;
-        if (zone.Shape is RectMapZoneShape rect)
+        if (_snapshot != null)
         {
-            Vector2[] points = RectPoints(rect);
-            DrawShape(points, fill, line, selected);
-            if (selected)
-            {
-                foreach (Vector2 point in points)
-                {
-                    DrawHandle(point, move: false);
-                }
+            _resources.RefreshBakedTextures(_snapshot, SelectedLayer, ShowBackground, ShowSolid,
+                ShowDestructible, changedLayers);
+        }
+    }
 
-                DrawHandle(MapToLocal(new Vector2(
-                    rect.X + rect.Width / 2f, rect.Y + rect.Height / 2f)), move: true);
-            }
+    private void SetLayerVisibility(ref bool field, bool value)
+    {
+        if (field == value)
             return;
-        }
-        Vector2 center;
-        Vector2[] oval;
-        Vector2 scaleHandle;
-        if (zone.Shape is CircleMapZoneShape circle)
-        {
-            center = MapToLocal(new Vector2(circle.X, circle.Y));
-            oval = EllipsePoints(circle.X, circle.Y, circle.Radius, circle.Radius, 0);
-            scaleHandle = center + new Vector2(circle.Radius * Zoom, 0);
-        }
-        else
-        {
-            EllipseMapZoneShape ellipse = (EllipseMapZoneShape)zone.Shape;
-            center = MapToLocal(new Vector2(ellipse.X, ellipse.Y));
-            oval = EllipsePoints(ellipse.X, ellipse.Y, ellipse.RadiusX,
-                ellipse.RadiusY, ellipse.Rotation);
-            float rotation = Mathf.DegToRad(ellipse.Rotation);
-            scaleHandle = center +
-                (new Vector2(ellipse.RadiusX, ellipse.RadiusY) * Zoom).Rotated(rotation);
-        }
-        DrawShape(oval, fill, line, selected);
-        if (selected)
-        {
-            DrawHandle(center, move: true);
-            DrawHandle(scaleHandle, move: false);
-        }
+        field = value;
+        RefreshBakedTextures(null);
+        QueueRedraw();
     }
 
-    private void DrawSpawns()
-    {
-        foreach (MapEditorSpawn entry in _snapshot!.SpawnPoints)
-        {
-            MapSpawnPoint spawn = entry.Id == SelectedSpawnId &&
-                _interaction.SpawnPreview is { } preview ? preview : entry.Value;
-            Vector2 point = MapToLocal(new Vector2(spawn.X, spawn.Y));
-            Vector2 bodySize = new(32f * Zoom, 32f * Zoom);
-            Rect2 body = new(point - new Vector2(bodySize.X / 2f, bodySize.Y), bodySize);
-            bool selected = entry.Id == SelectedSpawnId;
-            DrawTextureRectRegion(_playerTexture, body, new Rect2(0, 0, 32, 32),
-                SpawnColor(spawn.Team, selected ? 0.9f : 0.5f));
-            if (selected)
-                DrawRect(body, Colors.White, false, 1f);
-        }
-        if (_interaction.SpawnPreview is { } created && SelectedSpawnId == null)
-            DrawSpawn(created, true);
-    }
+    private static MapEditorBrush BrushFromDraft(MapEditorBrushId id,
+        MapEditorBrushDraft draft) => new(id, draft.Name, draft.Layer, draft.Shape,
+        draft.Material, draft.Projection, draft.Visible);
 
-    private void DrawSpawn(MapSpawnPoint spawn, bool selected)
+    private bool IsSelectedLayerVisible() => SelectedLayer switch
     {
-        Vector2 point = MapToLocal(new Vector2(spawn.X, spawn.Y));
-        Vector2 bodySize = new(32f * Zoom, 32f * Zoom);
-        Rect2 body = new(point - new Vector2(bodySize.X / 2f, bodySize.Y), bodySize);
-        DrawTextureRectRegion(_playerTexture, body, new Rect2(0, 0, 32, 32),
-            SpawnColor(spawn.Team, selected ? 0.9f : 0.5f));
-        if (selected)
-            DrawRect(body, Colors.White, false, 1f);
-    }
-
-    private void DrawSpawnPreview()
-    {
-        Vector2 feet = MapToLocal(_cursorMapPosition);
-        Vector2 bodySize = new(32f * Zoom, 32f * Zoom);
-        Rect2 body = new(feet - new Vector2(bodySize.X / 2f, bodySize.Y), bodySize);
-        DrawTextureRectRegion(_playerTexture, body, new Rect2(0, 0, 32, 32),
-            new Color(1, 1, 1, 0.55f));
-        DrawRect(body, new Color(1, 1, 1, 0.65f), false, 1f);
-    }
-
-    private static Color SpawnColor(Team? team, float alpha) => team switch
-    {
-        Team.BLUE => new Color(0.6f, 0.75f, 1f, alpha),
-        Team.RED => new Color(1f, 0.6f, 0.6f, alpha),
-        _ => new Color(1f, 1f, 1f, alpha),
+        MapEditorLayer.BACKGROUND => ShowBackground,
+        MapEditorLayer.SOLID => ShowSolid,
+        MapEditorLayer.DESTRUCTIBLE => ShowDestructible,
+        _ => false,
     };
 
-    private void DrawShape(Vector2[] points, Color fill, Color line, bool selected)
-    {
-        DrawColoredPolygon(points, fill);
-        Vector2[] outline = new Vector2[points.Length + 1];
-        points.CopyTo(outline, 0);
-        outline[^1] = points[0];
-        DrawPolyline(outline, line, selected ? 3f : 2f);
-    }
+    private Vector2 LocalToMap(Vector2 point) => _camera.LocalToMap(point, Size);
 
-    private Vector2[] RectPoints(RectMapZoneShape rect)
-    {
-        Vector2 center = new(rect.X + rect.Width / 2f, rect.Y + rect.Height / 2f);
-        float rotation = Mathf.DegToRad(rect.Rotation);
-        Vector2[] points =
-        [
-            new(rect.X, rect.Y),
-            new(rect.X + rect.Width, rect.Y),
-            new(rect.X + rect.Width, rect.Y + rect.Height),
-            new(rect.X, rect.Y + rect.Height),
-        ];
-        for (int i = 0; i < points.Length; i++)
-        {
-            points[i] = MapToLocal(center + (points[i] - center).Rotated(rotation));
-        }
-
-        return points;
-    }
-
-    private Vector2[] EllipsePoints(int x, int y, int radiusX, int radiusY,
-        float rotation)
-    {
-        const int SEGMENTS = 64;
-        Vector2[] points = new Vector2[SEGMENTS];
-        Vector2 center = new(x, y);
-        float radians = Mathf.DegToRad(rotation);
-        for (int i = 0; i < SEGMENTS; i++)
-        {
-            float angle = Mathf.Tau * i / SEGMENTS;
-            Vector2 offset = new(Mathf.Cos(angle) * radiusX, Mathf.Sin(angle) * radiusY);
-            points[i] = MapToLocal(center + offset.Rotated(radians));
-        }
-        return points;
-    }
-
-    private void DrawHandle(Vector2 point, bool move)
-    {
-        Color color = move ? new Color(0.35f, 1f, 0.45f) : _selectedLine;
-        DrawCircle(point, HANDLE_RADIUS, color);
-        DrawCircle(point, HANDLE_RADIUS - 3f, new Color(0.08f, 0.09f, 0.1f));
-    }
-
-    private Rect2 MapRect() => new(Size / 2f - _cameraPosition * Zoom,
-        new Vector2(_mapSize.X, _mapSize.Y) * Zoom);
-
-    private Vector2 LocalToMap(Vector2 point)
-    {
-        return (point - MapRect().Position) / Zoom;
-    }
-
-    private Vector2 MapToLocal(Vector2 point) => MapRect().Position + point * Zoom;
-
-    private Vector2 ClampToMap(Vector2 point) => new(
-        Math.Clamp(point.X, 0, _mapSize.X), Math.Clamp(point.Y, 0, _mapSize.Y));
+    private Vector2 MapToLocal(Vector2 point) => _camera.MapToLocal(point, Size);
 
     private static SimVec2 Sim(Vector2 point) => new(point.X, point.Y);
 
+    private static MapEditorPoint MapPoint(Vector2 point) => new(
+        (int)MathF.Round(point.X), (int)MathF.Round(point.Y));
+
     private void MoveCamera(Vector2 delta)
     {
-        _cameraPosition += delta / Zoom;
+        ResetOverlapCycle();
+        _camera.Move(delta);
         QueueRedraw();
     }
 
-    private void OnResized() => QueueRedraw();
+    private void OnResized()
+    {
+        QueueRedraw();
+    }
+
+    private void CancelPointerInteraction()
+    {
+        _interaction.Cancel();
+        _stampStroke.Clear();
+        _stampPlacementNames.Clear();
+        _stampNextName.Clear();
+        _stampEraseIds.Clear();
+        _lastErasedCell = null;
+        _stampErasing = false;
+        _lastStampedCell = null;
+        FinishPointerInteraction();
+        QueueRedraw();
+    }
+
+    private void FinishPointerInteraction()
+    {
+        if (!_pointerInteractionActive)
+        {
+            return;
+        }
+
+        _pointerInteractionActive = false;
+        _lastStampedCell = null;
+        PointerInteractionFinished?.Invoke();
+    }
+
+    private void PaintStamp(Vector2 point)
+    {
+        if (_selectedStamp == null)
+            return;
+        MapEditorPoint current = MapEditorStampGeometry.SnapToCell(MapPoint(point), Snap);
+        MapEditorPoint start = _lastStampedCell ?? current;
+        bool skipFirst = _lastStampedCell != null;
+        _lastStampedCell = current;
+        foreach (MapEditorPoint cell in MapEditorStampGeometry.CellsAlongStroke(start, current,
+                     Snap))
+        {
+            if (skipFirst)
+            {
+                skipFirst = false;
+                continue;
+            }
+            MapEditorStamp stamp = _selectedStamp;
+            _stampStroke.Add(MapEditorStampGeometry.Place(stamp, cell,
+                UniqueStampPlacementName(stamp.Name)));
+            if (_selectedStamp == null || Tool != MapEditorTool.STAMP)
+                return;
+        }
+        QueueRedraw();
+    }
+
+    private void CommitStampStroke()
+    {
+        if (_stampStroke.Count == 0)
+            return;
+        ImmutableArray<MapEditorBrushDraft> stroke = [.. _stampStroke];
+        _stampStroke.Clear();
+        _stampPlacementNames.Clear();
+        _stampNextName.Clear();
+        _lastStampedCell = null;
+        BrushBatchAddRequested?.Invoke(stroke);
+        QueueRedraw();
+    }
+
+    private void EraseStampAt(Vector2 point)
+    {
+        MapEditorPoint cell = MapEditorStampGeometry.SnapToCell(MapPoint(point), Snap);
+        if (_lastErasedCell == cell)
+            return;
+        _lastErasedCell = cell;
+        MapEditorBrush? brush = PickBrush(point, false, _stampEraseIds);
+        if (brush == null || !_stampEraseIds.Add(brush.Id))
+            return;
+        QueueRedraw();
+    }
+
+    private void CommitStampErase()
+    {
+        _stampErasing = false;
+        _lastErasedCell = null;
+        if (_stampEraseIds.Count == 0)
+            return;
+        ImmutableArray<MapEditorBrushId> ids = [.. _stampEraseIds];
+        _stampEraseIds.Clear();
+        BrushBatchRemoveRequested?.Invoke(ids);
+        QueueRedraw();
+    }
 
     private void SetZoom(float zoom, Vector2 anchor)
     {
-        Vector2 mapAtAnchor = LocalToMap(anchor);
-        Zoom = MapEditorGeometry.ClampZoom(zoom);
-        _cameraPosition = mapAtAnchor - (anchor - Size / 2f) / Zoom;
-        ZoomChanged?.Invoke(Zoom);
-        QueueRedraw();
+        _camera.SetZoom(zoom, anchor, Size);
+        ViewChanged();
     }
 
     private void ReportCursor(Vector2 localPosition)
@@ -523,76 +1045,172 @@ public partial class MapEditorCanvas : Control
         Vector2 point = LocalToMap(localPosition);
         _cursorMapPosition = point;
         _cursorVisible = true;
+        UpdateStampPreview(point);
         CursorMoved?.Invoke((int)point.X, (int)point.Y);
         QueueRedraw();
         if (_snapshot == null)
             return;
-        if ((Tool is MapEditorTool.SPAWN or MapEditorTool.SELECT) && ShowSpawns)
-        {
-            if (HitTestSpawn(point) != null)
-            {
-                MouseDefaultCursorShape = CursorShape.Drag;
-                return;
-            }
-            if (Tool == MapEditorTool.SPAWN)
-            {
-                MouseDefaultCursorShape = CursorShape.Cross;
-                return;
-            }
-        }
-        MapEditorZone? selected = SelectedZone();
-        if (Tool != MapEditorTool.SELECT || selected == null)
-        {
-            MouseDefaultCursorShape = Tool == MapEditorTool.SELECT
-                ? CursorShape.Arrow
-                : MouseDefaultCursorShape;
-            return;
-        }
-        MapZoneHandle handle = MapEditorGeometry.PickHandle(
-            selected.Shape, Sim(point), HANDLE_RADIUS / Zoom, out _);
-        MouseDefaultCursorShape = handle switch
-        {
-            MapZoneHandle.MOVE => CursorShape.Drag,
-            MapZoneHandle.SCALE => CursorShape.Cross,
-            _ => CursorShape.Arrow,
-        };
+        _cursorResolver ??= new MapEditorCanvasCursorResolver(_picker);
+        MouseDefaultCursorShape = _cursorResolver.Resolve(_snapshot, point, Zoom, Tool,
+            EditDomain, SelectedLayer, SelectedBrushId, DisplayedBrushPreview(),
+            SelectedBrush(), SelectedZone(), IsSelectedLayerVisible(), ShowSpawns,
+            _pointerPressLocal, MouseDefaultCursorShape);
     }
 
-    private string UniqueName()
+    private void RememberChangedMaterial(MapEditorUpdate update)
     {
-        HashSet<string> names = _snapshot!.Zones.Select(zone => zone.Name).ToHashSet();
-        for (int n = 1; ; n++)
+        MapEditorBrushId? id = update.Change switch
         {
-            string name = $"zone-{n}";
-            if (!names.Contains(name))
-                return name;
+            MapEditorBrushAdded added => added.Id,
+            MapEditorBrushesAdded { Ids.IsEmpty: false } added => added.Ids[^1],
+            MapEditorBrushReplaced replaced => replaced.Id,
+            MapEditorBrushMovedToLayer moved => moved.Id,
+            _ => null,
+        };
+        if (id == null || update.Snapshot.BrushDocument == null)
+            return;
+        foreach (MapEditorLayer layer in Enum.GetValues<MapEditorLayer>())
+        {
+            MapEditorBrush? brush = update.Snapshot.BrushDocument.Layers.Get(layer).Brushes
+                .FirstOrDefault(candidate => candidate.Id == id);
+            if (brush != null)
+            {
+                RememberResolvedMaterial(brush);
+                return;
+            }
         }
     }
+
+    private void RememberResolvedMaterial(MapEditorBrush brush)
+    {
+        _resources.RememberMaterial(brush);
+    }
+
+    private string UniqueName() => DraftFactory.UniqueZoneName(_snapshot!);
+
+    private string UniqueBrushName(string shape = "rectangle") =>
+        DraftFactory.UniqueBrushName(_snapshot, SelectedLayer, shape);
+
+    private MapEditorBrushDraft NewBrushDraft(string name, MapEditorBrushShape shape,
+        MapEditorPoint anchor)
+    {
+        return DraftFactory.CreateBrush(name, SelectedLayer, shape, anchor);
+    }
+
+    private void BeginBrushMove(MapEditorBrush brush, MapEditorPoint point)
+    {
+        _interaction.BeginBrushMove(brush.Id, Draft(brush), point);
+    }
+
+    private bool TryRemovePolygonVertex(Vector2 point)
+    {
+        MapEditorBrush? brush = SelectedBrush();
+        if (brush?.Shape is not MapEditorPolygonBrushShape polygon)
+            return false;
+        int vertex = MapEditorGeometry.PickPolygonVertex(polygon, MapPoint(point),
+            HANDLE_HIT_RADIUS / Zoom);
+        return vertex >= 0 && _interaction.RemovePolygonVertex(brush.Id, vertex);
+    }
+
+    private static double Distance(MapEditorPoint a, MapEditorPoint b)
+    {
+        double dx = (long)a.X - b.X;
+        double dy = (long)a.Y - b.Y;
+        return Math.Sqrt(dx * dx + dy * dy);
+    }
+
+    private MapEditorBrush? SelectedBrush()
+    {
+        if (SelectedBrushId is not { } id)
+            return null;
+        MapEditorBrush? brush = _snapshot?.BrushDocument?.Layers.Get(SelectedLayer).Brushes
+            .FirstOrDefault(candidate => candidate.Id == id);
+        brush = brush != null && _inspectorBrushPreview is { } preview
+            ? BrushFromDraft(id, preview)
+            : brush;
+        return brush?.Visible == true ? brush : null;
+    }
+
+    private MapEditorBrushDraft? DisplayedBrushPreview() =>
+        _interaction.BrushPreview ?? _inspectorBrushPreview;
+
+    private MapEditorBrush? PickBrush(Vector2 point, bool cycle,
+        IReadOnlySet<MapEditorBrushId>? excluded = null)
+        => EditDomain == MapEditorEditDomain.GEOMETRY
+            ? _picker.PickBrush(_snapshot, SelectedLayer, SelectedBrushId,
+                DisplayedBrushPreview(), point, Zoom, IsSelectedLayerVisible(), cycle,
+                _pointerPressLocal, excluded)
+            : null;
 
     private MapEditorZone? SelectedZone() => SelectedZoneId is { } id
         ? _snapshot?.Zones.FirstOrDefault(zone => zone.Id == id)
         : null;
 
-    private MapEditorZone? HitTestZone(Vector2 point)
+    private MapEditorZone? PickZone(Vector2 point, bool cycle)
+        => EditDomain == MapEditorEditDomain.ZONES && ShowZones
+            ? _picker.PickZone(_snapshot, point, Zoom, cycle, _pointerPressLocal)
+            : null;
+
+    private MapEditorSpawn? PickSpawn(Vector2 point, bool cycle)
+        => EditDomain == MapEditorEditDomain.SPAWNS && ShowSpawns
+            ? _picker.PickSpawn(_snapshot, point, Zoom, cycle, _pointerPressLocal)
+            : null;
+
+    private void ResetOverlapCycle()
     {
-        if (_snapshot == null)
-            return null;
-        for (int i = _snapshot.Zones.Length - 1; i >= 0; i--)
-        {
-            MapEditorZone zone = _snapshot.Zones[i];
-            if (zone.Shape.Compile().Contains(Sim(point)))
-                return zone;
-        }
-        return null;
+        _picker.Reset();
     }
 
-    private MapEditorSpawn? HitTestSpawn(Vector2 point)
+    private static MapEditorEditDomain? DomainForTool(MapEditorTool tool) => tool switch
     {
-        if (_snapshot == null)
-            return null;
-        MapSpawnPoint[] values = _snapshot.SpawnPoints.Select(spawn => spawn.Value).ToArray();
-        int index = MapEditorGeometry.HitTestSpawn(values, Sim(point), 3f / Zoom);
-        return index >= 0 ? _snapshot.SpawnPoints[index] : null;
+        MapEditorTool.RECT or MapEditorTool.CIRCLE => MapEditorEditDomain.ZONES,
+        MapEditorTool.SPAWN => MapEditorEditDomain.SPAWNS,
+        MapEditorTool.BRUSH_RECT or MapEditorTool.BRUSH_ELLIPSE or
+            MapEditorTool.BRUSH_POLYGON or MapEditorTool.STAMP => MapEditorEditDomain.GEOMETRY,
+        _ => null,
+    };
+
+    private void ClearIncompatibleSelection(MapEditorTool tool)
+    {
+        if (tool != MapEditorTool.SELECT)
+        {
+            Select(null);
+            SelectSpawn(null);
+            SelectBrush(null);
+        }
+    }
+
+    private void EnsureToolOverlayVisible(MapEditorTool tool)
+    {
+        switch (tool)
+        {
+            case MapEditorTool.RECT or MapEditorTool.CIRCLE:
+                ShowZones = true;
+                break;
+            case MapEditorTool.SPAWN:
+                ShowSpawns = true;
+                break;
+            case MapEditorTool.BRUSH_RECT or MapEditorTool.BRUSH_ELLIPSE or
+                MapEditorTool.BRUSH_POLYGON or MapEditorTool.STAMP:
+                SetSelectedLayerVisible(true);
+                break;
+        }
+    }
+
+    private void SetSelectedLayerVisible(bool visible)
+    {
+        switch (SelectedLayer)
+        {
+            case MapEditorLayer.BACKGROUND:
+                ShowBackground = visible;
+                break;
+            case MapEditorLayer.SOLID:
+                ShowSolid = visible;
+                break;
+            case MapEditorLayer.DESTRUCTIBLE:
+                ShowDestructible = visible;
+                break;
+        }
     }
 
     private void OnZoneSelectionChanged(MapEditorZoneId? id)
@@ -619,38 +1237,63 @@ public partial class MapEditorCanvas : Control
         QueueRedraw();
     }
 
-    private static MapEditorZoneDraft Draft(MapEditorZone zone) =>
-        new(zone.Name, zone.Tags, zone.Shape, zone.Effects);
-
-    private static ImageTexture DecodeTexture(MapEditorLayers layers, MapEditorLayer layer)
+    private void OnBrushSelectionChanged(MapEditorBrushId? id)
     {
-        MapEditorLayerAsset asset = layer switch
-        {
-            MapEditorLayer.BACKGROUND => layers.Background,
-            MapEditorLayer.SOLID => layers.Solid,
-            MapEditorLayer.DESTRUCTIBLE => layers.Destructible,
-            _ => throw new ArgumentOutOfRangeException(nameof(layer)),
-        };
-        Image image = new();
-        Error error = image.LoadPngFromBuffer(asset.Png.ToArray());
-        if (error != Error.Ok)
-            throw new InvalidOperationException($"Could not decode adopted map layer ({error}).");
-        return ImageTexture.CreateFromImage(image);
+        _inspectorBrushPreview = null;
+        BrushSelectionChanged?.Invoke(id);
+        QueueRedraw();
     }
-}
 
-public static class MapEditorCanvasLayerPlan
-{
-    public static IReadOnlyList<MapEditorLayer> LayersToDecode(MapEditorChange change) =>
-        change switch
+    private void OnBrushPreviewChanged(MapEditorBrushDraft? preview)
+    {
+        BrushPreviewChanged?.Invoke(preview);
+        QueueRedraw();
+    }
+
+    private static MapEditorBrushDraft Draft(MapEditorBrush brush) => new(
+        brush.Name, brush.Layer, brush.Shape, brush.Material, brush.Projection, brush.Visible);
+
+    private void UpdateStampPreview(Vector2 point)
+    {
+        if (_tool != MapEditorTool.STAMP || _selectedStamp == null || !_cursorVisible)
         {
-            MapEditorOpened or MapEditorReloaded =>
-            [
-                MapEditorLayer.BACKGROUND,
-                MapEditorLayer.SOLID,
-                MapEditorLayer.DESTRUCTIBLE,
-            ],
-            MapEditorLayerReplaced replaced => [replaced.Layer],
-            _ => [],
-        };
+            _stampPreview = null;
+            return;
+        }
+        MapEditorPoint snapped = MapEditorStampGeometry.SnapToCell(MapPoint(point), Snap);
+        _stampPreview = MapEditorStampGeometry.Place(_selectedStamp, snapped,
+            _selectedStamp.Name);
+        QueueRedraw();
+    }
+
+    private string UniqueStampPlacementName(string name)
+    {
+        if (_stampPlacementNames.Add(name))
+            return name;
+        int number = _stampNextName.GetValueOrDefault(name, 2);
+        while (true)
+        {
+            string candidate = $"{name} {number}";
+            number++;
+            if (_stampPlacementNames.Add(candidate))
+            {
+                _stampNextName[name] = number;
+                return candidate;
+            }
+        }
+    }
+
+    private void BeginStampStroke()
+    {
+        _stampStroke.Clear();
+        _stampPlacementNames.Clear();
+        _stampNextName.Clear();
+        if (_snapshot?.BrushDocument == null)
+            return;
+        _stampPlacementNames.UnionWith(_snapshot.BrushDocument.Layers.Get(SelectedLayer).Brushes
+            .Select(brush => brush.Name));
+    }
+
+    private MapEditorCanvasDraftFactory DraftFactory =>
+        _draftFactory ??= new MapEditorCanvasDraftFactory(_resources);
 }

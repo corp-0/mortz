@@ -1,0 +1,67 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/Client/MapEditor/MapEditorStampCard.cs" id="1_s5n6u"]
+[ext_resource type="PackedScene" path="res://src/Shared/UI/MapEditor/MapEditorStampPreview.tscn" id="2_preview"]
+
+[node name="StampCard" type="Button" unique_id=1170640696 node_paths=PackedStringArray("_preview", "_nameLabel", "_detailLabel", "_deleteButton")]
+custom_minimum_size = Vector2(170, 150)
+clip_contents = true
+size_flags_horizontal = 3
+text_overrun_behavior = 3
+script = ExtResource("1_s5n6u")
+_preview = NodePath("Preview")
+_nameLabel = NodePath("Name")
+_detailLabel = NodePath("Detail")
+_deleteButton = NodePath("Delete")
+
+[node name="Preview" parent="." unique_id=125732618 instance=ExtResource("2_preview")]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 6.0
+offset_top = 6.0
+offset_right = -6.0
+offset_bottom = 106.0
+grow_horizontal = 2
+
+[node name="Name" type="Label" parent="." unique_id=2142370204]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 8.0
+offset_top = 111.0
+offset_right = -38.0
+offset_bottom = 131.0
+grow_horizontal = 2
+mouse_filter = 2
+text = "Stamp name"
+text_overrun_behavior = 3
+
+[node name="Detail" type="Label" parent="." unique_id=707109801]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 8.0
+offset_top = 130.0
+offset_right = -8.0
+offset_bottom = 146.0
+grow_horizontal = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.62, 0.66, 0.73, 1)
+theme_override_font_sizes/font_size = 11
+text = "Layer · Shape"
+text_overrun_behavior = 3
+
+[node name="Delete" type="Button" parent="." unique_id=1853357769]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -32.0
+offset_top = 4.0
+offset_right = -4.0
+offset_bottom = 32.0
+grow_horizontal = 0
+tooltip_text = "Delete this stamp from the library"
+accessibility_name = "Delete stamp"
+text = "×"

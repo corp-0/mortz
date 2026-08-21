@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://ccv87mfb0uwoq" path="res://src/Client/Menus/LobbySettingsPanel.cs" id="1"]
 [ext_resource type="PackedScene" uid="uid://pbne52ymu80j" path="res://src/Shared/UI/Controls/UiPropertySheet.tscn" id="2"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/Controls/VictoryRulesSheet.tscn" id="3_victory"]
+[ext_resource type="PackedScene" uid="uid://bkbbv8vmb0s10" path="res://src/Shared/UI/Controls/VictoryRulesSheet.tscn" id="3_victory"]
 
 [node name="LobbySettingsPanel" type="PanelContainer" unique_id=289524066 node_paths=PackedStringArray("_modePicker", "_mapPicker", "_mapPreview", "_mapStatus", "_rulesSheet", "_victoryRulesSheet", "_physicsSheet", "_combatSheet")]
 custom_minimum_size = Vector2(440, 0)

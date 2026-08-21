@@ -1,0 +1,12 @@
+[gd_scene format=3 uid="uid://c1eashgiqvbth"]
+
+[node name="ItemRow" type="Button" unique_id=699397042]
+custom_minimum_size = Vector2(0, 36)
+offset_right = 320.0
+offset_bottom = 36.0
+size_flags_horizontal = 3
+tooltip_text = "Select. Double-click to center it."
+accessibility_name = "Select object"
+toggle_mode = true
+text = "Capture Area · Circle"
+alignment = 0

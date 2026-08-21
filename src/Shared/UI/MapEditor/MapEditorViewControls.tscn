@@ -1,0 +1,22 @@
+[gd_scene format=3 uid="uid://npnfpg65r8jn"]
+
+[ext_resource type="Script" uid="uid://bk1y8yjqjwsfr" path="res://src/Client/MapEditor/MapEditorViewControls.cs" id="1_yrbcd"]
+
+[node name="ViewControls" type="HBoxContainer" unique_id=1511364213 node_paths=PackedStringArray("_snap", "_view")]
+script = ExtResource("1_yrbcd")
+_snap = NodePath("UniversalSnap")
+_view = NodePath("ViewOverflow")
+
+[node name="ViewDivider" type="VSeparator" parent="." unique_id=939627208]
+layout_mode = 2
+
+[node name="UniversalSnap" type="OptionButton" parent="." unique_id=2056904936]
+layout_mode = 2
+accessibility_name = "Snap spacing"
+
+[node name="ViewOverflow" type="MenuButton" parent="." unique_id=1263472474]
+layout_mode = 2
+tooltip_text = "Show, hide, and frame the map"
+focus_mode = 2
+accessibility_name = "View options"
+text = "View"

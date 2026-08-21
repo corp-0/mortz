@@ -1,0 +1,71 @@
+[gd_scene format=3 uid="uid://bxj8nwnkwsi02"]
+
+[ext_resource type="Theme" uid="uid://cmgp4xl7r5v2k" path="res://src/Shared/UI/MapEditor/MapEditorTheme.tres" id="1_ksf41"]
+[ext_resource type="Script" uid="uid://4hnhksi34oiv" path="res://src/Client/MapEditor/MapEditorMaterialPicker.cs" id="1_tj2eo"]
+
+[node name="MaterialPicker" type="VBoxContainer" unique_id=284392351 node_paths=PackedStringArray("_kind", "_texturePanel", "_search", "_textureList", "_empty", "_colorPanel", "_color")]
+size_flags_horizontal = 3
+theme = ExtResource("1_ksf41")
+theme_override_constants/separation = 8
+script = ExtResource("1_tj2eo")
+_kind = NodePath("Kind")
+_texturePanel = NodePath("TexturePanel")
+_search = NodePath("TexturePanel/Search")
+_textureList = NodePath("TexturePanel/LibraryScroll/Library")
+_empty = NodePath("TexturePanel/Empty")
+_colorPanel = NodePath("ColorPanel")
+_color = NodePath("ColorPanel/Color")
+
+[node name="Kind" type="OptionButton" parent="." unique_id=1435721802]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+selected = 0
+item_count = 2
+popup/item_0/text = "Texture"
+popup/item_0/id = 0
+popup/item_1/text = "Solid color"
+popup/item_1/id = 1
+
+[node name="TexturePanel" type="VBoxContainer" parent="." unique_id=1810027958]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Search" type="LineEdit" parent="TexturePanel" unique_id=879818055]
+layout_mode = 2
+accessibility_name = "Filter available textures"
+placeholder_text = "Filter textures…"
+clear_button_enabled = true
+
+[node name="LibraryScroll" type="ScrollContainer" parent="TexturePanel" unique_id=2147475496]
+custom_minimum_size = Vector2(0, 220)
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="Library" type="GridContainer" parent="TexturePanel/LibraryScroll" unique_id=669718736]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6
+columns = 3
+
+[node name="Empty" type="Label" parent="TexturePanel" unique_id=772563124]
+modulate = Color(0.5764706, 0.6431373, 0.7176471, 1)
+layout_mode = 2
+text = "No textures found."
+autowrap_mode = 3
+
+[node name="ColorPanel" type="VBoxContainer" parent="." unique_id=1846411693]
+layout_mode = 2
+
+[node name="ColorLabel" type="Label" parent="ColorPanel" unique_id=426797876]
+modulate = Color(0.5764706, 0.6431373, 0.7176471, 1)
+layout_mode = 2
+text = "Color"
+
+[node name="Color" type="ColorPickerButton" parent="ColorPanel" unique_id=1592778887]
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+accessibility_name = "Brush color"
+color = Color(1, 1, 1, 1)

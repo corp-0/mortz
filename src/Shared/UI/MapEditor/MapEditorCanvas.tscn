@@ -1,0 +1,17 @@
+[gd_scene format=3 uid="uid://c5kp5hs8n4tbi"]
+
+[ext_resource type="Material" path="res://src/Shared/Shaders/MapEditorBrushPreviewMaterial.tres" id="1_owkea"]
+[ext_resource type="Script" uid="uid://vxh227tygk51" path="res://src/Client/MapEditor/MapEditorCanvas.cs" id="2_b1vj8"]
+[ext_resource type="Texture2D" uid="uid://bixaxn83876w6" path="res://Assets/ScifiCritters4.PNG" id="3_player"]
+
+[node name="MapEditorCanvas" type="Control" unique_id=1029358246]
+texture_filter = 1
+material = ExtResource("1_owkea")
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("2_b1vj8")
+_playerTexture = ExtResource("3_player")

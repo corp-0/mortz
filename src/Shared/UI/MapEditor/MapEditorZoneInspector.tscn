@@ -1,0 +1,170 @@
+[gd_scene format=3 uid="uid://dg6bhyme2mxfc"]
+
+[ext_resource type="Script" uid="uid://b6ep3a4ebdmam" path="res://src/Client/MapEditor/MapEditorZoneInspector.cs" id="1_qqadg"]
+[ext_resource type="Theme" uid="uid://cmgp4xl7r5v2k" path="res://src/Shared/UI/MapEditor/MapEditorTheme.tres" id="3_theme"]
+[ext_resource type="PackedScene" uid="uid://47j7m8k2w77e" path="res://src/Shared/UI/MapEditor/MapEditorInspectorField.tscn" id="4_field"]
+
+[node name="ZoneInspector" type="ScrollContainer" unique_id=1494015485 node_paths=PackedStringArray("_title", "_name", "_shape", "_x", "_y", "_sizeA", "_sizeB", "_rotation", "_tags", "_effects", "_diagnostic", "_addEffect", "_delete")]
+offset_right = 171.0
+offset_bottom = 718.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme = ExtResource("3_theme")
+horizontal_scroll_mode = 0
+script = ExtResource("1_qqadg")
+_title = NodePath("Margin/Content/Title")
+_name = NodePath("Margin/Content/Name")
+_shape = NodePath("Margin/Content/ShapeKind")
+_x = NodePath("Margin/Content/X")
+_y = NodePath("Margin/Content/Y")
+_sizeA = NodePath("Margin/Content/SizeA")
+_sizeB = NodePath("Margin/Content/SizeB")
+_rotation = NodePath("Margin/Content/Rotation")
+_tags = NodePath("Margin/Content/Tags")
+_effects = NodePath("Margin/Content/EffectRows")
+_diagnostic = NodePath("Margin/Content/Diagnostic")
+_addEffect = NodePath("Margin/Content/AddEffect")
+_delete = NodePath("Margin/Content/Delete")
+
+[node name="Margin" type="MarginContainer" parent="." unique_id=1739864830]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 18
+
+[node name="Content" type="VBoxContainer" parent="Margin" unique_id=757116236]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="Margin/Content" unique_id=1969402171]
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8862745, 0.91764706, 0.9529412, 1)
+theme_override_font_sizes/font_size = 20
+vertical_alignment = 1
+
+[node name="@Control@383" type="Control" parent="Margin/Content" unique_id=427090534]
+custom_minimum_size = Vector2(0, 4)
+layout_mode = 2
+
+[node name="IdentitySection" type="PanelContainer" parent="Margin/Content" unique_id=684674435]
+layout_mode = 2
+
+[node name="@Label@384" type="Label" parent="Margin/Content/IdentitySection" unique_id=1439803670]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.44705883, 0.7176471, 0.9098039, 1)
+theme_override_font_sizes/font_size = 12
+text = "IDENTITY"
+
+[node name="Name" parent="Margin/Content" unique_id=1315891132 instance=ExtResource("4_field")]
+layout_mode = 2
+
+[node name="@Control@388" type="Control" parent="Margin/Content" unique_id=151766324]
+custom_minimum_size = Vector2(0, 4)
+layout_mode = 2
+
+[node name="GeometrySection" type="PanelContainer" parent="Margin/Content" unique_id=1442560360]
+layout_mode = 2
+
+[node name="@Label@389" type="Label" parent="Margin/Content/GeometrySection" unique_id=172670446]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.44705883, 0.7176471, 0.9098039, 1)
+theme_override_font_sizes/font_size = 12
+text = "GEOMETRY"
+
+[node name="ShapeKind" type="Label" parent="Margin/Content" unique_id=1513541770]
+custom_minimum_size = Vector2(0, 28)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.44705883, 0.7176471, 0.9098039, 1)
+theme_override_font_sizes/font_size = 13
+vertical_alignment = 1
+
+[node name="X" parent="Margin/Content" unique_id=1003961585 instance=ExtResource("4_field")]
+layout_mode = 2
+
+[node name="Y" parent="Margin/Content" unique_id=1595594260 instance=ExtResource("4_field")]
+layout_mode = 2
+
+[node name="SizeA" parent="Margin/Content" unique_id=175801829 instance=ExtResource("4_field")]
+layout_mode = 2
+
+[node name="SizeB" parent="Margin/Content" unique_id=1820264167 instance=ExtResource("4_field")]
+layout_mode = 2
+
+[node name="Rotation" parent="Margin/Content" unique_id=646121861 instance=ExtResource("4_field")]
+layout_mode = 2
+
+[node name="@Control@405" type="Control" parent="Margin/Content" unique_id=1653833934]
+custom_minimum_size = Vector2(0, 4)
+layout_mode = 2
+
+[node name="TagsSection" type="PanelContainer" parent="Margin/Content" unique_id=562429294]
+layout_mode = 2
+
+[node name="@Label@406" type="Label" parent="Margin/Content/TagsSection" unique_id=894762634]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.44705883, 0.7176471, 0.9098039, 1)
+theme_override_font_sizes/font_size = 12
+text = "TAGS"
+
+[node name="Tags" parent="Margin/Content" unique_id=1576978859 instance=ExtResource("4_field")]
+layout_mode = 2
+
+[node name="@Control@410" type="Control" parent="Margin/Content" unique_id=389164452]
+custom_minimum_size = Vector2(0, 4)
+layout_mode = 2
+
+[node name="EffectsSection" type="PanelContainer" parent="Margin/Content" unique_id=1075005964]
+layout_mode = 2
+
+[node name="@Label@411" type="Label" parent="Margin/Content/EffectsSection" unique_id=1952117981]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.44705883, 0.7176471, 0.9098039, 1)
+theme_override_font_sizes/font_size = 12
+text = "EFFECTS"
+
+[node name="EffectRows" type="VBoxContainer" parent="Margin/Content" unique_id=1072627748]
+layout_mode = 2
+
+[node name="AddEffect" type="Button" parent="Margin/Content" unique_id=1743275919]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.8862745, 0.91764706, 0.9529412, 1)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_disabled_color = Color(0.40784314, 0.4745098, 0.54509807, 1)
+text = "Add effect"
+
+[node name="Diagnostic" type="Label" parent="Margin/Content" unique_id=320283668]
+modulate = Color(1, 0.45, 0.4, 1)
+layout_mode = 2
+autowrap_mode = 3
+
+[node name="@Control@412" type="Control" parent="Margin/Content" unique_id=1670429768]
+custom_minimum_size = Vector2(0, 4)
+layout_mode = 2
+
+[node name="ActionsSection" type="PanelContainer" parent="Margin/Content" unique_id=1963623463]
+layout_mode = 2
+
+[node name="@Label@413" type="Label" parent="Margin/Content/ActionsSection" unique_id=1277950889]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.44705883, 0.7176471, 0.9098039, 1)
+theme_override_font_sizes/font_size = 12
+text = "ACTIONS"
+
+[node name="Delete" type="Button" parent="Margin/Content" unique_id=460805916]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 0.54509807, 0.50980395, 1)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 0.8235294, 0.80784315, 1)
+theme_override_colors/font_disabled_color = Color(0.40784314, 0.4745098, 0.54509807, 1)
+text = "Delete zone"

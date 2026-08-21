@@ -1,67 +1,67 @@
 [gd_scene format=3 uid="uid://ddx3n8p4h7q2c"]
 
-[ext_resource type="Script" uid="uid://cq8x5k2r7m9vb" path="res://src/Client/Debug/KillingSpreeDebug.cs" id="1_debug"]
+[ext_resource type="Script" uid="uid://cq8x5k2r7navb" path="res://src/Client/Debug/KillingSpreeDebug.cs" id="1_debug"]
 [ext_resource type="PackedScene" uid="uid://4ksxyg8c7l8k" path="res://src/Shared/Prefabs/Player.tscn" id="2_player"]
 
-[node name="KillingSpreeDebug" type="Node2D" node_paths=PackedStringArray("_player", "_tierLabel")]
+[node name="KillingSpreeDebug" type="Node2D" unique_id=1185479980 node_paths=PackedStringArray("_player", "_tierLabel")]
 script = ExtResource("1_debug")
 _player = NodePath("Player")
 _tierLabel = NodePath("Ui/Panel/Margin/Rows/Tier")
 
-[node name="Player" parent="." instance=ExtResource("2_player")]
+[node name="Player" parent="." unique_id=2141425795 instance=ExtResource("2_player")]
 
-[node name="Ui" type="CanvasLayer" parent="."]
+[node name="Ui" type="CanvasLayer" parent="." unique_id=1761555252]
 
-[node name="Panel" type="PanelContainer" parent="Ui"]
+[node name="Panel" type="PanelContainer" parent="Ui" unique_id=2035186031]
 offset_left = 16.0
 offset_top = 16.0
 offset_right = 784.0
 offset_bottom = 116.0
 
-[node name="Margin" type="MarginContainer" parent="Ui/Panel"]
+[node name="Margin" type="MarginContainer" parent="Ui/Panel" unique_id=1240199237]
 layout_mode = 2
 theme_override_constants/margin_left = 12
 theme_override_constants/margin_top = 10
 theme_override_constants/margin_right = 12
 theme_override_constants/margin_bottom = 10
 
-[node name="Rows" type="VBoxContainer" parent="Ui/Panel/Margin"]
+[node name="Rows" type="VBoxContainer" parent="Ui/Panel/Margin" unique_id=658652244]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="Help" type="Label" parent="Ui/Panel/Margin/Rows"]
+[node name="Help" type="Label" parent="Ui/Panel/Margin/Rows" unique_id=1477755947]
 layout_mode = 2
 text = "Move: A/D or arrows    Jump: Space    Aim: Mouse    Shooting disabled"
 
-[node name="Controls" type="HBoxContainer" parent="Ui/Panel/Margin/Rows"]
+[node name="Controls" type="HBoxContainer" parent="Ui/Panel/Margin/Rows" unique_id=1825496083]
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="Off" type="Button" parent="Ui/Panel/Margin/Rows/Controls"]
+[node name="Off" type="Button" parent="Ui/Panel/Margin/Rows/Controls" unique_id=569240844]
 layout_mode = 2
 text = "Off"
 
-[node name="Bloodlust" type="Button" parent="Ui/Panel/Margin/Rows/Controls"]
+[node name="Bloodlust" type="Button" parent="Ui/Panel/Margin/Rows/Controls" unique_id=31381649]
 layout_mode = 2
 text = "5 Bloodlust"
 
-[node name="Punishment" type="Button" parent="Ui/Panel/Margin/Rows/Controls"]
+[node name="Punishment" type="Button" parent="Ui/Panel/Margin/Rows/Controls" unique_id=773795253]
 layout_mode = 2
 text = "7 Punishment"
 
-[node name="Dominating" type="Button" parent="Ui/Panel/Margin/Rows/Controls"]
+[node name="Dominating" type="Button" parent="Ui/Panel/Margin/Rows/Controls" unique_id=1546812092]
 layout_mode = 2
 text = "9 Dominating"
 
-[node name="MachineGod" type="Button" parent="Ui/Panel/Margin/Rows/Controls"]
+[node name="MachineGod" type="Button" parent="Ui/Panel/Margin/Rows/Controls" unique_id=842358486]
 layout_mode = 2
 text = "11 Machine god"
 
-[node name="Psycho" type="Button" parent="Ui/Panel/Margin/Rows/Controls"]
+[node name="Psycho" type="Button" parent="Ui/Panel/Margin/Rows/Controls" unique_id=1076205390]
 layout_mode = 2
 text = "13 Psycho"
 
-[node name="Tier" type="Label" parent="Ui/Panel/Margin/Rows"]
+[node name="Tier" type="Label" parent="Ui/Panel/Margin/Rows" unique_id=1704276338]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.45, 0.85, 1, 1)
 text = "5 — BLOODLUST"

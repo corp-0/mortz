@@ -120,8 +120,8 @@ public sealed class MortzScenario : IAsyncDisposable
         E2EProcess server;
         try
         {
-            server = E2EProcess.Start(new E2EProcessStart(
-                "server", godot, RepoRoot.Path, ServerArguments(runId, options), artifacts, reaper));
+            server = StartProcess("server", godot, ServerArguments(runId, options), artifacts,
+                reaper);
         }
         catch
         {
@@ -186,9 +186,8 @@ public sealed class MortzScenario : IAsyncDisposable
     private async Task AddClientAsync(string name, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        E2EProcess client = E2EProcess.Start(new E2EProcessStart(
-            name, _godot, RepoRoot.Path, ClientArguments(name, _clients.Count),
-            _artifacts, _reaper));
+        E2EProcess client = StartProcess(name, _godot, ClientArguments(name, _clients.Count),
+            _artifacts, _reaper);
         ClientDriver driver;
         try
         {
@@ -401,6 +400,23 @@ public sealed class MortzScenario : IAsyncDisposable
         if (options.QueryPort is int queryPort)
             arguments.AddRange(["--query-port", queryPort.ToString()]);
         return arguments;
+    }
+
+    private static E2EProcess StartProcess(string name, string godot,
+        IReadOnlyList<string> arguments, ScenarioArtifacts artifacts, ProcessReaper reaper)
+    {
+        List<string> isolatedArguments = [.. arguments];
+        int separator = isolatedArguments.IndexOf("++");
+        if (separator < 0)
+            throw new InvalidOperationException("Godot E2E arguments need the ++ separator.");
+        isolatedArguments.InsertRange(separator,
+            ["--log-file", artifacts.GodotLogPath(name)]);
+        Dictionary<string, string> environment = new()
+        {
+            ["MORTZ_USER_DATA"] = artifacts.UserDataPath(name),
+        };
+        return E2EProcess.Start(new E2EProcessStart(name, godot, RepoRoot.Path,
+            isolatedArguments, artifacts, reaper, environment));
     }
 
     private IReadOnlyList<string> ClientArguments(string name, int index)

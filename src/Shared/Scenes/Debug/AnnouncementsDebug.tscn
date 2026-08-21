@@ -9,7 +9,7 @@
 [ext_resource type="Script" uid="uid://bxev1av5gpki2" path="res://src/Client/Announcements/GameAnnouncer.cs" id="7_announcer"]
 [ext_resource type="Script" uid="uid://cukwng3fiyn6t" path="res://src/Client/Announcements/AnnouncementChat.cs" id="8_annchat"]
 [ext_resource type="PackedScene" uid="uid://bkx20bfq77ejk" path="res://src/Shared/UI/Hud/AnnouncementBanner.tscn" id="9_banner"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/Chat/GameChat.tscn" id="10_gamechat"]
+[ext_resource type="PackedScene" uid="uid://jdflpktp0k7t" path="res://src/Shared/UI/Chat/GameChat.tscn" id="10_gamechat"]
 
 [node name="AnnouncementsDebug" type="Control" unique_id=133924536 node_paths=PackedStringArray("_players", "_admin", "_chat", "_sfx")]
 layout_mode = 3

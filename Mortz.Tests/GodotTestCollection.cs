@@ -1,16 +1,20 @@
+using twodog;
 using twodog.Testing;
 using Xunit;
 
 namespace Mortz.Tests;
 
-public sealed class MortzGodotFixture()
-    : FixtureBase(
+public sealed class MortzGodotFixture : FixtureBase, IDisposable
+{
+    public MortzGodotFixture() : base(
         "--headless",
         "res://Mortz.Tests/TestRoot.tscn",
         "++",
         "--content-root",
-        Path.Combine(twodog.Engine.ResolveProjectDir(), "content")), IDisposable
-{
+        Path.Combine(Engine.ResolveProjectDir(), "content"))
+    {
+    }
+
     public new void Dispose()
     {
         GC.Collect();
@@ -18,6 +22,8 @@ public sealed class MortzGodotFixture()
         GC.Collect();
         base.Dispose();
     }
+
+    public void RenderFrame() => GodotInstance.Iteration();
 }
 
 [CollectionDefinition(nameof(MortzGodotCollection), DisableParallelization = true)]

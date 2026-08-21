@@ -1,0 +1,6 @@
+[gd_resource type="ShaderMaterial" format=3 uid="uid://dyvsyokgwjujl"]
+
+[ext_resource type="Shader" uid="uid://d18gnjw75m3sn" path="res://src/Shared/Shaders/MapEditorBrushPreview.gdshader" id="1_ixmrn"]
+
+[resource]
+shader = ExtResource("1_ixmrn")

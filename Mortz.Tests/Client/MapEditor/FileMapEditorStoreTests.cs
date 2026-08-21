@@ -14,27 +14,110 @@ public sealed class FileMapEditorStoreTests : IDisposable
         $"mortz-map-editor-store-{Guid.NewGuid():N}");
 
     [Fact]
-    public void SavePersistsManifestAndExactReplacementPngBytes()
+    public void RasterOnlyGameplaySavePreservesAllPngBytesAndOmitsEditorDocument()
     {
         ContentDefinition<MapManifest> definition = CreatePackage();
-        string replacementPath = Path.Combine(_root, "replacement.png");
-        Image replacement = Image.CreateEmpty(8, 8, false, Image.Format.Rgba8);
-        replacement.Fill(Colors.Red);
-        Assert.Equal(Error.Ok, replacement.SavePng(replacementPath));
-        byte[] replacementBytes = File.ReadAllBytes(replacementPath);
-
+        string[] names = ["background.png", "solid.png", "destructible.png"];
+        Dictionary<string, byte[]> before = names.ToDictionary(name => name,
+            name => File.ReadAllBytes(Path.Combine(definition.DirectoryPath, name)));
         MapEditorWorkspace workspace = Assert.IsType<MapEditorWorkspace>(
             MapEditorWorkspace.Open(definition, new FileMapEditorStore()).Workspace);
+
         workspace.AddSpawn(new MapSpawnPoint(3, 4));
-        Assert.True(workspace.ReplaceLayer(MapEditorLayer.BACKGROUND, replacementPath).Succeeded);
         Assert.True(workspace.Save().Succeeded);
 
-        Assert.Equal(replacementBytes,
-            File.ReadAllBytes(Path.Combine(definition.DirectoryPath, "background.png")));
-        ContentReadResult<MapManifest> manifest = TomlModel.ReadFile<MapManifest>(
-            definition.ManifestPath);
-        Assert.Equal(new MapSpawnPoint(3, 4), Assert.Single(manifest.Value!.SpawnPoints));
-        Assert.False(workspace.Snapshot.Dirty);
+        Assert.Equal(MapEditorRasterSourceStatus.OBSOLETE, workspace.Snapshot.SourceStatus);
+        Assert.All(names, name => Assert.Equal(before[name],
+            File.ReadAllBytes(Path.Combine(definition.DirectoryPath, name))));
+        Assert.False(File.Exists(Path.Combine(definition.DirectoryPath, "editor.json")));
+    }
+
+    [Fact]
+    public void FutureEditorDocumentPreventsOpenAndIsNotOverwritten()
+    {
+        ContentDefinition<MapManifest> definition = CreatePackage();
+        string editorPath = Path.Combine(definition.DirectoryPath, "editor.json");
+        byte[] future = "{\"version\":99,\"nextBrushId\":1,\"layers\":[]}"u8.ToArray();
+        File.WriteAllBytes(editorPath, future);
+
+        MapEditorOpenResult result = MapEditorWorkspace.Open(definition, new FileMapEditorStore());
+
+        Assert.Null(result.Workspace);
+        Assert.Contains(Assert.IsType<MapEditorContentFailure>(result.Failure).Diagnostics,
+            diagnostic => diagnostic.Message.Contains("newer", StringComparison.Ordinal));
+        Assert.Equal(future, File.ReadAllBytes(editorPath));
+    }
+
+    [Theory]
+    [InlineData("{\"version\":{},\"nextBrushId\":1,\"layers\":[]}")]
+    [InlineData("{\"version\":1,\"nextBrushId\":9223372036854775808,\"layers\":[]}")]
+    [InlineData("{\"version\":1,\"nextBrushId\":1,\"layers\":{}}")]
+    public void MalformedCurrentEditorDocumentReturnsContentFailure(string json)
+    {
+        ContentDefinition<MapManifest> definition = CreatePackage();
+        File.WriteAllText(Path.Combine(definition.DirectoryPath, "editor.json"), json);
+
+        MapEditorOpenResult result = MapEditorWorkspace.Open(definition, new FileMapEditorStore());
+
+        Assert.Null(result.Workspace);
+        Assert.IsType<MapEditorContentFailure>(result.Failure);
+    }
+
+    [Fact]
+    public void StoreCannotOverwriteExistingFutureEditorDocument()
+    {
+        ContentDefinition<MapManifest> definition = CreatePackage();
+        string editorPath = Path.Combine(definition.DirectoryPath, "editor.json");
+        byte[] future = "{\"version\":99,\"nextBrushId\":1,\"layers\":[]}"u8.ToArray();
+        File.WriteAllBytes(editorPath, future);
+        MapEditorLayers layers = new(
+            new MapEditorLayerAsset(File.ReadAllBytes(Path.Combine(definition.DirectoryPath,
+                "background.png")), 8, 8),
+            new MapEditorLayerAsset(File.ReadAllBytes(Path.Combine(definition.DirectoryPath,
+                "solid.png")), 8, 8),
+            new MapEditorLayerAsset(File.ReadAllBytes(Path.Combine(definition.DirectoryPath,
+                "destructible.png")), 8, 8));
+        MapEditorBrushDocument replacement = new(MapEditorBrushDocument.CURRENT_VERSION, 1,
+            new MapEditorLayerSources(
+                new MapEditorLayerSource([], layers.Background, false),
+                new MapEditorLayerSource([], layers.Solid, false),
+                new MapEditorLayerSource([], layers.Destructible, false)));
+
+        MapEditorStoreResult<ContentDefinition<MapManifest>> result = new FileMapEditorStore().Save(
+            definition, definition.Manifest, layers, 8, 8, replacement);
+
+        Assert.IsType<MapEditorContentFailure>(result.Failure);
+        Assert.Equal(future, File.ReadAllBytes(editorPath));
+    }
+
+    [Fact]
+    public void SourceDocumentIsWrittenWithRuntimeFilesAndReopensWithStableIdentity()
+    {
+        ContentDefinition<MapManifest> definition = CreatePackage();
+        FileMapEditorStore store = new();
+        MapEditorWorkspace raster = Assert.IsType<MapEditorWorkspace>(
+            MapEditorWorkspace.Open(definition, store).Workspace);
+        MapEditorBrush brush = new(new MapEditorBrushId(42), "ground",
+            MapEditorLayer.BACKGROUND, new MapEditorRectBrushShape(1, 1, 4, 4, 0),
+            new MapEditorTextureMaterial(MapEditorTextureReference.Project("Assets/ground.png")),
+            new MapEditorTextureProjection(MapEditorProjectionMode.STRETCH,
+                new MapEditorPoint(1, 1), 1, 1, 0), true);
+        MapEditorBrushDocument document = new(MapEditorBrushDocument.CURRENT_VERSION, 43,
+            new MapEditorLayerSources(
+                new MapEditorLayerSource([brush], raster.Snapshot.Layers.Background, false),
+                new MapEditorLayerSource([], raster.Snapshot.Layers.Solid, false),
+                new MapEditorLayerSource([], raster.Snapshot.Layers.Destructible, false)));
+
+        Assert.True(store.Save(definition, raster.BuildManifest(), raster.Snapshot.Layers,
+            8, 8, document).Succeeded);
+        MapEditorWorkspace reopened = Assert.IsType<MapEditorWorkspace>(
+            MapEditorWorkspace.Open(definition, store).Workspace);
+
+        Assert.Equal(MapEditorRasterSourceStatus.BRUSH_SOURCE, reopened.Snapshot.SourceStatus);
+        Assert.Equal(new MapEditorBrushId(42),
+            Assert.Single(reopened.Snapshot.BrushDocument!.Layers.Background.Brushes).Id);
+        Assert.Equal(43, reopened.Snapshot.BrushDocument.NextBrushId);
+        Assert.True(File.Exists(Path.Combine(definition.DirectoryPath, "editor.json")));
     }
 
     [Fact]
@@ -63,19 +146,13 @@ public sealed class FileMapEditorStoreTests : IDisposable
             SpawnPoints = [new MapSpawnPoint(2, 3, Team.BLUE)],
         };
         ContentDefinition<MapManifest> definition = CreatePackage(manifest);
-        byte[] background = WritePng("new-background.png", new Color(0.8f, 0.1f, 0.2f));
-        byte[] solid = WritePng("new-solid.png", new Color(0.1f, 0.8f, 0.2f));
-        byte[] destructible = WritePng("new-destructible.png", new Color(0.1f, 0.2f, 0.8f));
+        byte[] background = File.ReadAllBytes(Path.Combine(definition.DirectoryPath, "background.png"));
+        byte[] solid = File.ReadAllBytes(Path.Combine(definition.DirectoryPath, "solid.png"));
+        byte[] destructible = File.ReadAllBytes(Path.Combine(definition.DirectoryPath, "destructible.png"));
         FileMapEditorStore store = new();
         MapEditorWorkspace workspace = Assert.IsType<MapEditorWorkspace>(
             MapEditorWorkspace.Open(definition, store).Workspace);
         workspace.AddSpawn(new MapSpawnPoint(6, 6, Team.RED));
-        Assert.True(workspace.ReplaceLayer(MapEditorLayer.BACKGROUND,
-            Path.Combine(_root, "new-background.png")).Succeeded);
-        Assert.True(workspace.ReplaceLayer(MapEditorLayer.SOLID,
-            Path.Combine(_root, "new-solid.png")).Succeeded);
-        Assert.True(workspace.ReplaceLayer(MapEditorLayer.DESTRUCTIBLE,
-            Path.Combine(_root, "new-destructible.png")).Succeeded);
         MapManifest expectedManifest = workspace.BuildManifest();
 
         Assert.True(workspace.Save().Succeeded);
@@ -93,65 +170,6 @@ public sealed class FileMapEditorStoreTests : IDisposable
         Assert.Equal(destructible, File.ReadAllBytes(Path.Combine(
             definition.DirectoryPath, "destructible.png")));
         Assert.False(reopened.Snapshot.Dirty);
-    }
-
-    [Fact]
-    public void InvalidPngReturnsTypedFailureWithoutChangingWorkspace()
-    {
-        ContentDefinition<MapManifest> definition = CreatePackage();
-        string invalidPath = Path.Combine(_root, "invalid.png");
-        File.WriteAllBytes(invalidPath, "not png"u8.ToArray());
-        MapEditorWorkspace workspace = Assert.IsType<MapEditorWorkspace>(
-            MapEditorWorkspace.Open(definition, new FileMapEditorStore()).Workspace);
-        MapEditorSnapshot before = workspace.Snapshot;
-
-        MapEditorOperationResult result = workspace.ReplaceLayer(
-            MapEditorLayer.SOLID, invalidPath);
-
-        Assert.IsType<MapEditorInvalidPngFailure>(result.Failure);
-        Assert.Same(before, workspace.Snapshot);
-        Assert.Equal(before.Revision, workspace.Snapshot.Revision);
-    }
-
-    [Fact]
-    public void WrongSizePngReturnsTypedFailureWithoutChangingWorkspace()
-    {
-        ContentDefinition<MapManifest> definition = CreatePackage();
-        string wrongSizePath = Path.Combine(_root, "wrong-size.png");
-        Image replacement = Image.CreateEmpty(4, 8, false, Image.Format.Rgba8);
-        Assert.Equal(Error.Ok, replacement.SavePng(wrongSizePath));
-        MapEditorWorkspace workspace = Assert.IsType<MapEditorWorkspace>(
-            MapEditorWorkspace.Open(definition, new FileMapEditorStore()).Workspace);
-        MapEditorSnapshot before = workspace.Snapshot;
-
-        MapEditorOperationResult result = workspace.ReplaceLayer(
-            MapEditorLayer.DESTRUCTIBLE, wrongSizePath);
-
-        MapEditorLayerSizeFailure failure = Assert.IsType<MapEditorLayerSizeFailure>(
-            result.Failure);
-        Assert.Equal((8, 8, 4, 8), (failure.ExpectedWidth, failure.ExpectedHeight,
-            failure.ActualWidth, failure.ActualHeight));
-        Assert.Same(before, workspace.Snapshot);
-        Assert.Equal(before.Revision, workspace.Snapshot.Revision);
-    }
-
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData("   ")]
-    public void MissingReplacementPathReturnsTypedFailureWithoutChangingWorkspace(string? path)
-    {
-        ContentDefinition<MapManifest> definition = CreatePackage();
-        MapEditorWorkspace workspace = Assert.IsType<MapEditorWorkspace>(
-            MapEditorWorkspace.Open(definition, new FileMapEditorStore()).Workspace);
-        MapEditorSnapshot before = workspace.Snapshot;
-
-        MapEditorOperationResult result = workspace.ReplaceLayer(
-            MapEditorLayer.SOLID, path);
-
-        Assert.IsType<MapEditorIoFailure>(result.Failure);
-        Assert.Same(before, workspace.Snapshot);
-        Assert.Equal(before.Revision, workspace.Snapshot.Revision);
     }
 
     private ContentDefinition<MapManifest> CreatePackage(MapManifest? manifest = null)

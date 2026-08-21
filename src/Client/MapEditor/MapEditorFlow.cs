@@ -69,19 +69,19 @@ public partial class MapEditorFlow : Node
         }
         if (!IsValidPackId(id))
         {
-            ShowError("Use a reverse-domain ID such as com.example.my-pack.");
+            ShowError("Use an ID like com.example.my-maps.");
             return;
         }
         if (_catalog?.Packs.Any(pack => pack.Manifest.Id == id) == true)
         {
-            ShowError($"A content pack with ID '{id}' already exists.");
+            ShowError($"The ID '{id}' is already in use.");
             return;
         }
 
         string directory = Path.Combine(ContentRoot.Resolve(), id.Split('.')[^1]);
         if (Directory.Exists(directory))
         {
-            ShowError($"The content directory '{Path.GetFileName(directory)}' already exists.");
+            ShowError($"A folder named '{Path.GetFileName(directory)}' already exists.");
             return;
         }
 
@@ -109,7 +109,7 @@ public partial class MapEditorFlow : Node
         name = name.Trim();
         if (!ContentId.IsValid(id))
         {
-            ShowError("Use lowercase letters, numbers, hyphens, or underscores for the map ID.");
+            ShowError("Use only lowercase letters, numbers, hyphens, and underscores for the map ID.");
             return;
         }
         if (name.Length == 0)
@@ -119,21 +119,23 @@ public partial class MapEditorFlow : Node
         }
         if (MapsIn(_selectedPack).Any(map => map.Definition.Id == id))
         {
-            ShowError($"This content pack already contains a map with ID '{id}'.");
+            ShowError($"The map ID '{id}' is already in use here.");
             return;
         }
         if (width is < 320 or > 8192 || height is < 240 or > 8192)
         {
-            ShowError("Map dimensions must be between 320 x 240 and 8192 x 8192.");
+            ShowError("Map size must be between 320 x 240 and 8192 x 8192.");
             return;
         }
 
         try
         {
-            Image background = Image.CreateEmpty(width, height, false, Image.Format.Rgba8);
-            background.Fill(new Color(0.025f, 0.03f, 0.04f));
             Image empty = Image.CreateEmpty(width, height, false, Image.Format.Rgba8);
             empty.Fill(Colors.Transparent);
+            byte[] emptyPng = empty.SavePngToBuffer();
+            MapEditorLayerAsset emptyLayer = new(emptyPng, width, height);
+            MapEditorLayers layers = new(emptyLayer, emptyLayer, emptyLayer);
+            MapEditorBrushDocument brushDocument = MapEditorBrushDocument.Empty(layers);
             MapPackageWriter.Write(Path.Combine(_selectedPack.DirectoryPath, "maps"),
                 new MapPackageWriteRequest(
                     id,
@@ -143,11 +145,15 @@ public partial class MapEditorFlow : Node
                         SuggestedPlayers = Math.Clamp(suggestedPlayers, 1,
                             NetConfig.MAX_PLAYERS),
                     },
-                    background.SavePngToBuffer(),
-                    empty.SavePngToBuffer(),
-                    empty.SavePngToBuffer(),
+                    emptyPng,
+                    emptyPng,
+                    emptyPng,
                     width,
-                    height));
+                    height,
+                    new Dictionary<string, ReadOnlyMemory<byte>>
+                    {
+                        ["editor.json"] = MapEditorDocumentJson.Serialize(brushDocument),
+                    }));
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException
             or ArgumentException)
@@ -166,7 +172,7 @@ public partial class MapEditorFlow : Node
             : MapsIn(pack).FirstOrDefault(map => map.Definition.Id == id)?.Definition;
         if (definition == null)
         {
-            ShowError("The map was created but could not be loaded.");
+            ShowError("Map created, but it couldn't be opened.");
             return;
         }
         _selectedPack = pack;
@@ -184,7 +190,7 @@ public partial class MapEditorFlow : Node
             candidate.Manifest.Id == id);
         if (pack == null)
         {
-            ShowError("The content pack was created but could not be loaded.");
+            ShowError("Content pack created, but it couldn't be opened.");
             return;
         }
         ShowMaps(pack);

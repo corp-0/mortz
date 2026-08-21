@@ -7,9 +7,13 @@ public sealed record MapPackageWriteRequest(
     ReadOnlyMemory<byte> SolidPng,
     ReadOnlyMemory<byte> DestructiblePng,
     int? ImageWidth = null,
-    int? ImageHeight = null);
+    int? ImageHeight = null,
+    IReadOnlyDictionary<string, ReadOnlyMemory<byte>>? AdditionalFiles = null);
 
-/// <summary>Replaces a map package without exposing a half-written one.</summary>
+/// <summary>
+/// Replaces a map package without exposing a half-written one. Existing files not supplied by
+/// the runtime fields or <see cref="MapPackageWriteRequest.AdditionalFiles"/> are removed.
+/// </summary>
 public static class MapPackageWriter
 {
     public static void Write(string mapsDirectory, MapPackageWriteRequest request)
@@ -26,6 +30,9 @@ public static class MapPackageWriter
             throw new ArgumentException(
                 "image width and height must both be omitted or positive", nameof(request));
         }
+
+        KeyValuePair<string, ReadOnlyMemory<byte>>[] additionalFiles =
+            ValidateAdditionalFiles(request.AdditionalFiles);
 
         string root = Path.GetFullPath(mapsDirectory);
         string manifestPath = Path.Combine(root, request.MapId, "map.toml");
@@ -54,11 +61,19 @@ public static class MapPackageWriter
         try
         {
             Directory.CreateDirectory(staging);
-            File.WriteAllBytes(Path.Combine(staging, "background.png"), request.BackgroundPng.ToArray());
-            File.WriteAllBytes(Path.Combine(staging, "solid.png"), request.SolidPng.ToArray());
-            File.WriteAllBytes(Path.Combine(staging, "destructible.png"), request.DestructiblePng.ToArray());
+            WriteBytes(Path.Combine(staging, "background.png"), request.BackgroundPng);
+            WriteBytes(Path.Combine(staging, "solid.png"), request.SolidPng);
+            WriteBytes(Path.Combine(staging, "destructible.png"), request.DestructiblePng);
             File.WriteAllText(Path.Combine(staging, "map.toml"),
                 TomlModel.Write(request.Manifest));
+            foreach ((string relativePath, ReadOnlyMemory<byte> contents) in additionalFiles)
+            {
+                string path = Path.Combine(staging, relativePath);
+                string? directory = Path.GetDirectoryName(path);
+                if (!string.IsNullOrEmpty(directory))
+                    Directory.CreateDirectory(directory);
+                WriteBytes(path, contents);
+            }
 
             if (Directory.Exists(target))
             {
@@ -84,6 +99,67 @@ public static class MapPackageWriter
                 TryDeleteTree(backup);
             TryDeleteEmpty(transactionRoot);
         }
+    }
+
+    private static void WriteBytes(string path, ReadOnlyMemory<byte> contents)
+    {
+        using FileStream stream = new(path, FileMode.CreateNew, FileAccess.Write,
+            FileShare.None, 64 * 1024, FileOptions.SequentialScan);
+        stream.Write(contents.Span);
+    }
+
+    private static KeyValuePair<string, ReadOnlyMemory<byte>>[] ValidateAdditionalFiles(
+        IReadOnlyDictionary<string, ReadOnlyMemory<byte>>? files)
+    {
+        if (files == null || files.Count == 0)
+            return [];
+
+        HashSet<string> reserved = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "map.toml",
+            "background.png",
+            "solid.png",
+            "destructible.png",
+        };
+        HashSet<string> normalizedPaths = new(StringComparer.OrdinalIgnoreCase);
+        List<KeyValuePair<string, ReadOnlyMemory<byte>>> validated = new(files.Count);
+        foreach ((string relativePath, ReadOnlyMemory<byte> contents) in files)
+        {
+            if (string.IsNullOrWhiteSpace(relativePath) || Path.IsPathRooted(relativePath))
+            {
+                throw new ArgumentException(
+                    "additional file paths must be package-relative", nameof(files));
+            }
+
+            string normalized = relativePath.Replace('\\', '/');
+            string[] segments = normalized.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            if (segments.Length == 0 || segments.Any(segment => segment is "." or "..") ||
+                segments.Any(segment => segment.Contains(':')) ||
+                normalized.EndsWith("/", StringComparison.Ordinal))
+            {
+                throw new ArgumentException(
+                    "additional file paths cannot contain empty, dot, or parent segments",
+                    nameof(files));
+            }
+            if (reserved.Contains(normalized))
+            {
+                throw new ArgumentException(
+                    $"additional file '{relativePath}' is reserved", nameof(files));
+            }
+
+            string portablePath = string.Join('/', segments);
+            if (!normalizedPaths.Add(portablePath))
+            {
+                throw new ArgumentException(
+                    $"additional file '{relativePath}' duplicates another package path",
+                    nameof(files));
+            }
+
+            validated.Add(new KeyValuePair<string, ReadOnlyMemory<byte>>(
+                string.Join(Path.DirectorySeparatorChar, segments), contents));
+        }
+
+        return [.. validated.OrderBy(file => file.Key, StringComparer.Ordinal)];
     }
 
     private static void TryDeleteTree(string directory)

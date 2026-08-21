@@ -1,47 +1,28 @@
 using System.Collections.Immutable;
 using Godot;
 using Mortz.Content;
-using Mortz.Core.Match.Teams;
-using Mortz.Core.Sim.Modifiers;
 
 namespace Mortz.Client.MapEditor;
 
-public sealed record MapEditorStatus(string Message, bool IsError = false);
+public record MapEditorStatus(string Message, bool IsError = false);
 
-public partial class MapEditorHud : Control
+public partial class MapEditorHud : Control, IMapEditorShortcutTarget
 {
-    [Export] private Label _status = null!;
-    [Export] private Button _saveButton = null!;
-    [Export] private MapEditorCanvas _canvas = null!;
-    [Export] private Label _cursorPosition = null!;
-    [Export] private Button _zoomButton = null!;
-    [Export] private Button _frameButton = null!;
-    [Export] private Label _mapSize = null!;
-    [Export] private FileDialog _layerFileDialog = null!;
+    [Export] private MapEditorTopBar _topBar = null!;
     [Export] private AcceptDialog _errorDialog = null!;
-    [Export] private Control _inspectorPanel = null!;
-    [Export] private Label _inspectorTitle = null!;
     [Export] private ConfirmationDialog _discardDialog = null!;
-    [Export] private Control _inspectorFields = null!;
-    [Export] private LineEdit _name = null!;
-    [Export] private LineEdit _tags = null!;
-    [Export] private SpinBox _x = null!;
-    [Export] private SpinBox _y = null!;
-    [Export] private SpinBox _sizeA = null!;
-    [Export] private SpinBox _sizeB = null!;
-    [Export] private Label _sizeALabel = null!;
-    [Export] private Label _sizeBLabel = null!;
-    [Export] private SpinBox _rotation = null!;
-    [Export] private VBoxContainer _effectRows = null!;
-    [Export] private Control _spawnInspectorFields = null!;
-    [Export] private SpinBox _spawnX = null!;
-    [Export] private SpinBox _spawnY = null!;
-    [Export] private OptionButton _spawnTeam = null!;
     [Export] private PackedScene _effectRowScene = null!;
+    [Export] private MapEditorWorkspaceShell _workspaceShell = null!;
+    private MapEditorCanvas _canvas = null!;
+    private MapEditorToolbar _toolbar = null!;
+    private MapEditorViewControls _viewControls = null!;
+    private MapEditorInspectorPresenter _inspectors = null!;
+    private MapEditorBrowserPresenter _browser = null!;
+    private MapEditorShortcutHandler _shortcuts = null!;
+    private MapEditorStampLibrary _stamps = null!;
 
     private MapEditorSnapshot? _snapshot;
-    private MapEditorLayer _pendingLayer;
-    private bool _updatingInspector;
+    private bool _confirmingBrushInitialization;
 
     public event Action? SaveRequested;
     public event Action? ReloadRequested;
@@ -54,83 +35,124 @@ public partial class MapEditorHud : Control
     public event Action<MapSpawnPoint>? SpawnAddRequested;
     public event Action<MapEditorSpawnId, MapSpawnPoint>? SpawnReplaceRequested;
     public event Action<MapEditorSpawnId>? SpawnRemoveRequested;
-    public event Action<MapEditorLayer, string>? LayerReplaceRequested;
+    public event Action? BrushSourceInitializationRequested;
+    public event Action? UndoRequested;
+    public event Action? RedoRequested;
+    public event Action<MapEditorBrushDraft>? BrushAddRequested;
+    public event Action<ImmutableArray<MapEditorBrushDraft>>? BrushBatchAddRequested;
+    public event Action<ImmutableArray<MapEditorBrushId>>? BrushBatchRemoveRequested;
+    public event Action<MapEditorBrushId, MapEditorBrushDraft>? BrushReplaceRequested;
+    public event Action<MapEditorBrushId>? BrushRemoveRequested;
+    public event Action<MapEditorZoneId, int>? ZoneDuplicateRequested;
+    public event Action<MapEditorSpawnId, int>? SpawnDuplicateRequested;
+    public event Action<MapEditorBrushId, int>? BrushDuplicateRequested;
+    public event Action<MapEditorBrushId, int>? BrushReorderRequested;
+    public event Action<MapEditorBrushId, MapEditorLayer>? BrushMoveToLayerRequested;
+    public event Action<MapEditorBrushId>? StampSaveRequested;
+    public event Action<MapEditorStampId>? StampRemoveRequested;
+
+    private int _cursorX;
+    private int _cursorY;
+    private float _zoom = 1f;
 
     public override void _Ready()
     {
-        _canvas.SelectionChanged += ShowSelection;
-        _canvas.SpawnSelectionChanged += ShowSpawnSelection;
-        _canvas.ZonePreviewChanged += ShowZonePreview;
-        _canvas.SpawnPreviewChanged += ShowSpawnPreview;
+        _canvas = _workspaceShell.Canvas;
+        _toolbar = _workspaceShell.Toolbar;
+        _viewControls = _workspaceShell.ViewControls;
+        _stamps = _workspaceShell.StampLibrary;
+        ConfigureWorkspaceShell();
+        BuildInspectors();
+        BuildBrowser();
+        _shortcuts = new MapEditorShortcutHandler(this);
+        _canvas.SelectionChanged += _inspectors.ShowZoneSelection;
+        _canvas.SpawnSelectionChanged += _inspectors.ShowSpawnSelection;
+        _canvas.ZonePreviewChanged += _inspectors.ShowZonePreview;
+        _canvas.SpawnPreviewChanged += _inspectors.ShowSpawnPreview;
         _canvas.ZoneAddRequested += ForwardZoneAdd;
         _canvas.ZoneReplaceRequested += ForwardZoneReplace;
         _canvas.SpawnAddRequested += ForwardSpawnAdd;
         _canvas.SpawnReplaceRequested += ForwardSpawnReplace;
+        _canvas.BrushSelectionChanged += ShowBrushSelection;
+        _canvas.BrushPreviewChanged += _inspectors.ShowBrushPreview;
+        _canvas.BrushAddRequested += draft => BrushAddRequested?.Invoke(draft);
+        _canvas.BrushBatchAddRequested += drafts => BrushBatchAddRequested?.Invoke(drafts);
+        _canvas.BrushBatchRemoveRequested += ids => BrushBatchRemoveRequested?.Invoke(ids);
+        _canvas.BrushReplaceRequested += (id, draft) => BrushReplaceRequested?.Invoke(id, draft);
+        _canvas.BrushDiagnosticChanged += _inspectors.ShowBrushDiagnostic;
         _canvas.CursorMoved += ShowCursorPosition;
         _canvas.ZoomChanged += ShowZoom;
-        _zoomButton.Pressed += OnZoomResetPressed;
-        _frameButton.Pressed += OnFrameMapPressed;
-        _layerFileDialog.FileSelected += OnLayerFileSelected;
-        _name.TextChanged += OnInspectorTextChanged;
-        _tags.TextChanged += OnInspectorTextChanged;
-        _x.ValueChanged += OnInspectorNumberChanged;
-        _y.ValueChanged += OnInspectorNumberChanged;
-        _sizeA.ValueChanged += OnInspectorNumberChanged;
-        _sizeB.ValueChanged += OnInspectorNumberChanged;
-        _rotation.ValueChanged += OnInspectorNumberChanged;
-        _spawnX.ValueChanged += OnSpawnNumberChanged;
-        _spawnY.ValueChanged += OnSpawnNumberChanged;
-        _spawnTeam.AddItem("Any");
-        _spawnTeam.AddItem("Blue");
-        _spawnTeam.AddItem("Red");
-        _spawnTeam.ItemSelected += OnSpawnTeamSelected;
+        _canvas.EditDomainChanged += ShowEditDomain;
+        _canvas.ToolChanged += ShowTool;
+        _workspaceShell.Resized += UpdateResponsiveControls;
+        _stamps.SaveSelectedRequested += OnStampSaveSelected;
+        _stamps.StampSelected += SelectStamp;
+        _stamps.StampRemoveRequested += OnStampRemove;
+        _topBar.BackRequested += OnBackPressed;
+        _topBar.ReloadRequested += OnReloadPressed;
+        _topBar.SaveRequested += OnSavePressed;
+        _topBar.ZoomOutRequested += OnZoomOutPressed;
+        _topBar.ZoomResetRequested += OnZoomResetPressed;
+        _topBar.ZoomInRequested += OnZoomInPressed;
+        _topBar.FrameMapRequested += OnFrameMapPressed;
+        _toolbar.DomainSelected += SelectDomain;
+        _toolbar.ToolSelected += SelectTool;
+        _viewControls.SnapSelected += SetSnap;
+        _viewControls.ViewVisibilityChanged += SetViewVisibility;
+        _viewControls.ResetZoomRequested += OnZoomResetPressed;
+        _viewControls.FrameMapRequested += OnFrameMapPressed;
+        _workspaceShell.BrushInitializationRequested += OnInitializeBrushLayersPressed;
+        _workspaceShell.ProblemActivated += ActivateProblem;
         _discardDialog.Confirmed += OnDiscardConfirmed;
         _discardDialog.Canceled += OnDiscardCancelled;
-        SetInspectorEnabled(false);
         SetProcessUnhandledInput(Visible);
     }
 
     public override void _ExitTree()
     {
-        _canvas.SelectionChanged -= ShowSelection;
-        _canvas.SpawnSelectionChanged -= ShowSpawnSelection;
-        _canvas.ZonePreviewChanged -= ShowZonePreview;
-        _canvas.SpawnPreviewChanged -= ShowSpawnPreview;
+        _canvas.SelectionChanged -= _inspectors.ShowZoneSelection;
+        _canvas.SpawnSelectionChanged -= _inspectors.ShowSpawnSelection;
+        _canvas.ZonePreviewChanged -= _inspectors.ShowZonePreview;
+        _canvas.SpawnPreviewChanged -= _inspectors.ShowSpawnPreview;
         _canvas.ZoneAddRequested -= ForwardZoneAdd;
         _canvas.ZoneReplaceRequested -= ForwardZoneReplace;
         _canvas.SpawnAddRequested -= ForwardSpawnAdd;
         _canvas.SpawnReplaceRequested -= ForwardSpawnReplace;
+        _canvas.BrushSelectionChanged -= _inspectors.ShowBrushSelection;
+        _canvas.BrushPreviewChanged -= _inspectors.ShowBrushPreview;
+        _canvas.BrushDiagnosticChanged -= _inspectors.ShowBrushDiagnostic;
         _canvas.CursorMoved -= ShowCursorPosition;
         _canvas.ZoomChanged -= ShowZoom;
-        _zoomButton.Pressed -= OnZoomResetPressed;
-        _frameButton.Pressed -= OnFrameMapPressed;
-        _layerFileDialog.FileSelected -= OnLayerFileSelected;
-        _name.TextChanged -= OnInspectorTextChanged;
-        _tags.TextChanged -= OnInspectorTextChanged;
-        _x.ValueChanged -= OnInspectorNumberChanged;
-        _y.ValueChanged -= OnInspectorNumberChanged;
-        _sizeA.ValueChanged -= OnInspectorNumberChanged;
-        _sizeB.ValueChanged -= OnInspectorNumberChanged;
-        _rotation.ValueChanged -= OnInspectorNumberChanged;
-        _spawnX.ValueChanged -= OnSpawnNumberChanged;
-        _spawnY.ValueChanged -= OnSpawnNumberChanged;
-        _spawnTeam.ItemSelected -= OnSpawnTeamSelected;
+        _canvas.EditDomainChanged -= ShowEditDomain;
+        _canvas.ToolChanged -= ShowTool;
+        _workspaceShell.Resized -= UpdateResponsiveControls;
+        _topBar.BackRequested -= OnBackPressed;
+        _topBar.ReloadRequested -= OnReloadPressed;
+        _topBar.SaveRequested -= OnSavePressed;
+        _topBar.ZoomOutRequested -= OnZoomOutPressed;
+        _topBar.ZoomResetRequested -= OnZoomResetPressed;
+        _topBar.ZoomInRequested -= OnZoomInPressed;
+        _topBar.FrameMapRequested -= OnFrameMapPressed;
+        _toolbar.DomainSelected -= SelectDomain;
+        _toolbar.ToolSelected -= SelectTool;
+        _viewControls.SnapSelected -= SetSnap;
+        _viewControls.ViewVisibilityChanged -= SetViewVisibility;
+        _viewControls.ResetZoomRequested -= OnZoomResetPressed;
+        _viewControls.FrameMapRequested -= OnFrameMapPressed;
+        _stamps.SaveSelectedRequested -= OnStampSaveSelected;
+        _stamps.StampSelected -= SelectStamp;
+        _stamps.StampRemoveRequested -= OnStampRemove;
+        _workspaceShell.BrushInitializationRequested -= OnInitializeBrushLayersPressed;
+        _workspaceShell.ProblemActivated -= ActivateProblem;
+        _browser.Dispose();
         _discardDialog.Confirmed -= OnDiscardConfirmed;
         _discardDialog.Canceled -= OnDiscardCancelled;
     }
 
     public override void _UnhandledInput(InputEvent @event)
     {
-        if (@event is InputEventKey { Pressed: true, Echo: false } key &&
-            (key.CtrlPressed || key.MetaPressed) && key.Keycode == Key.S)
+        if (_shortcuts.Handle(@event))
         {
-            RequestSave();
-            GetViewport().SetInputAsHandled();
-            return;
-        }
-        if (@event.IsActionPressed("ui_cancel"))
-        {
-            BackRequested?.Invoke();
             GetViewport().SetInputAsHandled();
         }
     }
@@ -150,341 +172,78 @@ public partial class MapEditorHud : Control
     public void OnReloadPressed() => ReloadRequested?.Invoke();
     public void OnSavePressed() => RequestSave();
     public void OnBackPressed() => BackRequested?.Invoke();
-    public void OnDeletePressed()
-    {
-        if (_canvas.SelectedZoneId is { } id)
-            ZoneRemoveRequested?.Invoke(id);
-    }
-    public void OnDeleteSpawnPressed()
-    {
-        if (_canvas.SelectedSpawnId is { } id)
-            SpawnRemoveRequested?.Invoke(id);
-    }
-    public void OnAddEffectPressed()
-    {
-        if (_snapshot == null || _canvas.SelectedZoneId == null)
-            return;
-        AddEffectRow(new MapZoneEffect(Stat.GRAVITY, StatOp.MUL, 1));
-        ApplyEffects();
-    }
-    public void OnSelectPressed() => _canvas.Tool = MapEditorTool.SELECT;
-    public void OnSquarePressed() => _canvas.Tool = MapEditorTool.RECT;
-    public void OnCirclePressed() => _canvas.Tool = MapEditorTool.CIRCLE;
-    public void OnSpawnPressed()
-    {
-        _canvas.Tool = MapEditorTool.SPAWN;
-        HideInspector();
-    }
+
     public void OnZoomInPressed() => _canvas.ZoomIn();
     public void OnZoomOutPressed() => _canvas.ZoomOut();
     public void OnZoomResetPressed() => _canvas.ResetView();
     public void OnFrameMapPressed() => _canvas.FrameMap();
 
-    public void OnReplaceBackgroundPressed() => OpenLayerFile(MapEditorLayer.BACKGROUND);
-    public void OnReplaceSolidPressed() => OpenLayerFile(MapEditorLayer.SOLID);
-    public void OnReplaceDestructiblePressed() => OpenLayerFile(MapEditorLayer.DESTRUCTIBLE);
-
-    public void OnZonesToggled(bool visible)
+    public void SelectBrush(MapEditorLayer layer, MapEditorBrushId id)
     {
-        _canvas.ShowZones = visible;
-        _canvas.QueueRedraw();
+        _browser.SelectBrush(layer, id);
     }
 
-    public void OnDestructibleToggled(bool visible)
+    public void ConfigureTextureSources(IMapEditorTextureResolver resolver,
+        MapEditorTextureSourceRegistry sources)
     {
-        _canvas.ShowDestructible = visible;
-        _canvas.QueueRedraw();
+        ArgumentNullException.ThrowIfNull(resolver);
+        ArgumentNullException.ThrowIfNull(sources);
+        _canvas.ConfigureTextureResolver(resolver);
+        _stamps.ConfigureTextureResolver(resolver);
+        _inspectors.ConfigureTextureResolver(resolver);
+        _inspectors.Brush.ConfigureTextureSources(sources);
     }
 
-    public void OnSolidToggled(bool visible)
+    public void OnInitializeBrushLayersPressed()
     {
-        _canvas.ShowSolid = visible;
-        _canvas.QueueRedraw();
-    }
-
-    public void OnBackgroundToggled(bool visible)
-    {
-        _canvas.ShowBackground = visible;
-        _canvas.QueueRedraw();
-    }
-
-    public void OnSpawnsToggled(bool visible)
-    {
-        _canvas.ShowSpawns = visible;
-        _canvas.QueueRedraw();
+        if (_snapshot?.SourceStatus != MapEditorRasterSourceStatus.OBSOLETE)
+            return;
+        _confirmingBrushInitialization = true;
+        _discardDialog.Title = "Enable layer editing";
+        _discardDialog.DialogText =
+            "Existing layer images won't become editable. When you save, your new shapes will replace them.";
+        _discardDialog.OkButtonText = "Enable editing";
+        _discardDialog.PopupCentered();
     }
 
     public void Apply(MapEditorUpdate update)
     {
         _snapshot = update.Snapshot;
-        _saveButton.Disabled = !update.Snapshot.CanSave;
-        _mapSize.Text = $"{update.Snapshot.Width} x {update.Snapshot.Height} px";
-        ShowDiagnostics(update.Snapshot.Diagnostics);
+        _topBar.Apply(update.Snapshot);
+        _workspaceShell.ApplyProblems(update.Snapshot.Diagnostics);
         _canvas.Apply(update);
-        RefreshSelectedInspector();
+        _inspectors.Apply(update.Snapshot);
+        _browser.Apply(update.Snapshot);
+        RefreshStampLibrary();
+        ShowEditDomain(_canvas.EditDomain, false);
+        ShowTool(_canvas.Tool, false);
+        ShowSnap(_canvas.Snap);
+        UpdateWorkspaceStatus();
     }
 
     public void ShowStatus(MapEditorStatus status)
     {
-        _status.Text = status.Message;
-        _status.Modulate = status.IsError ? new Color(1f, 0.45f, 0.4f) : Colors.White;
+        _topBar.ShowStatus(status);
         if (!status.IsError)
             return;
         _errorDialog.DialogText = status.Message;
         _errorDialog.PopupCentered();
     }
 
-    public void ShowDiscardConfirmation() => _discardDialog.PopupCentered();
+    public void ShowDiscardConfirmation()
+    {
+        _confirmingBrushInitialization = false;
+        _discardDialog.Title = "Unsaved changes";
+        _discardDialog.DialogText =
+            "This map has unsaved changes. Discard them and continue?";
+        _discardDialog.OkButtonText = "Discard changes";
+        _discardDialog.PopupCentered();
+    }
 
     private void RequestSave()
     {
         if (_snapshot?.CanSave == true)
             SaveRequested?.Invoke();
-    }
-
-    private void OpenLayerFile(MapEditorLayer layer)
-    {
-        _pendingLayer = layer;
-        _layerFileDialog.Title = $"Replace {LayerName(layer).ToLowerInvariant()} image";
-        _layerFileDialog.PopupCenteredRatio(0.72f);
-    }
-
-    private void OnLayerFileSelected(string path) =>
-        LayerReplaceRequested?.Invoke(_pendingLayer, path);
-
-    private void ShowSelection(MapEditorZoneId? id)
-    {
-        MapEditorZone? selected = id is { } value
-            ? _snapshot?.Zones.FirstOrDefault(zone => zone.Id == value)
-            : null;
-        if (selected == null)
-        {
-            if (_canvas.SelectedSpawnId == null)
-                SetInspectorEnabled(false);
-            return;
-        }
-        ShowZoneDraft(new MapEditorZoneDraft(
-            selected.Name, selected.Tags, selected.Shape, selected.Effects));
-    }
-
-    private void ShowZoneDraft(MapEditorZoneDraft zone)
-    {
-        bool wasUpdating = _updatingInspector;
-        _updatingInspector = true;
-        _inspectorPanel.Show();
-        SetInspectorEnabled(true);
-        _spawnInspectorFields.Hide();
-        _inspectorTitle.Text = zone.Shape switch
-        {
-            RectMapZoneShape => "Rectangle zone",
-            EllipseMapZoneShape => "Oval zone",
-            _ => "Circle zone",
-        };
-        _name.Text = zone.Name;
-        _tags.Text = string.Join(", ", zone.Tags);
-        _x.Value = zone.Shape.X;
-        _y.Value = zone.Shape.Y;
-        if (zone.Shape is RectMapZoneShape rect)
-        {
-            _sizeALabel.Text = "Width";
-            _sizeBLabel.Text = "Height";
-            _sizeA.Value = rect.Width;
-            _sizeB.Value = rect.Height;
-            _sizeB.Show();
-            _sizeBLabel.Show();
-        }
-        else if (zone.Shape is EllipseMapZoneShape ellipse)
-        {
-            _sizeALabel.Text = "Radius X";
-            _sizeBLabel.Text = "Radius Y";
-            _sizeA.Value = ellipse.RadiusX;
-            _sizeB.Value = ellipse.RadiusY;
-            _sizeB.Show();
-            _sizeBLabel.Show();
-        }
-        else
-        {
-            CircleMapZoneShape circle = (CircleMapZoneShape)zone.Shape;
-            _sizeALabel.Text = "Radius";
-            _sizeA.Value = circle.Radius;
-            _sizeB.Hide();
-            _sizeBLabel.Hide();
-        }
-        _rotation.Value = zone.Shape switch
-        {
-            RectMapZoneShape rotatedRect => rotatedRect.Rotation,
-            EllipseMapZoneShape rotatedEllipse => rotatedEllipse.Rotation,
-            _ => 0,
-        };
-        _rotation.Editable = zone.Shape is not CircleMapZoneShape;
-        ClearEffectRows();
-        foreach (MapZoneEffect effect in zone.Effects)
-        {
-            AddEffectRow(effect);
-        }
-
-        _updatingInspector = wasUpdating;
-    }
-
-    private void ShowSpawnSelection(MapEditorSpawnId? id)
-    {
-        int index = id is { } value ? SpawnIndex(value) : -1;
-        if (_snapshot == null || index < 0)
-        {
-            if (_canvas.SelectedZoneId == null)
-                HideInspector();
-            return;
-        }
-        ShowSpawn(_snapshot.SpawnPoints[index].Value, index + 1);
-    }
-
-    private void ShowSpawn(MapSpawnPoint spawn, int? number = null)
-    {
-        bool wasUpdating = _updatingInspector;
-        _updatingInspector = true;
-        _inspectorPanel.Show();
-        _inspectorFields.Hide();
-        _spawnInspectorFields.Show();
-        _inspectorTitle.Text = number is { } index ? $"Spawn {index}" : "Spawn";
-        _spawnX.Value = spawn.X;
-        _spawnY.Value = spawn.Y;
-        _spawnTeam.Select(spawn.Team switch
-        {
-            Team.BLUE => 1,
-            Team.RED => 2,
-            _ => 0,
-        });
-        _updatingInspector = wasUpdating;
-    }
-
-    private void OnInspectorTextChanged(string _) => ApplyInspector();
-    private void OnInspectorNumberChanged(double _) => ApplyInspector();
-    private void OnSpawnNumberChanged(double _) => ApplySpawnInspector();
-    private void OnSpawnTeamSelected(long _) => ApplySpawnInspector();
-
-    private void ApplyInspector()
-    {
-        if (_updatingInspector || _snapshot == null || _canvas.SelectedZoneId is not { } id)
-            return;
-        MapEditorZone? old = _snapshot.Zones.FirstOrDefault(zone => zone.Id == id);
-        if (old == null)
-            return;
-        int x = (int)_x.Value;
-        int y = (int)_y.Value;
-        MapZoneShape shape = old.Shape switch
-        {
-            RectMapZoneShape => new RectMapZoneShape(x, y,
-                Math.Max(1, (int)_sizeA.Value), Math.Max(1, (int)_sizeB.Value),
-                (float)_rotation.Value),
-            EllipseMapZoneShape => new EllipseMapZoneShape(x, y,
-                Math.Max(1, (int)_sizeA.Value), Math.Max(1, (int)_sizeB.Value),
-                (float)_rotation.Value),
-            _ => new CircleMapZoneShape(x, y, Math.Max(1, (int)_sizeA.Value)),
-        };
-        string name = _name.Text.StripEdges();
-        string[] tags = _tags.Text.Split(',', StringSplitOptions.RemoveEmptyEntries |
-                StringSplitOptions.TrimEntries)
-            .Distinct(StringComparer.Ordinal).ToArray();
-        ZoneReplaceRequested?.Invoke(id,
-            new MapEditorZoneDraft(name, [.. tags], shape, old.Effects));
-    }
-
-    private void ApplySpawnInspector()
-    {
-        if (_updatingInspector || _canvas.SelectedSpawnId is not { } id)
-            return;
-        Team? team = _spawnTeam.Selected switch
-        {
-            1 => Team.BLUE,
-            2 => Team.RED,
-            _ => null,
-        };
-        SpawnReplaceRequested?.Invoke(id,
-            new MapSpawnPoint((int)_spawnX.Value, (int)_spawnY.Value, team));
-    }
-
-    private void AddEffectRow(MapZoneEffect effect)
-    {
-        ZoneEffectRow row = _effectRowScene.Instantiate<ZoneEffectRow>();
-        _effectRows.AddChild(row);
-        row.Bind(effect);
-        row.Changed += ApplyEffects;
-        row.RemoveRequested += RemoveEffectRow;
-    }
-
-    private void RemoveEffectRow(ZoneEffectRow row)
-    {
-        _effectRows.RemoveChild(row);
-        row.QueueFree();
-        ApplyEffects();
-    }
-
-    private void ClearEffectRows()
-    {
-        foreach (Node child in _effectRows.GetChildren())
-        {
-            _effectRows.RemoveChild(child);
-            child.QueueFree();
-        }
-    }
-
-    private void ApplyEffects()
-    {
-        if (_updatingInspector || _snapshot == null || _canvas.SelectedZoneId is not { } id)
-            return;
-        MapEditorZone? old = _snapshot.Zones.FirstOrDefault(zone => zone.Id == id);
-        if (old == null)
-            return;
-        MapZoneEffect[] effects = _effectRows.GetChildren().OfType<ZoneEffectRow>()
-            .Select(row => row.Value).ToArray();
-        ZoneReplaceRequested?.Invoke(id, new MapEditorZoneDraft(
-            old.Name, old.Tags, old.Shape, [.. effects]));
-    }
-
-    private void SetInspectorEnabled(bool enabled)
-    {
-        _inspectorPanel.Visible = enabled;
-        _inspectorFields.Visible = enabled;
-        _spawnInspectorFields.Hide();
-        _inspectorTitle.Text = enabled ? _inspectorTitle.Text : "Inspector";
-    }
-
-    private void HideInspector()
-    {
-        _inspectorPanel.Hide();
-        _inspectorFields.Hide();
-        _spawnInspectorFields.Hide();
-    }
-
-    private void ShowZonePreview(MapEditorZoneDraft? preview)
-    {
-        if (preview != null)
-            ShowZoneDraft(preview);
-        else
-            RefreshSelectedInspector();
-    }
-
-    private void ShowSpawnPreview(MapSpawnPoint? preview)
-    {
-        if (preview is { } spawn)
-            ShowSpawn(spawn);
-        else
-            RefreshSelectedInspector();
-    }
-
-    private void RefreshSelectedInspector()
-    {
-        if (_canvas.SelectedZoneId is { } zoneId)
-        {
-            ShowSelection(zoneId);
-            return;
-        }
-        if (_canvas.SelectedSpawnId is { } spawnId)
-        {
-            ShowSpawnSelection(spawnId);
-            return;
-        }
-        HideInspector();
     }
 
     private void ForwardZoneAdd(MapEditorZoneDraft draft) =>
@@ -499,50 +258,420 @@ public partial class MapEditorHud : Control
     private void ForwardSpawnReplace(MapEditorSpawnId id, MapSpawnPoint spawn) =>
         SpawnReplaceRequested?.Invoke(id, spawn);
 
-    private void OnDiscardConfirmed() => DiscardConfirmed?.Invoke();
-
-    private void OnDiscardCancelled() => DiscardCancelled?.Invoke();
-
-    private int SpawnIndex(MapEditorSpawnId id)
+    private void OnDiscardConfirmed()
     {
-        if (_snapshot == null)
-            return -1;
-        for (int i = 0; i < _snapshot.SpawnPoints.Length; i++)
+        if (_confirmingBrushInitialization)
         {
-            if (_snapshot.SpawnPoints[i].Id == id)
-                return i;
-        }
-        return -1;
-    }
-
-    private void ShowCursorPosition(int x, int y) =>
-        _cursorPosition.Text = $"X {x,4}   Y {y,4}";
-
-    private void ShowZoom(float zoom) =>
-        _zoomButton.Text = $"{zoom * 100:0}%";
-
-    private void ShowDiagnostics(ImmutableArray<ContentDiagnostic> diagnostics)
-    {
-        if (diagnostics.IsEmpty)
-        {
-            _status.Text = _snapshot?.Dirty == true ? "Unsaved changes" : string.Empty;
-            _status.Modulate = Colors.White;
+            _confirmingBrushInitialization = false;
+            BrushSourceInitializationRequested?.Invoke();
             return;
         }
 
-        bool hasErrors = diagnostics.Any(
-            diagnostic => diagnostic.Severity == ContentDiagnosticSeverity.ERROR);
-        _status.Text = string.Join("; ", diagnostics.Select(diagnostic => diagnostic.Message));
-        _status.Modulate = hasErrors
-            ? new Color(1f, 0.45f, 0.4f)
-            : new Color(1f, 0.8f, 0.35f);
+        DiscardConfirmed?.Invoke();
     }
 
-    private static string LayerName(MapEditorLayer layer) => layer switch
+    private void OnDiscardCancelled()
     {
-        MapEditorLayer.BACKGROUND => "Background",
-        MapEditorLayer.SOLID => "Solid",
-        MapEditorLayer.DESTRUCTIBLE => "Destructible",
-        _ => throw new ArgumentOutOfRangeException(nameof(layer)),
-    };
+        if (_confirmingBrushInitialization)
+        {
+            _confirmingBrushInitialization = false;
+            return;
+        }
+
+        DiscardCancelled?.Invoke();
+    }
+
+    private void ShowCursorPosition(int x, int y)
+    {
+        _cursorX = x;
+        _cursorY = y;
+        UpdateWorkspaceStatus();
+    }
+
+    private void ShowZoom(float zoom)
+    {
+        _zoom = zoom;
+        _topBar.ApplyZoom(zoom);
+        UpdateWorkspaceStatus();
+    }
+
+    private void ConfigureWorkspaceShell()
+    {
+        ShowSnap(_canvas.Snap);
+        UpdateResponsiveControls();
+    }
+
+    private void UpdateResponsiveControls()
+    {
+        bool compact = _workspaceShell.IsCompact;
+        _topBar.SetCompact(compact);
+        _toolbar.SetCompact(compact);
+    }
+
+    private void SelectDomain(MapEditorEditDomain domain)
+    {
+        DiscardInspectorDraft();
+        _canvas.SetEditDomain(domain);
+        ShowEditDomain(domain);
+        _inspectors.Refresh();
+    }
+
+    private void SelectTool(MapEditorTool tool)
+    {
+        DiscardInspectorDraft();
+        _canvas.Tool = tool;
+        ShowEditDomain(_canvas.EditDomain);
+        ShowTool(_canvas.Tool);
+    }
+
+    private void SelectStamp(MapEditorStamp stamp)
+    {
+        DiscardInspectorDraft();
+        _canvas.SelectStamp(stamp);
+        ShowEditDomain(_canvas.EditDomain);
+        ShowTool(_canvas.Tool);
+        RefreshStampLibrary();
+    }
+
+    private void OnStampSaveSelected(MapEditorBrushId id) => StampSaveRequested?.Invoke(id);
+
+    private void OnStampRemove(MapEditorStampId id) => StampRemoveRequested?.Invoke(id);
+
+    private void ShowBrushSelection(MapEditorBrushId? id)
+    {
+        _inspectors.ShowBrushSelection(id);
+        RefreshStampLibrary();
+    }
+
+    private void RefreshStampLibrary()
+    {
+        if (_snapshot != null)
+            _stamps.Apply(_snapshot, _canvas.SelectedBrushId, _canvas.SelectedStampId);
+    }
+
+    private void DiscardInspectorDraft()
+    {
+        _inspectors.DiscardDraft();
+    }
+
+    private void ShowEditDomain(MapEditorEditDomain domain) => ShowEditDomain(domain, true);
+
+    private void ShowEditDomain(MapEditorEditDomain domain, bool refreshBrowser)
+    {
+        _toolbar.ApplyDomain(domain);
+        _workspaceShell.SetStampLibraryAvailable(domain == MapEditorEditDomain.GEOMETRY);
+        bool rasterOnly = _snapshot?.SourceStatus == MapEditorRasterSourceStatus.OBSOLETE;
+        if (refreshBrowser)
+            _browser.ShowDomain(domain, rasterOnly);
+        else
+            _workspaceShell.ShowObjectBrowserState(domain, rasterOnly);
+        UpdateWorkspaceStatus();
+    }
+
+    private void SetSnap(MapEditorSnap snap)
+    {
+        _canvas.Snap = snap;
+        ShowSnap(snap);
+    }
+
+    private void SetViewVisibility(MapEditorViewLayer layer, bool visible)
+    {
+        _browser.SetVisibility(layer, visible);
+    }
+
+    private void ShowSnap(MapEditorSnap snap)
+    {
+        _viewControls.ApplySnap(snap);
+        UpdateWorkspaceStatus();
+    }
+
+    private void ShowTool(MapEditorTool tool) => ShowTool(tool, true);
+
+    private void ShowTool(MapEditorTool tool, bool refreshBrowser)
+    {
+        _toolbar.ApplyTool(tool);
+        RefreshViewVisibility();
+        if (refreshBrowser)
+        {
+            _browser.Refresh();
+            RefreshStampLibrary();
+        }
+        UpdateWorkspaceStatus();
+    }
+
+    private void RefreshViewVisibility()
+    {
+        _viewControls.ApplyViewVisibility(MapEditorViewLayer.BACKGROUND, _canvas.ShowBackground);
+        _viewControls.ApplyViewVisibility(MapEditorViewLayer.SOLID, _canvas.ShowSolid);
+        _viewControls.ApplyViewVisibility(MapEditorViewLayer.DESTRUCTIBLE, _canvas.ShowDestructible);
+        _viewControls.ApplyViewVisibility(MapEditorViewLayer.ZONES, _canvas.ShowZones);
+        _viewControls.ApplyViewVisibility(MapEditorViewLayer.SPAWNS, _canvas.ShowSpawns);
+        _viewControls.ApplyViewVisibility(MapEditorViewLayer.GRID, _canvas.ShowGrid);
+    }
+
+    private void BuildInspectors()
+    {
+        _inspectors = new MapEditorInspectorPresenter(_canvas, _workspaceShell,
+            _effectRowScene, () => _browser.Refresh());
+        _inspectors.BrushReplaceRequested += (id, draft) =>
+            BrushReplaceRequested?.Invoke(id, draft);
+        _inspectors.BrushRemoveRequested += id => BrushRemoveRequested?.Invoke(id);
+        _inspectors.BrushDuplicateRequested += (id, offset) =>
+            BrushDuplicateRequested?.Invoke(id, offset);
+        _inspectors.BrushMoveToLayerRequested += (id, layer) =>
+            BrushMoveToLayerRequested?.Invoke(id, layer);
+        _inspectors.ZoneReplaceRequested += (id, draft) =>
+            ZoneReplaceRequested?.Invoke(id, draft);
+        _inspectors.ZoneRemoveRequested += id => ZoneRemoveRequested?.Invoke(id);
+        _inspectors.SpawnReplaceRequested += (id, spawn) =>
+            SpawnReplaceRequested?.Invoke(id, spawn);
+        _inspectors.SpawnRemoveRequested += id => SpawnRemoveRequested?.Invoke(id);
+    }
+
+    private void BuildBrowser()
+    {
+        _browser = new MapEditorBrowserPresenter(_workspaceShell, _canvas, _inspectors);
+        _browser.BrushReplaceRequested += (id, draft) =>
+            BrushReplaceRequested?.Invoke(id, draft);
+        _browser.BrushReorderRequested += (id, destination) =>
+            BrushReorderRequested?.Invoke(id, destination);
+        _browser.ViewChanged += RefreshViewVisibility;
+    }
+
+    bool IMapEditorShortcutTarget.IsTextEditing => IsTextEditing();
+    bool IMapEditorShortcutTarget.IsCreatingPolygon => _canvas.IsCreatingPolygon;
+    void IMapEditorShortcutTarget.Save() => RequestSave();
+    void IMapEditorShortcutTarget.Undo() => UndoRequested?.Invoke();
+    void IMapEditorShortcutTarget.Redo() => RedoRequested?.Invoke();
+    bool IMapEditorShortcutTarget.DeleteSelection() => DeleteSelection();
+    bool IMapEditorShortcutTarget.DuplicateSelection() => DuplicateSelection();
+
+    bool IMapEditorShortcutTarget.SelectDomain(MapEditorEditDomain domain) =>
+        SelectShortcutDomain(domain);
+
+    bool IMapEditorShortcutTarget.SelectTool(MapEditorTool tool) => SelectShortcutTool(tool);
+    bool IMapEditorShortcutTarget.SelectShape(bool rectangle) => SelectShapeShortcut(rectangle);
+    bool IMapEditorShortcutTarget.SelectGeometryTool(MapEditorTool tool) => SelectGeometryTool(tool);
+    bool IMapEditorShortcutTarget.SelectSpawnTool() => SelectSpawnTool();
+
+    bool IMapEditorShortcutTarget.FrameAll(bool selectionOnly) =>
+        selectionOnly ? _canvas.FrameSelection() : FrameAllShortcut();
+
+    bool IMapEditorShortcutTarget.Cancel()
+    {
+        if (_workspaceShell.TryCloseProblems() || _workspaceShell.TryCloseStamps() ||
+            _workspaceShell.TryCloseProperties() ||
+            _workspaceShell.TryCloseDrawer() || _canvas.TryCancelInteraction())
+        {
+            return true;
+        }
+
+        if (_canvas.SelectedBrushId == null && _canvas.SelectedZoneId == null &&
+            _canvas.SelectedSpawnId == null && !IsTextEditing())
+        {
+            return false;
+        }
+
+        DiscardInspectorDraft();
+        _canvas.SelectBrush(null);
+        _canvas.Select(null);
+        _canvas.SelectSpawn(null);
+        _inspectors.Refresh();
+        return true;
+    }
+
+    void IMapEditorShortcutTarget.CycleSnap(bool gridOnly)
+    {
+        if (gridOnly)
+        {
+            _canvas.ShowGrid = !_canvas.ShowGrid;
+        }
+        else
+        {
+            SetSnap(_canvas.Snap switch
+            {
+                MapEditorSnap.NONE => MapEditorSnap.PIXELS_8,
+                MapEditorSnap.PIXELS_8 => MapEditorSnap.PIXELS_16,
+                MapEditorSnap.PIXELS_16 => MapEditorSnap.PIXELS_32,
+                _ => MapEditorSnap.NONE,
+            });
+        }
+
+        _canvas.QueueRedraw();
+        RefreshViewVisibility();
+    }
+
+    void IMapEditorShortcutTarget.CompletePolygon()
+    {
+        _canvas.TryClosePolygon();
+        _inspectors.ShowBrushDiagnostic(_canvas.BrushDiagnostic);
+    }
+
+    void IMapEditorShortcutTarget.RemovePolygonVertex() =>
+        _canvas.TryRemoveLastPolygonVertex();
+
+    private bool IsTextEditing() => GetViewport().GuiGetFocusOwner() is LineEdit or TextEdit;
+
+    private int DuplicateOffset() => _canvas.Snap == MapEditorSnap.NONE ? 1 : (int)_canvas.Snap;
+
+    private bool DeleteSelection()
+    {
+        switch (_canvas.EditDomain)
+        {
+            case MapEditorEditDomain.GEOMETRY when _canvas.SelectedBrushId is { } brush:
+                BrushRemoveRequested?.Invoke(brush);
+                return true;
+            case MapEditorEditDomain.ZONES when _canvas.SelectedZoneId is { } zone:
+                ZoneRemoveRequested?.Invoke(zone);
+                return true;
+            case MapEditorEditDomain.SPAWNS when _canvas.SelectedSpawnId is { } spawn:
+                SpawnRemoveRequested?.Invoke(spawn);
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private bool DuplicateSelection()
+    {
+        int offset = DuplicateOffset();
+        switch (_canvas.EditDomain)
+        {
+            case MapEditorEditDomain.GEOMETRY when _canvas.SelectedBrushId is { } brush:
+                BrushDuplicateRequested?.Invoke(brush, offset);
+                return true;
+            case MapEditorEditDomain.ZONES when _canvas.SelectedZoneId is { } zone:
+                ZoneDuplicateRequested?.Invoke(zone, offset);
+                return true;
+            case MapEditorEditDomain.SPAWNS when _canvas.SelectedSpawnId is { } spawn:
+                SpawnDuplicateRequested?.Invoke(spawn, offset);
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private bool SelectShortcutDomain(MapEditorEditDomain domain)
+    {
+        SelectDomain(domain);
+        SelectTool(MapEditorTool.SELECT);
+        return true;
+    }
+
+    private bool SelectShortcutTool(MapEditorTool tool)
+    {
+        SelectTool(tool);
+        return true;
+    }
+
+    private bool SelectShapeShortcut(bool rectangle)
+    {
+        return _canvas.EditDomain switch
+        {
+            MapEditorEditDomain.GEOMETRY => SelectGeometryTool(rectangle
+                ? MapEditorTool.BRUSH_RECT
+                : MapEditorTool.BRUSH_ELLIPSE),
+            MapEditorEditDomain.ZONES => SelectShortcutTool(rectangle
+                ? MapEditorTool.RECT
+                : MapEditorTool.CIRCLE),
+            _ => false,
+        };
+    }
+
+    private bool SelectGeometryTool(MapEditorTool tool)
+    {
+        if (_canvas.EditDomain != MapEditorEditDomain.GEOMETRY ||
+            _snapshot?.CanEditBrushes != true)
+            return false;
+        SelectTool(tool);
+        return true;
+    }
+
+    private bool SelectSpawnTool()
+    {
+        if (_canvas.EditDomain != MapEditorEditDomain.SPAWNS)
+            return false;
+        SelectTool(MapEditorTool.SPAWN);
+        return true;
+    }
+
+    private bool FrameAllShortcut()
+    {
+        _canvas.FrameMap();
+        return true;
+    }
+
+    private void UpdateWorkspaceStatus()
+    {
+        if (!IsInstanceValid(_workspaceShell))
+            return;
+        string domain = _canvas.EditDomain switch
+        {
+            MapEditorEditDomain.GEOMETRY => "Geometry",
+            MapEditorEditDomain.ZONES => "Zones",
+            _ => "Spawns",
+        };
+        string tool = _canvas.Tool switch
+        {
+            MapEditorTool.SELECT => "Select",
+            MapEditorTool.RECT or MapEditorTool.BRUSH_RECT => "Rectangle",
+            MapEditorTool.CIRCLE or MapEditorTool.BRUSH_ELLIPSE => "Ellipse",
+            MapEditorTool.BRUSH_POLYGON => "Polygon",
+            MapEditorTool.STAMP => "Stamp",
+            _ => "Place",
+        };
+        string snap = _canvas.Snap == MapEditorSnap.NONE ? "Snap 1" : $"Snap {(int)_canvas.Snap}";
+        MapEditorMapBounds bounds = _snapshot?.Bounds ?? default;
+        _workspaceShell.SetWorkspaceStatus($"{domain} * {tool}",
+            $"X {_cursorX} Y {_cursorY}", $"{_zoom * 100:0}% * {snap}",
+            $"Map {bounds.X},{bounds.Y} - {bounds.Width}x{bounds.Height}");
+    }
+
+    private void ActivateProblem(ContentDiagnostic diagnostic)
+    {
+        if (_snapshot == null)
+            return;
+        foreach (MapEditorLayer layer in Enum.GetValues<MapEditorLayer>())
+        {
+            if (_snapshot.BrushDocument == null)
+                break;
+            foreach (MapEditorBrush brush in _snapshot.BrushDocument.Layers.Get(layer).Brushes)
+            {
+                string prefix = $"Brush {brush.Id.Value} ";
+                if (!diagnostic.Message.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                    continue;
+                SelectDomain(MapEditorEditDomain.GEOMETRY);
+                SelectBrush(layer, brush.Id);
+                _workspaceShell.TryCloseProblems();
+                return;
+            }
+        }
+
+        if (TryDiagnosticIndex(diagnostic.Message, "zones[", out int zoneIndex) &&
+            (uint)zoneIndex < (uint)_snapshot.Zones.Length)
+        {
+            SelectDomain(MapEditorEditDomain.ZONES);
+            _canvas.Select(_snapshot.Zones[zoneIndex].Id);
+            _workspaceShell.TryCloseProblems();
+            return;
+        }
+
+        if (TryDiagnosticIndex(diagnostic.Message, "spawn_points[", out int spawnIndex) &&
+            (uint)spawnIndex < (uint)_snapshot.SpawnPoints.Length)
+        {
+            SelectDomain(MapEditorEditDomain.SPAWNS);
+            _canvas.SelectSpawn(_snapshot.SpawnPoints[spawnIndex].Id);
+            _workspaceShell.TryCloseProblems();
+        }
+    }
+
+    private static bool TryDiagnosticIndex(string message, string prefix, out int index)
+    {
+        index = -1;
+        if (!message.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            return false;
+        int end = message.IndexOf(']', prefix.Length);
+        return end > prefix.Length &&
+               int.TryParse(message[prefix.Length..end], out index);
+    }
 }

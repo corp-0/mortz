@@ -85,7 +85,6 @@ icon = SubResource("Texture2D_jdl0x")
 
 [node name="EmptyView" type="VBoxContainer" parent="Panel/MarginContainer/VBoxContainer2" unique_id=232734752]
 unique_name_in_owner = true
-visible = false
 layout_mode = 2
 
 [node name="Label" type="Label" parent="Panel/MarginContainer/VBoxContainer2/EmptyView" unique_id=1184990920]
@@ -108,6 +107,7 @@ theme_override_constants/margin_bottom = 12
 
 [node name="CollectionsContainer" type="VBoxContainer" parent="Panel/MarginContainer/VBoxContainer2/ScrollContainer/MarginContainer" unique_id=716018021]
 unique_name_in_owner = true
+visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3

@@ -1,0 +1,136 @@
+[gd_resource type="Theme" format=3 uid="uid://cmgp4xl7r5v2k"]
+
+[sub_resource type="StyleBoxFlat" id="StyleDisabled"]
+content_margin_left = 9.0
+content_margin_top = 6.0
+content_margin_right = 9.0
+content_margin_bottom = 6.0
+bg_color = Color(0.075, 0.075, 0.08, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.16, 0.16, 0.17, 1)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
+
+[sub_resource type="StyleBoxFlat" id="StyleFocus"]
+content_margin_left = 8.0
+content_margin_top = 5.0
+content_margin_right = 8.0
+content_margin_bottom = 5.0
+bg_color = Color(0.145, 0.145, 0.155, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.56, 0.56, 0.59, 1)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
+
+[sub_resource type="StyleBoxFlat" id="StyleHover"]
+content_margin_left = 9.0
+content_margin_top = 6.0
+content_margin_right = 9.0
+content_margin_bottom = 6.0
+bg_color = Color(0.19, 0.19, 0.205, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.27, 0.27, 0.29, 1)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
+
+[sub_resource type="StyleBoxFlat" id="StylePressed"]
+content_margin_left = 9.0
+content_margin_top = 6.0
+content_margin_right = 9.0
+content_margin_bottom = 6.0
+bg_color = Color(0.115, 0.115, 0.125, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.38, 0.38, 0.41, 1)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
+
+[sub_resource type="StyleBoxFlat" id="StyleControl"]
+content_margin_left = 9.0
+content_margin_top = 6.0
+content_margin_right = 9.0
+content_margin_bottom = 6.0
+bg_color = Color(0.145, 0.145, 0.155, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.235, 0.235, 0.25, 1)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
+
+[sub_resource type="StyleBoxFlat" id="StyleEmpty"]
+bg_color = Color(0, 0, 0, 0)
+
+[sub_resource type="StyleBoxFlat" id="StylePanel"]
+bg_color = Color(0.098, 0.098, 0.105, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.205, 0.205, 0.22, 1)
+
+[resource]
+default_font_size = 14
+Button/colors/font_color = Color(0.84, 0.84, 0.85, 1)
+Button/colors/font_disabled_color = Color(0.4, 0.4, 0.42, 1)
+Button/colors/font_focus_color = Color(0.94, 0.94, 0.95, 1)
+Button/colors/font_hover_color = Color(0.94, 0.94, 0.95, 1)
+Button/colors/font_pressed_color = Color(0.9, 0.9, 0.91, 1)
+Button/styles/disabled = SubResource("StyleDisabled")
+Button/styles/focus = SubResource("StyleFocus")
+Button/styles/hover = SubResource("StyleHover")
+Button/styles/hover_pressed = SubResource("StylePressed")
+Button/styles/normal = SubResource("StyleControl")
+Button/styles/pressed = SubResource("StylePressed")
+CheckButton/colors/font_color = Color(0.84, 0.84, 0.85, 1)
+CheckButton/colors/font_disabled_color = Color(0.4, 0.4, 0.42, 1)
+CheckButton/colors/font_focus_color = Color(0.94, 0.94, 0.95, 1)
+CheckButton/colors/font_hover_color = Color(0.94, 0.94, 0.95, 1)
+CheckButton/colors/font_hover_pressed_color = Color(0.94, 0.94, 0.95, 1)
+CheckButton/colors/font_pressed_color = Color(0.9, 0.9, 0.91, 1)
+CheckButton/styles/normal = SubResource("StyleEmpty")
+InspectorFieldEditor/base_type = &"LineEdit"
+InspectorFieldError/base_type = &"Label"
+InspectorFieldError/colors/font_color = Color(0.84, 0.43, 0.41, 1)
+InspectorFieldError/font_sizes/font_size = 12
+InspectorFieldLabel/base_type = &"Label"
+InspectorFieldLabel/colors/font_color = Color(0.58, 0.58, 0.61, 1)
+InspectorFieldLabel/font_sizes/font_size = 12
+Label/colors/font_color = Color(0.82, 0.82, 0.83, 1)
+LineEdit/colors/font_color = Color(0.84, 0.84, 0.85, 1)
+LineEdit/colors/font_placeholder_color = Color(0.5, 0.5, 0.52, 1)
+LineEdit/styles/focus = SubResource("StyleFocus")
+LineEdit/styles/normal = SubResource("StyleControl")
+OptionButton/colors/font_color = Color(0.84, 0.84, 0.85, 1)
+OptionButton/colors/font_disabled_color = Color(0.4, 0.4, 0.42, 1)
+OptionButton/colors/font_focus_color = Color(0.94, 0.94, 0.95, 1)
+OptionButton/colors/font_hover_color = Color(0.94, 0.94, 0.95, 1)
+OptionButton/colors/font_pressed_color = Color(0.9, 0.9, 0.91, 1)
+OptionButton/styles/disabled = SubResource("StyleDisabled")
+OptionButton/styles/focus = SubResource("StyleFocus")
+OptionButton/styles/hover = SubResource("StyleHover")
+OptionButton/styles/normal = SubResource("StyleControl")
+OptionButton/styles/pressed = SubResource("StylePressed")
+PanelContainer/styles/panel = SubResource("StylePanel")

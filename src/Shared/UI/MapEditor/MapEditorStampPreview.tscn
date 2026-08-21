@@ -1,0 +1,11 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/Client/MapEditor/MapEditorStampPreview.cs" id="1_psdjy"]
+
+[node name="root" type="Control" unique_id=377226506]
+texture_filter = 1
+custom_minimum_size = Vector2(160, 100)
+layout_mode = 3
+anchors_preset = 0
+mouse_filter = 2
+script = ExtResource("1_psdjy")

@@ -1,0 +1,87 @@
+[gd_scene format=3 uid="uid://dde46auxnoxf6"]
+
+[ext_resource type="Script" uid="uid://dwu4xy3g2nvli" path="res://src/Client/MapEditor/MapEditorToolbar.cs" id="1_ol30i"]
+
+[node name="Toolbar" type="HBoxContainer" unique_id=1324944853 node_paths=PackedStringArray("_geometryDomain", "_zonesDomain", "_spawnsDomain", "_selectTool", "_zoneRectangleTool", "_zoneEllipseTool", "_spawnTool", "_brushRectangleTool", "_brushEllipseTool", "_brushPolygonTool")]
+theme_override_constants/separation = 6
+script = ExtResource("1_ol30i")
+_geometryDomain = NodePath("GeometryDomain")
+_zonesDomain = NodePath("ZonesDomain")
+_spawnsDomain = NodePath("SpawnsDomain")
+_selectTool = NodePath("Select")
+_zoneRectangleTool = NodePath("Square")
+_zoneEllipseTool = NodePath("Circle")
+_spawnTool = NodePath("Spawn")
+_brushRectangleTool = NodePath("RectangleBrush")
+_brushEllipseTool = NodePath("EllipseBrush")
+_brushPolygonTool = NodePath("PolygonBrush")
+
+[node name="GeometryDomain" type="Button" parent="." unique_id=1637970858]
+layout_mode = 2
+accessibility_name = "Edit terrain"
+toggle_mode = true
+text = "Geometry"
+
+[node name="ZonesDomain" type="Button" parent="." unique_id=994207816]
+layout_mode = 2
+accessibility_name = "Edit zones"
+toggle_mode = true
+text = "Zones"
+
+[node name="SpawnsDomain" type="Button" parent="." unique_id=1140043147]
+layout_mode = 2
+accessibility_name = "Edit spawn points"
+toggle_mode = true
+text = "Spawns"
+
+[node name="DomainDivider" type="VSeparator" parent="." unique_id=466475362]
+layout_mode = 2
+
+[node name="Select" type="Button" parent="." unique_id=921210392]
+custom_minimum_size = Vector2(38, 0)
+layout_mode = 2
+accessibility_name = "Select"
+toggle_mode = true
+text = "Select"
+
+[node name="Square" type="Button" parent="." unique_id=582245564]
+custom_minimum_size = Vector2(38, 0)
+layout_mode = 2
+accessibility_name = "Rectangle zone"
+toggle_mode = true
+text = "Rectangle"
+
+[node name="Circle" type="Button" parent="." unique_id=402672037]
+custom_minimum_size = Vector2(38, 0)
+layout_mode = 2
+accessibility_name = "Ellipse zone"
+toggle_mode = true
+text = "Ellipse"
+
+[node name="Spawn" type="Button" parent="." unique_id=1959572032]
+custom_minimum_size = Vector2(38, 0)
+layout_mode = 2
+accessibility_name = "Spawn point"
+toggle_mode = true
+text = "Spawn"
+
+[node name="RectangleBrush" type="Button" parent="." unique_id=1577574455]
+custom_minimum_size = Vector2(38, 0)
+layout_mode = 2
+accessibility_name = "Rectangle brush"
+toggle_mode = true
+text = "Rectangle"
+
+[node name="EllipseBrush" type="Button" parent="." unique_id=928618230]
+custom_minimum_size = Vector2(38, 0)
+layout_mode = 2
+accessibility_name = "Ellipse brush"
+toggle_mode = true
+text = "Ellipse"
+
+[node name="PolygonBrush" type="Button" parent="." unique_id=1027780141]
+custom_minimum_size = Vector2(38, 0)
+layout_mode = 2
+accessibility_name = "Polygon brush"
+toggle_mode = true
+text = "Polygon"

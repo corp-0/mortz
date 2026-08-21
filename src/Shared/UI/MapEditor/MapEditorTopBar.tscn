@@ -1,0 +1,84 @@
+[gd_scene format=3 uid="uid://c5kp5htq258bh"]
+
+[ext_resource type="Script" uid="uid://46c4777yl7s1" path="res://src/Client/MapEditor/MapEditorTopBar.cs" id="1_7b2pc"]
+[ext_resource type="Theme" uid="uid://cmgp4xl7r5v2k" path="res://src/Shared/UI/MapEditor/MapEditorTheme.tres" id="2_theme"]
+
+[node name="MapEditorTopBar" type="PanelContainer" unique_id=1992594610 node_paths=PackedStringArray("_back", "_status", "_reload", "_save", "_zoomOut", "_zoom", "_zoomIn", "_frame")]
+custom_minimum_size = Vector2(0, 46)
+theme = ExtResource("2_theme")
+script = ExtResource("1_7b2pc")
+_back = NodePath("Margin/Row/Back")
+_status = NodePath("Margin/Row/Status")
+_reload = NodePath("Margin/Row/Reload")
+_save = NodePath("Margin/Row/Save")
+_zoomOut = NodePath("Margin/Row/ZoomOut")
+_zoom = NodePath("Margin/Row/Zoom")
+_zoomIn = NodePath("Margin/Row/ZoomIn")
+_frame = NodePath("Margin/Row/Frame")
+
+[node name="Margin" type="MarginContainer" parent="." unique_id=723470475]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 7
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 7
+
+[node name="Row" type="HBoxContainer" parent="Margin" unique_id=1990086323]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Back" type="Button" parent="Margin/Row" unique_id=858326995]
+layout_mode = 2
+tooltip_text = "Back to map browser"
+accessibility_name = "Back to map browser"
+text = "Back"
+
+[node name="ProductTitle" type="Label" parent="Margin/Row" unique_id=228879931]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "MAP EDITOR"
+
+[node name="Status" type="Label" parent="Margin/Row" unique_id=1986060281]
+layout_mode = 2
+size_flags_horizontal = 3
+text_overrun_behavior = 3
+
+[node name="Reload" type="Button" parent="Margin/Row" unique_id=353984931]
+layout_mode = 2
+tooltip_text = "Reload map"
+accessibility_name = "Reload map"
+text = "Reload"
+
+[node name="Save" type="Button" parent="Margin/Row" unique_id=1917052328]
+layout_mode = 2
+tooltip_text = "No unsaved changes"
+accessibility_name = "Save map"
+text = "Save"
+
+[node name="Divider" type="VSeparator" parent="Margin/Row" unique_id=1342205169]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="ZoomOut" type="Button" parent="Margin/Row" unique_id=1669519006]
+layout_mode = 2
+tooltip_text = "Zoom out"
+accessibility_name = "Zoom out"
+text = "−"
+
+[node name="Zoom" type="Button" parent="Margin/Row" unique_id=611280492]
+layout_mode = 2
+tooltip_text = "Reset zoom"
+accessibility_name = "Reset zoom"
+text = "100%"
+
+[node name="ZoomIn" type="Button" parent="Margin/Row" unique_id=171179491]
+layout_mode = 2
+tooltip_text = "Zoom in"
+accessibility_name = "Zoom in"
+text = "+"
+
+[node name="Frame" type="Button" parent="Margin/Row" unique_id=2052386471]
+layout_mode = 2
+tooltip_text = "Frame map"
+accessibility_name = "Frame map"
+text = "Frame"

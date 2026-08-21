@@ -1,0 +1,258 @@
+[gd_scene format=3 uid="uid://dcgi27s3int38"]
+
+[ext_resource type="Script" uid="uid://xdo8an3isadx" path="res://src/Client/MapEditor/MapEditorBrushInspector.cs" id="1_lixkg"]
+[ext_resource type="Theme" uid="uid://cmgp4xl7r5v2k" path="res://src/Shared/UI/MapEditor/MapEditorTheme.tres" id="3_theme"]
+[ext_resource type="PackedScene" uid="uid://47j7m8k2w77e" path="res://src/Shared/UI/MapEditor/MapEditorInspectorField.tscn" id="4_field"]
+[ext_resource type="PackedScene" path="res://src/Shared/UI/MapEditor/MapEditorMaterialPicker.tscn" id="5_0gq38"]
+
+[node name="BrushInspector" type="ScrollContainer" unique_id=1599459512 node_paths=PackedStringArray("_title", "_name", "_layer", "_visible", "_shape", "_x", "_y", "_width", "_height", "_rotation", "_vertices", "_material", "_materialStatus", "_projectionMode", "_originX", "_originY", "_scaleX", "_scaleY", "_projectionRotation", "_diagnostic", "_duplicate", "_delete")]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme = ExtResource("3_theme")
+horizontal_scroll_mode = 0
+script = ExtResource("1_lixkg")
+_title = NodePath("Margin/Content/Title")
+_name = NodePath("Margin/Content/Name")
+_layer = NodePath("Margin/Content/Layer")
+_visible = NodePath("Margin/Content/Visible")
+_shape = NodePath("Margin/Content/ShapeKind")
+_x = NodePath("Margin/Content/X")
+_y = NodePath("Margin/Content/Y")
+_width = NodePath("Margin/Content/Width")
+_height = NodePath("Margin/Content/Height")
+_rotation = NodePath("Margin/Content/Rotation")
+_vertices = NodePath("Margin/Content/Vertices")
+_material = NodePath("Margin/Content/MaterialSection/MaterialContent/Picker")
+_materialStatus = NodePath("Margin/Content/MaterialSection/MaterialContent/Status")
+_projectionMode = NodePath("Margin/Content/ProjectionMode")
+_originX = NodePath("Margin/Content/OriginX")
+_originY = NodePath("Margin/Content/OriginY")
+_scaleX = NodePath("Margin/Content/ScaleX")
+_scaleY = NodePath("Margin/Content/ScaleY")
+_projectionRotation = NodePath("Margin/Content/ProjectionRotation")
+_diagnostic = NodePath("Margin/Content/Diagnostic")
+_duplicate = NodePath("Margin/Content/Actions/Duplicate")
+_delete = NodePath("Margin/Content/Actions/Delete")
+
+[node name="Margin" type="MarginContainer" parent="." unique_id=686667597]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 18
+
+[node name="Content" type="VBoxContainer" parent="Margin" unique_id=874633988]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="Margin/Content" unique_id=1116467073]
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8862745, 0.91764706, 0.9529412, 1)
+theme_override_font_sizes/font_size = 20
+text = "Brush"
+vertical_alignment = 1
+
+[node name="@Control@172" type="Control" parent="Margin/Content" unique_id=213822554]
+custom_minimum_size = Vector2(0, 4)
+layout_mode = 2
+
+[node name="IdentitySection" type="PanelContainer" parent="Margin/Content" unique_id=661080326]
+layout_mode = 2
+
+[node name="@Label@173" type="Label" parent="Margin/Content/IdentitySection" unique_id=936556030]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.44705883, 0.7176471, 0.9098039, 1)
+theme_override_font_sizes/font_size = 12
+text = "IDENTITY"
+
+[node name="Name" parent="Margin/Content" unique_id=356562575 instance=ExtResource("4_field")]
+layout_mode = 2
+
+[node name="LayerLabel" type="Label" parent="Margin/Content" unique_id=1394919051]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.5764706, 0.6431373, 0.7176471, 1)
+theme_override_font_sizes/font_size = 12
+text = "Layer"
+
+[node name="Layer" type="OptionButton" parent="Margin/Content" unique_id=2047738199]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.8862745, 0.91764706, 0.9529412, 1)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_disabled_color = Color(0.40784314, 0.4745098, 0.54509807, 1)
+selected = 0
+item_count = 3
+popup/item_0/text = "background"
+popup/item_0/id = 0
+popup/item_1/text = "solid"
+popup/item_1/id = 1
+popup/item_2/text = "destructible"
+popup/item_2/id = 2
+
+[node name="Visible" type="CheckButton" parent="Margin/Content" unique_id=50608339]
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8862745, 0.91764706, 0.9529412, 1)
+text = "Visible"
+
+[node name="@Control@177" type="Control" parent="Margin/Content" unique_id=951868195]
+custom_minimum_size = Vector2(0, 4)
+layout_mode = 2
+
+[node name="GeometrySection" type="PanelContainer" parent="Margin/Content" unique_id=1846075668]
+layout_mode = 2
+
+[node name="@Label@178" type="Label" parent="Margin/Content/GeometrySection" unique_id=146127908]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.44705883, 0.7176471, 0.9098039, 1)
+theme_override_font_sizes/font_size = 12
+text = "GEOMETRY"
+
+[node name="ShapeKind" type="Label" parent="Margin/Content" unique_id=570283524]
+custom_minimum_size = Vector2(0, 28)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.44705883, 0.7176471, 0.9098039, 1)
+theme_override_font_sizes/font_size = 13
+vertical_alignment = 1
+
+[node name="X" parent="Margin/Content" unique_id=1486010725 instance=ExtResource("4_field")]
+layout_mode = 2
+
+[node name="Y" parent="Margin/Content" unique_id=1040479661 instance=ExtResource("4_field")]
+layout_mode = 2
+
+[node name="Width" parent="Margin/Content" unique_id=1795681515 instance=ExtResource("4_field")]
+layout_mode = 2
+
+[node name="Height" parent="Margin/Content" unique_id=177808309 instance=ExtResource("4_field")]
+layout_mode = 2
+
+[node name="Rotation" parent="Margin/Content" unique_id=1427760819 instance=ExtResource("4_field")]
+layout_mode = 2
+
+[node name="Vertices" parent="Margin/Content" unique_id=164585242 instance=ExtResource("4_field")]
+layout_mode = 2
+
+[node name="@Control@197" type="Control" parent="Margin/Content" unique_id=746756994]
+custom_minimum_size = Vector2(0, 4)
+layout_mode = 2
+
+[node name="MaterialSection" type="PanelContainer" parent="Margin/Content" unique_id=672134187]
+layout_mode = 2
+
+[node name="MaterialContent" type="VBoxContainer" parent="Margin/Content/MaterialSection" unique_id=69722821]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Heading" type="Label" parent="Margin/Content/MaterialSection/MaterialContent" unique_id=1456277241]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.44705883, 0.7176471, 0.9098039, 1)
+theme_override_font_sizes/font_size = 12
+text = "MATERIAL"
+
+[node name="Picker" parent="Margin/Content/MaterialSection/MaterialContent" unique_id=284392351 instance=ExtResource("5_0gq38")]
+layout_mode = 2
+
+[node name="Status" type="Label" parent="Margin/Content/MaterialSection/MaterialContent" unique_id=1288130108]
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+autowrap_mode = 3
+
+[node name="@Control@202" type="Control" parent="Margin/Content" unique_id=38442206]
+custom_minimum_size = Vector2(0, 4)
+layout_mode = 2
+
+[node name="ProjectionSection" type="PanelContainer" parent="Margin/Content" unique_id=1485109138]
+layout_mode = 2
+
+[node name="@Label@203" type="Label" parent="Margin/Content/ProjectionSection" unique_id=452545612]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.44705883, 0.7176471, 0.9098039, 1)
+theme_override_font_sizes/font_size = 12
+text = "TEXTURE LAYOUT"
+
+[node name="ProjectionModeLabel" type="Label" parent="Margin/Content" unique_id=1493199232]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.5764706, 0.6431373, 0.7176471, 1)
+theme_override_font_sizes/font_size = 12
+text = "Fill"
+
+[node name="ProjectionMode" type="OptionButton" parent="Margin/Content" unique_id=2102203598]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.8862745, 0.91764706, 0.9529412, 1)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_disabled_color = Color(0.40784314, 0.4745098, 0.54509807, 1)
+selected = 0
+item_count = 2
+popup/item_0/text = "Repeat"
+popup/item_0/id = 0
+popup/item_1/text = "Stretch"
+popup/item_1/id = 1
+
+[node name="OriginX" parent="Margin/Content" unique_id=1907348512 instance=ExtResource("4_field")]
+layout_mode = 2
+
+[node name="OriginY" parent="Margin/Content" unique_id=1517545801 instance=ExtResource("4_field")]
+layout_mode = 2
+
+[node name="ScaleX" parent="Margin/Content" unique_id=976451023 instance=ExtResource("4_field")]
+layout_mode = 2
+
+[node name="ScaleY" parent="Margin/Content" unique_id=1364664078 instance=ExtResource("4_field")]
+layout_mode = 2
+
+[node name="ProjectionRotation" parent="Margin/Content" unique_id=1962818285 instance=ExtResource("4_field")]
+layout_mode = 2
+
+[node name="Diagnostic" type="Label" parent="Margin/Content" unique_id=1623744337]
+modulate = Color(1, 0.45, 0.4, 1)
+layout_mode = 2
+autowrap_mode = 3
+
+[node name="@Control@219" type="Control" parent="Margin/Content" unique_id=299915684]
+custom_minimum_size = Vector2(0, 4)
+layout_mode = 2
+
+[node name="ActionsSection" type="PanelContainer" parent="Margin/Content" unique_id=1343456539]
+layout_mode = 2
+
+[node name="@Label@220" type="Label" parent="Margin/Content/ActionsSection" unique_id=991593459]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.44705883, 0.7176471, 0.9098039, 1)
+theme_override_font_sizes/font_size = 12
+text = "ACTIONS"
+
+[node name="Actions" type="HBoxContainer" parent="Margin/Content" unique_id=1704623954]
+layout_mode = 2
+
+[node name="Duplicate" type="Button" parent="Margin/Content/Actions" unique_id=523415946]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.8862745, 0.91764706, 0.9529412, 1)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_disabled_color = Color(0.40784314, 0.4745098, 0.54509807, 1)
+text = "Duplicate"
+
+[node name="Delete" type="Button" parent="Margin/Content/Actions" unique_id=1565959547]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 0.54509807, 0.50980395, 1)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 0.8235294, 0.80784315, 1)
+theme_override_colors/font_disabled_color = Color(0.40784314, 0.4745098, 0.54509807, 1)
+text = "Delete"

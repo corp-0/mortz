@@ -24,66 +24,12 @@ public sealed class MapEditorPersistenceTests
     }
 
     [Fact]
-    public void SameSizeLayerReplacementCommitsOneRevision()
-    {
-        FakeStore store = OpenStore(out MapEditorWorkspace workspace);
-        store.Layers["replacement"] = MapEditorStoreResult<MapEditorLayerAsset>.Success(
-            new MapEditorLayerAsset([9], 10, 8));
-
-        MapEditorOperationResult result = workspace.ReplaceLayer(
-            MapEditorLayer.BACKGROUND, "replacement");
-
-        Assert.True(result.Succeeded);
-        Assert.IsType<MapEditorLayerReplaced>(result.Update?.Change);
-        Assert.Equal(1, workspace.Snapshot.Revision);
-        Assert.Equal([9], workspace.Snapshot.Layers.Background.Png.ToArray());
-    }
-
-    [Fact]
-    public void InvalidAndWrongSizeLayersPreserveState()
-    {
-        FakeStore store = OpenStore(out MapEditorWorkspace workspace);
-        MapEditorSnapshot before = workspace.Snapshot;
-        store.Layers["invalid"] = MapEditorStoreResult<MapEditorLayerAsset>.Failed(
-            new MapEditorInvalidPngFailure("invalid", "bad png"));
-        store.Layers["wrong"] = MapEditorStoreResult<MapEditorLayerAsset>.Success(
-            new MapEditorLayerAsset([9], 9, 8));
-
-        MapEditorOperationResult invalid = workspace.ReplaceLayer(
-            MapEditorLayer.SOLID, "invalid");
-        MapEditorOperationResult wrong = workspace.ReplaceLayer(
-            MapEditorLayer.SOLID, "wrong");
-
-        Assert.IsType<MapEditorInvalidPngFailure>(invalid.Failure);
-        Assert.IsType<MapEditorLayerSizeFailure>(wrong.Failure);
-        Assert.Same(before, workspace.Snapshot);
-    }
-
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData("   ")]
-    public void MissingLayerPathReturnsTypedFailureAndPreservesState(string? path)
-    {
-        FakeStore store = OpenStore(out MapEditorWorkspace workspace);
-        MapEditorSnapshot before = workspace.Snapshot;
-
-        MapEditorOperationResult result = workspace.ReplaceLayer(
-            MapEditorLayer.BACKGROUND, path);
-
-        Assert.IsType<MapEditorIoFailure>(result.Failure);
-        Assert.Same(before, workspace.Snapshot);
-        Assert.Equal(0, workspace.Snapshot.Revision);
-    }
-
-    [Fact]
     public void SuccessfulSaveWritesCurrentManifestAndBytesThenBecomesClean()
     {
         FakeStore store = OpenStore(out MapEditorWorkspace workspace);
-        store.Layers["replacement"] = MapEditorStoreResult<MapEditorLayerAsset>.Success(
-            new MapEditorLayerAsset([7, 8, 9], 10, 8));
+        byte[] publicCopy = workspace.Snapshot.Layers.Background.Png.ToArray();
+        publicCopy[0] = 99;
         workspace.AddSpawn(new MapSpawnPoint(4, 5));
-        workspace.ReplaceLayer(MapEditorLayer.DESTRUCTIBLE, "replacement");
 
         MapEditorOperationResult result = workspace.Save();
 
@@ -92,7 +38,8 @@ public sealed class MapEditorPersistenceTests
         Assert.False(workspace.Snapshot.Dirty);
         Assert.Equal(workspace.Snapshot.Revision, workspace.Snapshot.SavedRevision);
         Assert.Equal(new MapSpawnPoint(4, 5), Assert.Single(store.SavedManifest!.SpawnPoints));
-        Assert.Equal([7, 8, 9], store.SavedLayers!.Destructible.Png.ToArray());
+        Assert.Equal([1], store.SavedLayers!.Background.Png.ToArray());
+        Assert.Equal([3], store.SavedLayers!.Destructible.Png.ToArray());
     }
 
     [Fact]
@@ -191,43 +138,22 @@ public sealed class MapEditorPersistenceTests
     private sealed class FakeStore : IMapEditorStore
     {
         public Queue<MapEditorStoreResult<MapEditorStoredMap>> Loads { get; } = new();
-        public Dictionary<string, MapEditorStoreResult<MapEditorLayerAsset>> Layers { get; } = [];
         public MapEditorOperationFailure? SaveFailure { get; set; }
         public MapManifest? SavedManifest { get; private set; }
         public MapEditorLayers? SavedLayers { get; private set; }
+        public MapEditorBrushDocument? SavedBrushDocument { get; private set; }
 
         public MapEditorStoreResult<MapEditorStoredMap> Load(
             ContentDefinition<MapManifest> definition) => Loads.Dequeue();
 
-        public MapEditorStoreResult<MapEditorLayerAsset> LoadLayer(
-            string? path,
-            int expectedWidth,
-            int expectedHeight)
-        {
-            if (string.IsNullOrWhiteSpace(path))
-            {
-                return MapEditorStoreResult<MapEditorLayerAsset>.Failed(
-                    new MapEditorIoFailure("Replacement image path is required."));
-            }
-
-            MapEditorStoreResult<MapEditorLayerAsset> result = Layers[path];
-            if (result.Value is { } asset &&
-                (asset.Width != expectedWidth || asset.Height != expectedHeight))
-            {
-                return MapEditorStoreResult<MapEditorLayerAsset>.Failed(
-                    new MapEditorLayerSizeFailure(
-                        expectedWidth, expectedHeight, asset.Width, asset.Height));
-            }
-
-            return result;
-        }
-
         public MapEditorStoreResult<ContentDefinition<MapManifest>> Save(
             ContentDefinition<MapManifest> definition, MapManifest manifest,
-            MapEditorLayers layers, int width, int height)
+            MapEditorLayers layers, int width, int height,
+            MapEditorBrushDocument? brushDocument)
         {
             SavedManifest = manifest;
             SavedLayers = layers;
+            SavedBrushDocument = brushDocument;
             return SaveFailure == null
                 ? MapEditorStoreResult<ContentDefinition<MapManifest>>.Success(
                     definition with { Manifest = manifest })

@@ -1,0 +1,30 @@
+[gd_scene format=3 uid="uid://47j7m8k2w77e"]
+
+[ext_resource type="Script" uid="uid://cb4yo56j2rtyk" path="res://src/Client/MapEditor/MapEditorInspectorField.cs" id="1_guigj"]
+[ext_resource type="Theme" uid="uid://cmgp4xl7r5v2k" path="res://src/Shared/UI/MapEditor/MapEditorTheme.tres" id="2_theme"]
+
+[node name="MapEditorInspectorField" type="VBoxContainer" unique_id=1850663724 node_paths=PackedStringArray("_label", "_editor", "_error")]
+theme = ExtResource("2_theme")
+theme_override_constants/separation = 4
+script = ExtResource("1_guigj")
+_label = NodePath("Label")
+_editor = NodePath("Value")
+_error = NodePath("Error")
+
+[node name="Label" type="Label" parent="." unique_id=1935973773]
+layout_mode = 2
+theme_type_variation = &"InspectorFieldLabel"
+text = "Field"
+
+[node name="Value" type="LineEdit" parent="." unique_id=1171736532]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+accessibility_name = "Field value"
+theme_type_variation = &"InspectorFieldEditor"
+
+[node name="Error" type="Label" parent="." unique_id=876376543]
+visible = false
+layout_mode = 2
+theme_type_variation = &"InspectorFieldError"
+autowrap_mode = 2
