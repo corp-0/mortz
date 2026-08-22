@@ -8,8 +8,10 @@ public partial class MapEditorMaterialPicker : VBoxContainer
     private readonly List<ImageTexture> _previews = [];
     private readonly ButtonGroup _textureButtons = new();
     private readonly List<MapEditorTextureCatalogItem> _catalog = [];
+    private readonly List<string?> _sourceIds = [];
     [Export] private OptionButton _kind = null!;
     [Export] private VBoxContainer _texturePanel = null!;
+    [Export] private OptionButton _source = null!;
     [Export] private LineEdit _search = null!;
     [Export] private GridContainer _textureList = null!;
     [Export] private Label _empty = null!;
@@ -30,9 +32,11 @@ public partial class MapEditorMaterialPicker : VBoxContainer
     public override void _Ready()
     {
         _kind.ItemSelected += SelectKind;
+        _source.ItemSelected += _ => RebuildTextureList();
         _search.TextChanged += _ => RebuildTextureList();
         _color.PopupClosed += CommitColor;
 
+        PopulateSourceFilter();
         RebuildTextureList();
         UpdateKindVisibility();
     }
@@ -49,6 +53,7 @@ public partial class MapEditorMaterialPicker : VBoxContainer
         _catalog.AddRange(_sources.DiscoverTextures());
         if (IsNodeReady())
         {
+            PopulateSourceFilter();
             RebuildTextureList();
         }
     }
@@ -135,13 +140,13 @@ public partial class MapEditorMaterialPicker : VBoxContainer
             child.Free();
         }
 
-        string filter = _search.Text.Trim();
         int visible = 0;
-        foreach (MapEditorTextureCatalogItem item in _catalog)
+        string? source = _source.Selected >= 0 && _source.Selected < _sourceIds.Count
+            ? _sourceIds[_source.Selected]
+            : null;
+        foreach (MapEditorTextureCatalogItem item in
+                 MapEditorTextureCatalogFilter.Apply(_catalog, source, _search.Text))
         {
-            string text = $"{item.SourceName} * {item.Name}";
-            if (filter.Length > 0 && !text.Contains(filter, StringComparison.OrdinalIgnoreCase))
-                continue;
             Button button = new()
             {
                 Name = $"Texture{visible}",
@@ -169,6 +174,25 @@ public partial class MapEditorMaterialPicker : VBoxContainer
 
         _empty.Visible = visible == 0;
         UpdateTextureSelection();
+    }
+
+    private void PopulateSourceFilter()
+    {
+        string? selected = _source.Selected >= 0 && _source.Selected < _sourceIds.Count
+            ? _sourceIds[_source.Selected]
+            : null;
+        _source.Clear();
+        _sourceIds.Clear();
+        _source.AddItem("All content packs");
+        _sourceIds.Add(null);
+        foreach (MapEditorTextureCatalogSource source in MapEditorTextureCatalogFilter.Sources(_catalog))
+        {
+            _source.AddItem(source.Name);
+            _sourceIds.Add(source.Id);
+        }
+
+        int selectedIndex = selected == null ? 0 : _sourceIds.IndexOf(selected);
+        _source.Select(selectedIndex < 0 ? 0 : selectedIndex);
     }
 
     private void UpdateTextureSelection()

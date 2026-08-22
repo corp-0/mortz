@@ -41,6 +41,36 @@ public sealed record MapEditorTextureCatalogItem(
     string SourceName,
     string Name);
 
+public sealed record MapEditorTextureCatalogSource(string Id, string Name);
+
+public static class MapEditorTextureCatalogFilter
+{
+    public static MapEditorTextureCatalogSource[] Sources(
+        IEnumerable<MapEditorTextureCatalogItem> catalog) => catalog
+        .GroupBy(item => item.Reference.Source, StringComparer.Ordinal)
+        .Select(group => new MapEditorTextureCatalogSource(group.Key, group.First().SourceName))
+        .OrderBy(source => source.Name, StringComparer.OrdinalIgnoreCase)
+        .ThenBy(source => source.Id, StringComparer.Ordinal)
+        .ToArray();
+
+    public static MapEditorTextureCatalogItem[] Apply(
+        IEnumerable<MapEditorTextureCatalogItem> catalog,
+        string? source,
+        string? search)
+    {
+        string filter = search?.Trim() ?? string.Empty;
+        return catalog.Where(item =>
+                (string.IsNullOrEmpty(source) || item.Reference.Source == source) &&
+                (filter.Length == 0 || Matches(item, filter)))
+            .ToArray();
+    }
+
+    private static bool Matches(MapEditorTextureCatalogItem item, string filter) =>
+        item.SourceName.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
+        item.Name.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
+        item.Reference.Location.Contains(filter, StringComparison.OrdinalIgnoreCase);
+}
+
 public sealed record MapEditorTextureResolution(
     MapEditorTextureResolutionStatus Status,
     MapEditorTextureReference Reference,
