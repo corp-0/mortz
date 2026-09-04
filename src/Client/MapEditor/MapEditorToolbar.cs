@@ -15,17 +15,35 @@ public partial class MapEditorToolbar : HBoxContainer
     [Export] private Button _brushRectangleTool = null!;
     [Export] private Button _brushEllipseTool = null!;
     [Export] private Button _brushPolygonTool = null!;
+    [Export] private OptionButton _workingLayer = null!;
+    [Export] private Button _selectAll = null!;
+    [Export] private Button _rasterize = null!;
     private readonly Dictionary<MapEditorEditDomain, Button> _domainButtons = [];
     private readonly Dictionary<MapEditorTool, Button> _toolButtons = [];
 
     public event Action<MapEditorEditDomain>? DomainSelected;
     public event Action<MapEditorTool>? ToolSelected;
+    public event Action<MapEditorLayer>? LayerSelected;
+    public event Action? SelectAllRequested;
+    public event Action? RasterizeRequested;
 
     public override void _Ready()
     {
         ConfigureDomains();
         ConfigureTools();
         ConfigureFocusOrder();
+        _workingLayer.ItemSelected += index => LayerSelected?.Invoke((MapEditorLayer)index);
+        _selectAll.Pressed += () => SelectAllRequested?.Invoke();
+        _rasterize.Pressed += () => RasterizeRequested?.Invoke();
+    }
+
+    public void ApplyLayer(MapEditorLayer layer) => _workingLayer.Select((int)layer);
+
+    public void ApplySelection(int count, bool editable)
+    {
+        _selectAll.Disabled = !editable;
+        _rasterize.Disabled = !editable || count < 2;
+        _rasterize.Text = count > 1 ? $"Rasterize ({count})" : "Rasterize";
     }
 
     public void ApplyDomain(MapEditorEditDomain domain)
@@ -42,6 +60,9 @@ public partial class MapEditorToolbar : HBoxContainer
         _brushRectangleTool.Visible = domain == MapEditorEditDomain.GEOMETRY;
         _brushEllipseTool.Visible = domain == MapEditorEditDomain.GEOMETRY;
         _brushPolygonTool.Visible = domain == MapEditorEditDomain.GEOMETRY;
+        _workingLayer.Visible = domain == MapEditorEditDomain.GEOMETRY;
+        _selectAll.Visible = domain == MapEditorEditDomain.GEOMETRY;
+        _rasterize.Visible = domain == MapEditorEditDomain.GEOMETRY;
     }
 
     public void ApplyTool(MapEditorTool tool)
@@ -118,7 +139,7 @@ public partial class MapEditorToolbar : HBoxContainer
         [
             _geometryDomain, _zonesDomain, _spawnsDomain, _selectTool, _zoneRectangleTool,
             _zoneEllipseTool, _spawnTool, _brushRectangleTool, _brushEllipseTool,
-            _brushPolygonTool,
+            _brushPolygonTool, _workingLayer, _selectAll, _rasterize,
         ];
         for (int index = 0; index < controls.Length; index++)
         {

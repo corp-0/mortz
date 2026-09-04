@@ -68,7 +68,10 @@ public sealed class MapEditorInteraction
     public MapEditorZoneDraft? ZonePreview { get; private set; }
     public MapSpawnPoint? SpawnPreview { get; private set; }
     public MapEditorLayer SelectedLayer { get; private set; } = MapEditorLayer.BACKGROUND;
-    public MapEditorBrushId? SelectedBrushId { get; private set; }
+    private readonly HashSet<MapEditorBrushId> _selectedBrushIds = [];
+    public IReadOnlySet<MapEditorBrushId> SelectedBrushIds => _selectedBrushIds;
+    public MapEditorBrushId? SelectedBrushId => _selectedBrushIds.Count == 1
+        ? _selectedBrushIds.First() : null;
     public MapEditorBrushDraft? BrushPreview { get; private set; }
     public MapEditorSnap Snap { get; set; } = MapEditorSnap.PIXELS_8;
     public MapEditorEditDomain EditDomain { get; private set; } = MapEditorEditDomain.ZONES;
@@ -109,11 +112,13 @@ public sealed class MapEditorInteraction
                 Cancel();
             SelectSpawn(null);
         }
-        if (SelectedBrushId is { } brushId && !HasBrush(brushId, SelectedLayer))
+        HashSet<MapEditorBrushId>? existingIds = _selectedBrushIds.Count > 0
+            ? Snapshot.BrushDocument?.Layers.Get(SelectedLayer).Brushes.Select(brush => brush.Id).ToHashSet()
+            : null;
+        if (_selectedBrushIds.RemoveWhere(id => existingIds?.Contains(id) != true) > 0)
         {
-            if (_draggedBrushId == brushId)
-                Cancel();
-            SelectBrush(null);
+            Cancel();
+            BrushSelectionChanged?.Invoke(SelectedBrushId);
         }
 
         if (update.Change is MapEditorZoneAdded zoneAdded)
@@ -122,6 +127,8 @@ public sealed class MapEditorInteraction
             SelectSpawn(spawnAdded.Id);
         else if (update.Change is MapEditorBrushAdded brushAdded)
             SelectBrush(brushAdded.Id);
+        else if (update.Change is MapEditorBrushesRasterized rasterized)
+            SelectBrush(rasterized.Id);
     }
 
     public void SetEditDomain(MapEditorEditDomain domain)
@@ -140,8 +147,7 @@ public sealed class MapEditorInteraction
             return;
         Cancel();
         SelectedLayer = layer;
-        if (SelectedBrushId != null)
-            SelectBrush(null);
+        SelectBrush(null);
         LayerSelectionChanged?.Invoke(layer);
     }
 
@@ -151,15 +157,38 @@ public sealed class MapEditorInteraction
             id = null;
         if (id is { } value && !HasBrush(value, SelectedLayer))
             id = null;
-        if (SelectedBrushId == id)
+        if (SelectedBrushId == id && _selectedBrushIds.Count <= 1)
             return;
         if (id != null)
         {
             ClearZoneSelection();
             ClearSpawnSelection();
         }
-        SelectedBrushId = id;
+        _selectedBrushIds.Clear();
+        if (id is { } selected)
+            _selectedBrushIds.Add(selected);
         BrushSelectionChanged?.Invoke(id);
+    }
+
+    public void ToggleBrushSelection(MapEditorBrushId id)
+    {
+        if (EditDomain != MapEditorEditDomain.GEOMETRY || !HasBrush(id, SelectedLayer))
+            return;
+        Cancel();
+        if (!_selectedBrushIds.Remove(id))
+            _selectedBrushIds.Add(id);
+        BrushSelectionChanged?.Invoke(SelectedBrushId);
+    }
+
+    public void SelectAllBrushes()
+    {
+        if (EditDomain != MapEditorEditDomain.GEOMETRY || Snapshot?.BrushDocument == null)
+            return;
+        Cancel();
+        _selectedBrushIds.Clear();
+        _selectedBrushIds.UnionWith(Snapshot.BrushDocument.Layers.Get(SelectedLayer)
+            .Brushes.Where(brush => brush.Visible).Select(brush => brush.Id));
+        BrushSelectionChanged?.Invoke(SelectedBrushId);
     }
 
     public void SelectZone(MapEditorZoneId? id)
@@ -170,9 +199,9 @@ public sealed class MapEditorInteraction
             id = null;
         if (SelectedZoneId == id)
             return;
-        if (id != null && SelectedBrushId != null)
+        if (id != null && _selectedBrushIds.Count > 0)
         {
-            SelectedBrushId = null;
+            _selectedBrushIds.Clear();
             BrushSelectionChanged?.Invoke(null);
         }
         if (id != null && SelectedSpawnId != null)
@@ -192,9 +221,9 @@ public sealed class MapEditorInteraction
             id = null;
         if (SelectedSpawnId == id)
             return;
-        if (id != null && SelectedBrushId != null)
+        if (id != null && _selectedBrushIds.Count > 0)
         {
-            SelectedBrushId = null;
+            _selectedBrushIds.Clear();
             BrushSelectionChanged?.Invoke(null);
         }
         if (id != null && SelectedZoneId != null)
@@ -687,9 +716,9 @@ public sealed class MapEditorInteraction
     {
         ClearZoneSelection();
         ClearSpawnSelection();
-        if (SelectedBrushId == null)
+        if (_selectedBrushIds.Count == 0)
             return;
-        SelectedBrushId = null;
+        _selectedBrushIds.Clear();
         BrushSelectionChanged?.Invoke(null);
     }
 

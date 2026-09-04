@@ -142,7 +142,7 @@ public sealed record MapEditorBrushDocument(
     long NextStampId = 1,
     ImmutableArray<MapEditorStamp> Stamps = default)
 {
-    public const int CURRENT_VERSION = 2;
+    public const int CURRENT_VERSION = 3;
 
     public static MapEditorBrushDocument Empty(MapEditorLayers layers, bool bakeDirty = false)
     {
@@ -226,6 +226,7 @@ public static class MapEditorBrushValidator
         {
             case MapEditorTextureMaterial:
             case MapEditorSolidColorMaterial:
+            case MapEditorRasterMaterial:
                 break;
             case null:
                 error($"Brush {brush.Id.Value} material is required.");

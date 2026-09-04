@@ -52,6 +52,7 @@ public partial class MapEditorScreen : Node2D, IProvide<MapEditorFlow>
         _editorHud.BrushAddRequested += AddBrush;
         _editorHud.BrushBatchAddRequested += AddBrushes;
         _editorHud.BrushBatchRemoveRequested += RemoveBrushes;
+        _editorHud.BrushRasterizeRequested += RasterizeBrushes;
         _editorHud.BrushReplaceRequested += ReplaceBrush;
         _editorHud.BrushRemoveRequested += RemoveBrush;
         _editorHud.BrushDuplicateRequested += DuplicateBrush;
@@ -85,6 +86,7 @@ public partial class MapEditorScreen : Node2D, IProvide<MapEditorFlow>
         _editorHud.BrushAddRequested -= AddBrush;
         _editorHud.BrushBatchAddRequested -= AddBrushes;
         _editorHud.BrushBatchRemoveRequested -= RemoveBrushes;
+        _editorHud.BrushRasterizeRequested -= RasterizeBrushes;
         _editorHud.BrushReplaceRequested -= ReplaceBrush;
         _editorHud.BrushRemoveRequested -= RemoveBrush;
         _editorHud.BrushDuplicateRequested -= DuplicateBrush;
@@ -198,6 +200,12 @@ public partial class MapEditorScreen : Node2D, IProvide<MapEditorFlow>
     {
         if (_workspace != null)
             ApplyOperation(_workspace.AddBrushes(drafts), "Could not paint stamp stroke");
+    }
+
+    private void RasterizeBrushes(ImmutableArray<MapEditorBrushId> ids)
+    {
+        if (_workspace != null)
+            ApplyOperation(_workspace.RasterizeBrushes(ids.ToHashSet()), "Could not rasterize objects");
     }
 
     private void RemoveBrushes(ImmutableArray<MapEditorBrushId> ids)

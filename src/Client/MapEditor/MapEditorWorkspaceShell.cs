@@ -21,7 +21,6 @@ public partial class MapEditorWorkspaceShell : Control
     public const float STAMP_DOCK_HEIGHT = 272f;
 
     [Export] private VBoxContainer _chrome = null!;
-    [Export] private HBoxContainer _toolRow = null!;
     [Export] private Control _canvasHost = null!;
     [Export] private MapEditorCanvas _canvas = null!;
     [Export] private PanelContainer _objectDock = null!;
@@ -98,6 +97,7 @@ public partial class MapEditorWorkspaceShell : Control
         _objectBrowser.BrushInitializationRequested += RequestBrushInitialization;
         _canvas.PointerInteractionFinished += ApplyPendingInspectorLayout;
         Resized += ApplyResponsiveLayout;
+        _chrome.Resized += ApplyResponsiveLayout;
         ShowInspector(MapEditorInspectorKind.EMPTY);
         ApplyResponsiveLayout();
     }
@@ -116,6 +116,7 @@ public partial class MapEditorWorkspaceShell : Control
         _objectBrowser.BrushInitializationRequested -= RequestBrushInitialization;
         _canvas.PointerInteractionFinished -= ApplyPendingInspectorLayout;
         Resized -= ApplyResponsiveLayout;
+        _chrome.Resized -= ApplyResponsiveLayout;
     }
 
     public void SetWorkspaceStatus(string mode, string cursor, string view, string bounds)
@@ -469,6 +470,12 @@ public partial class MapEditorWorkspaceShell : Control
 
         _canvasHost.OffsetLeft = 0;
         _canvasHost.OffsetRight = 0;
+        float contentTop = _chrome.Position.Y + _chrome.Size.Y + 8;
+        _canvasHost.OffsetTop = contentTop;
+        _objectDock.OffsetTop = contentTop;
+        _propertiesDock.OffsetTop = contentTop;
+        _dockResize.OffsetTop = contentTop;
+        _propertiesResize.OffsetTop = contentTop;
         float stampHeight = MathF.Min(STAMP_DOCK_HEIGHT, layoutSize.Y * 0.4f);
         _canvasHost.OffsetBottom = -46 - (_stampOpenState ? stampHeight + 8 : 0);
 

@@ -41,6 +41,7 @@ public partial class MapEditorHud : Control, IMapEditorShortcutTarget
     public event Action<MapEditorBrushDraft>? BrushAddRequested;
     public event Action<ImmutableArray<MapEditorBrushDraft>>? BrushBatchAddRequested;
     public event Action<ImmutableArray<MapEditorBrushId>>? BrushBatchRemoveRequested;
+    public event Action<ImmutableArray<MapEditorBrushId>>? BrushRasterizeRequested;
     public event Action<MapEditorBrushId, MapEditorBrushDraft>? BrushReplaceRequested;
     public event Action<MapEditorBrushId>? BrushRemoveRequested;
     public event Action<MapEditorZoneId, int>? ZoneDuplicateRequested;
@@ -97,6 +98,10 @@ public partial class MapEditorHud : Control, IMapEditorShortcutTarget
         _topBar.FrameMapRequested += OnFrameMapPressed;
         _toolbar.DomainSelected += SelectDomain;
         _toolbar.ToolSelected += SelectTool;
+        _toolbar.LayerSelected += SelectWorkingLayer;
+        _toolbar.SelectAllRequested += SelectAllBrushes;
+        _toolbar.RasterizeRequested += RasterizeSelection;
+        _canvas.LayerSelectionChanged += ShowWorkingLayer;
         _viewControls.SnapSelected += SetSnap;
         _viewControls.ViewVisibilityChanged += SetViewVisibility;
         _viewControls.ResetZoomRequested += OnZoomResetPressed;
@@ -118,7 +123,7 @@ public partial class MapEditorHud : Control, IMapEditorShortcutTarget
         _canvas.ZoneReplaceRequested -= ForwardZoneReplace;
         _canvas.SpawnAddRequested -= ForwardSpawnAdd;
         _canvas.SpawnReplaceRequested -= ForwardSpawnReplace;
-        _canvas.BrushSelectionChanged -= _inspectors.ShowBrushSelection;
+        _canvas.BrushSelectionChanged -= ShowBrushSelection;
         _canvas.BrushPreviewChanged -= _inspectors.ShowBrushPreview;
         _canvas.BrushDiagnosticChanged -= _inspectors.ShowBrushDiagnostic;
         _canvas.CursorMoved -= ShowCursorPosition;
@@ -135,6 +140,10 @@ public partial class MapEditorHud : Control, IMapEditorShortcutTarget
         _topBar.FrameMapRequested -= OnFrameMapPressed;
         _toolbar.DomainSelected -= SelectDomain;
         _toolbar.ToolSelected -= SelectTool;
+        _toolbar.LayerSelected -= SelectWorkingLayer;
+        _toolbar.SelectAllRequested -= SelectAllBrushes;
+        _toolbar.RasterizeRequested -= RasterizeSelection;
+        _canvas.LayerSelectionChanged -= ShowWorkingLayer;
         _viewControls.SnapSelected -= SetSnap;
         _viewControls.ViewVisibilityChanged -= SetViewVisibility;
         _viewControls.ResetZoomRequested -= OnZoomResetPressed;
@@ -214,6 +223,8 @@ public partial class MapEditorHud : Control, IMapEditorShortcutTarget
         _canvas.Apply(update);
         _inspectors.Apply(update.Snapshot);
         _browser.Apply(update.Snapshot);
+        ShowWorkingLayer(_canvas.SelectedLayer);
+        RefreshRasterizeSelection();
         RefreshStampLibrary();
         ShowEditDomain(_canvas.EditDomain, false);
         ShowTool(_canvas.Tool, false);
@@ -341,7 +352,33 @@ public partial class MapEditorHud : Control, IMapEditorShortcutTarget
     {
         _inspectors.ShowBrushSelection(id);
         RefreshStampLibrary();
+        RefreshRasterizeSelection();
     }
+
+    private void SelectWorkingLayer(MapEditorLayer layer)
+    {
+        DiscardInspectorDraft();
+        _canvas.SelectLayer(layer);
+    }
+
+    private void ShowWorkingLayer(MapEditorLayer layer) => _toolbar.ApplyLayer(layer);
+
+    private void SelectAllBrushes()
+    {
+        DiscardInspectorDraft();
+        _canvas.SelectAllBrushes();
+    }
+
+    private void RasterizeSelection()
+    {
+        if (_canvas.SelectedBrushIds.Count < 2)
+            return;
+        DiscardInspectorDraft();
+        BrushRasterizeRequested?.Invoke(_canvas.SelectedBrushIds.ToImmutableArray());
+    }
+
+    private void RefreshRasterizeSelection() => _toolbar.ApplySelection(
+        _canvas.SelectedBrushIds.Count, _snapshot?.CanEditBrushes == true);
 
     private void RefreshStampLibrary()
     {
@@ -466,7 +503,7 @@ public partial class MapEditorHud : Control, IMapEditorShortcutTarget
             return true;
         }
 
-        if (_canvas.SelectedBrushId == null && _canvas.SelectedZoneId == null &&
+        if (_canvas.SelectedBrushIds.Count == 0 && _canvas.SelectedZoneId == null &&
             _canvas.SelectedSpawnId == null && !IsTextEditing())
         {
             return false;
@@ -518,8 +555,8 @@ public partial class MapEditorHud : Control, IMapEditorShortcutTarget
     {
         switch (_canvas.EditDomain)
         {
-            case MapEditorEditDomain.GEOMETRY when _canvas.SelectedBrushId is { } brush:
-                BrushRemoveRequested?.Invoke(brush);
+            case MapEditorEditDomain.GEOMETRY when _canvas.SelectedBrushIds.Count > 0:
+                BrushBatchRemoveRequested?.Invoke(_canvas.SelectedBrushIds.ToImmutableArray());
                 return true;
             case MapEditorEditDomain.ZONES when _canvas.SelectedZoneId is { } zone:
                 ZoneRemoveRequested?.Invoke(zone);

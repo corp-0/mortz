@@ -139,6 +139,9 @@ public sealed record MapEditorBrushRemoved(MapEditorBrushId Id) : MapEditorChang
 public sealed record MapEditorBrushesRemoved(
     ImmutableArray<MapEditorBrushId> Ids) : MapEditorChange;
 
+public record MapEditorBrushesRasterized(
+    MapEditorBrushId Id, ImmutableArray<MapEditorBrushId> SourceIds) : MapEditorChange;
+
 public sealed record MapEditorBrushReordered(MapEditorBrushId Id) : MapEditorChange;
 
 public sealed record MapEditorBrushMovedToLayer(

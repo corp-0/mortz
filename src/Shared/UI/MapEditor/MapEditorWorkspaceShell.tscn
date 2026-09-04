@@ -23,7 +23,7 @@
 [ext_resource type="PackedScene" path="res://src/Shared/UI/MapEditor/MapEditorStampDock.tscn" id="21"]
 [ext_resource type="Script" path="res://src/Client/MapEditor/MapEditorStampDock.cs" id="22"]
 
-[node name="WorkspaceShell" type="Control" unique_id=421552827 node_paths=PackedStringArray("_stampDock", "_propertiesResize", "_dockResize", "_propertiesClose", "_stampOpen", "_propertiesOpen", "_drawerClose", "_drawerOpen", "_problemsClose", "_problemsList", "_problemsDrawer", "_problemsButton", "_boundsStatus", "_viewStatus", "_modeStatus", "_statusRow", "_statusBar", "_propertiesDock", "_viewControls", "_toolbar", "_spawnInspector", "_zoneInspector", "_brushInspector", "_inspectorStack", "_inspectorFrame", "_objectBrowser", "_objectBrowserScroll", "_objectDock", "_canvas", "_canvasHost", "_toolRow", "_chrome")]
+[node name="WorkspaceShell" type="Control" unique_id=421552827 node_paths=PackedStringArray("_chrome", "_canvasHost", "_canvas", "_objectDock", "_objectBrowserScroll", "_objectBrowser", "_inspectorFrame", "_inspectorStack", "_brushInspector", "_zoneInspector", "_spawnInspector", "_toolbar", "_viewControls", "_propertiesDock", "_statusBar", "_statusRow", "_modeStatus", "_viewStatus", "_boundsStatus", "_problemsButton", "_problemsDrawer", "_problemsList", "_problemsClose", "_drawerOpen", "_drawerClose", "_propertiesOpen", "_stampOpen", "_propertiesClose", "_dockResize", "_propertiesResize", "_stampDock")]
 layout_mode = 3
 anchors_preset = 0
 offset_right = 1280.0
@@ -31,38 +31,37 @@ offset_bottom = 658.0
 mouse_filter = 2
 theme = ExtResource("1")
 script = ExtResource("2")
-_stampDock = NodePath("StampDock")
-_propertiesResize = NodePath("PropertiesResizeHandle")
-_dockResize = NodePath("DockResizeHandle")
-_propertiesClose = NodePath("RightDock/Margin/PropertiesColumn/Header/ClosePropertiesDrawer")
-_stampOpen = NodePath("Chrome/ToolBar/Margin/ToolRow/OpenStampLibrary")
-_propertiesOpen = NodePath("Chrome/ToolBar/Margin/ToolRow/OpenPropertiesDrawer")
-_drawerClose = NodePath("LeftDock/Margin/DockColumn/Header/CloseObjectDrawer")
-_drawerOpen = NodePath("Chrome/ToolBar/Margin/ToolRow/OpenObjectDrawer")
-_problemsClose = NodePath("ProblemsDrawer/Margin/Column/Header/CloseProblems")
-_problemsList = NodePath("ProblemsDrawer/Margin/Column/ProblemsScroll/ProblemsList")
-_problemsDrawer = NodePath("ProblemsDrawer")
-_problemsButton = NodePath("StatusBar/Margin/StatusRow/ProblemsButton")
-_boundsStatus = NodePath("StatusBar/Margin/StatusRow/BoundsStatus")
-_viewStatus = NodePath("StatusBar/Margin/StatusRow/ViewStatus")
-_modeStatus = NodePath("StatusBar/Margin/StatusRow/ModeStatus")
-_statusRow = NodePath("StatusBar/Margin/StatusRow")
-_statusBar = NodePath("StatusBar")
-_propertiesDock = NodePath("RightDock")
-_viewControls = NodePath("Chrome/ToolBar/Margin/ToolRow/ViewControls")
-_toolbar = NodePath("Chrome/ToolBar/Margin/ToolRow/Toolbar")
-_spawnInspector = NodePath("RightDock/Margin/PropertiesColumn/InspectorFrame/InspectorStack/SpawnInspector")
-_zoneInspector = NodePath("RightDock/Margin/PropertiesColumn/InspectorFrame/InspectorStack/ZoneInspector")
-_brushInspector = NodePath("RightDock/Margin/PropertiesColumn/InspectorFrame/InspectorStack/BrushInspector")
-_inspectorStack = NodePath("RightDock/Margin/PropertiesColumn/InspectorFrame/InspectorStack")
-_inspectorFrame = NodePath("RightDock/Margin/PropertiesColumn/InspectorFrame")
-_objectBrowser = NodePath("LeftDock/Margin/DockColumn/ObjectBrowserScroll/ObjectBrowser")
-_objectBrowserScroll = NodePath("LeftDock/Margin/DockColumn/ObjectBrowserScroll")
-_objectDock = NodePath("LeftDock")
-_canvas = NodePath("CanvasHost/Canvas")
-_canvasHost = NodePath("CanvasHost")
-_toolRow = NodePath("Chrome/ToolBar/Margin/ToolRow")
 _chrome = NodePath("Chrome")
+_canvasHost = NodePath("CanvasHost")
+_canvas = NodePath("CanvasHost/Canvas")
+_objectDock = NodePath("LeftDock")
+_objectBrowserScroll = NodePath("LeftDock/Margin/DockColumn/ObjectBrowserScroll")
+_objectBrowser = NodePath("LeftDock/Margin/DockColumn/ObjectBrowserScroll/ObjectBrowser")
+_inspectorFrame = NodePath("RightDock/Margin/PropertiesColumn/InspectorFrame")
+_inspectorStack = NodePath("RightDock/Margin/PropertiesColumn/InspectorFrame/InspectorStack")
+_brushInspector = NodePath("RightDock/Margin/PropertiesColumn/InspectorFrame/InspectorStack/BrushInspector")
+_zoneInspector = NodePath("RightDock/Margin/PropertiesColumn/InspectorFrame/InspectorStack/ZoneInspector")
+_spawnInspector = NodePath("RightDock/Margin/PropertiesColumn/InspectorFrame/InspectorStack/SpawnInspector")
+_toolbar = NodePath("Chrome/ToolBar/Margin/ToolRow/Toolbar")
+_viewControls = NodePath("Chrome/ToolBar/Margin/ToolRow/ViewControls")
+_propertiesDock = NodePath("RightDock")
+_statusBar = NodePath("StatusBar")
+_statusRow = NodePath("StatusBar/Margin/StatusRow")
+_modeStatus = NodePath("StatusBar/Margin/StatusRow/ModeStatus")
+_viewStatus = NodePath("StatusBar/Margin/StatusRow/ViewStatus")
+_boundsStatus = NodePath("StatusBar/Margin/StatusRow/BoundsStatus")
+_problemsButton = NodePath("StatusBar/Margin/StatusRow/ProblemsButton")
+_problemsDrawer = NodePath("ProblemsDrawer")
+_problemsList = NodePath("ProblemsDrawer/Margin/Column/ProblemsScroll/ProblemsList")
+_problemsClose = NodePath("ProblemsDrawer/Margin/Column/Header/CloseProblems")
+_drawerOpen = NodePath("Chrome/ToolBar/Margin/ToolRow/OpenObjectDrawer")
+_drawerClose = NodePath("LeftDock/Margin/DockColumn/Header/CloseObjectDrawer")
+_propertiesOpen = NodePath("Chrome/ToolBar/Margin/ToolRow/OpenPropertiesDrawer")
+_stampOpen = NodePath("Chrome/ToolBar/Margin/ToolRow/OpenStampLibrary")
+_propertiesClose = NodePath("RightDock/Margin/PropertiesColumn/Header/ClosePropertiesDrawer")
+_dockResize = NodePath("DockResizeHandle")
+_propertiesResize = NodePath("PropertiesResizeHandle")
+_stampDock = NodePath("StampDock")
 
 [node name="CanvasHost" type="Control" parent="." unique_id=372329157]
 layout_mode = 1
@@ -129,25 +128,25 @@ layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
-[node name="ObjectBrowser" type="VBoxContainer" parent="LeftDock/Margin/DockColumn/ObjectBrowserScroll" unique_id=2145259449 node_paths=PackedStringArray("_spawnsEmpty", "_spawnsVisibility", "_zonesEmpty", "_zonesVisibility", "_destructibleLayer", "_solidSeparator", "_solidLayer", "_backgroundSeparator", "_backgroundLayer", "_initializationButton", "_initializationDetail", "_initializationWarning") instance=ExtResource("7")]
+[node name="ObjectBrowser" type="VBoxContainer" parent="LeftDock/Margin/DockColumn/ObjectBrowserScroll" unique_id=2145259449 node_paths=PackedStringArray("_initializationWarning", "_initializationDetail", "_initializationButton", "_backgroundLayer", "_backgroundSeparator", "_solidLayer", "_solidSeparator", "_destructibleLayer", "_zonesVisibility", "_zonesEmpty", "_spawnsVisibility", "_spawnsEmpty") instance=ExtResource("7")]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 10
 script = ExtResource("8")
-_itemRowScene = ExtResource("9")
-_brushRowScene = ExtResource("10")
-_spawnsEmpty = NodePath("SpawnsEmpty")
-_spawnsVisibility = NodePath("SpawnsVisibility")
-_zonesEmpty = NodePath("ZonesEmpty")
-_zonesVisibility = NodePath("ZonesVisibility")
-_destructibleLayer = NodePath("LayerDESTRUCTIBLE")
-_solidSeparator = NodePath("SolidSeparator")
-_solidLayer = NodePath("LayerSOLID")
-_backgroundSeparator = NodePath("BackgroundSeparator")
-_backgroundLayer = NodePath("LayerBACKGROUND")
-_initializationButton = NodePath("InitializeBrushLayers")
-_initializationDetail = NodePath("RasterOnlyDetail")
 _initializationWarning = NodePath("BrushInitializationWarning")
+_initializationDetail = NodePath("RasterOnlyDetail")
+_initializationButton = NodePath("InitializeBrushLayers")
+_backgroundLayer = NodePath("LayerBACKGROUND")
+_backgroundSeparator = NodePath("BackgroundSeparator")
+_solidLayer = NodePath("LayerSOLID")
+_solidSeparator = NodePath("SolidSeparator")
+_destructibleLayer = NodePath("LayerDESTRUCTIBLE")
+_zonesVisibility = NodePath("ZonesVisibility")
+_zonesEmpty = NodePath("ZonesEmpty")
+_spawnsVisibility = NodePath("SpawnsVisibility")
+_spawnsEmpty = NodePath("SpawnsEmpty")
+_brushRowScene = ExtResource("10")
+_itemRowScene = ExtResource("9")
 
 [node name="RightDock" type="PanelContainer" parent="." unique_id=2006254479]
 layout_mode = 0
@@ -192,7 +191,7 @@ size_flags_vertical = 3
 [node name="InspectorStack" type="Control" parent="RightDock/Margin/PropertiesColumn/InspectorFrame" unique_id=547802778]
 layout_mode = 2
 
-[node name="BrushInspector" type="ScrollContainer" parent="RightDock/Margin/PropertiesColumn/InspectorFrame/InspectorStack" unique_id=1772946175 node_paths=PackedStringArray("_delete", "_duplicate", "_diagnostic", "_projectionRotation", "_scaleY", "_scaleX", "_originY", "_originX", "_projectionMode", "_materialStatus", "_material", "_vertices", "_rotation", "_height", "_width", "_y", "_x", "_shape", "_visible", "_layer", "_name", "_title") instance=ExtResource("11")]
+[node name="BrushInspector" type="ScrollContainer" parent="RightDock/Margin/PropertiesColumn/InspectorFrame/InspectorStack" unique_id=1772946175 node_paths=PackedStringArray("_title", "_name", "_layer", "_visible", "_shape", "_x", "_y", "_width", "_height", "_rotation", "_vertices", "_material", "_materialStatus", "_projectionMode", "_originX", "_originY", "_scaleX", "_scaleY", "_projectionRotation", "_diagnostic", "_duplicate", "_delete") instance=ExtResource("11")]
 visible = false
 layout_mode = 1
 anchors_preset = 15
@@ -205,30 +204,30 @@ size_flags_vertical = 3
 theme = ExtResource("1")
 horizontal_scroll_mode = 0
 script = ExtResource("12")
-_delete = NodePath("Margin/Content/Actions/Delete")
-_duplicate = NodePath("Margin/Content/Actions/Duplicate")
-_diagnostic = NodePath("Margin/Content/Diagnostic")
-_projectionRotation = NodePath("Margin/Content/ProjectionRotation")
-_scaleY = NodePath("Margin/Content/ScaleY")
-_scaleX = NodePath("Margin/Content/ScaleX")
-_originY = NodePath("Margin/Content/OriginY")
-_originX = NodePath("Margin/Content/OriginX")
-_projectionMode = NodePath("Margin/Content/ProjectionMode")
-_materialStatus = NodePath("Margin/Content/MaterialSection/MaterialContent/Status")
-_material = NodePath("Margin/Content/MaterialSection/MaterialContent/Picker")
-_vertices = NodePath("Margin/Content/Vertices")
-_rotation = NodePath("Margin/Content/Rotation")
-_height = NodePath("Margin/Content/Height")
-_width = NodePath("Margin/Content/Width")
-_y = NodePath("Margin/Content/Y")
-_x = NodePath("Margin/Content/X")
-_shape = NodePath("Margin/Content/ShapeKind")
-_visible = NodePath("Margin/Content/Visible")
-_layer = NodePath("Margin/Content/Layer")
-_name = NodePath("Margin/Content/Name")
 _title = NodePath("Margin/Content/Title")
+_name = NodePath("Margin/Content/Name")
+_layer = NodePath("Margin/Content/Layer")
+_visible = NodePath("Margin/Content/Visible")
+_shape = NodePath("Margin/Content/ShapeKind")
+_x = NodePath("Margin/Content/X")
+_y = NodePath("Margin/Content/Y")
+_width = NodePath("Margin/Content/Width")
+_height = NodePath("Margin/Content/Height")
+_rotation = NodePath("Margin/Content/Rotation")
+_vertices = NodePath("Margin/Content/Vertices")
+_material = NodePath("Margin/Content/MaterialSection/MaterialContent/Picker")
+_materialStatus = NodePath("Margin/Content/MaterialSection/MaterialContent/Status")
+_projectionMode = NodePath("Margin/Content/ProjectionMode")
+_originX = NodePath("Margin/Content/OriginX")
+_originY = NodePath("Margin/Content/OriginY")
+_scaleX = NodePath("Margin/Content/ScaleX")
+_scaleY = NodePath("Margin/Content/ScaleY")
+_projectionRotation = NodePath("Margin/Content/ProjectionRotation")
+_diagnostic = NodePath("Margin/Content/Diagnostic")
+_duplicate = NodePath("Margin/Content/Actions/Duplicate")
+_delete = NodePath("Margin/Content/Actions/Delete")
 
-[node name="ZoneInspector" type="ScrollContainer" parent="RightDock/Margin/PropertiesColumn/InspectorFrame/InspectorStack" unique_id=1327228011 node_paths=PackedStringArray("_delete", "_addEffect", "_diagnostic", "_effects", "_tags", "_rotation", "_sizeB", "_sizeA", "_y", "_x", "_shape", "_name", "_title") instance=ExtResource("13")]
+[node name="ZoneInspector" type="ScrollContainer" parent="RightDock/Margin/PropertiesColumn/InspectorFrame/InspectorStack" unique_id=1327228011 node_paths=PackedStringArray("_title", "_name", "_shape", "_x", "_y", "_sizeA", "_sizeB", "_rotation", "_tags", "_effects", "_diagnostic", "_addEffect", "_delete") instance=ExtResource("13")]
 visible = false
 layout_mode = 1
 anchors_preset = 15
@@ -241,21 +240,21 @@ size_flags_vertical = 3
 theme = ExtResource("1")
 horizontal_scroll_mode = 0
 script = ExtResource("14")
-_delete = NodePath("Margin/Content/Delete")
-_addEffect = NodePath("Margin/Content/AddEffect")
-_diagnostic = NodePath("Margin/Content/Diagnostic")
-_effects = NodePath("Margin/Content/EffectRows")
-_tags = NodePath("Margin/Content/Tags")
-_rotation = NodePath("Margin/Content/Rotation")
-_sizeB = NodePath("Margin/Content/SizeB")
-_sizeA = NodePath("Margin/Content/SizeA")
-_y = NodePath("Margin/Content/Y")
-_x = NodePath("Margin/Content/X")
-_shape = NodePath("Margin/Content/ShapeKind")
-_name = NodePath("Margin/Content/Name")
 _title = NodePath("Margin/Content/Title")
+_name = NodePath("Margin/Content/Name")
+_shape = NodePath("Margin/Content/ShapeKind")
+_x = NodePath("Margin/Content/X")
+_y = NodePath("Margin/Content/Y")
+_sizeA = NodePath("Margin/Content/SizeA")
+_sizeB = NodePath("Margin/Content/SizeB")
+_rotation = NodePath("Margin/Content/Rotation")
+_tags = NodePath("Margin/Content/Tags")
+_effects = NodePath("Margin/Content/EffectRows")
+_diagnostic = NodePath("Margin/Content/Diagnostic")
+_addEffect = NodePath("Margin/Content/AddEffect")
+_delete = NodePath("Margin/Content/Delete")
 
-[node name="SpawnInspector" type="ScrollContainer" parent="RightDock/Margin/PropertiesColumn/InspectorFrame/InspectorStack" unique_id=653249865 node_paths=PackedStringArray("_delete", "_team", "_y", "_x", "_title") instance=ExtResource("15")]
+[node name="SpawnInspector" type="ScrollContainer" parent="RightDock/Margin/PropertiesColumn/InspectorFrame/InspectorStack" unique_id=653249865 node_paths=PackedStringArray("_title", "_x", "_y", "_team", "_delete") instance=ExtResource("15")]
 visible = false
 layout_mode = 1
 anchors_preset = 15
@@ -268,11 +267,11 @@ size_flags_vertical = 3
 theme = ExtResource("1")
 horizontal_scroll_mode = 0
 script = ExtResource("16")
-_delete = NodePath("Margin/Content/Delete")
-_team = NodePath("Margin/Content/Team")
-_y = NodePath("Margin/Content/Y")
-_x = NodePath("Margin/Content/X")
 _title = NodePath("Margin/Content/Title")
+_x = NodePath("Margin/Content/X")
+_y = NodePath("Margin/Content/Y")
+_team = NodePath("Margin/Content/Team")
+_delete = NodePath("Margin/Content/Delete")
 
 [node name="DockResizeHandle" type="Button" parent="." unique_id=306158734]
 layout_mode = 0
@@ -410,30 +409,35 @@ theme_override_constants/margin_top = 5
 theme_override_constants/margin_right = 8
 theme_override_constants/margin_bottom = 5
 
-[node name="ToolRow" type="HBoxContainer" parent="Chrome/ToolBar/Margin" unique_id=1372493277]
+[node name="ToolRow" type="HFlowContainer" parent="Chrome/ToolBar/Margin" unique_id=1452830827]
 layout_mode = 2
-theme_override_constants/separation = 6
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 6
 
-[node name="Toolbar" type="HBoxContainer" parent="Chrome/ToolBar/Margin/ToolRow" unique_id=1753316472 node_paths=PackedStringArray("_brushPolygonTool", "_brushEllipseTool", "_brushRectangleTool", "_spawnTool", "_zoneEllipseTool", "_zoneRectangleTool", "_selectTool", "_spawnsDomain", "_zonesDomain", "_geometryDomain") instance=ExtResource("17")]
+[node name="Toolbar" type="HBoxContainer" parent="Chrome/ToolBar/Margin/ToolRow" unique_id=1753316472 node_paths=PackedStringArray("_geometryDomain", "_zonesDomain", "_spawnsDomain", "_selectTool", "_zoneRectangleTool", "_zoneEllipseTool", "_spawnTool", "_brushRectangleTool", "_brushEllipseTool", "_brushPolygonTool", "_workingLayer", "_selectAll", "_rasterize") instance=ExtResource("17")]
 layout_mode = 2
 theme_override_constants/separation = 6
 script = ExtResource("18")
-_brushPolygonTool = NodePath("PolygonBrush")
-_brushEllipseTool = NodePath("EllipseBrush")
-_brushRectangleTool = NodePath("RectangleBrush")
-_spawnTool = NodePath("Spawn")
-_zoneEllipseTool = NodePath("Circle")
-_zoneRectangleTool = NodePath("Square")
-_selectTool = NodePath("Select")
-_spawnsDomain = NodePath("SpawnsDomain")
-_zonesDomain = NodePath("ZonesDomain")
 _geometryDomain = NodePath("GeometryDomain")
+_zonesDomain = NodePath("ZonesDomain")
+_spawnsDomain = NodePath("SpawnsDomain")
+_selectTool = NodePath("Select")
+_zoneRectangleTool = NodePath("Square")
+_zoneEllipseTool = NodePath("Circle")
+_spawnTool = NodePath("Spawn")
+_brushRectangleTool = NodePath("RectangleBrush")
+_brushEllipseTool = NodePath("EllipseBrush")
+_brushPolygonTool = NodePath("PolygonBrush")
+_workingLayer = NodePath("WorkingLayer")
+_selectAll = NodePath("SelectAll")
+_rasterize = NodePath("Rasterize")
 
-[node name="ViewControls" type="HBoxContainer" parent="Chrome/ToolBar/Margin/ToolRow" unique_id=895827706 node_paths=PackedStringArray("_view", "_snap") instance=ExtResource("19")]
+[node name="ViewControls" type="HBoxContainer" parent="Chrome/ToolBar/Margin/ToolRow" unique_id=895827706 node_paths=PackedStringArray("_snap", "_view") instance=ExtResource("19")]
 layout_mode = 2
 script = ExtResource("20")
-_view = NodePath("ViewOverflow")
 _snap = NodePath("UniversalSnap")
+_view = NodePath("ViewOverflow")
 
 [node name="OpenObjectDrawer" type="Button" parent="Chrome/ToolBar/Margin/ToolRow" unique_id=959512674]
 layout_mode = 2

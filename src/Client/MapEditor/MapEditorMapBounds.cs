@@ -16,6 +16,17 @@ public static class MapEditorMapBoundsFitter
 {
     public const int MAX_TEXTURE_DIMENSION = 8192;
 
+    public static MapEditorMapBounds FitBrushes(IEnumerable<MapEditorBrush> brushes)
+    {
+        Envelope envelope = default;
+        foreach (MapEditorBrush brush in brushes)
+        {
+            AddBrush(ref envelope, brush.Shape);
+        }
+        return new MapEditorMapBounds(envelope.Left, envelope.Top,
+            envelope.Right - envelope.Left, envelope.Bottom - envelope.Top);
+    }
+
     public static MapEditorMapBounds Fit(
         MapEditorBrushDocument document,
         ImmutableArray<MapEditorZone> zones,

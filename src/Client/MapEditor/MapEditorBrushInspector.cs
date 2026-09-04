@@ -97,6 +97,7 @@ public partial class MapEditorBrushInspector : ScrollContainer
         _material.Apply(value.Brush.Material);
         _materialStatus.Text = value.Brush.Material switch
         {
+            MapEditorRasterMaterial raster => $"Raster: {raster.Image.Width} x {raster.Image.Height} pixels",
             MapEditorSolidColorMaterial solid => $"Color {solid.Color.Html}",
             MapEditorTextureMaterial when value.MaterialMissing =>
                 "Texture missing. Choose another before saving.",

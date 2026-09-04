@@ -29,6 +29,12 @@ public sealed class MapEditorCanvasPicker
                 : original;
             if (!brush.Visible || !MapEditorGeometry.Contains(brush.Shape, Point(point)))
                 continue;
+            if (brush.Material is MapEditorRasterMaterial raster)
+            {
+                (int x, int y) = MapEditorLayerCompositor.Project(brush, raster.Texture, point.X, point.Y);
+                if (raster.Texture.Pixels[(y * raster.Texture.Width + x) * 4 + 3] == 0)
+                    continue;
+            }
             if (!cycle)
                 return brush;
             hits.Add(brush);

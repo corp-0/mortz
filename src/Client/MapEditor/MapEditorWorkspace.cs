@@ -316,6 +316,69 @@ public sealed class MapEditorWorkspace
             before, refitBounds: true));
     }
 
+    public MapEditorOperationResult RasterizeBrushes(IReadOnlySet<MapEditorBrushId> ids)
+    {
+        ArgumentNullException.ThrowIfNull(ids);
+        if (_brushDocument == null)
+            return BrushEditingUnavailable();
+        ImmutableArray<MapEditorBrush> selected = Enum.GetValues<MapEditorLayer>()
+            .SelectMany(layer => _brushDocument.Layers.Get(layer).Brushes)
+            .Where(brush => ids.Contains(brush.Id)).ToImmutableArray();
+        if (selected.Length < 2 || selected.Length != ids.Count)
+            return MapEditorOperationResult.Failed(ContentFailure(_validationSource,
+                "Select at least two existing objects to rasterize."));
+        MapEditorLayer layer = selected[0].Layer;
+        if (selected.Any(brush => brush.Layer != layer || !brush.Visible))
+            return MapEditorOperationResult.Failed(ContentFailure(_validationSource,
+                "Rasterize visible objects on one layer at a time."));
+        MapEditorLayerSource source = _brushDocument.Layers.Get(layer);
+        int first = source.Brushes.IndexOf(selected[0]);
+        int last = source.Brushes.IndexOf(selected[^1]);
+        // Flattening across another visible object would change its stacking order.
+        if (source.Brushes.Skip(first).Take(last - first + 1)
+            .Any(brush => brush.Visible && !ids.Contains(brush.Id)))
+            return MapEditorOperationResult.Failed(ContentFailure(_validationSource,
+                "Include the objects between your selection in the layer's stacking order before rasterizing."));
+        if (_brushDocument.NextBrushId == long.MaxValue)
+            return IdentityOverflow("brush");
+        try
+        {
+            MapEditorMapBounds bounds = MapEditorMapBoundsFitter.FitBrushes(selected);
+            int x = checked((int)bounds.X);
+            int y = checked((int)bounds.Y);
+            MapEditorLayerCompositionResult composition = _compositor.Compose(
+                source with { Brushes = selected }, bounds);
+            if (!composition.Unresolved.IsEmpty)
+                return MapEditorOperationResult.Failed(new MapEditorUnresolvedBrushesFailure(composition.Unresolved));
+            if (!composition.Succeeded)
+                return MapEditorOperationResult.Failed(new MapEditorCompositionFailure(layer,
+                    composition.Error ?? "Could not rasterize the selected objects."));
+            MapEditorBrushId id = new(_brushDocument.NextBrushId);
+            MapEditorBrush raster = new(id, $"Rasterized objects ({selected.Length})", layer,
+                new MapEditorRectBrushShape(x, y, checked((int)bounds.Width), checked((int)bounds.Height), 0),
+                new MapEditorRasterMaterial(composition.Baked!.Png.Span),
+                new MapEditorTextureProjection(MapEditorProjectionMode.STRETCH, new(x, y), 1, 1, 0), true);
+            ImmutableArray<MapEditorBrush> brushes = source.Brushes
+                .Where(brush => !ids.Contains(brush.Id)).ToImmutableArray().Insert(first, raster);
+            MapEditorBrushDocument candidate = _brushDocument with
+            {
+                NextBrushId = _brushDocument.NextBrushId + 1,
+                Layers = _brushDocument.Layers.Set(layer,
+                    source with { Brushes = brushes, BakeDirty = true }),
+            };
+            if (ValidateCandidate(candidate) is { } failure)
+                return MapEditorOperationResult.Failed(failure);
+            EditableState before = Capture();
+            _brushDocument = candidate;
+            return MapEditorOperationResult.Success(Commit(new MapEditorBrushesRasterized(id,
+                selected.Select(brush => brush.Id).ToImmutableArray()), before, refitBounds: true));
+        }
+        catch (Exception exception) when (exception is ArgumentException or OverflowException)
+        {
+            return MapEditorOperationResult.Failed(new MapEditorCompositionFailure(layer, exception.Message));
+        }
+    }
+
     public MapEditorOperationResult SaveStamp(MapEditorBrushId brushId)
     {
         if (_brushDocument == null)

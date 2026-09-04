@@ -1,0 +1,3324 @@
+[
+  {
+    "key": "deck_neutral",
+    "name": "Structure / neutral deck",
+    "width": 128,
+    "height": 24,
+    "layer": "SOLID",
+    "brushes": [
+      {
+        "id": 83,
+        "name": "Deck / core",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 0,
+          "width": 128,
+          "height": 24,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            102,
+            120,
+            136,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 84,
+        "name": "Deck / plating",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 4,
+          "width": 128,
+          "height": 20,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "TEXTURE",
+          "source": "library:org.unitystation.clown",
+          "path": "floors/metal.png"
+        },
+        "projection": {
+          "mode": "REPEAT",
+          "origin": [
+            0,
+            4
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 85,
+        "name": "Deck / tread",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 0,
+          "width": 128,
+          "height": 4,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            176,
+            195,
+            204,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 86,
+        "name": "Deck / department stripe",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 7,
+          "width": 128,
+          "height": 3,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            145,
+            168,
+            180,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            0,
+            7
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 87,
+        "name": "Deck / underside lamp",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 12,
+          "y": 21,
+          "width": 16,
+          "height": 2,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            145,
+            168,
+            180,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            12,
+            21
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 88,
+        "name": "Deck / underside lamp",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 76,
+          "y": 21,
+          "width": 16,
+          "height": 2,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            145,
+            168,
+            180,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            76,
+            21
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      }
+    ]
+  },
+  {
+    "key": "deck_blue",
+    "name": "Structure / blue deck",
+    "width": 128,
+    "height": 24,
+    "layer": "SOLID",
+    "brushes": [
+      {
+        "id": 89,
+        "name": "Deck / core",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 0,
+          "width": 128,
+          "height": 24,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            102,
+            120,
+            136,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 90,
+        "name": "Deck / plating",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 4,
+          "width": 128,
+          "height": 20,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "TEXTURE",
+          "source": "library:org.unitystation.clown",
+          "path": "floors/metal.png"
+        },
+        "projection": {
+          "mode": "REPEAT",
+          "origin": [
+            0,
+            4
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 91,
+        "name": "Deck / tread",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 0,
+          "width": 128,
+          "height": 4,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            176,
+            195,
+            204,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 92,
+        "name": "Deck / department stripe",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 7,
+          "width": 128,
+          "height": 3,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            120,
+            189,
+            243,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            0,
+            7
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 93,
+        "name": "Deck / underside lamp",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 12,
+          "y": 21,
+          "width": 16,
+          "height": 2,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            120,
+            189,
+            243,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            12,
+            21
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 94,
+        "name": "Deck / underside lamp",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 76,
+          "y": 21,
+          "width": 16,
+          "height": 2,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            120,
+            189,
+            243,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            76,
+            21
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      }
+    ]
+  },
+  {
+    "key": "deck_red",
+    "name": "Structure / red deck",
+    "width": 128,
+    "height": 24,
+    "layer": "SOLID",
+    "brushes": [
+      {
+        "id": 95,
+        "name": "Deck / core",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 0,
+          "width": 128,
+          "height": 24,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            102,
+            120,
+            136,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 96,
+        "name": "Deck / plating",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 4,
+          "width": 128,
+          "height": 20,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "TEXTURE",
+          "source": "library:org.unitystation.clown",
+          "path": "floors/metal.png"
+        },
+        "projection": {
+          "mode": "REPEAT",
+          "origin": [
+            0,
+            4
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 97,
+        "name": "Deck / tread",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 0,
+          "width": 128,
+          "height": 4,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            176,
+            195,
+            204,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 98,
+        "name": "Deck / department stripe",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 7,
+          "width": 128,
+          "height": 3,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            237,
+            137,
+            132,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            0,
+            7
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 99,
+        "name": "Deck / underside lamp",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 12,
+          "y": 21,
+          "width": 16,
+          "height": 2,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            237,
+            137,
+            132,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            12,
+            21
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 100,
+        "name": "Deck / underside lamp",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 76,
+          "y": 21,
+          "width": 16,
+          "height": 2,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            237,
+            137,
+            132,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            76,
+            21
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      }
+    ]
+  },
+  {
+    "key": "deck_gold",
+    "name": "Structure / gold deck",
+    "width": 128,
+    "height": 24,
+    "layer": "SOLID",
+    "brushes": [
+      {
+        "id": 101,
+        "name": "Deck / core",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 0,
+          "width": 128,
+          "height": 24,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            102,
+            120,
+            136,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 102,
+        "name": "Deck / plating",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 4,
+          "width": 128,
+          "height": 20,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "TEXTURE",
+          "source": "library:org.unitystation.clown",
+          "path": "floors/metal.png"
+        },
+        "projection": {
+          "mode": "REPEAT",
+          "origin": [
+            0,
+            4
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 103,
+        "name": "Deck / tread",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 0,
+          "width": 128,
+          "height": 4,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            176,
+            195,
+            204,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 104,
+        "name": "Deck / department stripe",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 7,
+          "width": 128,
+          "height": 3,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            238,
+            209,
+            124,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            0,
+            7
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 105,
+        "name": "Deck / underside lamp",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 12,
+          "y": 21,
+          "width": 16,
+          "height": 2,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            238,
+            209,
+            124,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            12,
+            21
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 106,
+        "name": "Deck / underside lamp",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 76,
+          "y": 21,
+          "width": 16,
+          "height": 2,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            238,
+            209,
+            124,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            76,
+            21
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      }
+    ]
+  },
+  {
+    "key": "wall",
+    "name": "Structure / reinforced wall",
+    "width": 32,
+    "height": 128,
+    "layer": "SOLID",
+    "brushes": [
+      {
+        "id": 107,
+        "name": "Wall core",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 0,
+          "width": 32,
+          "height": 128,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            90,
+            105,
+            119,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 108,
+        "name": "Armor",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 0,
+          "width": 32,
+          "height": 128,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "TEXTURE",
+          "source": "library:org.unitystation.clown",
+          "path": "walls/reinforced.png"
+        },
+        "projection": {
+          "mode": "REPEAT",
+          "origin": [
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 109,
+        "name": "Left edge",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 0,
+          "width": 3,
+          "height": 128,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            186,
+            202,
+            208,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 110,
+        "name": "Right edge",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 29,
+          "y": 0,
+          "width": 3,
+          "height": 128,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            186,
+            202,
+            208,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            29,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 111,
+        "name": "Top edge",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 0,
+          "width": 32,
+          "height": 3,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            199,
+            209,
+            213,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      }
+    ]
+  },
+  {
+    "key": "wall_cap",
+    "name": "Structure / wall cap",
+    "width": 32,
+    "height": 32,
+    "layer": "SOLID",
+    "brushes": [
+      {
+        "id": 112,
+        "name": "Wall core",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 0,
+          "width": 32,
+          "height": 32,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            90,
+            105,
+            119,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 113,
+        "name": "Armor",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 0,
+          "width": 32,
+          "height": 32,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "TEXTURE",
+          "source": "library:org.unitystation.clown",
+          "path": "walls/reinforced.png"
+        },
+        "projection": {
+          "mode": "REPEAT",
+          "origin": [
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 114,
+        "name": "Left edge",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 0,
+          "width": 3,
+          "height": 32,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            186,
+            202,
+            208,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 115,
+        "name": "Right edge",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 29,
+          "y": 0,
+          "width": 3,
+          "height": 32,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            186,
+            202,
+            208,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            29,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 116,
+        "name": "Top edge",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 0,
+          "width": 32,
+          "height": 3,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            199,
+            209,
+            213,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      }
+    ]
+  },
+  {
+    "key": "cover",
+    "name": "Structure / cover block",
+    "width": 64,
+    "height": 64,
+    "layer": "SOLID",
+    "brushes": [
+      {
+        "id": 117,
+        "name": "Wall core",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 0,
+          "width": 64,
+          "height": 64,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            90,
+            105,
+            119,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 118,
+        "name": "Armor",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 0,
+          "width": 64,
+          "height": 64,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "TEXTURE",
+          "source": "library:org.unitystation.clown",
+          "path": "walls/reinforced.png"
+        },
+        "projection": {
+          "mode": "REPEAT",
+          "origin": [
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 119,
+        "name": "Left edge",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 0,
+          "width": 3,
+          "height": 64,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            186,
+            202,
+            208,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 120,
+        "name": "Right edge",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 61,
+          "y": 0,
+          "width": 3,
+          "height": 64,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            186,
+            202,
+            208,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            61,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 121,
+        "name": "Top edge",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 0,
+          "width": 64,
+          "height": 3,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            199,
+            209,
+            213,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      }
+    ]
+  },
+  {
+    "key": "corner",
+    "name": "Structure / inside corner",
+    "width": 64,
+    "height": 64,
+    "layer": "SOLID",
+    "brushes": [
+      {
+        "id": 122,
+        "name": "Wall core",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 0,
+          "width": 32,
+          "height": 64,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            90,
+            105,
+            119,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 123,
+        "name": "Armor",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 0,
+          "width": 32,
+          "height": 64,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "TEXTURE",
+          "source": "library:org.unitystation.clown",
+          "path": "walls/reinforced.png"
+        },
+        "projection": {
+          "mode": "REPEAT",
+          "origin": [
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 124,
+        "name": "Left edge",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 0,
+          "width": 3,
+          "height": 64,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            186,
+            202,
+            208,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 125,
+        "name": "Right edge",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 29,
+          "y": 0,
+          "width": 3,
+          "height": 64,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            186,
+            202,
+            208,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            29,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 126,
+        "name": "Top edge",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 0,
+          "width": 32,
+          "height": 3,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            199,
+            209,
+            213,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 127,
+        "name": "Corner core",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 32,
+          "y": 32,
+          "width": 32,
+          "height": 32,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            90,
+            105,
+            119,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            32,
+            32
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 128,
+        "name": "Corner armor",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 32,
+          "y": 32,
+          "width": 32,
+          "height": 32,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "TEXTURE",
+          "source": "library:org.unitystation.clown",
+          "path": "walls/reinforced.png"
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            32,
+            32
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 129,
+        "name": "Corner tread",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 32,
+          "y": 32,
+          "width": 32,
+          "height": 3,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            199,
+            209,
+            213,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            32,
+            32
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      }
+    ]
+  },
+  {
+    "key": "crate",
+    "name": "Breakable / supply crate",
+    "width": 32,
+    "height": 32,
+    "layer": "DESTRUCTIBLE",
+    "brushes": [
+      {
+        "id": 130,
+        "name": "Crate / breakable body",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 3,
+          "y": 6,
+          "width": 26,
+          "height": 26,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            86,
+            82,
+            92,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            3,
+            6
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 131,
+        "name": "Crate",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 0,
+          "width": 32,
+          "height": 32,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "TEXTURE",
+          "source": "library:org.unitystation.clown",
+          "path": "props/equipment/crate.png"
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      }
+    ]
+  },
+  {
+    "key": "secure_crate",
+    "name": "Breakable / secure crate",
+    "width": 32,
+    "height": 32,
+    "layer": "DESTRUCTIBLE",
+    "brushes": [
+      {
+        "id": 132,
+        "name": "Crate / breakable body",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 3,
+          "y": 6,
+          "width": 26,
+          "height": 26,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            86,
+            82,
+            92,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            3,
+            6
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 133,
+        "name": "Crate",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 0,
+          "width": 32,
+          "height": 32,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "TEXTURE",
+          "source": "library:org.unitystation.clown",
+          "path": "props/equipment/secure_crate.png"
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      }
+    ]
+  },
+  {
+    "key": "glass",
+    "name": "Breakable / glass partition",
+    "width": 8,
+    "height": 96,
+    "layer": "DESTRUCTIBLE",
+    "brushes": [
+      {
+        "id": 134,
+        "name": "Glass",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 0,
+          "width": 8,
+          "height": 96,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            98,
+            150,
+            164,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 135,
+        "name": "Glass shine",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 2,
+          "y": 3,
+          "width": 2,
+          "height": 90,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            177,
+            226,
+            223,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            2,
+            3
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      }
+    ]
+  },
+  {
+    "key": "wall_panel",
+    "name": "Backdrop / wall panel",
+    "width": 128,
+    "height": 128,
+    "layer": "BACKGROUND",
+    "brushes": [
+      {
+        "id": 136,
+        "name": "Panel / back wall",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 0,
+          "width": 128,
+          "height": 128,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            25,
+            38,
+            49,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 137,
+        "name": "Panel / wall panel",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 2,
+          "y": 2,
+          "width": 92,
+          "height": 124,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            34,
+            52,
+            64,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            2,
+            2
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 138,
+        "name": "Panel / wall panel",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 98,
+          "y": 2,
+          "width": 30,
+          "height": 124,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            34,
+            52,
+            64,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            98,
+            2
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 139,
+        "name": "Panel / header",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 0,
+          "width": 128,
+          "height": 4,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            64,
+            88,
+            99,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 140,
+        "name": "Panel / skirting",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 114,
+          "width": 128,
+          "height": 10,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            53,
+            73,
+            87,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            0,
+            114
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 141,
+        "name": "Panel / ceiling light",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 24,
+          "y": 12,
+          "width": 32,
+          "height": 32,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "TEXTURE",
+          "source": "library:org.unitystation.clown",
+          "path": "props/lights/tube_north.png"
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            24,
+            12
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      }
+    ]
+  },
+  {
+    "key": "window",
+    "name": "Backdrop / framed window",
+    "width": 192,
+    "height": 96,
+    "layer": "BACKGROUND",
+    "brushes": [
+      {
+        "id": 142,
+        "name": "Window / frame",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 0,
+          "width": 192,
+          "height": 92,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            53,
+            73,
+            87,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 143,
+        "name": "Window / stars",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 5,
+          "y": 5,
+          "width": 182,
+          "height": 82,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "TEXTURE",
+          "source": "library:org.unitystation.clown",
+          "path": "background/space.png"
+        },
+        "projection": {
+          "mode": "REPEAT",
+          "origin": [
+            5,
+            5
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 144,
+        "name": "Window / tint",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 5,
+          "y": 5,
+          "width": 182,
+          "height": 82,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            21,
+            54,
+            73,
+            105
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            5,
+            5
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 145,
+        "name": "Window / mullion",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 101,
+          "y": 5,
+          "width": 3,
+          "height": 82,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            53,
+            73,
+            87,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            101,
+            5
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 146,
+        "name": "Window / sill",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 87,
+          "width": 192,
+          "height": 4,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            105,
+            139,
+            152,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            0,
+            87
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      }
+    ]
+  },
+  {
+    "key": "seating",
+    "name": "Furniture / table and chairs",
+    "width": 96,
+    "height": 40,
+    "layer": "BACKGROUND",
+    "brushes": [
+      {
+        "id": 147,
+        "name": "chair right",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 0,
+          "width": 32,
+          "height": 32,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "TEXTURE",
+          "source": "library:org.unitystation.clown",
+          "path": "props/furniture/chair_east.png"
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 148,
+        "name": "chair left",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 59,
+          "y": 1,
+          "width": 32,
+          "height": 32,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "TEXTURE",
+          "source": "library:org.unitystation.clown",
+          "path": "props/furniture/chair_west.png"
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            59,
+            1
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 149,
+        "name": "crystal table",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 37,
+          "y": 8,
+          "width": 32,
+          "height": 24,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "TEXTURE",
+          "source": "library:org.unitystation.clown",
+          "path": "props/structures/glass_table.png"
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            5,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 150,
+        "name": "crystal table copy",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 16,
+          "y": 8,
+          "width": 32,
+          "height": 24,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "TEXTURE",
+          "source": "library:org.unitystation.clown",
+          "path": "props/structures/glass_table.png"
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            -16,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      }
+    ]
+  },
+  {
+    "key": "workstation",
+    "name": "Furniture / workstation",
+    "width": 64,
+    "height": 40,
+    "layer": "BACKGROUND",
+    "brushes": [
+      {
+        "id": 151,
+        "name": "Desk",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 8,
+          "width": 32,
+          "height": 32,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "TEXTURE",
+          "source": "library:org.unitystation.clown",
+          "path": "props/structures/glass_table.png"
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            0,
+            8
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 152,
+        "name": "Terminal",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 0,
+          "width": 32,
+          "height": 32,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "TEXTURE",
+          "source": "library:org.unitystation.clown",
+          "path": "props/equipment/computer_south.png"
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 153,
+        "name": "Chair",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 32,
+          "y": 8,
+          "width": 32,
+          "height": 32,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "TEXTURE",
+          "source": "library:org.unitystation.clown",
+          "path": "props/furniture/office_chair_west.png"
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            32,
+            8
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      }
+    ]
+  },
+  {
+    "key": "medical",
+    "name": "Furniture / medical bay",
+    "width": 96,
+    "height": 40,
+    "layer": "BACKGROUND",
+    "brushes": [
+      {
+        "id": 154,
+        "name": "Bed",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 8,
+          "width": 32,
+          "height": 32,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "TEXTURE",
+          "source": "library:org.unitystation.clown",
+          "path": "props/furniture/bed.png"
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            0,
+            8
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 155,
+        "name": "Bed",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 32,
+          "y": 8,
+          "width": 32,
+          "height": 32,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "TEXTURE",
+          "source": "library:org.unitystation.clown",
+          "path": "props/furniture/bed.png"
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            32,
+            8
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 156,
+        "name": "Sink",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 64,
+          "y": 8,
+          "width": 32,
+          "height": 32,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "TEXTURE",
+          "source": "library:org.unitystation.clown",
+          "path": "props/furniture/sink.png"
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            64,
+            8
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      }
+    ]
+  },
+  {
+    "key": "lounge",
+    "name": "Furniture / lounge",
+    "width": 96,
+    "height": 40,
+    "layer": "BACKGROUND",
+    "brushes": [
+      {
+        "id": 157,
+        "name": "Sofa",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 8,
+          "width": 32,
+          "height": 32,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "TEXTURE",
+          "source": "library:org.unitystation.clown",
+          "path": "props/furniture/sofa_south.png"
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            0,
+            8
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 158,
+        "name": "Sofa",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 32,
+          "y": 8,
+          "width": 32,
+          "height": 32,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "TEXTURE",
+          "source": "library:org.unitystation.clown",
+          "path": "props/furniture/sofa_south.png"
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            32,
+            8
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 159,
+        "name": "Plant",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 64,
+          "y": 8,
+          "width": 32,
+          "height": 32,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "TEXTURE",
+          "source": "library:org.unitystation.clown",
+          "path": "props/clown/banana_plant.png"
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            64,
+            8
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      }
+    ]
+  },
+  {
+    "key": "railing",
+    "name": "Decoration / safety rail",
+    "width": 96,
+    "height": 40,
+    "layer": "BACKGROUND",
+    "brushes": [
+      {
+        "id": 160,
+        "name": "Rail / lower rail",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 28,
+          "width": 96,
+          "height": 3,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            76,
+            101,
+            115,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            0,
+            28
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 161,
+        "name": "Rail / post",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 0,
+          "width": 4,
+          "height": 40,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            91,
+            114,
+            128,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 162,
+        "name": "Rail / post",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 92,
+          "y": 0,
+          "width": 4,
+          "height": 40,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            91,
+            114,
+            128,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            92,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 163,
+        "name": "Rail / upper rail",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 0,
+          "width": 96,
+          "height": 4,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            128,
+            151,
+            160,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      }
+    ]
+  },
+  {
+    "key": "hazard",
+    "name": "Decoration / hazard strip",
+    "width": 128,
+    "height": 8,
+    "layer": "BACKGROUND",
+    "brushes": [
+      {
+        "id": 164,
+        "name": "Stripe base",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 0,
+          "width": 128,
+          "height": 8,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            40,
+            48,
+            56,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 165,
+        "name": "Stripe",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 0,
+          "width": 8,
+          "height": 8,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            238,
+            209,
+            124,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 166,
+        "name": "Stripe",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 16,
+          "y": 0,
+          "width": 8,
+          "height": 8,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            238,
+            209,
+            124,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            16,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 167,
+        "name": "Stripe",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 32,
+          "y": 0,
+          "width": 8,
+          "height": 8,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            238,
+            209,
+            124,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            32,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 168,
+        "name": "Stripe",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 48,
+          "y": 0,
+          "width": 8,
+          "height": 8,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            238,
+            209,
+            124,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            48,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 169,
+        "name": "Stripe",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 64,
+          "y": 0,
+          "width": 8,
+          "height": 8,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            238,
+            209,
+            124,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            64,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 170,
+        "name": "Stripe",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 80,
+          "y": 0,
+          "width": 8,
+          "height": 8,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            238,
+            209,
+            124,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            80,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 171,
+        "name": "Stripe",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 96,
+          "y": 0,
+          "width": 8,
+          "height": 8,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            238,
+            209,
+            124,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            96,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      },
+      {
+        "id": 172,
+        "name": "Stripe",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 112,
+          "y": 0,
+          "width": 8,
+          "height": 8,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "COLOR",
+          "rgba": [
+            238,
+            209,
+            124,
+            255
+          ]
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            112,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      }
+    ]
+  },
+  {
+    "key": "space",
+    "name": "Backdrop / space",
+    "width": 128,
+    "height": 128,
+    "layer": "BACKGROUND",
+    "brushes": [
+      {
+        "id": 173,
+        "name": "Space",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 0,
+          "width": 128,
+          "height": 128,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "TEXTURE",
+          "source": "library:org.unitystation.clown",
+          "path": "background/space.png"
+        },
+        "projection": {
+          "mode": "REPEAT",
+          "origin": [
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      }
+    ]
+  },
+  {
+    "key": "capture",
+    "name": "Marker / capture A (visual)",
+    "width": 176,
+    "height": 120,
+    "layer": "BACKGROUND",
+    "brushes": [
+      {
+        "id": 174,
+        "name": "Capture",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 0,
+          "width": 176,
+          "height": 120,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "TEXTURE",
+          "source": "library:org.unitystation.clown",
+          "path": "signs/control_emblem.png"
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      }
+    ]
+  },
+  {
+    "key": "blue_spawn",
+    "name": "Marker / blue spawn (visual)",
+    "width": 240,
+    "height": 32,
+    "layer": "BACKGROUND",
+    "brushes": [
+      {
+        "id": 175,
+        "name": "stamp_blue_spawn / sign",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 0,
+          "width": 240,
+          "height": 32,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "TEXTURE",
+          "source": "library:org.unitystation.clown",
+          "path": "signs/stamp_blue_spawn.png"
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      }
+    ]
+  },
+  {
+    "key": "red_spawn",
+    "name": "Marker / red spawn (visual)",
+    "width": 240,
+    "height": 32,
+    "layer": "BACKGROUND",
+    "brushes": [
+      {
+        "id": 176,
+        "name": "stamp_red_spawn / sign",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 0,
+          "width": 240,
+          "height": 32,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "TEXTURE",
+          "source": "library:org.unitystation.clown",
+          "path": "signs/stamp_red_spawn.png"
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      }
+    ]
+  },
+  {
+    "key": "low_gravity",
+    "name": "Marker / low gravity (visual)",
+    "width": 240,
+    "height": 32,
+    "layer": "BACKGROUND",
+    "brushes": [
+      {
+        "id": 177,
+        "name": "stamp_low_gravity / sign",
+        "shape": {
+          "kind": "RECTANGLE",
+          "x": 0,
+          "y": 0,
+          "width": 240,
+          "height": 32,
+          "rotation": 0
+        },
+        "material": {
+          "kind": "TEXTURE",
+          "source": "library:org.unitystation.clown",
+          "path": "signs/stamp_low_gravity.png"
+        },
+        "projection": {
+          "mode": "STRETCH",
+          "origin": [
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1
+          ],
+          "rotation": 0
+        },
+        "visible": true
+      }
+    ]
+  }
+]

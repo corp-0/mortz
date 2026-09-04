@@ -63,8 +63,12 @@ public partial class MapEditorMaterialPicker : VBoxContainer
         ArgumentNullException.ThrowIfNull(material);
         _applying = true;
         _material = material;
+        _kind.SetItemDisabled(2, material is not MapEditorRasterMaterial);
         switch (material)
         {
+            case MapEditorRasterMaterial:
+                _kind.Select(2);
+                break;
             case MapEditorTextureMaterial texture:
                 _lastTexture = texture.Reference;
                 _kind.Select(0);
@@ -85,7 +89,7 @@ public partial class MapEditorMaterialPicker : VBoxContainer
     private void SelectKind(long index)
     {
         UpdateKindVisibility();
-        if (_applying)
+        if (_applying || index == 2)
             return;
         if (index == 1)
         {

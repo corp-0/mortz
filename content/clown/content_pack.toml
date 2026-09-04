@@ -1,0 +1,6 @@
+id = "org.unitystation.clown"
+name = "UnityStation"
+version = "1.0.0"
+author = "Gilles"
+description = "Unitystation stuff"
+load_order = 1

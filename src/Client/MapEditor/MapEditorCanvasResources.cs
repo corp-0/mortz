@@ -53,6 +53,15 @@ public sealed class MapEditorCanvasResources : IDisposable
     public (MapEditorTextureData Data, ImageTexture Texture, bool Missing) Preview(
         MapEditorBrushMaterial material)
     {
+        if (material is MapEditorRasterMaterial raster)
+        {
+            if (!_previewTextures.TryGetValue(material, out ImageTexture? rasterTexture))
+            {
+                rasterTexture = CreateTexture(raster.Texture);
+                _previewTextures.Add(material, rasterTexture);
+            }
+            return (raster.Texture, rasterTexture, false);
+        }
         if (material is MapEditorSolidColorMaterial solid)
         {
             MapEditorTextureData solidData = MapEditorTextureData.Solid(solid.Color);

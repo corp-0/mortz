@@ -121,6 +121,13 @@ public partial class MapEditorCanvas(IMapEditorTextureResolver previewResolver) 
     public MapEditorZoneId? SelectedZoneId => _interaction.SelectedZoneId;
     public MapEditorSpawnId? SelectedSpawnId => _interaction.SelectedSpawnId;
     public MapEditorBrushId? SelectedBrushId => _interaction.SelectedBrushId;
+    public IReadOnlySet<MapEditorBrushId> SelectedBrushIds => _interaction.SelectedBrushIds;
+
+    public void SelectAllBrushes()
+    {
+        Tool = MapEditorTool.SELECT;
+        _interaction.SelectAllBrushes();
+    }
     public MapEditorStampId? SelectedStampId => _selectedStamp?.Id;
     public bool HasCancellableInteraction => _interaction.Dragging || _interaction.PolygonCreating;
     public bool IsCreatingPolygon => _interaction.PolygonCreating;
@@ -325,7 +332,6 @@ public partial class MapEditorCanvas(IMapEditorTextureResolver previewResolver) 
     {
         ArgumentNullException.ThrowIfNull(stamp);
         _selectedStamp = stamp;
-        SelectLayer(stamp.Brush.Layer);
         Tool = MapEditorTool.STAMP;
         UpdateStampPreview(_cursorMapPosition);
     }
@@ -350,8 +356,11 @@ public partial class MapEditorCanvas(IMapEditorTextureResolver previewResolver) 
 
     public void SelectLayer(MapEditorLayer layer)
     {
+        CancelPointerInteraction();
         ResetOverlapCycle();
         _interaction.SelectLayer(layer);
+        EnsureToolOverlayVisible(Tool);
+        UpdateStampPreview(_cursorMapPosition);
         RefreshBakedTextures(null);
         QueueRedraw();
     }
@@ -493,7 +502,7 @@ public partial class MapEditorCanvas(IMapEditorTextureResolver previewResolver) 
             _stampPreview ?? _inspectorBrushPreview,
             _interaction.PolygonCreating, ShowBackground, ShowSolid, ShowDestructible,
             ShowZones, ShowSpawns, ShowGrid, ShowBrushOutlines, _cursorVisible,
-            _cursorMapPosition));
+            _cursorMapPosition, SelectedBrushIds));
     }
 
     public override void _GuiInput(InputEvent @event)
@@ -529,6 +538,16 @@ public partial class MapEditorCanvas(IMapEditorTextureResolver previewResolver) 
 
                     if (button.Pressed)
                     {
+                        if (button.ShiftPressed && Tool == MapEditorTool.SELECT &&
+                            EditDomain == MapEditorEditDomain.GEOMETRY)
+                        {
+                            _pointerPressLocal = button.Position;
+                            MapEditorBrush? hit = PickBrush(LocalToMap(button.Position), button.AltPressed);
+                            if (hit != null)
+                                _interaction.ToggleBrushSelection(hit.Id);
+                            AcceptEvent();
+                            return;
+                        }
                         _pointerInteractionActive = true;
                         _pointerPressLocal = button.Position;
                         BeginDrag(LocalToMap(button.Position), button.AltPressed);
@@ -990,7 +1009,8 @@ public partial class MapEditorCanvas(IMapEditorTextureResolver previewResolver) 
             }
             MapEditorStamp stamp = _selectedStamp;
             _stampStroke.Add(MapEditorStampGeometry.Place(stamp, cell,
-                UniqueStampPlacementName(stamp.Name)));
+                UniqueStampPlacementName(stamp.Name)) with
+            { Layer = SelectedLayer });
             if (_selectedStamp == null || Tool != MapEditorTool.STAMP)
                 return;
         }
@@ -1262,7 +1282,8 @@ public partial class MapEditorCanvas(IMapEditorTextureResolver previewResolver) 
         }
         MapEditorPoint snapped = MapEditorStampGeometry.SnapToCell(MapPoint(point), Snap);
         _stampPreview = MapEditorStampGeometry.Place(_selectedStamp, snapped,
-            _selectedStamp.Name);
+            _selectedStamp.Name) with
+        { Layer = SelectedLayer };
         QueueRedraw();
     }
 

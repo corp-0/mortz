@@ -1,0 +1,36 @@
+name = "ClownStation"
+suggested_players = 4
+[[spawn_points]]
+x = 56
+y = 704
+team = "blue"
+[[spawn_points]]
+x = 112
+y = 704
+team = "blue"
+[[spawn_points]]
+x = 2248
+y = 704
+team = "red"
+[[spawn_points]]
+x = 2192
+y = 704
+team = "red"
+[[zones]]
+name = "spess_control"
+tags = ["control"]
+[zones.shape]
+type = "rect"
+x = 896
+y = 320
+width = 512
+height = 384
+rotation = 0.0
+[[zones.effects]]
+stat = "gravity"
+op = "mul"
+value = 0.0
+[[zones.effects]]
+stat = "mortar_gravity"
+op = "mul"
+value = 0.0

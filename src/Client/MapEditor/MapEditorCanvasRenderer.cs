@@ -31,7 +31,8 @@ public sealed record MapEditorCanvasRenderFrame(
     bool ShowGrid,
     bool ShowBrushOutlines,
     bool CursorVisible,
-    Vector2 CursorMapPosition);
+    Vector2 CursorMapPosition,
+    IReadOnlySet<MapEditorBrushId>? SelectedBrushIds = null);
 
 public sealed class MapEditorCanvasRenderer(
     MapEditorCanvas canvas,
@@ -283,7 +284,8 @@ public sealed class MapEditorCanvasRenderer(
             if (!displayed.Visible ||
                 !MapEditorGeometry.Bounds(displayed.Shape).Intersects(visibleBounds))
                 continue;
-            DrawBrush(displayed.Shape, brush.Id == _frame.SelectedBrushId,
+            DrawBrush(displayed.Shape, _frame.SelectedBrushIds?.Contains(brush.Id) ??
+                brush.Id == _frame.SelectedBrushId,
                 _frame.EditDomain == MapEditorEditDomain.GEOMETRY);
         }
 

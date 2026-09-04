@@ -95,6 +95,10 @@ public sealed class MapEditorLayerCompositor(IMapEditorTextureResolver textures)
             {
                 textureData = MapEditorTextureData.Solid(solid.Color);
             }
+            else if (brush.Material is MapEditorRasterMaterial raster)
+            {
+                textureData = raster.Texture;
+            }
             else if (brush.Material is MapEditorTextureMaterial texture)
             {
                 MapEditorTextureResolution resolution = _textures.Resolve(texture.Reference);

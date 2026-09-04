@@ -1,8 +1,10 @@
 [gd_scene format=3 uid="uid://dde46auxnoxf6"]
 
-[ext_resource type="Script" uid="uid://dwu4xy3g2nvli" path="res://src/Client/MapEditor/MapEditorToolbar.cs" id="1_ol30i"]
+[ext_resource type="Script" path="res://src/Client/MapEditor/MapEditorToolbar.cs" id="1_ol30i"]
 
-[node name="Toolbar" type="HBoxContainer" unique_id=1324944853 node_paths=PackedStringArray("_geometryDomain", "_zonesDomain", "_spawnsDomain", "_selectTool", "_zoneRectangleTool", "_zoneEllipseTool", "_spawnTool", "_brushRectangleTool", "_brushEllipseTool", "_brushPolygonTool")]
+[node name="Toolbar" type="HBoxContainer" unique_id=1324944853 node_paths=PackedStringArray("_geometryDomain", "_zonesDomain", "_spawnsDomain", "_selectTool", "_zoneRectangleTool", "_zoneEllipseTool", "_spawnTool", "_brushRectangleTool", "_brushEllipseTool", "_brushPolygonTool", "_workingLayer", "_selectAll", "_rasterize")]
+offset_right = 1000.0
+offset_bottom = 40.0
 theme_override_constants/separation = 6
 script = ExtResource("1_ol30i")
 _geometryDomain = NodePath("GeometryDomain")
@@ -15,6 +17,9 @@ _spawnTool = NodePath("Spawn")
 _brushRectangleTool = NodePath("RectangleBrush")
 _brushEllipseTool = NodePath("EllipseBrush")
 _brushPolygonTool = NodePath("PolygonBrush")
+_workingLayer = NodePath("WorkingLayer")
+_selectAll = NodePath("SelectAll")
+_rasterize = NodePath("Rasterize")
 
 [node name="GeometryDomain" type="Button" parent="." unique_id=1637970858]
 layout_mode = 2
@@ -85,3 +90,27 @@ layout_mode = 2
 accessibility_name = "Polygon brush"
 toggle_mode = true
 text = "Polygon"
+
+[node name="WorkingLayer" type="OptionButton" parent="." unique_id=881851930]
+layout_mode = 2
+tooltip_text = "Working layer for drawing, stamps, and selection."
+accessibility_name = "Working layer"
+selected = 0
+item_count = 3
+popup/item_0/text = "Background"
+popup/item_0/id = 0
+popup/item_1/text = "Solid"
+popup/item_1/id = 1
+popup/item_2/text = "Destructible"
+popup/item_2/id = 2
+
+[node name="SelectAll" type="Button" parent="." unique_id=197308546]
+layout_mode = 2
+tooltip_text = "Select all visible objects on the working layer. Shift-click objects to add or remove them from the selection."
+text = "Select all"
+
+[node name="Rasterize" type="Button" parent="." unique_id=1216953142]
+layout_mode = 2
+tooltip_text = "Combine selected objects into one raster image. Undo restores the original editable shapes."
+disabled = true
+text = "Rasterize"

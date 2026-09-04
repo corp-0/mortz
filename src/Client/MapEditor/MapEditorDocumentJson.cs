@@ -130,6 +130,10 @@ public static class MapEditorDocumentJson
         writer.WriteStartObject();
         switch (brush.Material)
         {
+            case MapEditorRasterMaterial raster:
+                writer.WriteString("kind", "RASTER");
+                writer.WriteBase64String("png", raster.Image.Png.Span);
+                break;
             case MapEditorTextureMaterial texture:
                 writer.WriteString("kind", "TEXTURE");
                 writer.WriteString("source", texture.Reference.Source);
@@ -276,6 +280,17 @@ public static class MapEditorDocumentJson
                 throw new JsonException("material rgba must contain four bytes.");
             return new MapEditorSolidColorMaterial(
                 new MapEditorColor(rgba[0], rgba[1], rgba[2], rgba[3]));
+        }
+        if (kind == "RASTER")
+        {
+            try
+            {
+                return new MapEditorRasterMaterial(Required(element, "png").GetBytesFromBase64());
+            }
+            catch (Exception exception) when (exception is ArgumentException or FormatException)
+            {
+                throw new JsonException(exception.Message, exception);
+            }
         }
         throw new JsonException($"Unknown material kind '{kind}'.");
     }
