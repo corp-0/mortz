@@ -20,6 +20,15 @@ public partial class MapEditorStampLibrary : GridContainer
     public event Action<MapEditorStamp>? StampSelected;
     public event Action<MapEditorStampId>? StampRemoveRequested;
 
+    public void FitColumns(float availableWidth)
+    {
+        if (_saveCard == null)
+            return;
+        float cardWidth = _saveCard.GetCombinedMinimumSize().X;
+        int separation = GetThemeConstant("h_separation");
+        Columns = Math.Max(1, (int)((availableWidth + separation) / (cardWidth + separation)));
+    }
+
     public override void _ExitTree()
     {
         _previewResources.Dispose();

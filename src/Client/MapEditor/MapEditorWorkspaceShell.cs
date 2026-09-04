@@ -18,7 +18,7 @@ public partial class MapEditorWorkspaceShell : Control
     public const float MIN_INLINE_DOCK_WIDTH = 300f;
     public const float MAX_INLINE_DOCK_WIDTH = 440f;
     public const float COMPACT_WIDTH = 1000f;
-    public const float STAMP_DOCK_HEIGHT = 184f;
+    public const float STAMP_DOCK_HEIGHT = 272f;
 
     [Export] private VBoxContainer _chrome = null!;
     [Export] private HBoxContainer _toolRow = null!;
@@ -51,8 +51,7 @@ public partial class MapEditorWorkspaceShell : Control
     [Export] private Button _propertiesClose = null!;
     [Export] private Button _dockResize = null!;
     [Export] private Button _propertiesResize = null!;
-    [Export] private PackedScene _stampDockScene = null!;
-    private MapEditorStampDock _stampDock = null!;
+    [Export] private MapEditorStampDock _stampDock = null!;
     private MapEditorInspectorKind _inspectorKind;
     private Control? _focusBeforeDrawer;
     private bool _compact;
@@ -87,9 +86,6 @@ public partial class MapEditorWorkspaceShell : Control
     public override void _Ready()
     {
         CaptureSceneLayout();
-        _stampDock = _stampDockScene.Instantiate<MapEditorStampDock>();
-        _stampDock.Visible = false;
-        AddChild(_stampDock);
         _drawerOpen.Pressed += ToggleDrawer;
         _drawerClose.Pressed += CloseDrawer;
         _propertiesOpen.Pressed += ToggleProperties;
@@ -473,14 +469,17 @@ public partial class MapEditorWorkspaceShell : Control
 
         _canvasHost.OffsetLeft = 0;
         _canvasHost.OffsetRight = 0;
-        _canvasHost.OffsetBottom = -46 - (_stampOpenState ? STAMP_DOCK_HEIGHT + 8 : 0);
+        float stampHeight = MathF.Min(STAMP_DOCK_HEIGHT, layoutSize.Y * 0.4f);
+        _canvasHost.OffsetBottom = -46 - (_stampOpenState ? stampHeight + 8 : 0);
 
-        float stampLeft = _compact ? 16 : _wideObjectDockLeft + objectDockWidth + 8;
-        float stampRight = _compact ? layoutSize.X - 16 : propertiesLeft - 8;
+        float stampLeft = !_compact && _objectDock.Visible
+            ? _wideObjectDockLeft + objectDockWidth + 8
+            : 8;
+        float stampRight = !_compact && _propertiesDock.Visible ? propertiesLeft - 8 : -8;
         _stampDock.SetAnchorsPreset(LayoutPreset.BottomWide);
         _stampDock.OffsetLeft = stampLeft;
         _stampDock.OffsetRight = stampRight;
-        _stampDock.OffsetTop = -46 - STAMP_DOCK_HEIGHT;
+        _stampDock.OffsetTop = -46 - stampHeight;
         _stampDock.OffsetBottom = -46;
         _stampDock.Visible = _stampOpenState;
 

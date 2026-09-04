@@ -5,15 +5,26 @@ namespace Mortz.Client.MapEditor;
 [GlobalClass]
 public partial class MapEditorStampDock : ScrollContainer
 {
-    [Export] private PackedScene _libraryScene = null!;
+    [Export] private MapEditorStampLibrary _library = null!;
 
-    public MapEditorStampLibrary Library { get; private set; } = null!;
+    public MapEditorStampLibrary Library => _library;
 
     public override void _Ready()
     {
-        if (_libraryScene == null)
-            throw new InvalidOperationException("StampDock requires its library scene binding.");
-        Library = _libraryScene.Instantiate<MapEditorStampLibrary>();
-        AddChild(Library);
+        Resized += FitLibrary;
+        _library.MinimumSizeChanged += FitLibrary;
+        FitLibrary();
+    }
+
+    public override void _ExitTree()
+    {
+        Resized -= FitLibrary;
+        _library.MinimumSizeChanged -= FitLibrary;
+    }
+
+    private void FitLibrary()
+    {
+        // Reserve the scrollbar width even before overflow so columns don't oscillate.
+        _library.FitColumns(Size.X - GetVScrollBar().GetCombinedMinimumSize().X);
     }
 }

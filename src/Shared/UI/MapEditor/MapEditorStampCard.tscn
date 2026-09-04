@@ -1,11 +1,14 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene format=3]
 
 [ext_resource type="Script" path="res://src/Client/MapEditor/MapEditorStampCard.cs" id="1_s5n6u"]
 [ext_resource type="PackedScene" path="res://src/Shared/UI/MapEditor/MapEditorStampPreview.tscn" id="2_preview"]
+[ext_resource type="Script" path="res://src/Client/MapEditor/MapEditorStampPreview.cs" id="3_bl7wk"]
 
 [node name="StampCard" type="Button" unique_id=1170640696 node_paths=PackedStringArray("_preview", "_nameLabel", "_detailLabel", "_deleteButton")]
-custom_minimum_size = Vector2(170, 150)
+custom_minimum_size = Vector2(180, 128)
 clip_contents = true
+offset_right = 180.0
+offset_bottom = 128.0
 size_flags_horizontal = 3
 text_overrun_behavior = 3
 script = ExtResource("1_s5n6u")
@@ -14,27 +17,31 @@ _nameLabel = NodePath("Name")
 _detailLabel = NodePath("Detail")
 _deleteButton = NodePath("Delete")
 
-[node name="Preview" parent="." unique_id=125732618 instance=ExtResource("2_preview")]
+[node name="Preview" type="Control" parent="." unique_id=125732618 instance=ExtResource("2_preview")]
+texture_filter = 1
+custom_minimum_size = Vector2(0, 64)
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
 offset_left = 6.0
 offset_top = 6.0
 offset_right = -6.0
-offset_bottom = 106.0
+offset_bottom = 86.0
 grow_horizontal = 2
+mouse_filter = 2
+script = ExtResource("3_bl7wk")
 
 [node name="Name" type="Label" parent="." unique_id=2142370204]
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
 offset_left = 8.0
-offset_top = 111.0
-offset_right = -38.0
-offset_bottom = 131.0
+offset_top = 88.0
+offset_right = -8.0
+offset_bottom = 108.0
 grow_horizontal = 2
-mouse_filter = 2
 text = "Stamp name"
+clip_text = true
 text_overrun_behavior = 3
 
 [node name="Detail" type="Label" parent="." unique_id=707109801]
@@ -42,14 +49,14 @@ layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
 offset_left = 8.0
-offset_top = 130.0
+offset_top = 108.0
 offset_right = -8.0
-offset_bottom = 146.0
+offset_bottom = 126.0
 grow_horizontal = 2
-mouse_filter = 2
-theme_override_colors/font_color = Color(0.62, 0.66, 0.73, 1)
 theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.62, 0.66, 0.73, 1)
 text = "Layer · Shape"
+clip_text = true
 text_overrun_behavior = 3
 
 [node name="Delete" type="Button" parent="." unique_id=1853357769]
