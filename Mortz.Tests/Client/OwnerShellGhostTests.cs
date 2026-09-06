@@ -1,8 +1,8 @@
+using Mortz.Client.Replication;
 using Mortz.Client.Views;
-using Mortz.Core.Replication;
 using Mortz.Core.Sim;
 using Mortz.Core.Terrain;
-using Mortz.Tests.Core;
+using Mortz.Runtime.Tests.Core;
 using Xunit;
 
 namespace Mortz.Tests.Client;

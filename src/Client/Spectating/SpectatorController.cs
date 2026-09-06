@@ -4,9 +4,9 @@ using Godot;
 using Mortz.Client.Chat;
 using Mortz.Client.Match;
 using Mortz.Client.Players;
+using Mortz.Client.Replication;
 using Mortz.Core.Match.Participation;
 using Mortz.Core.Match.Scoring;
-using Mortz.Core.Replication;
 using Mortz.Core.Sim;
 using Mortz.Net;
 

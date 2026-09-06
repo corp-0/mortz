@@ -1,8 +1,8 @@
 using Godot;
 using Mortz.Content;
 using Mortz.Core.Match.Teams;
-using Mortz.Core.Net;
 using Mortz.Core.Sim.Modifiers;
+using Mortz.Protocol.Net;
 using Mortz.Shared;
 using Xunit;
 

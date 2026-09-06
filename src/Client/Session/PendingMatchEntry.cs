@@ -1,5 +1,5 @@
 using Mortz.Core.Match.Participation;
-using Mortz.Core.Net;
+using Mortz.Protocol.Net;
 using Mortz.Shared;
 
 namespace Mortz.Client.Session;

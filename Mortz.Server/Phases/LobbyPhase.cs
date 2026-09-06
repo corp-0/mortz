@@ -1,3 +1,4 @@
+using Mortz.Core.Features;
 using Mortz.Core.Match.Teams;
 using Mortz.Server.Admin;
 using Mortz.Server.Chat;
@@ -16,7 +17,7 @@ public sealed class LobbyPhase : ServerPhase
     private readonly Roster _roster;
     private readonly ILogger _log;
     private readonly IPhaseTransitionRequests _transitions;
-    private readonly object[] _services;
+    public override FeatureScope Features { get; } = new();
 
     private LobbyPhase(Roster roster, SettingsService settings, AdminService admin,
         ChatService chat, IServerLink link, ILogger log, IPhaseTransitionRequests transitions)
@@ -30,12 +31,13 @@ public sealed class LobbyPhase : ServerPhase
         LobbyService lobby = new(_session, Apply);
         LobbySettingsService lobbySettings = new(
             settings, admin, chat, _session, Apply, log);
-        _services = [lobby, lobbySettings];
+        Features.Register(lobby);
+        Features.Register(lobbySettings);
+        Features.Start();
     }
 
     public override ServerPhaseKind Kind => ServerPhaseKind.LOBBY;
 
-    public override IReadOnlyList<object> Services => _services;
 
     public bool CanStart => _session.CanStart;
 

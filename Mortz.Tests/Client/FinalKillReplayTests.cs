@@ -8,14 +8,15 @@ using Mortz.Client.Players;
 using Mortz.Client.Replay;
 using Mortz.Client.Views;
 using Mortz.Core.Match.Configuration;
-using Mortz.Core.Net.Match;
-using Mortz.Core.Replication;
+using Mortz.Core.Match.Participation;
 using Mortz.Core.Sim;
 using Mortz.Core.Sim.Modifiers;
 using Mortz.Core.Terrain;
 using Mortz.Net;
+using Mortz.Protocol.Net.Match;
+using Mortz.Protocol.Replication;
+using Mortz.Runtime.Tests.Net;
 using Mortz.Shared;
-using Mortz.Tests.Net;
 using Xunit;
 
 namespace Mortz.Tests.Client;
@@ -45,8 +46,11 @@ public class FinalKillReplayTests : NodeServiceTest
             FinalKillReplay replay = shell.GetNode<FinalKillReplay>("FinalKillReplay");
             Camera2D replayCamera = shell.GetNode<Camera2D>("ReplayCamera");
             Sprite2D replayTerrain = map.GetNode<Sprite2D>("ReplayTerrain");
-            Router.Add(effects);
-            Router.Add(replay);
+            using ClientMatchRuntime runtime = Runtime(map, new ClientPlayers());
+            effects.FakeDependency(runtime);
+            replay.FakeDependency(runtime);
+            effects.OnResolved();
+            replay.OnResolved();
             try
             {
                 new FinalKillMsg(
@@ -65,8 +69,7 @@ public class FinalKillReplayTests : NodeServiceTest
             }
             finally
             {
-                Router.Remove(replay);
-                Router.Remove(effects);
+                effects.OnExitTree();
                 ClientClock.Reset();
             }
         }
@@ -86,7 +89,7 @@ public class FinalKillReplayTests : NodeServiceTest
             PresentedMatchFrame first = Frame(0, offset: 0);
             fixture.Replay.Record(first);
             fixture.Replay.Record(Frame(45, offset: 45));
-            fixture.Map.PredictCarve(99, new Vector2(IMPACT_X, IMPACT_Y));
+            fixture.Map.Terrain.Predict(99, new Vec2(IMPACT_X, IMPACT_Y));
 
             fixture.FinalKill.Broadcast(Router);
             Assert.True(fixture.Replay.ConsumeFrame(0));
@@ -121,7 +124,7 @@ public class FinalKillReplayTests : NodeServiceTest
         {
             fixture.Replay.Record(Frame(0, offset: 0));
             fixture.Replay.Record(Frame(45, offset: 45));
-            fixture.Map.PredictCarve(99, new Vector2(IMPACT_X, IMPACT_Y));
+            fixture.Map.Terrain.Predict(99, new Vec2(IMPACT_X, IMPACT_Y));
             Node2D originalLiveEffects = fixture.Effects.GetNode<Node2D>("LiveEffects");
             int liveSoundCount = fixture.Sfx.PlayAtPositions.Count;
 
@@ -161,7 +164,7 @@ public class FinalKillReplayTests : NodeServiceTest
             Assert.Equal(replayEffectCount, VisibleEffectNodes(fixture.Effects).Count);
             Assert.Equal(liveSoundCount + 2, fixture.Sfx.PlayAtPositions.Count);
 
-            fixture.Map.PredictCarve(100, new Vector2(IMPACT_X, IMPACT_Y));
+            fixture.Map.Terrain.Predict(100, new Vec2(IMPACT_X, IMPACT_Y));
             Assert.Equal(replayEffectCount + 1, VisibleEffectNodes(fixture.Effects).Count);
             Assert.Equal(liveSoundCount + 3, fixture.Sfx.PlayAtPositions.Count);
         }
@@ -180,7 +183,7 @@ public class FinalKillReplayTests : NodeServiceTest
         FakeNetwork network = new() { LocalPeerId = LOCAL_ID };
         RecordingSfx sfx = new();
         ClientPlayers clientPlayers = new();
-        clientPlayers.FakeDependency(Router);
+        RegisterRuntime(clientPlayers);
         clientPlayers.OpenMatch(new MatchConfig());
 
         EffectsSpawner effects = Take<EffectsSpawner>(shell, "Effects");
@@ -193,14 +196,15 @@ public class FinalKillReplayTests : NodeServiceTest
 
         effects.FakeDependency(map);
         effects.FakeDependency<ISfx>(sfx);
-        effects.FakeDependency(Router);
+        ClientMatchRuntime runtime = Runtime(map, clientPlayers);
+        effects.FakeDependency(runtime);
         players.FakeDependency<INetwork>(network);
         players.FakeDependency<ISfx>(sfx);
         players.FakeDependency(clientPlayers);
         mortars.FakeDependency<ISfx>(sfx);
         replay.FakeDependency<INetwork>(network);
         replay.FakeDependency(map);
-        replay.FakeDependency(Router);
+        replay.FakeDependency(runtime);
         map.FakeDependency<INetwork>(network);
         map.FakeDependency(Router);
 
@@ -214,7 +218,7 @@ public class FinalKillReplayTests : NodeServiceTest
         Host(mortars);
         Host(matchCamera);
         Host(replayCamera);
-        Host(clientPlayers);
+
         Host(map);
 
         FinalKillMsg final = new(
@@ -226,10 +230,18 @@ public class FinalKillReplayTests : NodeServiceTest
             DeathY: 18,
             ImpactX: IMPACT_X,
             ImpactY: IMPACT_Y,
-            BlastRadius: 2);
+            BlastRadius: 2, ShellId: 4, SpawnSeq: 99);
         return new SuccessfulReplay(
             shell, map, effects, players, mortars, ropes, replay,
             replayCamera, matchCamera, sfx, final);
+    }
+
+    private ClientMatchRuntime Runtime(GameMap map, ClientPlayers players)
+    {
+        ClientMatchRuntime runtime = new(new ClientMatchState(0, MatchParticipation.Active),
+            players, map.Mask, new MatchConfig(), MapZones.None, LOCAL_ID, Router, _ => { }, () => 0);
+        OwnRuntime(runtime);
+        return runtime;
     }
 
     private static PresentedMatchFrame Frame(float tick, float offset) => new(
@@ -310,8 +322,7 @@ public class FinalKillReplayTests : NodeServiceTest
                 (_, _) => false,
                 (_, _) => withDestructibleTerrain),
         };
-        map.Initialize(package, new MatchConfig().Combat,
-            TerrainSyncEncoding.CARVE_LOG, TerrainSync.SerializeCarves([]));
+        map.Initialize(package, new ClientTerrain(package.BuildMask(), 12, LOCAL_ID, () => 0));
         return map;
     }
 

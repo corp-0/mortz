@@ -1,6 +1,6 @@
 using Mortz.Content;
-using Mortz.Core.Net;
-using Mortz.Core.Net.Names;
+using Mortz.Protocol.Net;
+using Mortz.Protocol.Net.Names;
 using Mortz.Shared.Logging;
 using Serilog;
 

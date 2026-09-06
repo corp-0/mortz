@@ -1,17 +1,22 @@
-[gd_scene format=3 uid="uid://oagrjsoi773j"]
+[gd_scene format=3]
 
-[ext_resource type="Script" uid="uid://d2mvuyqfyv0a7" path="res://src/Client/Debug/AnnouncementsDebug.cs" id="1_host"]
-[ext_resource type="Script" uid="uid://ooyj4qa2sesu" path="res://src/Client/Players/ClientPlayers.cs" id="2_roster"]
-[ext_resource type="Script" uid="uid://d2se7ahca8huk" path="res://src/Client/Admin/ClientAdmin.cs" id="3_admin"]
-[ext_resource type="Script" uid="uid://b7xyv1173ixe1" path="res://src/Client/Chat/ClientChat.cs" id="4_chat"]
-[ext_resource type="Script" uid="uid://b46f55d4mmx7l" path="res://src/Client/Audio/Sfx.cs" id="5_sfx"]
-[ext_resource type="Resource" uid="uid://0gok5648oexn" path="res://Assets/Sounds/SoundRegistry.tres" id="6_sounds"]
-[ext_resource type="Script" uid="uid://bxev1av5gpki2" path="res://src/Client/Announcements/GameAnnouncer.cs" id="7_announcer"]
-[ext_resource type="Script" uid="uid://cukwng3fiyn6t" path="res://src/Client/Announcements/AnnouncementChat.cs" id="8_annchat"]
-[ext_resource type="PackedScene" uid="uid://bkx20bfq77ejk" path="res://src/Shared/UI/Hud/AnnouncementBanner.tscn" id="9_banner"]
-[ext_resource type="PackedScene" uid="uid://jdflpktp0k7t" path="res://src/Shared/UI/Chat/GameChat.tscn" id="10_gamechat"]
+[ext_resource type="Script" path="res://src/Client/Debug/AnnouncementsDebug.cs" id="1_host"]
+[ext_resource type="Script" path="res://src/Client/Audio/Sfx.cs" id="5_sfx"]
+[ext_resource type="Resource" path="res://Assets/Sounds/SoundRegistry.tres" id="6_sounds"]
+[ext_resource type="Script" path="res://src/Client/Announcements/GameAnnouncer.cs" id="7_announcer"]
+[ext_resource type="Script" path="res://src/Client/Announcements/AnnouncementChat.cs" id="8_annchat"]
+[ext_resource type="PackedScene" path="res://src/Shared/UI/Hud/AnnouncementBanner.tscn" id="9_banner"]
+[ext_resource type="Script" path="res://src/Client/Announcements/AnnouncementBanner.cs" id="9_ikqh1"]
+[ext_resource type="PackedScene" path="res://src/Shared/UI/Chat/GameChat.tscn" id="10_gamechat"]
+[ext_resource type="Script" path="res://src/Client/Chat/GameChat.cs" id="11_nuqsh"]
 
-[node name="AnnouncementsDebug" type="Control" unique_id=133924536 node_paths=PackedStringArray("_players", "_admin", "_chat", "_sfx")]
+[sub_resource type="Theme" id="Theme_outline"]
+Label/colors/font_outline_color = Color(0, 0, 0, 0.9)
+Label/constants/outline_size = 4
+RichTextLabel/colors/font_outline_color = Color(0, 0, 0, 0.9)
+RichTextLabel/constants/outline_size = 4
+
+[node name="AnnouncementsDebug" type="Control" unique_id=133924536 node_paths=PackedStringArray("_sfx")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -19,19 +24,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_host")
-_players = NodePath("ClientPlayers")
-_admin = NodePath("ClientAdmin")
-_chat = NodePath("ClientChat")
 _sfx = NodePath("Sfx")
-
-[node name="ClientPlayers" type="Node" parent="." unique_id=674686940]
-script = ExtResource("2_roster")
-
-[node name="ClientAdmin" type="Node" parent="." unique_id=2097850461]
-script = ExtResource("3_admin")
-
-[node name="ClientChat" type="Node" parent="." unique_id=1806269011]
-script = ExtResource("4_chat")
 
 [node name="Sfx" type="Node" parent="." unique_id=1646805444]
 script = ExtResource("5_sfx")
@@ -43,10 +36,19 @@ script = ExtResource("7_announcer")
 [node name="AnnouncementChat" type="Node" parent="." unique_id=751948957]
 script = ExtResource("8_annchat")
 
-[node name="AnnouncementBanner" parent="." unique_id=822673924 instance=ExtResource("9_banner")]
+[node name="AnnouncementBanner" type="Control" parent="." unique_id=822673924 node_paths=PackedStringArray("_matchPoint", "_lines") instance=ExtResource("9_banner")]
 layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("9_ikqh1")
+_matchPoint = NodePath("MatchPoint")
+_lines = NodePath("Lines")
 
-[node name="GameChat" parent="." unique_id=1064531581 instance=ExtResource("10_gamechat")]
+[node name="GameChat" type="Control" parent="." unique_id=1064531581 node_paths=PackedStringArray("_background", "_scroll", "_feed", "_input") instance=ExtResource("10_gamechat")]
 layout_mode = 1
 anchors_preset = 3
 anchor_left = 1.0
@@ -59,6 +61,13 @@ offset_right = -12.0
 offset_bottom = -56.0
 grow_horizontal = 0
 grow_vertical = 0
+mouse_filter = 2
+theme = SubResource("Theme_outline")
+script = ExtResource("11_nuqsh")
+_background = NodePath("Background")
+_scroll = NodePath("Margin/Column/Scroll")
+_feed = NodePath("Margin/Column/Scroll/Feed")
+_input = NodePath("Margin/Column/Input")
 
 [node name="Buttons" type="HBoxContainer" parent="." unique_id=2026528336]
 layout_mode = 1

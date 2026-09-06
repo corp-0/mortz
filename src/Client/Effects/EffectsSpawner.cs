@@ -4,28 +4,25 @@ using Godot;
 using Mortz.Client.Audio;
 using Mortz.Client.Match;
 using Mortz.Client.Replay;
-using Mortz.Core.Net;
-using Mortz.Core.Net.Match;
-using Mortz.Core.Net.Sim;
+using Mortz.Protocol.Net.Match;
+using Mortz.Protocol.Net.Sim;
 
 namespace Mortz.Client.Effects;
 
 /// <summary>
 /// Spawns the one-shot cosmetic bursts (explosions, terrain debris, death
 /// gibs) as its own children, keeping particles out of the terrain and player
-/// nodes. Listens to GameMap for carve visuals and to the network for deaths.
+/// nodes. The presentation controller chooses when decisive effects play.
 /// </summary>
 [Meta(typeof(IAutoNode))]
-public partial class EffectsSpawner : Node2D,
-    IHandle<DeathMsg>,
-    IHandle<FinalKillMsg>
+public partial class EffectsSpawner : Node2D
 {
     private Node2D _liveEffects = null!;
     private Node2D _replayEffects = null!;
     private FinalKillMsg? _finalKill;
     private bool _subscribedToMap;
     private List<(Vector2 Position, Color Color)> _replayDebris = [];
-    private (Vector2 Center, List<(Vector2 Position, Color Color)> Debris)? _recentDebris;
+    private (ImpactIdentity Identity, List<(Vector2 Position, Color Color)> Debris)? _recentDebris;
 
     [Dependency]
     private GameMap Map => this.DependOn<GameMap>();
@@ -34,7 +31,7 @@ public partial class EffectsSpawner : Node2D,
     private ISfx Sfx => this.DependOn<ISfx>();
 
     [Dependency]
-    private NetRouter Router => this.DependOn<NetRouter>();
+    private ClientMatchRuntime Runtime => this.DependOn<ClientMatchRuntime>();
 
     public override void _Notification(int what) => this.Notify(what);
 
@@ -46,7 +43,7 @@ public partial class EffectsSpawner : Node2D,
 
     public void OnResolved()
     {
-        Router.Add(this);
+        Runtime.Died += OnDeath;
         Map.Exploded += OnExploded;
         Map.GroundRemoved += OnGroundRemoved;
         _subscribedToMap = true;
@@ -56,24 +53,24 @@ public partial class EffectsSpawner : Node2D,
     {
         if (!_subscribedToMap)
             return;
-        Router.Remove(this);
+        Runtime.Died -= OnDeath;
         Map.Exploded -= OnExploded;
         Map.GroundRemoved -= OnGroundRemoved;
         _subscribedToMap = false;
     }
 
-    private void OnExploded(Vector2 center, int radius)
+    private void OnExploded(ImpactIdentity identity, Vector2 center, int radius)
     {
-        if (SuppressExplosion(center))
+        if (SuppressExplosion(identity))
             return;
         Sfx.PlayAt(Sfx.Sounds.ShellImpact, center);
         _liveEffects.AddChild(CarveBurst.Explosion(center, radius));
     }
 
-    private void OnGroundRemoved(Vector2 center, List<(Vector2 Position, Color Color)> debris)
+    private void OnGroundRemoved(ImpactIdentity identity, Vector2 center, List<(Vector2 Position, Color Color)> debris)
     {
-        _recentDebris = (center, debris);
-        if (SuppressExplosion(center))
+        _recentDebris = (identity, debris);
+        if (SuppressExplosion(identity))
         {
             _replayDebris = debris;
             return;
@@ -81,21 +78,22 @@ public partial class EffectsSpawner : Node2D,
         _liveEffects.AddChild(CarveBurst.Create(center, debris));
     }
 
-    public void Handle(in DeathMsg msg)
+    private void OnDeath(DeathMsg msg)
     {
-        if (_finalKill is FinalKillMsg final && msg.PeerId == final.VictimId)
+        if (_finalKill is FinalKillMsg final && msg.PeerId == final.VictimId &&
+            msg.Tick == final.Tick && msg.ShellId == final.ShellId)
             return;
         Sfx.PlayAt(Sfx.Sounds.DeathScream, new Vector2(msg.X, msg.Y));
         _liveEffects.AddChild(GibBurst.Create(
             new Vector2(msg.X, msg.Y), Map.Mask, Map.Blood.Paint));
     }
 
-    public void Handle(in FinalKillMsg msg)
+    public void DeferDecisiveImpact(FinalKillMsg msg)
     {
         _finalKill = msg;
         _replayDebris = [];
-        if (_recentDebris is (Vector2 Center, List<(Vector2 Position, Color Color)> Debris) recent &&
-            recent.Center.DistanceSquaredTo(new Vector2(msg.ImpactX, msg.ImpactY)) <= 4f)
+        if (_recentDebris is (ImpactIdentity Identity, List<(Vector2 Position, Color Color)> Debris) recent &&
+            MatchEffects.IsDecisive(recent.Identity, msg))
             _replayDebris = recent.Debris;
     }
 
@@ -145,9 +143,8 @@ public partial class EffectsSpawner : Node2D,
         _finalKill = null;
     }
 
-    private bool SuppressExplosion(Vector2 center) =>
-        _finalKill is FinalKillMsg final && final.Flags.HasFlag(FinalKillFlags.EXPLOSION) &&
-        center.DistanceSquaredTo(new Vector2(final.ImpactX, final.ImpactY)) <= 4f;
+    private bool SuppressExplosion(ImpactIdentity identity) =>
+        _finalKill is FinalKillMsg final && MatchEffects.IsDecisive(identity, final);
 
     private Node2D NewContainer(string name)
     {

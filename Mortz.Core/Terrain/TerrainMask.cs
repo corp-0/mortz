@@ -1,4 +1,3 @@
-using System.IO.Compression;
 using Mortz.Core.Sim;
 
 namespace Mortz.Core.Terrain;
@@ -178,39 +177,16 @@ public sealed class TerrainMask
             _cells[i] = TerrainMaterial.DESTRUCTIBLE;
     }
 
-    /// <summary>
-    /// Late-join sync: which originally-Destructible cells are now Empty,
-    /// as a deflate-compressed 1-bit-per-pixel mask (mostly zeros).
-    /// </summary>
-    public byte[] SerializeRemoved()
+    public bool WasRemoved(int x, int y) => InBounds(x, y) &&
+        _original[y * Width + x] == TerrainMaterial.DESTRUCTIBLE &&
+        _cells[y * Width + x] == TerrainMaterial.EMPTY;
+
+    public bool RemoveDestructible(int x, int y)
     {
-        byte[] bits = new byte[(_cells.Length + 7) / 8];
-        for (int i = 0; i < _cells.Length; i++)
-        {
-            if (_original[i] == TerrainMaterial.DESTRUCTIBLE && _cells[i] == TerrainMaterial.EMPTY)
-                bits[i / 8] |= (byte)(1 << (i % 8));
-        }
-
-        using MemoryStream ms = new MemoryStream();
-        using (DeflateStream deflate = new DeflateStream(ms, CompressionLevel.Fastest))
-            deflate.Write(bits);
-        return ms.ToArray();
-    }
-
-    /// <summary>Apply a removed-mask from <see cref="SerializeRemoved"/>; reports each removed pixel.</summary>
-    public void ApplyRemoved(byte[] data, Action<int, int>? onRemoved = null)
-    {
-        byte[] bits = new byte[(_cells.Length + 7) / 8];
-        using (DeflateStream deflate = new DeflateStream(new MemoryStream(data), CompressionMode.Decompress))
-            deflate.ReadExactly(bits);
-
-        for (int i = 0; i < _cells.Length; i++)
-        {
-            if ((bits[i / 8] & (1 << (i % 8))) == 0) continue;
-            if (_cells[i] != TerrainMaterial.DESTRUCTIBLE) continue;
-            _cells[i] = TerrainMaterial.EMPTY;
-            onRemoved?.Invoke(i % Width, i / Width);
-        }
+        if (!InBounds(x, y) || _cells[y * Width + x] != TerrainMaterial.DESTRUCTIBLE)
+            return false;
+        _cells[y * Width + x] = TerrainMaterial.EMPTY;
+        return true;
     }
 
     private bool InBounds(int x, int y) => x >= 0 && x < Width && y >= 0 && y < Height;

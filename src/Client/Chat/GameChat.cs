@@ -1,8 +1,8 @@
 using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
-using Mortz.Core.Net;
-using Mortz.Core.Net.Chat;
+using Mortz.Protocol.Net;
+using Mortz.Protocol.Net.Chat;
 
 namespace Mortz.Client.Chat;
 

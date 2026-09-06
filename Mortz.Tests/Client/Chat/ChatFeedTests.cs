@@ -1,10 +1,8 @@
-using Chickensoft.AutoInject;
 using Godot;
 using Mortz.Client.Admin;
 using Mortz.Client.Chat;
 using Mortz.Core.Chat;
-using Mortz.Core.Net;
-using Mortz.Net;
+using Mortz.Protocol.Net;
 using Xunit;
 
 namespace Mortz.Tests.Client.Chat;
@@ -17,11 +15,8 @@ public class ChatFeedTests : NodeServiceTest
 
     public ChatFeedTests()
     {
-        ClientAdmin admin = new();
-        admin.FakeDependency<INetwork>(new FakeNetwork());
-        ClientChat chat = new();
-        chat.FakeDependency(Host(admin));
-        _chat = Host(chat);
+        ClientAdmin admin = new(Sender, () => 1);
+        _chat = RegisterRuntime(new ClientChat(admin, new Mortz.Client.Debug.FakeSessionExit(), Sender));
         _feed = Host(new ChatFeed());
         _feed.Bind(_chat);
     }

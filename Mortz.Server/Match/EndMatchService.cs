@@ -1,6 +1,6 @@
 using Mortz.Core.Chat;
-using Mortz.Core.Net;
-using Mortz.Core.Net.Match;
+using Mortz.Protocol.Net;
+using Mortz.Protocol.Net.Match;
 using Mortz.Server.Admin;
 using Mortz.Server.Chat;
 using Mortz.Server.Phases;

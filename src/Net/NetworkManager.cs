@@ -1,10 +1,11 @@
 using Godot;
-using Mortz.Core.Input;
-using Mortz.Core.Net;
-using Mortz.Core.Net.Abuse;
-using Mortz.Core.Net.Names;
-using Mortz.Core.Net.Stats;
+using Mortz.Client.Session;
 using Mortz.Core.Sim;
+using Mortz.Protocol.Input;
+using Mortz.Protocol.Net;
+using Mortz.Protocol.Net.Abuse;
+using Mortz.Protocol.Net.Names;
+using Mortz.Protocol.Net.Stats;
 using Mortz.Server;
 using Mortz.Shared;
 using Mortz.Shared.Logging;
@@ -56,10 +57,7 @@ public partial class NetworkManager : Node, INetwork, IClientSender
     // outgoing and incoming packets are each held for half the lag. Covers the
     // hot path and every enveloped message.
     private int _fakeLagMs;
-    private readonly Queue<(ulong Due, byte[] Packet)> _delayedInputs = new();
-    private readonly Queue<(ulong Due, byte[] Data, int Ack)> _delayedSnapshots = new();
-    private readonly Queue<(ulong Due, int MsgId, byte[] Payload, int Target, NetChannel Channel)> _delayedOutMsgs = new();
-    private readonly Queue<(ulong Due, int MsgId, int Sender, byte[] Payload)> _delayedInMsgs = new();
+    private readonly DelayedConnectionWork _delayed = new();
 
     public bool IsServer => Multiplayer.MultiplayerPeer != null && Multiplayer.IsServer();
 
@@ -110,6 +108,9 @@ public partial class NetworkManager : Node, INetwork, IClientSender
 
     public void ResetPeer()
     {
+        Router.MatchGeneration = -1;
+        _delayed.Reset();
+        _undispatched.Clear();
         Multiplayer.MultiplayerPeer?.Close();
         Multiplayer.MultiplayerPeer = null;
         _gate.Reset();
@@ -178,15 +179,19 @@ public partial class NetworkManager : Node, INetwork, IClientSender
         }
         if (_fakeLagMs > 0)
         {
-            _delayedOutMsgs.Enqueue((Time.GetTicksMsec() + (ulong)(_fakeLagMs / 2), msgId, payload, target, channel));
+            _delayed.Schedule(Time.GetTicksMsec() + (ulong)(_fakeLagMs / 2),
+                () => SendEnvelopeNow(msgId, payload, target, channel));
             return;
         }
         SendEnvelopeNow(msgId, payload, target, channel);
     }
 
-    public void Send<TMsg>(in TMsg message) where TMsg : struct, INetMessage<TMsg> =>
-        SendEnvelope(TMsg.MsgId, TMsg.Serialize(in message), NetConfig.SERVER_PEER_ID,
+    public void Send<TMsg>(in TMsg message) where TMsg : struct, INetMessage<TMsg>
+    {
+        TMsg outgoing = TMsg.InMatch(message, Router.MatchGeneration ?? 0);
+        SendEnvelope(TMsg.MsgId, TMsg.Serialize(outgoing), NetConfig.SERVER_PEER_ID,
             TMsg.MsgChannel);
+    }
 
     private void SendEnvelopeNow(int msgId, byte[] payload, int target, NetChannel channel)
     {
@@ -227,7 +232,8 @@ public partial class NetworkManager : Node, INetwork, IClientSender
         }
         if (_fakeLagMs > 0)
         {
-            _delayedInMsgs.Enqueue((Time.GetTicksMsec() + (ulong)(_fakeLagMs / 2), msgId, sender, payload));
+            _delayed.Schedule(Time.GetTicksMsec() + (ulong)(_fakeLagMs / 2),
+                () => Dispatch(msgId, sender, payload));
             return;
         }
         Dispatch(msgId, sender, payload);
@@ -252,7 +258,8 @@ public partial class NetworkManager : Node, INetwork, IClientSender
     public void SendInputs(byte[] packet)
     {
         if (_fakeLagMs > 0)
-            _delayedInputs.Enqueue((Time.GetTicksMsec() + (ulong)(_fakeLagMs / 2), packet));
+            _delayed.Schedule(Time.GetTicksMsec() + (ulong)(_fakeLagMs / 2),
+                () => RpcId(1, MethodName.SubmitInputs, packet));
         else
             RpcId(1, MethodName.SubmitInputs, packet);
     }
@@ -296,7 +303,8 @@ public partial class NetworkManager : Node, INetwork, IClientSender
     private void ReceiveSnapshot(byte[] data, int ack)
     {
         if (_fakeLagMs > 0)
-            _delayedSnapshots.Enqueue((Time.GetTicksMsec() + (ulong)(_fakeLagMs / 2), data, ack));
+            _delayed.Schedule(Time.GetTicksMsec() + (ulong)(_fakeLagMs / 2),
+                () => SnapshotReceived?.Invoke(data, ack));
         else
             SnapshotReceived?.Invoke(data, ack);
     }
@@ -348,24 +356,6 @@ public partial class NetworkManager : Node, INetwork, IClientSender
         }
         if (_fakeLagMs <= 0)
             return;
-        while (_delayedInputs.Count > 0 && _delayedInputs.Peek().Due <= now)
-        {
-            RpcId(1, MethodName.SubmitInputs, _delayedInputs.Dequeue().Packet);
-        }
-        while (_delayedSnapshots.Count > 0 && _delayedSnapshots.Peek().Due <= now)
-        {
-            (ulong _, byte[] data, int ack) = _delayedSnapshots.Dequeue();
-            SnapshotReceived?.Invoke(data, ack);
-        }
-        while (_delayedOutMsgs.Count > 0 && _delayedOutMsgs.Peek().Due <= now)
-        {
-            (ulong _, int msgId, byte[] payload, int target, NetChannel channel) = _delayedOutMsgs.Dequeue();
-            SendEnvelopeNow(msgId, payload, target, channel);
-        }
-        while (_delayedInMsgs.Count > 0 && _delayedInMsgs.Peek().Due <= now)
-        {
-            (ulong _, int msgId, int sender, byte[] payload) = _delayedInMsgs.Dequeue();
-            Dispatch(msgId, sender, payload);
-        }
+        _delayed.Advance(now);
     }
 }

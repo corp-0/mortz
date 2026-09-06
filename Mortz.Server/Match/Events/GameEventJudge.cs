@@ -42,7 +42,7 @@ public sealed class GameEventJudge
     public GameEventJudge(MatchStateKeys keys, IReadOnlyDictionary<int, Player> seated,
         Func<Player, Team?> teamOf)
     {
-        _key = keys.Claim<JudgeState>();
+        _key = keys.Claim<JudgeState>(typeof(GameEventJudge));
         _seated = seated;
         _teamOf = teamOf;
     }

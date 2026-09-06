@@ -5,12 +5,13 @@ using Mortz.Client.Match;
 using Mortz.Client.Players;
 using Mortz.Client.Views;
 using Mortz.Core.Match.Configuration;
-using Mortz.Core.Net.Sim;
-using Mortz.Core.Replication;
 using Mortz.Core.Sim.Modifiers;
 using Mortz.Net;
-using Mortz.Tests.Core;
-using Mortz.Tests.Net;
+using Mortz.Protocol.Net.Sim;
+using Mortz.Protocol.Replication;
+using Mortz.Protocol.Sim.Modifiers;
+using Mortz.Runtime.Tests.Core;
+using Mortz.Runtime.Tests.Net;
 using Xunit;
 using static Mortz.Core.Sim.Modifiers.StatChange;
 
@@ -25,7 +26,7 @@ public class PlayerViewStatsTests : NodeServiceTest
         PlayerViewManager manager = TakeManagerFromGameViewScene();
         manager.FakeDependency<INetwork>(new FakeNetwork());
         manager.FakeDependency<ISfx>(new NullSfx());
-        ClientPlayers players = HostRouted(new ClientPlayers());
+        ClientPlayers players = RegisterRuntime(new ClientPlayers());
         players.OpenMatch(new MatchConfig());
         manager.FakeDependency(players);
         HostRouted(manager);
@@ -55,7 +56,7 @@ public class PlayerViewStatsTests : NodeServiceTest
         PlayerViewManager manager = TakeManagerFromGameViewScene();
         manager.FakeDependency<INetwork>(new FakeNetwork());
         manager.FakeDependency<ISfx>(new NullSfx());
-        ClientPlayers players = HostRouted(new ClientPlayers());
+        ClientPlayers players = RegisterRuntime(new ClientPlayers());
         players.OpenMatch(new MatchConfig());
         manager.FakeDependency(players);
         HostRouted(manager);

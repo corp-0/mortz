@@ -1,5 +1,4 @@
 using System.Text;
-using Mortz.Core.Net;
 
 namespace Mortz.Core.Chat.Commands;
 
@@ -107,7 +106,7 @@ public sealed class ChatCommandRegistry<TContext>
                     tokens.Add(token.ToString());
                     token.Clear();
                     tokenStarted = false;
-                    if (tokens.Count > NetConfig.MAX_CHAT_COMMAND_ARGS + 1)
+                    if (tokens.Count > ChatLimits.MAX_COMMAND_ARGS + 1)
                     {
                         error = "Too many command arguments.";
                         return false;
@@ -132,7 +131,7 @@ public sealed class ChatCommandRegistry<TContext>
             error = "Enter a command after '/'.";
             return false;
         }
-        if (tokens.Count > NetConfig.MAX_CHAT_COMMAND_ARGS + 1)
+        if (tokens.Count > ChatLimits.MAX_COMMAND_ARGS + 1)
         {
             error = "Too many command arguments.";
             return false;

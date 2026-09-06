@@ -14,13 +14,13 @@ public class ManifestTests
             format_version = 1
             name = "Team Deathmatch"
             description = "Two teams."
-            identity = ["rules.teams", "rules.victory.target"]
+            identity = ["rules.teams", "rules.end_condition.target"]
 
             [rules]
             teams = true
 
-            [rules.victory]
-            type = "kills"
+            [rules.end_condition]
+            type = "score_target"
             target = 15
             """, "mode.toml");
 
@@ -28,10 +28,10 @@ public class ManifestTests
         Assert.Empty(result.Diagnostics);
         Assert.Equal("Team Deathmatch", manifest.Name);
         Assert.Equal("Two teams.", manifest.Description);
-        Assert.Equal(["rules.teams", "rules.victory.target"], manifest.Identity);
+        Assert.Equal(["rules.teams", "rules.end_condition.target"], manifest.Identity);
         Assert.True(manifest.Rules.Teams);
         Assert.Equal(15,
-            Assert.IsType<KillsVictoryRules>(manifest.Rules.Victory).Target);
+            Assert.IsType<ScoreTargetRules>(manifest.Rules.EndCondition).Target);
         Assert.True(manifest.Rules.FriendlyFire);
     }
 
@@ -42,11 +42,11 @@ public class ManifestTests
         {
             FormatVersion = 1,
             Name = "Five Kill Teams",
-            Identity = ["rules.teams", "rules.victory.type", "rules.victory.target"],
+            Identity = ["rules.teams", "rules.end_condition.type", "rules.end_condition.target"],
             Rules = new ModeRules
             {
                 Teams = true,
-                Victory = new KillsVictoryRules { Target = 5 },
+                EndCondition = new ScoreTargetRules { Target = 5 },
             },
         };
 
@@ -55,7 +55,7 @@ public class ManifestTests
             Rules = new ModeRules
             {
                 Teams = true,
-                Victory = new KillsVictoryRules { Target = 5 },
+                EndCondition = new ScoreTargetRules { Target = 5 },
             },
         }));
         Assert.False(manifest.Matches(new MatchConfig
@@ -63,7 +63,7 @@ public class ManifestTests
             Rules = new ModeRules
             {
                 Teams = true,
-                Victory = new KillsVictoryRules { Target = 6 },
+                EndCondition = new ScoreTargetRules { Target = 6 },
             },
         }));
         Assert.True(manifest.Matches(new MatchConfig
@@ -71,7 +71,7 @@ public class ManifestTests
             Rules = new ModeRules
             {
                 Teams = true,
-                Victory = new KillsVictoryRules { Target = 5 },
+                EndCondition = new ScoreTargetRules { Target = 5 },
                 FriendlyFire = false,
             },
             Physics = new Physics { Gravity = 123 },
@@ -87,18 +87,18 @@ public class ManifestTests
             Name = "Lead",
             Rules = new ModeRules
             {
-                Victory = new KillLeadVictoryRules { Target = 8 },
+                EndCondition = new ScoreLeadRules { Target = 8 },
             },
         };
 
         MatchConfigSnapshot snapshot = manifest.ToMatchConfigSnapshot();
         MatchConfig draft = snapshot.ToMutable();
-        Assert.IsType<KillLeadVictoryRules>(draft.Rules.Victory).Target = 20;
+        Assert.IsType<ScoreLeadRules>(draft.Rules.EndCondition).Target = 20;
 
         Assert.Equal(8,
-            Assert.IsType<KillLeadVictoryRules>(manifest.Rules.Victory).Target);
+            Assert.IsType<ScoreLeadRules>(manifest.Rules.EndCondition).Target);
         Assert.Equal(8,
-            Assert.IsType<KillLeadVictoryRulesSnapshot>(snapshot.Rules.Victory).Target);
+            Assert.IsType<ScoreLeadRulesSnapshot>(snapshot.Rules.EndCondition).Target);
     }
 
     [Fact]
@@ -137,14 +137,14 @@ public class ManifestTests
             format_version = 1
             name = "Broken"
 
-            [rules.victory]
+            [rules.end_condition]
             type = "most_flags"
             """, "mode.toml");
 
         Assert.Null(result.Value);
         Assert.Contains(result.Diagnostics,
             diagnostic => diagnostic.Severity == ContentDiagnosticSeverity.ERROR &&
-                          diagnostic.Message.Contains("rules.victory.type", StringComparison.Ordinal));
+                          diagnostic.Message.Contains("rules.end_condition.type", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -154,14 +154,14 @@ public class ManifestTests
             format_version = 1
             name = "Greedy"
 
-            [rules.victory]
-            type = "kills"
+            [rules.end_condition]
+            type = "score_target"
             target = 5000
             """, "mode.toml");
 
         GameModeManifest manifest = Assert.IsType<GameModeManifest>(result.Value);
         Assert.Equal(5000,
-            Assert.IsType<KillsVictoryRules>(manifest.Rules.Victory).Target);
+            Assert.IsType<ScoreTargetRules>(manifest.Rules.EndCondition).Target);
     }
 
     [Fact]
@@ -171,7 +171,7 @@ public class ManifestTests
         {
             Rules = new ModeRules
             {
-                Victory = new KillLeadVictoryRules { Target = 7 },
+                EndCondition = new ScoreLeadRules { Target = 7 },
             },
         };
 
@@ -180,10 +180,10 @@ public class ManifestTests
 
         RulesetManifest actual = Assert.IsType<RulesetManifest>(result.Value);
         Assert.Empty(result.Diagnostics);
-        Assert.Contains("[rules.victory]", text, StringComparison.Ordinal);
-        Assert.Contains("type = \"kill_lead\"", text, StringComparison.Ordinal);
+        Assert.Contains("[rules.end_condition]", text, StringComparison.Ordinal);
+        Assert.Contains("type = \"score_lead\"", text, StringComparison.Ordinal);
         Assert.Equal(7,
-            Assert.IsType<KillLeadVictoryRules>(actual.Rules.Victory).Target);
+            Assert.IsType<ScoreLeadRules>(actual.Rules.EndCondition).Target);
     }
 
     [Fact]

@@ -9,12 +9,12 @@ public readonly record struct MatchParticipationChange(
     MatchParticipation State);
 
 /// <summary>Owns match participation and respawn presentation transitions.</summary>
-public class ParticipationStep(MatchStateKeys keys) : IMatchStep
+public class ParticipationStep(MatchStateKeys keys)
 {
     /// <summary>How long a death holds the camera before spectating starts.</summary>
     public const int DEATH_VIEW_DURATION_TICKS = SimConfig.TICK_RATE * 2;
 
-    private readonly MatchStateKey<ParticipationState> _key = keys.Claim<ParticipationState>();
+    private readonly MatchStateKey<ParticipationState> _key = keys.Claim<ParticipationState>(typeof(ParticipationStep));
 
     public void Seat(Player player) =>
         player.State(_key).Current = MatchParticipation.Active;
@@ -24,11 +24,11 @@ public class ParticipationStep(MatchStateKeys keys) : IMatchStep
 
     public MatchParticipation Of(Player player) => player.State(_key).Current;
 
-    public void Advance(MatchTick tick)
+    public IReadOnlyList<MatchParticipationChange> Apply(MatchContext match, IReadOnlyList<Death> deaths)
     {
         List<MatchParticipationChange> changes = [];
-        SimWorld world = tick.Match.World;
-        foreach ((int peerId, Player member) in tick.Match.SeatedPlayers)
+        SimWorld world = match.World;
+        foreach ((int peerId, Player member) in match.SeatedPlayers)
         {
             PlayerState player = world.Players[peerId];
             ParticipationState state = member.State(_key);
@@ -55,11 +55,11 @@ public class ParticipationStep(MatchStateKeys keys) : IMatchStep
             state.SpectateAtTick = null;
         }
 
-        foreach (Death death in tick.Deaths)
+        foreach (Death death in deaths)
         {
             if (!world.Players.TryGetValue(death.PeerId, out PlayerState player))
                 continue;
-            ParticipationState state = tick.Match.SeatedPlayers[death.PeerId].State(_key);
+            ParticipationState state = match.SeatedPlayers[death.PeerId].State(_key);
             int respawnAtTick = world.Tick + player.RespawnTicks;
             MatchParticipation presentation = new(
                 MatchSeat.PLAYER,
@@ -70,7 +70,7 @@ public class ParticipationStep(MatchStateKeys keys) : IMatchStep
             if (world.Config.Rules.SpectateDuringRespawn)
                 ScheduleSpectator(state, player, world.Tick);
         }
-        tick.SetParticipationChanges(changes);
+        return changes;
     }
 
     private static void ScheduleSpectator(

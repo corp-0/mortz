@@ -1,7 +1,8 @@
 using System.Collections.Immutable;
 using Godot;
-using Mortz.Core.Replication;
+using Mortz.Client.Replication;
 using Mortz.Core.Sim;
+using Mortz.Protocol.Replication;
 
 namespace Mortz.Client.Views;
 
@@ -47,7 +48,7 @@ public sealed class LiveMatchFrameBuilder(Func<int, byte, byte> sampleSkin)
             PlayerViewState viewState = new(
                 feet + localCorrection,
                 localAim,
-                sampleSkin(localId, local.Skin),
+                sampleSkin(localId, 0),
                 local.Ammo,
                 local.ReloadTicks,
                 local.Health,

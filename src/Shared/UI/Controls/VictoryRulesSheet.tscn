@@ -1,9 +1,16 @@
-[gd_scene format=3 uid="uid://bkbbv8vmb0s10"]
+[gd_scene format=3]
 
-[ext_resource type="Script" uid="uid://s32ifsnoltsr" path="res://src/Client/Ui/VictoryRulesSheet.cs" id="1_sheet"]
-[ext_resource type="PackedScene" uid="uid://pbne52ymu80j" path="res://src/Shared/UI/Controls/UiPropertySheet.tscn" id="2_properties"]
+[ext_resource type="Script" path="res://src/Client/Ui/VictoryRulesSheet.cs" id="1_sheet"]
+[ext_resource type="PackedScene" path="res://src/Shared/UI/Controls/UiPropertySheet.tscn" id="2_properties"]
+[ext_resource type="Script" path="res://src/Client/Ui/UiPropertySheet.cs" id="3_l2erq"]
+[ext_resource type="PackedScene" path="res://src/Shared/UI/Controls/BoolPropertyControl.tscn" id="4_nd2fb"]
+[ext_resource type="PackedScene" path="res://src/Shared/UI/Controls/IntPropertyControl.tscn" id="5_5r2bn"]
+[ext_resource type="PackedScene" path="res://src/Shared/UI/Controls/FloatPropertyControl.tscn" id="6_j58ng"]
+[ext_resource type="PackedScene" path="res://src/Shared/UI/Controls/EnumPropertyControl.tscn" id="7_0imy7"]
 
 [node name="VictoryRulesSheet" type="VBoxContainer" unique_id=529084953 node_paths=PackedStringArray("_variant", "_properties")]
+offset_right = 420.0
+offset_bottom = 200.0
 theme_override_constants/separation = 7
 script = ExtResource("1_sheet")
 _variant = NodePath("Variant/Value")
@@ -11,8 +18,8 @@ _properties = NodePath("Properties")
 
 [node name="Heading" type="Label" parent="." unique_id=1575485970]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.796078, 0.835294, 0.882353, 1)
 theme_override_font_sizes/font_size = 18
+theme_override_colors/font_color = Color(0.796078, 0.835294, 0.882353, 1)
 text = "Victory"
 
 [node name="Separator" type="HSeparator" parent="." unique_id=958400881]
@@ -26,18 +33,26 @@ theme_override_constants/separation = 12
 [node name="Label" type="Label" parent="Variant" unique_id=1851709228]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Win Condition"
+text = "End Condition"
 vertical_alignment = 1
 
 [node name="Value" type="OptionButton" parent="Variant" unique_id=860994235]
 custom_minimum_size = Vector2(190, 0)
 layout_mode = 2
 selected = 0
-item_count = 2
-popup/item_0/text = "Kills"
+item_count = 3
+popup/item_0/text = "Score Target"
 popup/item_0/id = 0
-popup/item_1/text = "Kill Lead"
+popup/item_1/text = "Score Lead"
 popup/item_1/id = 1
+popup/item_2/text = "Time Limit"
+popup/item_2/id = 2
 
-[node name="Properties" parent="." unique_id=2001500915 instance=ExtResource("2_properties")]
+[node name="Properties" type="VBoxContainer" parent="." unique_id=2001500915 instance=ExtResource("2_properties")]
 layout_mode = 2
+theme_override_constants/separation = 12
+script = ExtResource("3_l2erq")
+_boolControl = ExtResource("4_nd2fb")
+_intControl = ExtResource("5_5r2bn")
+_floatControl = ExtResource("6_j58ng")
+_enumControl = ExtResource("7_0imy7")

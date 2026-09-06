@@ -5,8 +5,8 @@ using Mortz.Client.Admin;
 using Mortz.Client.Setup;
 using Mortz.Client.Ui;
 using Mortz.Core.Match.Configuration;
-using Mortz.Core.Net;
-using Mortz.Core.Net.Lobby;
+using Mortz.Protocol.Net;
+using Mortz.Protocol.Net.Lobby;
 using Mortz.Shared;
 
 namespace Mortz.Client.Menus;
@@ -46,7 +46,7 @@ public partial class LobbySettingsPanel : PanelContainer
         _mapPicker.ItemSelected += OnMapSelected;
         _modePicker.ItemSelected += OnModeSelected;
         _rulesSheet.Build(ModeRulesUiMetadata.Categories, _config.Rules, OnConfigEdited);
-        _victoryRulesSheet.Build(_config.Rules.Victory, OnVictoryRulesEdited);
+        _victoryRulesSheet.Build(_config.Rules.EndCondition, OnVictoryRulesEdited);
         _physicsSheet.Build(PhysicsUiMetadata.Categories, _config.Physics, OnConfigEdited);
         _combatSheet.Build(CombatUiMetadata.Categories, _config.Combat, OnConfigEdited);
         UpdateEditing(isAdmin: false);
@@ -89,7 +89,7 @@ public partial class LobbySettingsPanel : PanelContainer
         ApplyMapOptions(selection);
         ApplyModeOptions(selection);
         _rulesSheet.UpdateModel(_config.Rules);
-        _victoryRulesSheet.UpdateModel(_config.Rules.Victory);
+        _victoryRulesSheet.UpdateModel(_config.Rules.EndCondition);
         _physicsSheet.UpdateModel(_config.Physics);
         _combatSheet.UpdateModel(_config.Combat);
         UpdateEditing(Admin.IsAdmin);
@@ -167,9 +167,9 @@ public partial class LobbySettingsPanel : PanelContainer
         }
     }
 
-    private void OnVictoryRulesEdited(VictoryRules victory)
+    private void OnVictoryRulesEdited(EndConditionRules victory)
     {
-        _config.Rules.Victory = victory;
+        _config.Rules.EndCondition = victory;
         OnConfigEdited();
     }
 

@@ -11,8 +11,7 @@ public readonly record struct DeathScore(
     PlayerScore? Killer,
     PlayerScore Victim,
     KillReward? Reward,
-    TeamKills TeamKills,
-    Victor? Winner)
+    TeamKills TeamKills)
 {
     public bool CreditedKill => Kind == DeathKind.KILL;
 }

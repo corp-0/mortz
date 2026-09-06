@@ -1,8 +1,8 @@
-using Mortz.Core.Admin;
-using Mortz.Core.Net;
-using Mortz.Core.Net.Admin;
-using Mortz.Core.Net.Lobby;
-using Mortz.Core.Net.Match;
+using Mortz.Protocol.Admin;
+using Mortz.Protocol.Net;
+using Mortz.Protocol.Net.Admin;
+using Mortz.Protocol.Net.Lobby;
+using Mortz.Protocol.Net.Match;
 using Mortz.Server.Phases;
 using Mortz.Server.Players;
 using Serilog;
@@ -25,7 +25,7 @@ public sealed class AdminService(
 {
     private const string LOBBY_ONLY = "Admin authentication is only available in the lobby.";
 
-    private readonly ServerStateKey<AdminSession> _session = keys.Claim<AdminSession>();
+    private readonly ServerStateKey<AdminSession> _session = keys.Claim<AdminSession>(typeof(AdminService));
     private readonly AdminAuthenticator _crypto = new(password);
 
     public void Handle(Player sender, in AdminAuthRequestMsg message)

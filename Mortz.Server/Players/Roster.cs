@@ -1,7 +1,6 @@
 using System.Collections;
-using Mortz.Core.Net;
-using Mortz.Core.Net.Names;
 using Mortz.Core.Sim;
+using Mortz.Protocol.Net.Names;
 
 namespace Mortz.Server.Players;
 

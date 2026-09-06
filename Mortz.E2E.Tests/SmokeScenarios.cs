@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Mortz.E2E.Protocol;
 using Mortz.E2E.Tests.Harness;
 using Xunit;
@@ -77,6 +78,8 @@ public sealed class SmokeScenarios
         Assert.Equal(
             new[] { alice.PeerId, bob.PeerId }.Order().ToArray(),
             state.Players.Select(player => player.PeerId).Order().ToArray());
+        Assert.False(alice.Process.LogContains("ERROR: System."), "Alice logged a managed exception during match entry.");
+        Assert.False(bob.Process.LogContains("ERROR: System."), "Bob logged a managed exception during match entry.");
     }
 
     [Fact]
@@ -153,8 +156,8 @@ public sealed class SmokeScenarios
     {
         try
         {
-            using System.Diagnostics.Process process =
-                System.Diagnostics.Process.GetProcessById(processId);
+            using Process process =
+                Process.GetProcessById(processId);
             return process.HasExited;
         }
         catch (ArgumentException)

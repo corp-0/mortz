@@ -1,7 +1,7 @@
 using Godot;
-using Mortz.Core.Net;
 using Mortz.Core.Sim;
 using Mortz.Net;
+using Mortz.Protocol.Net;
 using Mortz.Shared.Logging;
 using Serilog;
 

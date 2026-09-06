@@ -1,5 +1,5 @@
 using Godot;
-using Mortz.Core.Replication;
+using Mortz.Protocol.Replication;
 
 namespace Mortz.Client.Views;
 

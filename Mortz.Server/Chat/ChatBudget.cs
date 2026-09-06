@@ -1,6 +1,5 @@
 using Mortz.Core.Chat;
-using Mortz.Core.Net;
-using Mortz.Core.Net.Abuse;
+using Mortz.Protocol.Net.Abuse;
 
 namespace Mortz.Server.Chat;
 

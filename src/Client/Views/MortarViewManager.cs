@@ -2,7 +2,7 @@ using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
 using Mortz.Client.Audio;
-using Mortz.Core.Replication;
+using Mortz.Client.Replication;
 using Mortz.Core.Sim;
 
 namespace Mortz.Client.Views;

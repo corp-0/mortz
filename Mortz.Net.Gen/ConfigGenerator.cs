@@ -16,8 +16,8 @@ public sealed class ConfigGenerator : IIncrementalGenerator
     private const string CONFIG_VALUE_ATTRIBUTE = "Mortz.Core.Match.Configuration.ConfigValueAttribute";
     private const string CONFIG_SECTION_ATTRIBUTE = "Mortz.Core.Match.Configuration.ConfigSectionAttribute";
     private const string ZONE_STAT_ATTRIBUTE = "Mortz.Core.Match.Configuration.ZoneStatAttribute";
-    private const string VICTORY_CASE_ATTRIBUTE =
-        "Mortz.Core.Match.Configuration.VictoryRuleCaseAttribute";
+    private const string END_CONDITION_CASE_ATTRIBUTE =
+        "Mortz.Core.Match.Configuration.EndConditionCaseAttribute";
     private const string TICK_RATE_TYPE = "Mortz.Core.Sim.SimConfig";
     // MatchConfig must expose each [PlayerStat] owner type as a property named after that type.
     private const string MATCH_CONFIG = "global::Mortz.Core.Match.Configuration.MatchConfig";
@@ -115,11 +115,11 @@ public sealed class ConfigGenerator : IIncrementalGenerator
         int SpanStart,
         ImmutableArray<string> UntrackedProperties);
 
-    private sealed record VictoryCase(string Id, string DisplayName, INamedTypeSymbol Type);
+    private sealed record EndConditionCase(string Id, string DisplayName, INamedTypeSymbol Type);
 
-    private sealed record VictoryUnion(
+    private sealed record EndConditionUnion(
         INamedTypeSymbol Type,
-        ImmutableArray<VictoryCase> Cases);
+        ImmutableArray<EndConditionCase> Cases);
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
@@ -163,46 +163,46 @@ public sealed class ConfigGenerator : IIncrementalGenerator
                 models.Left.Right,
                 models.Right));
 
-        IncrementalValueProvider<ImmutableArray<VictoryUnion>> victoryUnions =
+        IncrementalValueProvider<ImmutableArray<EndConditionUnion>> endConditionUnions =
             context.SyntaxProvider.ForAttributeWithMetadataName(
-                    VICTORY_CASE_ATTRIBUTE,
+                    END_CONDITION_CASE_ATTRIBUTE,
                     static (node, _) => node is TypeDeclarationSyntax,
-                    static (ctx, _) => ExtractVictoryUnion((INamedTypeSymbol)ctx.TargetSymbol))
+                    static (ctx, _) => ExtractEndConditionUnion((INamedTypeSymbol)ctx.TargetSymbol))
                 .Collect();
-        context.RegisterSourceOutput(victoryUnions, EmitVictoryUnions);
+        context.RegisterSourceOutput(endConditionUnions, EmitEndConditionUnions);
     }
 
-    private static VictoryUnion ExtractVictoryUnion(INamedTypeSymbol type)
+    private static EndConditionUnion ExtractEndConditionUnion(INamedTypeSymbol type)
     {
-        ImmutableArray<VictoryCase>.Builder cases = ImmutableArray.CreateBuilder<VictoryCase>();
+        ImmutableArray<EndConditionCase>.Builder cases = ImmutableArray.CreateBuilder<EndConditionCase>();
         foreach (AttributeData attribute in type.GetAttributes().Where(candidate =>
-                     candidate.AttributeClass?.ToDisplayString() == VICTORY_CASE_ATTRIBUTE))
+                     candidate.AttributeClass?.ToDisplayString() == END_CONDITION_CASE_ATTRIBUTE))
         {
             if (attribute.ConstructorArguments.Length == 3 &&
                 attribute.ConstructorArguments[0].Value is string id &&
                 attribute.ConstructorArguments[1].Value is string displayName &&
                 attribute.ConstructorArguments[2].Value is INamedTypeSymbol member)
             {
-                cases.Add(new VictoryCase(id, displayName, member));
+                cases.Add(new EndConditionCase(id, displayName, member));
             }
         }
-        return new VictoryUnion(type, cases.ToImmutable());
+        return new EndConditionUnion(type, cases.ToImmutable());
     }
 
-    private static void EmitVictoryUnions(SourceProductionContext spc,
-        ImmutableArray<VictoryUnion> unions)
+    private static void EmitEndConditionUnions(SourceProductionContext spc,
+        ImmutableArray<EndConditionUnion> unions)
     {
-        foreach (IGrouping<string, VictoryUnion> group in unions.GroupBy(
+        foreach (IGrouping<string, EndConditionUnion> group in unions.GroupBy(
                      union => union.Type.ToDisplayString(), StringComparer.Ordinal))
         {
-            VictoryUnion union = group.First();
-            string source = EmitVictoryUnion(union);
+            EndConditionUnion union = group.First();
+            string source = EmitEndConditionUnion(union);
             spc.AddSource($"{HintName(union.Type.ToDisplayString())}Metadata.g.cs",
                 SourceText.From(source, Encoding.UTF8));
         }
     }
 
-    private static string EmitVictoryUnion(VictoryUnion union)
+    private static string EmitEndConditionUnion(EndConditionUnion union)
     {
         string ns = union.Type.ContainingNamespace.ToDisplayString();
         string baseType = union.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
@@ -214,62 +214,32 @@ public sealed class ConfigGenerator : IIncrementalGenerator
         sb.AppendLine();
         sb.AppendLine($"public static class {union.Type.Name}Metadata");
         sb.AppendLine("{");
-        sb.AppendLine("    public static global::System.Collections.Generic.IReadOnlyList<global::Mortz.Core.Match.Configuration.VictoryRuleDescriptor> Variants { get; } =");
-        sb.AppendLine("        global::System.Array.AsReadOnly(new global::Mortz.Core.Match.Configuration.VictoryRuleDescriptor[]");
+        sb.AppendLine("    public static global::System.Collections.Generic.IReadOnlyList<global::Mortz.Core.Match.Configuration.EndConditionDescriptor> Variants { get; } =");
+        sb.AppendLine("        global::System.Array.AsReadOnly(new global::Mortz.Core.Match.Configuration.EndConditionDescriptor[]");
         sb.AppendLine("        {");
-        foreach (VictoryCase item in union.Cases)
+        foreach (EndConditionCase item in union.Cases)
         {
             string type = item.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-            sb.AppendLine("            new global::Mortz.Core.Match.Configuration.VictoryRuleDescriptor(");
+            sb.AppendLine("            new global::Mortz.Core.Match.Configuration.EndConditionDescriptor(");
             sb.AppendLine($"                {Literal(item.Id)}, {Literal(item.DisplayName)}, typeof({type}),");
             sb.AppendLine($"                {type}UiMetadata.Categories,");
             sb.AppendLine($"                static () => new {type}(),");
-            sb.AppendLine($"                static rules => (({type})rules).Clamp(),");
-            sb.AppendLine($"                static rules => {type}.Serialize(({type})rules),");
-            sb.AppendLine($"                static data => {type}.Deserialize(data)),");
+            sb.AppendLine($"                static rules => (({type})rules).Clamp()),");
         }
         sb.AppendLine("        });");
         sb.AppendLine();
-        sb.AppendLine($"    public static global::Mortz.Core.Match.Configuration.VictoryRuleDescriptor For({baseType} rules)");
+        sb.AppendLine($"    public static global::Mortz.Core.Match.Configuration.EndConditionDescriptor For({baseType} rules)");
         sb.AppendLine("    {");
-        sb.AppendLine("        foreach (global::Mortz.Core.Match.Configuration.VictoryRuleDescriptor variant in Variants)");
+        sb.AppendLine("        foreach (global::Mortz.Core.Match.Configuration.EndConditionDescriptor variant in Variants)");
         sb.AppendLine("        {");
         sb.AppendLine("            if (variant.RulesType == rules.GetType())");
         sb.AppendLine("                return variant;");
         sb.AppendLine("        }");
-        sb.AppendLine("        throw new global::System.NotSupportedException($\"Unknown victory rules '{rules.GetType().Name}'.\");");
+        sb.AppendLine("        throw new global::System.NotSupportedException($\"Unknown end-condition rules '{rules.GetType().Name}'.\");");
         sb.AppendLine("    }");
         sb.AppendLine();
         sb.AppendLine($"    internal static void Clamp({baseType} rules) => For(rules).Clamp(rules);");
         sb.AppendLine();
-        sb.AppendLine($"    internal static byte[] Serialize({baseType} rules)");
-        sb.AppendLine("    {");
-        sb.AppendLine("        global::Mortz.Core.Match.Configuration.VictoryRuleDescriptor variant = For(rules);");
-        sb.AppendLine("        byte[] payload = variant.Serialize(rules);");
-        sb.AppendLine("        using global::System.IO.MemoryStream stream = new();");
-        sb.AppendLine("        using global::System.IO.BinaryWriter writer = new(stream);");
-        sb.AppendLine("        writer.Write(variant.Id);");
-        sb.AppendLine("        writer.Write(payload.Length);");
-        sb.AppendLine("        writer.Write(payload);");
-        sb.AppendLine("        return stream.ToArray();");
-        sb.AppendLine("    }");
-        sb.AppendLine();
-        sb.AppendLine($"    internal static {baseType} Deserialize(byte[] data)");
-        sb.AppendLine("    {");
-        sb.AppendLine("        using global::System.IO.MemoryStream stream = new(data, writable: false);");
-        sb.AppendLine("        using global::System.IO.BinaryReader reader = new(stream);");
-        sb.AppendLine("        string id = reader.ReadString();");
-        sb.AppendLine("        int length = reader.ReadInt32();");
-        sb.AppendLine("        if (length < 0 || length != stream.Length - stream.Position)");
-        sb.AppendLine("            throw new global::System.IO.InvalidDataException(\"Invalid victory-rules payload length.\");");
-        sb.AppendLine("        byte[] payload = reader.ReadBytes(length);");
-        sb.AppendLine("        foreach (global::Mortz.Core.Match.Configuration.VictoryRuleDescriptor variant in Variants)");
-        sb.AppendLine("        {");
-        sb.AppendLine("            if (global::System.StringComparer.Ordinal.Equals(variant.Id, id))");
-        sb.AppendLine("                return variant.Deserialize(payload);");
-        sb.AppendLine("        }");
-        sb.AppendLine("        throw new global::System.IO.InvalidDataException($\"Unknown victory rules '{id}'.\");");
-        sb.AppendLine("    }");
         sb.AppendLine("}");
         return sb.ToString();
     }
@@ -381,7 +351,7 @@ public sealed class ConfigGenerator : IIncrementalGenerator
             name, type, isEnum, enumMembers, statsName ?? name, min, max,
             conv, defaultValue, node.SyntaxTree.FilePath, node.SpanStart,
             symbol.ContainingType.BaseType?.GetAttributes().Any(attribute =>
-                attribute.AttributeClass?.ToDisplayString() == VICTORY_CASE_ATTRIBUTE) == true
+                attribute.AttributeClass?.ToDisplayString() == END_CONDITION_CASE_ATTRIBUTE) == true
                 ? symbol.ContainingType.BaseType.ToDisplayString()
                 : null,
             snapshotType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
@@ -407,8 +377,6 @@ public sealed class ConfigGenerator : IIncrementalGenerator
             ("ToSnapshot", mutable, snapshot),
             ("ToMutable", snapshot, mutable),
             ("Clamp", mutable, voidType),
-            ("ToBytes", mutable, bytes),
-            ("FromBytes", bytes, mutable),
         ];
         foreach ((string methodName, ITypeSymbol parameter, ITypeSymbol returnType) in required)
         {
@@ -661,55 +629,6 @@ public sealed class ConfigGenerator : IIncrementalGenerator
         }
         sb.AppendLine("    }");
         sb.AppendLine();
-        sb.AppendLine("    // Changing this layout requires a protocol version bump.");
-        sb.AppendLine("    public byte[] ToBytes()");
-        sb.AppendLine("    {");
-        sb.AppendLine("        byte[][] segments =");
-        sb.AppendLine("        [");
-        foreach (SectionModel section in sections)
-        {
-            sb.AppendLine($"            {section.Name}.ToBytes(),");
-        }
-        sb.AppendLine("        ];");
-        sb.AppendLine("        byte[] combined = new byte[global::System.Linq.Enumerable.Sum(segments, segment => 4 + segment.Length)];");
-        sb.AppendLine("        int offset = 0;");
-        sb.AppendLine("        foreach (byte[] segment in segments)");
-        sb.AppendLine("        {");
-        sb.AppendLine("            global::System.Buffers.Binary.BinaryPrimitives.WriteInt32LittleEndian(");
-        sb.AppendLine("                global::System.MemoryExtensions.AsSpan(combined, offset), segment.Length);");
-        sb.AppendLine("            segment.CopyTo(combined, offset + 4);");
-        sb.AppendLine("            offset += 4 + segment.Length;");
-        sb.AppendLine("        }");
-        sb.AppendLine("        return combined;");
-        sb.AppendLine("    }");
-        sb.AppendLine();
-        sb.AppendLine("    public static MatchConfig FromBytes(byte[] data)");
-        sb.AppendLine("    {");
-        sb.AppendLine("        int offset = 0;");
-        sb.AppendLine("        MatchConfig config = new MatchConfig");
-        sb.AppendLine("        {");
-        foreach (SectionModel section in sections)
-        {
-            sb.AppendLine($"            {section.Name} = {section.Type}.FromBytes(ReadSegment(data, ref offset)),");
-        }
-        sb.AppendLine("        };");
-        sb.AppendLine("        if (offset != data.Length)");
-        sb.AppendLine("            throw new global::System.IO.InvalidDataException(\"Trailing bytes in match configuration.\");");
-        sb.AppendLine("        return config;");
-        sb.AppendLine("    }");
-        sb.AppendLine();
-        sb.AppendLine("    private static byte[] ReadSegment(byte[] data, ref int offset)");
-        sb.AppendLine("    {");
-        sb.AppendLine("        if (data.Length - offset < 4)");
-        sb.AppendLine("            throw new global::System.IO.InvalidDataException(\"Match configuration too short.\");");
-        sb.AppendLine("        int length = global::System.Buffers.Binary.BinaryPrimitives.ReadInt32LittleEndian(");
-        sb.AppendLine("            global::System.MemoryExtensions.AsSpan(data, offset));");
-        sb.AppendLine("        if (length < 0 || length > data.Length - offset - 4)");
-        sb.AppendLine("            throw new global::System.IO.InvalidDataException(\"Match configuration segment length out of range.\");");
-        sb.AppendLine("        byte[] segment = data[(offset + 4)..(offset + 4 + length)];");
-        sb.AppendLine("        offset += 4 + length;");
-        sb.AppendLine("        return segment;");
-        sb.AppendLine("    }");
         sb.AppendLine("}");
         sb.AppendLine();
         sb.AppendLine("public static class MatchConfigSnapshotConversions");
@@ -717,9 +636,6 @@ public sealed class ConfigGenerator : IIncrementalGenerator
         sb.AppendLine("    public static MatchConfig ToMutable(this MatchConfigSnapshot snapshot) =>");
         sb.AppendLine("        MatchConfig.FromSnapshot(snapshot);");
         sb.AppendLine();
-        sb.AppendLine("    // This remains the existing protocol layout. Changing it requires a version bump.");
-        sb.AppendLine("    public static byte[] ToBytes(this MatchConfigSnapshot snapshot) =>");
-        sb.AppendLine("        snapshot.ToMutable().ToBytes();");
         sb.AppendLine("}");
         return sb.ToString();
     }
@@ -932,79 +848,9 @@ public sealed class ConfigGenerator : IIncrementalGenerator
         sb.AppendLine("    private static float C(float v, float min, float max) =>");
         sb.AppendLine("        float.IsNaN(v) ? min : global::System.Math.Clamp(v, min, max);");
         sb.AppendLine();
-        sb.AppendLine("    // Changing field order requires a protocol version bump.");
-        sb.AppendLine($"    internal static byte[] Serialize({name} config)");
-        sb.AppendLine("    {");
-        sb.AppendLine("        using global::System.IO.MemoryStream stream = new global::System.IO.MemoryStream();");
-        sb.AppendLine("        using global::System.IO.BinaryWriter w = new global::System.IO.BinaryWriter(stream);");
-        foreach (FieldModel m in wireFields)
-        {
-            sb.AppendLine(m.IsEnum
-                ? $"        w.Write((byte)config.{m.Name});"
-                : $"        w.Write(config.{m.Name});");
-        }
-        sb.AppendLine("        return stream.ToArray();");
-        sb.AppendLine("    }");
-        sb.AppendLine();
-        sb.AppendLine($"    internal static {name} Deserialize(byte[] data)");
-        sb.AppendLine("    {");
-        sb.AppendLine("        using global::System.IO.MemoryStream stream = new global::System.IO.MemoryStream(data, writable: false);");
-        sb.AppendLine("        using global::System.IO.BinaryReader r = new global::System.IO.BinaryReader(stream);");
-        sb.AppendLine($"        {name} config = new {name}");
-        sb.AppendLine("        {");
-        foreach (FieldModel m in wireFields)
-        {
-            sb.AppendLine($"            {m.Name} = {ReadExpr(m)},");
-        }
-        sb.AppendLine("        };");
-        sb.AppendLine("        if (stream.Position != stream.Length)");
-        sb.AppendLine("            throw new global::System.IO.InvalidDataException(\"Trailing bytes in match configuration.\");");
-        sb.AppendLine("        config.Clamp();");
-        sb.AppendLine("        return config;");
-        sb.AppendLine("    }");
-        sb.AppendLine();
-        EmitSectionWire(sb, name, fields);
-        sb.AppendLine();
         EmitApplier(sb, wireFields);
         sb.AppendLine("}");
         return sb.ToString();
-    }
-
-    private static void EmitSectionWire(StringBuilder sb, string name, FieldModel[] fields)
-    {
-        FieldModel? nested = fields.SingleOrDefault(field => field.Kind == FieldKind.VALUE);
-        if (nested == null)
-        {
-            sb.AppendLine("    public byte[] ToBytes() => Serialize(this);");
-            sb.AppendLine();
-            sb.AppendLine($"    public static {name} FromBytes(byte[] data) => Deserialize(data);");
-            return;
-        }
-
-        sb.AppendLine("    public byte[] ToBytes()");
-        sb.AppendLine("    {");
-        sb.AppendLine("        byte[] shared = Serialize(this);");
-        sb.AppendLine($"        byte[] nested = {nested.ProjectionType}.ToBytes({nested.Name});");
-        sb.AppendLine("        using global::System.IO.MemoryStream stream = new global::System.IO.MemoryStream();");
-        sb.AppendLine("        using global::System.IO.BinaryWriter writer = new global::System.IO.BinaryWriter(stream);");
-        sb.AppendLine("        writer.Write(shared.Length);");
-        sb.AppendLine("        writer.Write(shared);");
-        sb.AppendLine("        writer.Write(nested);");
-        sb.AppendLine("        return stream.ToArray();");
-        sb.AppendLine("    }");
-        sb.AppendLine();
-        sb.AppendLine($"    public static {name} FromBytes(byte[] data)");
-        sb.AppendLine("    {");
-        sb.AppendLine("        using global::System.IO.MemoryStream stream = new global::System.IO.MemoryStream(data, writable: false);");
-        sb.AppendLine("        using global::System.IO.BinaryReader reader = new global::System.IO.BinaryReader(stream);");
-        sb.AppendLine("        int sharedLength = reader.ReadInt32();");
-        sb.AppendLine("        if (sharedLength < 0 || sharedLength > stream.Length - stream.Position)");
-        sb.AppendLine("            throw new global::System.IO.InvalidDataException(\"Invalid shared configuration length.\");");
-        sb.AppendLine($"        {name} config = Deserialize(reader.ReadBytes(sharedLength));");
-        sb.AppendLine($"        config.{nested.Name} = {nested.ProjectionType}.FromBytes(");
-        sb.AppendLine("            reader.ReadBytes(checked((int)(stream.Length - stream.Position))));");
-        sb.AppendLine("        return config;");
-        sb.AppendLine("    }");
     }
 
     private static string TypeName(string type) => type switch

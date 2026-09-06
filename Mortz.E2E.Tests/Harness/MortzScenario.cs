@@ -271,7 +271,7 @@ public sealed class MortzScenario : IAsyncDisposable
             return cached;
         MatchSetupResponse response = await Server.SetupAsync(cancellationToken);
         MatchSetup setup = new(
-            MatchConfig.FromBytes(response.Config),
+            MatchConfigCodec.FromBytes(response.Config),
             response.TerrainWidth,
             response.TerrainHeight);
         _setup = setup;

@@ -25,20 +25,20 @@ public static class LobbySettingsDiff
             beforeDraft.Rules,
             afterDraft.Rules);
 
-        VictoryRuleDescriptor beforeVictory = VictoryRulesMetadata.For(beforeDraft.Rules.Victory);
-        VictoryRuleDescriptor afterVictory = VictoryRulesMetadata.For(afterDraft.Rules.Victory);
+        EndConditionDescriptor beforeVictory = EndConditionRulesMetadata.For(beforeDraft.Rules.EndCondition);
+        EndConditionDescriptor afterVictory = EndConditionRulesMetadata.For(afterDraft.Rules.EndCondition);
         if (beforeVictory.RulesType == afterVictory.RulesType)
         {
             AddDeltas(
                 deltas,
                 afterVictory.Categories,
-                beforeDraft.Rules.Victory,
-                afterDraft.Rules.Victory);
+                beforeDraft.Rules.EndCondition,
+                afterDraft.Rules.EndCondition);
         }
         else
         {
             deltas.Add(new LobbySettingDelta(
-                "Victory Rule",
+                "End Condition",
                 beforeVictory.DisplayName,
                 afterVictory.DisplayName));
         }

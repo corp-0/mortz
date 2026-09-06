@@ -2,13 +2,13 @@
 using Godot;
 using Mortz.Client.Match;
 using Mortz.Core.Match.Scoring;
-using Mortz.Core.Net;
-using Mortz.Core.Net.Lobby;
-using Mortz.Core.Net.Match;
 using Mortz.Core.Replication;
 using Mortz.Core.Sim;
 using Mortz.E2E.Protocol;
 using Mortz.Net;
+using Mortz.Protocol.Net;
+using Mortz.Protocol.Net.Lobby;
+using Mortz.Protocol.Net.Match;
 using Mortz.Shared.E2E;
 
 namespace Mortz.Client.E2E;

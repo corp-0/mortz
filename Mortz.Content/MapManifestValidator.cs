@@ -1,5 +1,5 @@
 using Mortz.Core.Match.Teams;
-using Mortz.Core.Net;
+using Mortz.Core.Sim;
 using Mortz.Core.Sim.Modifiers;
 
 namespace Mortz.Content;
@@ -28,9 +28,9 @@ public static class MapManifestValidator
             ? ContentDiagnosticSeverity.ERROR
             : ContentDiagnosticSeverity.WARNING;
 
-        if (manifest.SuggestedPlayers is < 1 or > NetConfig.MAX_PLAYERS)
+        if (manifest.SuggestedPlayers is < 1 or > SimConfig.MAX_PLAYERS)
         {
-            Add($"suggested_players must be between 1 and {NetConfig.MAX_PLAYERS}");
+            Add($"suggested_players must be between 1 and {SimConfig.MAX_PLAYERS}");
         }
 
         MapSpawnPoint[] spawnPoints = manifest.SpawnPoints;

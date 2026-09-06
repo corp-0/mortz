@@ -2,9 +2,12 @@ using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
 using Mortz.Client.Admin;
+using Mortz.Client.Chat;
 using Mortz.Client.Players;
 using Mortz.Client.Setup;
 using Mortz.Client.Stats;
+using Mortz.Net;
+using Mortz.Protocol.Net;
 
 namespace Mortz.Client.Session;
 
@@ -16,28 +19,39 @@ public partial class ConnectedSession : Node,
     IProvide<Pings>,
     IProvide<SessionWins>,
     IProvide<ClientPlayers>,
-    IProvide<ClientAdmin>
+    IProvide<ClientAdmin>, IProvide<ClientChat>
 {
-    [Export] private MatchSetup _matchSetup = null!;
-    [Export] private Pings _pings = null!;
-    [Export] private SessionWins _sessionWins = null!;
-    [Export] private ClientPlayers _clientPlayers = null!;
-    [Export] private ClientAdmin _clientAdmin = null!;
 
-    MatchSetup IProvide<MatchSetup>.Value() => _matchSetup;
-    Pings IProvide<Pings>.Value() => _pings;
-    SessionWins IProvide<SessionWins>.Value() => _sessionWins;
-    ClientPlayers IProvide<ClientPlayers>.Value() => _clientPlayers;
+    MatchSetup IProvide<MatchSetup>.Value() => _runtime.Setup;
+    Pings IProvide<Pings>.Value() => _runtime.Pings;
+    SessionWins IProvide<SessionWins>.Value() => _runtime.Wins;
+    ClientPlayers IProvide<ClientPlayers>.Value() => _runtime.Players;
 
     /// <summary>For the session controller, which owns match lifecycle.</summary>
-    public ClientPlayers Players => _clientPlayers;
+    public ClientConnectionScope Connection => _runtime;
+
+    public ClientPlayers Players => _runtime.Players;
 
     /// <summary>For authenticating the player who launched a local server.</summary>
-    public ClientAdmin Admin => _clientAdmin;
+    public ClientAdmin Admin => _runtime.Admin;
 
-    ClientAdmin IProvide<ClientAdmin>.Value() => _clientAdmin;
+    ClientAdmin IProvide<ClientAdmin>.Value() => _runtime.Admin;
+
+    ClientChat IProvide<ClientChat>.Value() => _runtime.Chat;
 
     public override void _Notification(int what) => this.Notify(what);
 
-    public void OnResolved() => this.Provide();
+    [Dependency] private NetRouter Router => this.DependOn<NetRouter>();
+    [Dependency] private IClientSender Sender => this.DependOn<IClientSender>();
+    [Dependency] private INetwork Network => this.DependOn<INetwork>();
+    [Dependency] private ISessionExit SessionExit => this.DependOn<ISessionExit>();
+    private ClientConnectionScope _runtime = null!;
+
+    public void OnResolved()
+    {
+        _runtime = new ClientConnectionScope(Router, Sender, () => Network.LocalPeerId, SessionExit);
+        this.Provide();
+    }
+
+    public void OnExitTree() => _runtime?.Dispose();
 }

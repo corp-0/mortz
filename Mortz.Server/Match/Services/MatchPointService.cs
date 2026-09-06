@@ -1,5 +1,5 @@
 using Mortz.Core.Match.Scoring;
-using Mortz.Core.Net.Match;
+using Mortz.Protocol.Net.Match;
 using Mortz.Server.Players;
 using Mortz.Server.Services;
 using Serilog;

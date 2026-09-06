@@ -1,7 +1,7 @@
 using Mortz.Client.Servers;
 using Mortz.Content;
-using Mortz.Core.Net.Names;
 using Mortz.Core.Sim;
+using Mortz.Protocol.Net.Names;
 using Mortz.Shared;
 using Mortz.Shared.Logging;
 using Serilog;

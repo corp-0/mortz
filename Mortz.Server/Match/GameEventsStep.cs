@@ -4,10 +4,10 @@ using Mortz.Server.Players;
 namespace Mortz.Server.Match;
 
 /// <summary>Turns scored eliminations into game-event judgments.</summary>
-public class GameEventsStep(GameEventJudge judge) : IMatchStep
+public class GameEventsStep(GameEventJudge judge)
 {
-    public void Advance(MatchTick tick) =>
-        tick.SetGameEvents(judge.JudgeFrame(tick.Eliminations, tick.Match.World.Tick));
+    public IReadOnlyList<Judgment> Judge(IReadOnlyList<ScoredKill> eliminations, int tick) =>
+        judge.JudgeFrame(eliminations, tick);
 
     public byte KillingSpreeMagnitude(Player player) =>
         judge.KillingSpreeMagnitude(player);

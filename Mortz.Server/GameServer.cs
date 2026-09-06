@@ -1,5 +1,6 @@
-using Mortz.Core.Net;
-using Mortz.Core.Net.Query;
+using Mortz.Core.Features;
+using Mortz.Protocol.Net;
+using Mortz.Protocol.Net.Query;
 using Mortz.Server.Admin;
 using Mortz.Server.Chat;
 using Mortz.Server.Content;
@@ -27,16 +28,11 @@ public sealed class GameServer : IDisposable, IHandle<Player, PhaseReadyMsg>
     private readonly Roster _roster;
     private readonly NetRouter<Player> _router = new();
     private readonly HashSet<ushort> _undispatched = [];
-    private readonly object[] _services;
+    private readonly FeatureScope _scope;
     private readonly SettingsService _settings;
     private readonly AdminService _admin;
     private readonly ChatService _chat;
     private readonly MatchDependencies _matchDependencies;
-
-    private IObservePlayers[] _observePlayers = [];
-    private IObservePhase[] _observePhase = [];
-    private IAdvance[] _advance = [];
-    private ISyncJip[] _syncJip = [];
 
     private bool _disposed;
 
@@ -50,6 +46,8 @@ public sealed class GameServer : IDisposable, IHandle<Player, PhaseReadyMsg>
 
         _host = new PhaseTransitionCoordinator(generation: 1);
         var slots = new ServerStateKeys(_host.Generation);
+        _scope = new FeatureScope(_router.Add, _router.Remove);
+        _scope.Register(this);
         _clock = new ServerClock();
         _roster = new Roster(slots);
 
@@ -60,7 +58,14 @@ public sealed class GameServer : IDisposable, IHandle<Player, PhaseReadyMsg>
         WinsService wins = new(slots, _roster, _link, log);
         PingService pings = new(_link);
         EndMatchService endMatch = new(_admin, _chat, _host, _host);
-        _services = [_settings, _admin, _chat, typing, wins, pings, endMatch];
+        _scope.Register(_settings);
+        _scope.Register(_admin);
+        _scope.Register(_chat);
+        _scope.Register(typing);
+        _scope.Register(wins);
+        _scope.Register(pings);
+        _scope.Register(endMatch);
+        slots.Seal();
         _matchDependencies = new MatchDependencies
         {
             Settings = _settings,
@@ -77,21 +82,32 @@ public sealed class GameServer : IDisposable, IHandle<Player, PhaseReadyMsg>
 
         _host.OpenInitial(LobbyPhase.Open(
             _roster, _settings, _admin, _chat, _link, log, _host));
-        Recompose();
+        _scope.Own(_host.Dispose);
+        _scope.OwnState(() =>
+        {
+            foreach (Player player in _roster)
+            {
+                player.Close(_host.Kind);
+            }
+        }, slots.Describe);
+        _scope.Start();
+        BindPhase();
     }
 
     public ServerPhaseKind Phase => _host.Kind;
+    public int Generation => _host.Generation;
 
     public int PlayerCount => _roster.Count;
 
     public void Connect(int peerId, string requestedName, int requestedSkin = 0)
     {
+        ObjectDisposedException.ThrowIf(_disposed, this);
         _link.BeginLoading(peerId, _host.Generation, _clock.Ms);
         Player player = _roster.Join(peerId, requestedName, requestedSkin);
         _host.OpenPhaseKeys(player);
-        for (int i = 0; i < _observePlayers.Length; i++)
+        foreach (IObservePlayers feature in Live<IObservePlayers>())
         {
-            _observePlayers[i].PlayerJoined(player);
+            feature.PlayerJoined(player);
         }
 
         _host.PlayerJoined(player);
@@ -101,15 +117,17 @@ public sealed class GameServer : IDisposable, IHandle<Player, PhaseReadyMsg>
 
     public void Disconnect(int peerId)
     {
+        if (_disposed)
+            return;
         // Out of the roster before the fan-out, so tallies and broadcasts exclude
         // them; their name and state stay readable until Close below.
         if (_roster.Leave(peerId) is not Player player)
             return;
         _link.Remove(peerId);
         _host.PlayerLeft(player);
-        for (int i = _observePlayers.Length - 1; i >= 0; i--)
+        foreach (IObservePlayers feature in Live<IObservePlayers>().Reverse())
         {
-            _observePlayers[i].PlayerLeft(player);
+            feature.PlayerLeft(player);
         }
 
         _matchObserver.PlayerLeft(player, _host.Kind);
@@ -119,7 +137,7 @@ public sealed class GameServer : IDisposable, IHandle<Player, PhaseReadyMsg>
 
     public void Receive(int peerId, ushort msgId, byte[] payload)
     {
-        if (_roster.Find(peerId) is not Player player)
+        if (_disposed || _roster.Find(peerId) is not Player player)
             return;
         if (_router.Dispatch(msgId, player, payload))
             return;
@@ -139,18 +157,19 @@ public sealed class GameServer : IDisposable, IHandle<Player, PhaseReadyMsg>
     {
         if (!_host.InputsAllowed)
             return;
-        if (_roster.Find(peerId) is not Player player)
+        if (_disposed || _roster.Find(peerId) is not Player player)
             return;
         _host.Inputs(player, packet);
     }
 
     public void Advance(ServerTime time)
     {
+        ObjectDisposedException.ThrowIf(_disposed, this);
         _clock.Ms = time.Ms;
         _link.DisconnectExpired(time.Ms);
-        for (int i = 0; i < _advance.Length; i++)
+        foreach (IAdvance feature in Live<IAdvance>())
         {
-            _advance[i].Advance(time);
+            feature.Advance(time);
         }
 
         Execute(_host.Advance(time));
@@ -173,14 +192,8 @@ public sealed class GameServer : IDisposable, IHandle<Player, PhaseReadyMsg>
         if (_disposed)
             return;
         _disposed = true;
-        // Cells first, while every service is still alive and every payload is still readable.
-        foreach (Player player in _roster)
-        {
-            player.Close(_host.Kind);
-        }
-
-        _host.Dispose();
-        DisposeReverse(_services);
+        _router.Clear();
+        _scope.Dispose();
     }
 
     private void StartMatch(IReadOnlyList<SeatAssignment> seats)
@@ -193,11 +206,6 @@ public sealed class GameServer : IDisposable, IHandle<Player, PhaseReadyMsg>
     {
         if (_host.Kind != ServerPhaseKind.MATCH)
             return;
-        foreach (Player player in _roster)
-        {
-            player.CloseMatch();
-        }
-
         _log.Information("back to lobby ({Players} player(s))", _roster.Count);
         EnterPhase(LobbyPhase.Open(_roster, _settings, _admin, _chat, _link, _log, _host));
     }
@@ -213,11 +221,11 @@ public sealed class GameServer : IDisposable, IHandle<Player, PhaseReadyMsg>
         }
 
         IReadOnlyList<PhaseHostAction> loads = _host.TransitionTo(next, players);
-        Recompose();
+        BindPhase();
         Execute(loads);
-        for (int i = 0; i < _observePhase.Length; i++)
+        foreach (IObservePhase feature in Live<IObservePhase>())
         {
-            _observePhase[i].PhaseChanged(next.Kind);
+            feature.PhaseChanged(next.Kind);
         }
 
         _matchObserver.PhaseChanged(next.Kind);
@@ -236,9 +244,9 @@ public sealed class GameServer : IDisposable, IHandle<Player, PhaseReadyMsg>
                 _host.LoadMatch(load.Player, load.Generation, load.Initial);
                 break;
             case PhaseHostAction.SyncJip sync:
-                for (int i = 0; i < _syncJip.Length; i++)
+                foreach (ISyncJip feature in _host.Features.Implementing<ISyncJip>())
                 {
-                    _syncJip[i].Sync(sync.Player);
+                    feature.Sync(sync.Player);
                 }
 
                 break;
@@ -266,30 +274,15 @@ public sealed class GameServer : IDisposable, IHandle<Player, PhaseReadyMsg>
         }
     }
 
-    private void Recompose()
+    private IEnumerable<T> Live<T>() =>
+        _scope.Implementing<T>().Concat(_host.Features.Implementing<T>());
+
+    public string DescribeFeatures() => _scope.Describe() + "; phase: " + _host.Features.Describe();
+
+    private void BindPhase()
     {
-        object[] live = [.. _services, .. _host.Services];
-        _observePlayers = [.. live.OfType<IObservePlayers>()];
-        _observePhase = [.. live.OfType<IObservePhase>()];
-        _advance = [.. live.OfType<IAdvance>()];
-        _syncJip = [.. _host.Services.OfType<ISyncJip>()];
-
-        _router.Clear();
-        _router.Add(this);
-        foreach (object service in live)
-        {
-            _router.Add(service);
-        }
-
+        _router.MatchGeneration = _host.Generation;
+        _host.Features.Bind(_router.Add, _router.Remove);
         _log.Information("{Routes}", _router.Describe());
-    }
-
-    private static void DisposeReverse(IReadOnlyList<object> services)
-    {
-        for (int i = services.Count - 1; i >= 0; i--)
-        {
-            if (services[i] is IDisposable disposable)
-                disposable.Dispose();
-        }
     }
 }

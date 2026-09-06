@@ -13,5 +13,17 @@ public sealed class MatchStateKeys
 
     public int Generation => _generation;
 
-    public MatchStateKey<T> Claim<T>() where T : class, new() => new(_count++, _generation);
+    private bool _sealed;
+    private readonly List<(Type Feature, Type State)> _owners = [];
+    public string Describe() => string.Join(", ", _owners.Select(owner =>
+        $"{owner.Feature.Name}: {owner.State.Name}"));
+    public void Seal() => _sealed = true;
+
+    public MatchStateKey<T> Claim<T>(Type? feature = null) where T : class, new()
+    {
+        if (_sealed)
+            throw new InvalidOperationException("Player state registration is closed.");
+        _owners.Add((feature ?? typeof(T), typeof(T)));
+        return new(_count++, _generation);
+    }
 }

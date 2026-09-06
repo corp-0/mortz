@@ -1,31 +1,6 @@
-[gd_scene format=3 uid="uid://cydovh5ewk1eb"]
+[gd_scene format=3]
 
-[ext_resource type="Script" uid="uid://b28br8dkvuhdv" path="res://src/Client/Session/ConnectedSession.cs" id="1_root"]
-[ext_resource type="Script" uid="uid://bynxb81cf00xi" path="res://src/Client/Setup/MatchSetup.cs" id="2_setup"]
-[ext_resource type="Script" uid="uid://ds8420gb3q8xn" path="res://src/Client/Stats/Pings.cs" id="3_pings"]
-[ext_resource type="Script" uid="uid://cnxem6jq8w711" path="res://src/Client/Stats/SessionWins.cs" id="4_wins"]
-[ext_resource type="Script" uid="uid://ooyj4qa2sesu" path="res://src/Client/Players/ClientPlayers.cs" id="6_roster"]
-[ext_resource type="Script" uid="uid://d2se7ahca8huk" path="res://src/Client/Admin/ClientAdmin.cs" id="7_admin"]
+[ext_resource type="Script" path="res://src/Client/Session/ConnectedSession.cs" id="1_root"]
 
-[node name="ConnectedSession" type="Node" unique_id=724459621 node_paths=PackedStringArray("_matchSetup", "_pings", "_sessionWins", "_clientPlayers", "_clientAdmin")]
+[node name="ConnectedSession" type="Node" unique_id=724459621]
 script = ExtResource("1_root")
-_matchSetup = NodePath("MatchSetup")
-_pings = NodePath("Pings")
-_sessionWins = NodePath("SessionWins")
-_clientPlayers = NodePath("ClientPlayers")
-_clientAdmin = NodePath("ClientAdmin")
-
-[node name="MatchSetup" type="Node" parent="." unique_id=482860832]
-script = ExtResource("2_setup")
-
-[node name="Pings" type="Node" parent="." unique_id=1087103465]
-script = ExtResource("3_pings")
-
-[node name="SessionWins" type="Node" parent="." unique_id=1758442907]
-script = ExtResource("4_wins")
-
-[node name="ClientPlayers" type="Node" parent="." unique_id=824997641]
-script = ExtResource("6_roster")
-
-[node name="ClientAdmin" type="Node" parent="." unique_id=1882813526]
-script = ExtResource("7_admin")

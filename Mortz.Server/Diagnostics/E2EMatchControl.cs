@@ -1,3 +1,4 @@
+using Mortz.Core.Match.Configuration;
 using Mortz.Core.Sim;
 
 namespace Mortz.Server.Diagnostics;

@@ -1,7 +1,7 @@
 using Godot;
 using Mortz.Core.Chat;
-using Mortz.Core.Net;
 using Mortz.Core.Text;
+using Mortz.Protocol.Net;
 
 namespace Mortz.Client.Chat;
 

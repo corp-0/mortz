@@ -9,8 +9,6 @@ namespace Mortz.Core.Sim;
 public record struct PlayerState
 {
     public int PeerId;
-    /// <summary>Stable 1..MAX_PLAYERS wire id for this match; roster metadata, not gameplay state.</summary>
-    public byte NetSlot;
     public Vec2 Position;
     public Vec2 Velocity;
     public bool Grounded;
@@ -70,8 +68,6 @@ public record struct PlayerState
     /// replay agrees.</summary>
     public int SpawnImmunityFireThroughSeq;
 
-    /// <summary>Sprite frame dealt by the server at join; survives respawns.</summary>
-    public byte Skin;
 
     /// <summary>Null when they have no team; the sim reads it for friendly
     /// fire.</summary>

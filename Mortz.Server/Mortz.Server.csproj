@@ -8,6 +8,7 @@
     <NoWarn>$(NoWarn);EnableGenerateDocumentationFile</NoWarn>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="../Mortz.Protocol/Mortz.Protocol.csproj" />
     <PackageReference Include="Serilog" Version="4.4.0" />
   </ItemGroup>
   <ItemGroup>

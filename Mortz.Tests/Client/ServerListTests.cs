@@ -1,6 +1,6 @@
 using Mortz.Client.Servers;
-using Mortz.Core.Net;
-using Mortz.Core.Net.Query;
+using Mortz.Protocol.Net;
+using Mortz.Protocol.Net.Query;
 using Xunit;
 
 namespace Mortz.Tests.Client;

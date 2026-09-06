@@ -2,11 +2,12 @@ using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
 using Mortz.Client.Admin;
+using Mortz.Client.Chat;
 using Mortz.Client.Players;
 using Mortz.Client.Setup;
 using Mortz.Client.Stats;
-using Mortz.Core.Net;
 using Mortz.Net;
+using Mortz.Protocol.Net;
 
 namespace Mortz.Client.Session;
 
@@ -14,6 +15,7 @@ namespace Mortz.Client.Session;
 /// under it.</summary>
 [Meta(typeof(IAutoNode))]
 public partial class ServiceRoot : Node,
+    IProvide<ClientChat>,
     IProvide<MatchSetup>,
     IProvide<Pings>,
     IProvide<SessionWins>,
@@ -24,6 +26,8 @@ public partial class ServiceRoot : Node,
     IProvide<NetRouter>,
     IProvide<ISessionExit>
 {
+    public ClientChat Chat { get; set; } = null!;
+    ClientChat IProvide<ClientChat>.Value() => Chat;
     public MatchSetup Setup { get; set; } = null!;
     public Pings Pings { get; set; } = null!;
     public SessionWins Wins { get; set; } = null!;

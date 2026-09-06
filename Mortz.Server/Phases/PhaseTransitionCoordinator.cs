@@ -1,3 +1,4 @@
+using Mortz.Core.Features;
 using Mortz.Server.Players;
 
 namespace Mortz.Server.Phases;
@@ -49,6 +50,8 @@ public sealed class PhaseTransitionCoordinator(int generation) : ICurrentPhase, 
     public int NextGeneration => checked(Generation + 1);
 
     public IReadOnlyList<object> Services => Phase.Services;
+
+    public FeatureScope Features => Phase.Features;
 
     public bool InputsAllowed => Kind != ServerPhaseKind.MATCH || _matchRunning;
 
@@ -197,12 +200,6 @@ public sealed class PhaseTransitionCoordinator(int generation) : ICurrentPhase, 
     {
         if (_phase == null)
             return;
-        IReadOnlyList<object> services = _phase.Services;
-        for (int i = services.Count - 1; i >= 0; i--)
-        {
-            if (services[i] is IDisposable disposable)
-                disposable.Dispose();
-        }
         _phase.Dispose();
     }
 }

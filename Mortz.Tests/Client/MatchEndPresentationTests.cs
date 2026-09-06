@@ -5,10 +5,10 @@ using Mortz.Client.Players;
 using Mortz.Client.Spectating;
 using Mortz.Core.Match.Participation;
 using Mortz.Core.Match.Scoring;
-using Mortz.Core.Net.Lobby;
-using Mortz.Core.Net.Match;
 using Mortz.Net;
-using Mortz.Tests.Net;
+using Mortz.Protocol.Net.Lobby;
+using Mortz.Protocol.Net.Match;
+using Mortz.Runtime.Tests.Net;
 using Xunit;
 
 namespace Mortz.Tests.Client;
@@ -35,7 +35,7 @@ public class MatchEndPresentationTests : NodeServiceTest
 
         Host(spectatorHud);
         Host(camera);
-        ClientPlayers players = HostRouted(new ClientPlayers());
+        ClientPlayers players = RegisterRuntime(new ClientPlayers());
         new LobbyStateMsg([new LobbyMember(7, "alice", false, null)], []).Broadcast(Router);
         ClientMatchState matchState = new(3, MatchParticipation.JipSpectator);
 
@@ -47,9 +47,9 @@ public class MatchEndPresentationTests : NodeServiceTest
         spectator.FakeDependency(matchState);
         spectator.Initialize(Vector2.Zero);
         Host(spectator);
-        ClientMatchStateAdapter adapter = new();
-        adapter.Initialize(matchState);
-        HostRouted(adapter);
+        Router.MatchGeneration = matchState.Generation;
+        ClientMatchStateAdapter adapter = new(matchState);
+        RegisterRuntime(adapter);
         spectator.Present([], null, newestTick: 0);
         Assert.True(spectatorHud.Visible);
 

@@ -6,17 +6,16 @@ using Mortz.Client.Effects;
 using Mortz.Client.Match;
 using Mortz.Client.Spectating;
 using Mortz.Client.Views;
-using Mortz.Core.Net;
-using Mortz.Core.Net.Match;
 using Mortz.Core.Sim;
 using Mortz.Net;
+using Mortz.Protocol.Net.Match;
 
 namespace Mortz.Client.Replay;
 
 /// <summary>Owns the final-kill cinematic: event handling, render history,
 /// freeze state, playback, camera, temporary terrain, effects, and hold.</summary>
 [Meta(typeof(IAutoNode))]
-public partial class FinalKillReplay : Node, IHandle<FinalKillMsg>
+public partial class FinalKillReplay : Node
 {
     private const float IMPACT_HOLD_SECONDS = 0.12f;
     private const float REPLAY_ZOOM = 1.65f;
@@ -25,7 +24,7 @@ public partial class FinalKillReplay : Node, IHandle<FinalKillMsg>
 
     [Dependency] private GameMap Map => this.DependOn<GameMap>();
 
-    [Dependency] private NetRouter Router => this.DependOn<NetRouter>();
+    [Dependency] private ClientMatchRuntime Runtime => this.DependOn<ClientMatchRuntime>();
 
     [Export] private EffectsSpawner _effects = null!;
     [Export] private RopeOverlay _ropes = null!;
@@ -52,7 +51,7 @@ public partial class FinalKillReplay : Node, IHandle<FinalKillMsg>
 
     public bool MatchFrozen => _matchFrozen;
 
-    private NetRouter? _routed;
+    private bool _subscribed;
 
     public override void _Notification(int what) => this.Notify(what);
 
@@ -65,14 +64,15 @@ public partial class FinalKillReplay : Node, IHandle<FinalKillMsg>
 
     public void OnResolved()
     {
-        _routed = Router;
-        _routed.Add(this);
+        Runtime.FinalKillReceived += OnFinalKill;
+        _subscribed = true;
     }
 
     public override void _ExitTree()
     {
-        _routed?.Remove(this);
-        _routed = null;
+        if (_subscribed)
+            Runtime.FinalKillReceived -= OnFinalKill;
+        _subscribed = false;
         ClientClock.Reset();
         _replayCamera.Enabled = false;
     }
@@ -93,12 +93,12 @@ public partial class FinalKillReplay : Node, IHandle<FinalKillMsg>
         return _matchFrozen;
     }
 
-    public void Handle(in FinalKillMsg msg)
+    private void OnFinalKill(FinalKillMsg msg)
     {
         if (_matchFrozen)
             return;
+        _effects.DeferDecisiveImpact(msg);
         _matchFrozen = true;
-        _localPlayer.Frozen = true;
         _spectator.SetReplayActive(true);
         _pendingFinalKill = msg;
     }

@@ -1,0 +1,79 @@
+using System.Security.Cryptography;
+using System.Text;
+
+namespace Mortz.Protocol.Admin;
+
+public static class AdminCrypto
+{
+    public const int SESSION_ID_BYTES = 16;
+    public const int NONCE_BYTES = 32;
+    public const int CHALLENGE_BYTES = SESSION_ID_BYTES + NONCE_BYTES;
+    public const int KEY_BYTES = 32;
+    public const int TAG_BYTES = 32;
+    // OWASP 2023 floor for PBKDF2-SHA256. The server only pays it inside the
+    // rate-limited proof check.
+    public const int PBKDF2_ITERATIONS = 600_000;
+
+    private static readonly byte[] _proofContext = Encoding.UTF8.GetBytes("mortz-admin-proof-v1");
+    private static readonly byte[] _sessionContext = Encoding.UTF8.GetBytes("mortz-admin-session-v1");
+    private static readonly byte[] _commandContext = Encoding.UTF8.GetBytes("mortz-admin-command-v1");
+
+    // The challenge is the salt: unique per attempt and both sides already have it.
+    public static byte[] DerivePasswordKey(ReadOnlySpan<byte> passwordUtf8,
+        ReadOnlySpan<byte> challenge)
+    {
+        if (challenge.Length != CHALLENGE_BYTES)
+            throw new ArgumentException($"Challenge must be {CHALLENGE_BYTES} bytes.", nameof(challenge));
+        return Rfc2898DeriveBytes.Pbkdf2(passwordUtf8, challenge, PBKDF2_ITERATIONS,
+            HashAlgorithmName.SHA256, KEY_BYTES);
+    }
+
+    public static byte[] BuildChallenge(ReadOnlySpan<byte> sessionId, ReadOnlySpan<byte> nonce)
+    {
+        if (sessionId.Length != SESSION_ID_BYTES)
+            throw new ArgumentException($"Session id must be {SESSION_ID_BYTES} bytes.", nameof(sessionId));
+        if (nonce.Length != NONCE_BYTES)
+            throw new ArgumentException($"Nonce must be {NONCE_BYTES} bytes.", nameof(nonce));
+        byte[] challenge = new byte[CHALLENGE_BYTES];
+        sessionId.CopyTo(challenge);
+        nonce.CopyTo(challenge.AsSpan(SESSION_ID_BYTES));
+        return challenge;
+    }
+
+    public static byte[] ComputeProof(ReadOnlySpan<byte> passwordKey, int peerId,
+        ReadOnlySpan<byte> challenge) =>
+        Compute(passwordKey, _proofContext, peerId, challenge);
+
+    public static byte[] DeriveSessionKey(ReadOnlySpan<byte> passwordKey, int peerId,
+        ReadOnlySpan<byte> challenge) =>
+        Compute(passwordKey, _sessionContext, peerId, challenge);
+
+    public static byte[] ComputeCommandTag(ReadOnlySpan<byte> sessionKey, int peerId,
+        ulong sequence, byte action, ReadOnlySpan<byte> payload)
+    {
+        using var stream = new MemoryStream();
+        using var writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: true);
+        writer.Write(_commandContext);
+        writer.Write(peerId);
+        writer.Write(sequence);
+        writer.Write(action);
+        writer.Write(payload.Length);
+        writer.Write(payload);
+        return HMACSHA256.HashData(sessionKey, stream.GetBuffer().AsSpan(0, checked((int)stream.Length)));
+    }
+
+    private static byte[] Compute(ReadOnlySpan<byte> key, ReadOnlySpan<byte> context,
+        int peerId, ReadOnlySpan<byte> challenge)
+    {
+        if (key.Length != KEY_BYTES)
+            throw new ArgumentException($"Key must be {KEY_BYTES} bytes.", nameof(key));
+        if (challenge.Length != CHALLENGE_BYTES)
+            throw new ArgumentException($"Challenge must be {CHALLENGE_BYTES} bytes.", nameof(challenge));
+        using var stream = new MemoryStream();
+        using var writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: true);
+        writer.Write(context);
+        writer.Write(peerId);
+        writer.Write(challenge);
+        return HMACSHA256.HashData(key, stream.GetBuffer().AsSpan(0, checked((int)stream.Length)));
+    }
+}

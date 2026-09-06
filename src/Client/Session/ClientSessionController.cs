@@ -5,14 +5,17 @@ using Mortz.Client.MapEditor;
 using Mortz.Client.Match;
 using Mortz.Client.Menus;
 using Mortz.Client.Settings;
-using Mortz.Core.Net;
-using Mortz.Core.Net.Lobby;
-using Mortz.Core.Net.Sim;
+using Mortz.Core.Terrain;
 using Mortz.Net;
+using Mortz.Protocol.Net;
+using Mortz.Protocol.Net.Lobby;
+using Mortz.Protocol.Net.Sim;
+using Mortz.Protocol.Terrain;
 using Mortz.Shared;
 using Mortz.Shared.Logging;
 using Serilog;
 using CryptoRandom = System.Security.Cryptography.RandomNumberGenerator;
+
 #if TOOLS
 using Mortz.Shared.E2E;
 #endif
@@ -44,6 +47,7 @@ public partial class ClientSessionController : Node, ISessionExit,
     private PendingMatchEntry? _pendingMatch;
     private ConnectedSession? _connectedSession;
     private ClientMatchState? _matchState;
+    private ClientMatchRuntime? _matchRuntime;
     private GameView? _gameView;
     private Lobby? _lobby;
     private MainMenu? _menu;
@@ -121,6 +125,7 @@ public partial class ClientSessionController : Node, ISessionExit,
         Network.ConnectionFailed += OnConnectionFailed;
         Network.Disconnected += OnDisconnected;
         Network.Router.Add(this);
+        Network.SnapshotReceived += ReceiveSnapshot;
         _subscribed = true;
     }
 
@@ -132,6 +137,7 @@ public partial class ClientSessionController : Node, ISessionExit,
         Network.ConnectionFailed -= OnConnectionFailed;
         Network.Disconnected -= OnDisconnected;
         Network.Router.Remove(this);
+        Network.SnapshotReceived -= ReceiveSnapshot;
         _subscribed = false;
     }
 
@@ -183,6 +189,8 @@ public partial class ClientSessionController : Node, ISessionExit,
 
     public void Handle(in LobbyLoadMsg message)
     {
+        if (Network.Router.MatchGeneration is int current && message.Generation < current)
+            return;
         bool returningFromMatch = _session.Stage is
             ClientSessionStage.LOADING_MATCH or ClientSessionStage.PLAYING;
         if (!_session.TryEnterLobby())
@@ -192,12 +200,15 @@ public partial class ClientSessionController : Node, ISessionExit,
             DisposeGameView();
             _pendingMatch = null;
         }
+        Network.Router.MatchGeneration = message.Generation;
         DisposeMenu();
         CreateLobby(message.Generation);
     }
 
     public void Handle(in MatchLoadMsg message)
     {
+        if (Network.Router.MatchGeneration is int current && message.Generation < current)
+            return;
         if (!_session.TryBeginMatchLoad())
             return;
         if (!PendingMatchEntry.TryCreate(message, out PendingMatchEntry? bootstrap,
@@ -208,6 +219,7 @@ public partial class ClientSessionController : Node, ISessionExit,
         }
 
         _log.Information("map '{Map}' verified", bootstrap!.Map.DisplayName);
+        Network.Router.MatchGeneration = message.Generation;
         _pendingMatch = bootstrap;
     }
 
@@ -257,15 +269,33 @@ public partial class ClientSessionController : Node, ISessionExit,
         if (_connectedSession is not ConnectedSession connectedSession)
             return;
         ClientMatchState matchState = new(entry.Generation, entry.Participation);
-        GameView gameView = _gameViewScene.Instantiate<GameView>();
+        TerrainMask mask = entry.Map.BuildMask();
         try
         {
-            gameView.Initialize(matchState, entry.Map, entry.Terrain.Config,
-                entry.Terrain.Encoding, terrainData,
-                entry.InitialSnapshot, entry.InitialSnapshotAck);
+            TerrainSync.Apply(mask, entry.Terrain.Encoding, terrainData);
         }
         catch (IOException exception)
         {
+            RejectMatchLoad($"Invalid terrain sync: {exception.Message}");
+            return;
+        }
+        DisposeGameView();
+        ClientMatchRuntime runtime = connectedSession.Connection.OpenMatch(matchState, mask,
+            entry.Terrain.Config, entry.Map.Zones, Network.LocalPeerId,
+            Network.SendInputs, Time.GetTicksMsec);
+        if (!runtime.InitializeSnapshot(entry.InitialSnapshot, entry.InitialSnapshotAck))
+        {
+            RejectMatchLoad("Invalid initial match snapshot.");
+            return;
+        }
+        GameView gameView = _gameViewScene.Instantiate<GameView>();
+        try
+        {
+            gameView.Initialize(runtime, entry.Map);
+        }
+        catch (IOException exception)
+        {
+            runtime.Dispose();
             gameView.Free();
             RejectMatchLoad($"Invalid terrain sync: {exception.Message}");
             return;
@@ -275,13 +305,24 @@ public partial class ClientSessionController : Node, ISessionExit,
         // so this is the only place that unmounts the menu on that path.
         DisposeMenu();
         DisposeLobby();
-        DisposeGameView();
-        connectedSession.Players.OpenMatch(entry.Terrain.Config);
+
         _matchState = matchState;
+        _matchRuntime = runtime;
         _gameView = gameView;
         connectedSession.AddChild(gameView);
         _pendingMatch = null;
+        new PhaseReadyMsg(entry.Generation).SendToServer(Network);
     }
+
+    private void ReceiveSnapshot(byte[] data, int ack) => _matchRuntime?.AcceptSnapshot(data, ack);
+
+    public override void _PhysicsProcess(double delta)
+    {
+        if (_matchRuntime is ClientMatchRuntime runtime)
+            runtime.Tick(runtime.SampleInput?.Invoke() ?? default);
+    }
+
+    public override void _Process(double delta) => _matchRuntime?.Advance((float)delta);
 
     private void RejectMatchLoad(string reason)
     {
@@ -387,10 +428,11 @@ public partial class ClientSessionController : Node, ISessionExit,
 #if TOOLS
     private async void DelayLobbyEntry(int generation)
     {
+        ConnectedSession? connection = _connectedSession;
         await ToSignal(GetTree().CreateTimer(
             E2ELaunch.ScreenLoadDelayMs / 1000.0),
             SceneTreeTimer.SignalName.Timeout);
-        if (_lobby == null && _connectedSession != null &&
+        if (_lobby == null && connection != null && ReferenceEquals(connection, _connectedSession) &&
             _session.Stage == ClientSessionStage.LOBBY)
             MountLobby(generation);
     }
@@ -419,6 +461,8 @@ public partial class ClientSessionController : Node, ISessionExit,
 
     private void DisposeGameView()
     {
+        _connectedSession?.Connection.CloseMatch();
+        _matchRuntime = null;
         _matchState?.Close();
         _matchState = null;
         Detach(_gameView);

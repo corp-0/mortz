@@ -1,6 +1,8 @@
 using System.Collections.Immutable;
+using System.Globalization;
 using System.Text;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
 
@@ -307,10 +309,10 @@ public sealed class TomlModelGenerator : IIncrementalGenerator
     {
         if (models.ContainsKey(type)) return;
         AttributeData? union = Attr(type, "TomlUnionAttribute");
-        AttributeData[] victoryCases = type.GetAttributes()
-            .Where(attribute => attribute.AttributeClass?.Name == "VictoryRuleCaseAttribute")
+        AttributeData[] endConditionCases = type.GetAttributes()
+            .Where(attribute => attribute.AttributeClass?.Name == "EndConditionCaseAttribute")
             .ToArray();
-        if (union != null || victoryCases.Length > 0)
+        if (union != null || endConditionCases.Length > 0)
         {
             ImmutableArray<CaseInfo>.Builder cases = ImmutableArray.CreateBuilder<CaseInfo>();
             string discriminator = union == null || union.ConstructorArguments.Length == 0
@@ -320,7 +322,7 @@ public sealed class TomlModelGenerator : IIncrementalGenerator
                 ImmutableArray<CaseInfo>.Empty);
             IEnumerable<AttributeData> caseAttributes = union != null
                 ? type.GetAttributes().Where(x => x.AttributeClass?.Name == "TomlCaseAttribute")
-                : victoryCases;
+                : endConditionCases;
             foreach (AttributeData attr in caseAttributes)
             {
                 int typeArgument = union != null ? 1 : 2;
@@ -415,10 +417,10 @@ public sealed class TomlModelGenerator : IIncrementalGenerator
             null => "null",
             string s => Quote(s),
             bool b => b ? "true" : "false",
-            float f => f.ToString("R", System.Globalization.CultureInfo.InvariantCulture) + "f",
-            double d => d.ToString("R", System.Globalization.CultureInfo.InvariantCulture),
-            long l => l.ToString(System.Globalization.CultureInfo.InvariantCulture) + "L",
-            _ => Convert.ToString(p.ExplicitDefaultValue, System.Globalization.CultureInfo.InvariantCulture) ?? "default"
+            float f => f.ToString("R", CultureInfo.InvariantCulture) + "f",
+            double d => d.ToString("R", CultureInfo.InvariantCulture),
+            long l => l.ToString(CultureInfo.InvariantCulture) + "L",
+            _ => Convert.ToString(p.ExplicitDefaultValue, CultureInfo.InvariantCulture) ?? "default"
         };
         if (optional) return "default";
         return "default!";
@@ -443,7 +445,7 @@ public sealed class TomlModelGenerator : IIncrementalGenerator
     private static string DeclaredTypeName(ITypeSymbol type) => TypeName(type) +
         (type.IsReferenceType && type.NullableAnnotation == NullableAnnotation.Annotated ? "?" : "");
     private static string Name(INamedTypeSymbol type) => type.ToDisplayString();
-    private static string Quote(string value) => Microsoft.CodeAnalysis.CSharp.SymbolDisplay.FormatLiteral(value, true);
+    private static string Quote(string value) => SymbolDisplay.FormatLiteral(value, true);
     private static string Snake(string name)
     {
         StringBuilder b = new();

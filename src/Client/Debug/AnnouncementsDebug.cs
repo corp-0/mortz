@@ -9,9 +9,9 @@ using Mortz.Client.Players;
 using Mortz.Client.Session;
 using Mortz.Core.Match.Events;
 using Mortz.Core.Match.Scoring;
-using Mortz.Core.Net;
-using Mortz.Core.Net.Match;
 using Mortz.Net;
+using Mortz.Protocol.Net;
+using Mortz.Protocol.Net.Match;
 
 namespace Mortz.Client.Debug;
 
@@ -36,9 +36,9 @@ public partial class AnnouncementsDebug : Control,
     private readonly NetRouter _router = new();
     private readonly FakeSessionExit _sessionExit = new();
 
-    [Export] private ClientPlayers _players = null!;
-    [Export] private ClientAdmin _admin = null!;
-    [Export] private ClientChat _chat = null!;
+    private readonly ClientPlayers _players = new();
+    private ClientAdmin _admin = null!;
+    private ClientChat _chat = null!;
     [Export] private Sfx _sfx = null!;
 
     IAnnouncementDirector IProvide<IAnnouncementDirector>.Value() => _director;
@@ -55,7 +55,16 @@ public partial class AnnouncementsDebug : Control,
 
     public void OnReady()
     {
+        _admin = new ClientAdmin(_network, () => _network.LocalPeerId);
+        _chat = new ClientChat(_admin, _sessionExit, _network);
         this.Provide();
+    }
+
+    public void OnExitTree()
+    {
+        _chat?.Dispose();
+        _admin?.Dispose();
+        _players.Dispose();
     }
 
     private void OnFirstBlood() => Fire(Event(GameEventKind.FIRST_BLOOD));

@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.Text;
-using Mortz.Core.Net;
 
 namespace Mortz.Core.Chat;
 
@@ -14,7 +13,7 @@ public static class ChatTextSanitizer
         if (string.IsNullOrWhiteSpace(withoutBbCode))
             return false;
 
-        var result = new StringBuilder(Math.Min(withoutBbCode.Length, NetConfig.MAX_CHAT_BYTES));
+        var result = new StringBuilder(Math.Min(withoutBbCode.Length, ChatLimits.MAX_BYTES));
         int utf8Bytes = 0;
         foreach (Rune rune in withoutBbCode.EnumerateRunes())
         {
@@ -23,7 +22,7 @@ public static class ChatTextSanitizer
                 UnicodeCategory.LineSeparator or UnicodeCategory.ParagraphSeparator)
                 continue;
             utf8Bytes += rune.Utf8SequenceLength;
-            if (utf8Bytes > NetConfig.MAX_CHAT_BYTES)
+            if (utf8Bytes > ChatLimits.MAX_BYTES)
             {
                 reason = ChatRejectReason.TOO_LONG;
                 return false;

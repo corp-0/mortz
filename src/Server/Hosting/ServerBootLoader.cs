@@ -1,7 +1,7 @@
 using Mortz.Content;
 using Mortz.Core.Match.Configuration;
-using Mortz.Core.Net;
-using Mortz.Core.Net.Query;
+using Mortz.Protocol.Net;
+using Mortz.Protocol.Net.Query;
 using Mortz.Shared;
 using Mortz.Shared.Logging;
 using Serilog;

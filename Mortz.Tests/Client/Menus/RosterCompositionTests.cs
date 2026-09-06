@@ -1,6 +1,6 @@
-using Chickensoft.AutoInject;
 using Godot;
 using Mortz.Client.Admin;
+using Mortz.Client.Chat;
 using Mortz.Client.Match;
 using Mortz.Client.Menus;
 using Mortz.Client.Players;
@@ -9,10 +9,8 @@ using Mortz.Client.Setup;
 using Mortz.Client.Stats;
 using Mortz.Core.Match.Configuration;
 using Mortz.Core.Match.Teams;
-using Mortz.Core.Net;
-using Mortz.Core.Net.Lobby;
-using Mortz.Net;
-using Mortz.Tests.Net;
+using Mortz.Protocol.Net.Lobby;
+using Mortz.Runtime.Tests.Net;
 using Xunit;
 using ModeRules = Mortz.Core.Match.Configuration.ModeRules;
 
@@ -81,22 +79,18 @@ public class RosterCompositionTests : NodeServiceTest
     private Lobby MountLobby()
     {
         FakeNetwork network = new() { LocalPeerId = 1 };
-        ClientAdmin admin = new();
-        admin.FakeDependency<INetwork>(network);
-        admin.FakeDependency<IClientSender>(Sender);
-        admin.FakeDependency(Router);
-        ClientPlayers players = HostRouted(new ClientPlayers());
-        Pings pings = new();
-        pings.FakeDependency(players);
-        SessionWins wins = new();
-        wins.FakeDependency(players);
+        ClientAdmin admin = new(Sender, () => network.LocalPeerId);
+        ClientPlayers players = RegisterRuntime(new ClientPlayers());
+        Pings pings = new(players);
+        SessionWins wins = new(players);
         ServiceRoot root = Host(new ServiceRoot
         {
-            Setup = HostRouted(new MatchSetup()),
-            Pings = HostRouted(pings),
-            Wins = HostRouted(wins),
+            Setup = RegisterRuntime(new MatchSetup()),
+            Pings = RegisterRuntime(pings),
+            Wins = RegisterRuntime(wins),
             Players = players,
-            Admin = Host(admin),
+            Admin = RegisterRuntime(admin),
+            Chat = RegisterRuntime(new ClientChat(admin, new FakeSessionExit(), Sender)),
             Network = network,
             Sender = Sender,
             Router = Router,
@@ -129,7 +123,7 @@ public class RosterCompositionTests : NodeServiceTest
             Rules = new ModeRules
             {
                 Teams = teams,
-                Victory = new KillsVictoryRules { Target = killTarget },
+                EndCondition = new ScoreTargetRules { Target = killTarget },
             },
         };
         return new LobbySettingsMsg("castlewars", "hash",

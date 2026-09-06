@@ -1,8 +1,7 @@
 using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
-using Mortz.Client.Chat;
-using Mortz.Core.Net;
+using Mortz.Protocol.Net;
 
 namespace Mortz.Client.Menus;
 
@@ -11,19 +10,17 @@ namespace Mortz.Client.Menus;
 /// the local ready toggle.
 /// </summary>
 [Meta(typeof(IAutoNode))]
-public partial class Lobby : Control, IProvide<ClientChat>
+public partial class Lobby : Control
 {
     [Signal] public delegate void ReadyToggledEventHandler(bool ready);
 
     [Export] private Button _readyButton = null!;
-    [Export] private ClientChat _chat = null!;
 
     private bool _localReady;
     private int _generation;
 
     [Dependency] private IClientSender Sender => this.DependOn<IClientSender>();
 
-    ClientChat IProvide<ClientChat>.Value() => _chat;
 
     public override void _Notification(int what) => this.Notify(what);
 

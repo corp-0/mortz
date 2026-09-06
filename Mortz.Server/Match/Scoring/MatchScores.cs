@@ -1,7 +1,6 @@
 using Mortz.Core.Match.Scoring;
 using Mortz.Core.Match.Teams;
 using Mortz.Server.Match.Scoring.SuicidePenalties;
-using Mortz.Server.Match.Scoring.WinConditions;
 using Mortz.Server.Players;
 using ModeRules = Mortz.Core.Match.Configuration.ModeRules;
 
@@ -14,12 +13,12 @@ public sealed class MatchScores(
     MatchStateKeys keys,
     IReadOnlyDictionary<int, Player> seated)
 {
-    private readonly MatchStateKey<ScoreState> _key = keys.Claim<ScoreState>();
-    private readonly WinConditionStrategy _winCondition = WinConditionStrategy.Create(config.Victory);
+    private readonly MatchStateKey<ScoreState> _key = keys.Claim<ScoreState>(typeof(MatchScores));
     private readonly SuicidePenaltyStrategy _suicidePenalty = SuicidePenaltyStrategy.Create(config.SuicidePenalty);
     private TeamKills _teamKills;
 
     public TeamKills TeamKills => _teamKills;
+    public TeamDeaths TeamDeaths { get; private set; }
 
     public ScoreState Of(Player player) => player.State(_key);
 
@@ -30,7 +29,7 @@ public sealed class MatchScores(
         player.State(_key).Team = team;
     }
 
-    /// <summary>Scores one death, returns the winner if it decided the match.
+    /// <summary>Applies one death to the individual and team tallies.
     /// A death pit or the victim's own shell is a suicide: a death, never a
     /// kill, then whatever SuicidePenalty says. A killer who already left
     /// credits nobody; a teamkill awards nothing.</summary>
@@ -39,6 +38,8 @@ public sealed class MatchScores(
     {
         ScoreState victimRow = Of(victim);
         victimRow.Deaths++;
+        if (victimRow.Team is Team victimTeam)
+            TeamDeaths = TeamDeaths.Add(victimTeam);
 
         DeathKind kind;
         KillReward? reward = null;
@@ -73,8 +74,7 @@ public sealed class MatchScores(
             killer == null ? null : Of(killer).Snapshot,
             victimRow.Snapshot,
             reward,
-            _teamKills,
-            _winCondition.Resolve(Context()));
+            _teamKills);
     }
 
     public int AddKills(Player player, int delta)
@@ -85,11 +85,6 @@ public sealed class MatchScores(
             _teamKills = _teamKills.Add(team, delta);
         return row.Kills;
     }
-
-    /// <summary>Progress still needed by whoever is closest to winning.</summary>
-    public int RemainingToWin() => Standing().Remaining;
-
-    public MatchStanding Standing() => _winCondition.Standing(Context());
 
     /// <summary>Snapshot of every seated player's row, in ascending peer id.</summary>
     public IReadOnlyList<SeatedScore> Rows()
@@ -102,5 +97,4 @@ public sealed class MatchScores(
         return rows;
     }
 
-    private WinConditionContext Context() => new(config, Rows(), _teamKills);
 }

@@ -11,8 +11,24 @@ public sealed partial class ModeRules
     [MatchRule]
     public bool Teams { get; set; }
 
-    [ConfigValue(typeof(VictoryRulesSnapshot), typeof(VictoryRulesProjection))]
-    public VictoryRules Victory { get; set; } = new KillsVictoryRules();
+    [ConfigValue(typeof(EndConditionRulesSnapshot), typeof(EndConditionRulesProjection))]
+    public EndConditionRules EndCondition { get; set; } = new ScoreTargetRules();
+
+    [UiProperty("Score")]
+    [MatchRule]
+    public ScoreMetric Score { get; set; } = ScoreMetric.KILLS;
+
+    [UiProperty("Winner")]
+    [MatchRule]
+    public WinnerRule Winner { get; set; } = WinnerRule.HIGHEST_SCORE;
+
+    [UiProperty("Evaluate Result")]
+    [MatchRule]
+    public EvaluationTiming Evaluation { get; set; } = EvaluationTiming.ELIMINATION;
+
+    [UiProperty("Final Replay")]
+    [MatchRule]
+    public ReplayRule Replay { get; set; } = ReplayRule.DECISIVE_ELIMINATION;
 
     // Self-damage always applies.
     [UiProperty("Friendly Fire")]

@@ -1,6 +1,6 @@
 using Godot;
+using Mortz.Client.Replication;
 using Mortz.Client.Views;
-using Mortz.Core.Replication;
 using Xunit;
 
 namespace Mortz.Tests.Client;

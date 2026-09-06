@@ -3,7 +3,7 @@ using Chickensoft.Introspection;
 using Godot;
 using Mortz.Client.Servers;
 using Mortz.Client.Settings;
-using Mortz.Core.Net.Query;
+using Mortz.Protocol.Net.Query;
 
 namespace Mortz.Client.Menus;
 

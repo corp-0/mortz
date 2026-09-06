@@ -6,9 +6,9 @@ using Mortz.Client.Spectating;
 using Mortz.Core.Match.Configuration;
 using Mortz.Core.Match.Participation;
 using Mortz.Core.Match.Scoring;
-using Mortz.Core.Net.Match;
 using Mortz.Net;
-using Mortz.Tests.Net;
+using Mortz.Protocol.Net.Match;
+using Mortz.Runtime.Tests.Net;
 using Xunit;
 
 namespace Mortz.Tests.Client.Spectating;
@@ -35,16 +35,16 @@ public class SpectatorControllerTests : NodeServiceTest
         Host(camera);
 
         _controller.FakeDependency<INetwork>(new FakeNetwork { LocalPeerId = 1 });
-        ClientPlayers players = HostRouted(new ClientPlayers());
+        ClientPlayers players = RegisterRuntime(new ClientPlayers());
         players.OpenMatch(new MatchConfig());
         _controller.FakeDependency(players);
         _matchState = new ClientMatchState(3, MatchParticipation.JipSpectator);
         _controller.FakeDependency(_matchState);
         _controller.Initialize(Vector2.Zero);
         Host(_controller);
-        ClientMatchStateAdapter adapter = new();
-        adapter.Initialize(_matchState);
-        HostRouted(adapter);
+        Router.MatchGeneration = _matchState.Generation;
+        ClientMatchStateAdapter adapter = new(_matchState);
+        RegisterRuntime(adapter);
     }
 
     [Fact]

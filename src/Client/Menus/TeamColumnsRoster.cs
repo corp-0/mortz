@@ -6,10 +6,10 @@ using Mortz.Client.Setup;
 using Mortz.Client.Stats;
 using Mortz.Client.Ui;
 using Mortz.Core.Match.Teams;
-using Mortz.Core.Net;
-using Mortz.Core.Net.Lobby;
-using Mortz.Core.Net.Roster;
 using Mortz.Net;
+using Mortz.Protocol.Net;
+using Mortz.Protocol.Net.Lobby;
+using Mortz.Protocol.Net.Roster;
 
 namespace Mortz.Client.Menus;
 

@@ -1,4 +1,3 @@
-using Chickensoft.AutoInject;
 using Godot;
 using Mortz.Client.Admin;
 using Mortz.Client.Announcements;
@@ -12,16 +11,14 @@ using Mortz.Client.Spectating;
 using Mortz.Client.Stats;
 using Mortz.Client.Ui;
 using Mortz.Core.Match.Configuration;
-using Mortz.Core.Net;
-using Mortz.Core.Net.Lobby;
 using Mortz.Extensions;
-using Mortz.Net;
+using Mortz.Protocol.Net.Lobby;
+using Mortz.Runtime.Tests.Net;
 using Mortz.Server;
 using Mortz.Server.Hosting;
 using Mortz.Server.Pump;
 using Mortz.Server.Query;
 using Mortz.Shared;
-using Mortz.Tests.Net;
 using Xunit;
 using ModeRules = Mortz.Core.Match.Configuration.ModeRules;
 using Physics = Mortz.Core.Match.Configuration.Physics;
@@ -58,7 +55,7 @@ public class ChatCompositionTests : NodeServiceTest
             PhysicsUiMetadata.Categories.Sum(category => category.Properties.Count),
             physicsSheet.ControlCount);
         Assert.Equal(PhysicsUiMetadata.Categories.Count, physicsSheet.CategoryBlockCount);
-        Assert.IsType<KillsVictoryRules>(victorySheet.Rules);
+        Assert.IsType<ScoreTargetRules>(victorySheet.Rules);
         Assert.True(rulesSheet.Visible);
         BoolPropertyControl friendlyFire = rulesSheet.GetDescendantByType<BoolPropertyControl>(
             control => control.GetDescendantByType<Label>().Text == "Friendly Fire");
@@ -122,12 +119,11 @@ public class ChatCompositionTests : NodeServiceTest
     }
 
     [Fact]
-    public void EachScreenComposesItsOwnChat()
+    public void ScreensComposeChatPresentation()
     {
         Lobby lobby = InstantiateLobby();
         try
         {
-            Assert.IsType<ClientChat>(lobby.GetDescendantByType<ClientChat>());
             Assert.IsType<LobbyChat>(lobby.GetDescendantByType<LobbyChat>());
         }
         finally
@@ -141,7 +137,6 @@ public class ChatCompositionTests : NodeServiceTest
         try
         {
             Assert.IsType<AnnouncementChat>(game.GetDescendantByType<AnnouncementChat>());
-            Assert.IsType<ClientChat>(game.GetDescendantByType<ClientChat>());
             Assert.IsType<GameChat>(game.GetDescendantByType<GameChat>());
             Assert.IsType<SpectatorController>(
                 game.GetDescendantByType<SpectatorController>());
@@ -187,22 +182,18 @@ public class ChatCompositionTests : NodeServiceTest
     private ServiceRoot HostServiceRoot()
     {
         FakeNetwork network = new() { LocalPeerId = 1 };
-        ClientAdmin admin = new();
-        admin.FakeDependency<INetwork>(network);
-        admin.FakeDependency<IClientSender>(Sender);
-        admin.FakeDependency(Router);
-        ClientPlayers players = HostRouted(new ClientPlayers());
-        Pings pings = new();
-        pings.FakeDependency(players);
-        SessionWins wins = new();
-        wins.FakeDependency(players);
+        ClientAdmin admin = new(Sender, () => network.LocalPeerId);
+        ClientPlayers players = RegisterRuntime(new ClientPlayers());
+        Pings pings = new(players);
+        SessionWins wins = new(players);
         return Host(new ServiceRoot
         {
-            Setup = HostRouted(new MatchSetup()),
-            Pings = HostRouted(pings),
-            Wins = HostRouted(wins),
+            Setup = RegisterRuntime(new MatchSetup()),
+            Pings = RegisterRuntime(pings),
+            Wins = RegisterRuntime(wins),
             Players = players,
-            Admin = Host(admin),
+            Admin = RegisterRuntime(admin),
+            Chat = RegisterRuntime(new ClientChat(admin, new FakeSessionExit(), Sender)),
             Network = network,
             Sender = Sender,
             Router = Router,

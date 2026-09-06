@@ -7,9 +7,9 @@ using Mortz.Client.Match;
 using Mortz.Client.Players;
 using Mortz.Client.Views;
 using Mortz.Core.Match.Configuration;
-using Mortz.Core.Net.Chat;
 using Mortz.Net;
-using Mortz.Tests.Net;
+using Mortz.Protocol.Net.Chat;
+using Mortz.Runtime.Tests.Net;
 using Xunit;
 
 namespace Mortz.Tests.Client;
@@ -24,7 +24,7 @@ public class PlayerViewTypingTests : NodeServiceTest
         _manager = TakeManagerFromGameViewScene();
         _manager.FakeDependency<INetwork>(new FakeNetwork { LocalPeerId = 1 });
         _manager.FakeDependency<ISfx>(new NullSfx());
-        ClientPlayers players = HostRouted(new ClientPlayers());
+        ClientPlayers players = RegisterRuntime(new ClientPlayers());
         players.OpenMatch(new MatchConfig());
         _manager.FakeDependency(players);
         HostRouted(_manager);

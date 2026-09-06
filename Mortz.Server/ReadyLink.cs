@@ -1,12 +1,10 @@
-using Mortz.Core.Net;
-using Mortz.Core.Net.Sim;
-using Mortz.Core.Net.Stats;
+using Mortz.Protocol.Net;
+using Mortz.Protocol.Net.Sim;
+using Mortz.Protocol.Net.Stats;
 
 namespace Mortz.Server;
 
-/// <summary>Queues all screen-scoped traffic until a peer acknowledges the
-/// current phase. Only the bootstrap messages needed to construct that screen
-/// can pass while loading.</summary>
+/// <summary>Gates phase traffic until bootstrap is acknowledged, retaining only the latest snapshot.</summary>
 public sealed class ReadyLink(IServerTransport transport) : IServerLink
 {
     private sealed class PeerState(int generation, ulong deadline)
@@ -14,14 +12,17 @@ public sealed class ReadyLink(IServerTransport transport) : IServerLink
         public int Generation { get; } = generation;
         public ulong Deadline { get; } = deadline;
         public Queue<Action> Pending { get; } = new();
+        public Action? Snapshot { get; set; }
         public bool Ready { get; set; }
         public bool Disconnecting { get; set; }
     }
 
     private readonly Dictionary<int, PeerState> _peers = [];
+    private int _generation;
 
     public void BeginLoading(int peerId, int generation, ulong nowMs)
     {
+        _generation = generation;
         _peers[peerId] = new PeerState(generation, nowMs + NetConfig.PHASE_READY_TIMEOUT_MS);
     }
 
@@ -32,7 +33,11 @@ public sealed class ReadyLink(IServerTransport transport) : IServerLink
             return false;
         peer.Ready = true;
         while (peer.Pending.TryDequeue(out Action? send))
+        {
             send();
+        }
+        peer.Snapshot?.Invoke();
+        peer.Snapshot = null;
         return true;
     }
 
@@ -47,26 +52,29 @@ public sealed class ReadyLink(IServerTransport transport) : IServerLink
                 transport.Disconnect(peerId, "phase readiness timed out");
                 peer.Disconnecting = true;
                 peer.Pending.Clear();
+                peer.Snapshot = null;
             }
         }
     }
 
     public void Send<TMsg>(int peerId, in TMsg message) where TMsg : struct, INetMessage<TMsg>
     {
-        TMsg copy = message;
+        TMsg copy = TMsg.InMatch(message, _generation);
         Deliver(peerId, () => transport.Send(peerId, in copy), IsBootstrap<TMsg>());
     }
 
     public void Broadcast<TMsg>(in TMsg message) where TMsg : struct, INetMessage<TMsg>
     {
-        TMsg copy = message;
+        TMsg copy = TMsg.InMatch(message, _generation);
         if (_peers.Count == 0 || _peers.Values.All(peer => peer.Ready))
         {
             transport.Broadcast(in copy);
             return;
         }
         foreach (int peerId in _peers.Keys.ToArray())
+        {
             Deliver(peerId, () => transport.Send(peerId, in copy), IsBootstrap<TMsg>());
+        }
     }
 
     public void Disconnect(int peerId, string reason)
@@ -83,15 +91,30 @@ public sealed class ReadyLink(IServerTransport transport) : IServerLink
             byte[] data = dataFor(peerId);
             int ack = ackFor(peerId);
             bytes += data.Length + sizeof(int);
-            Deliver(peerId, () => transport.SendSnapshot(peerId, data, ack), bootstrap: false);
+            DeliverSnapshot(peerId, data, ack);
         }
         return bytes;
     }
 
     public int SendSnapshot(int peerId, byte[] data, int ack)
     {
-        Deliver(peerId, () => transport.SendSnapshot(peerId, data, ack), bootstrap: false);
+        DeliverSnapshot(peerId, data, ack);
         return data.Length + sizeof(int);
+    }
+
+    private void DeliverSnapshot(int peerId, byte[] data, int ack)
+    {
+        if (_peers.TryGetValue(peerId, out PeerState? peer))
+        {
+            if (peer.Disconnecting)
+                return;
+            if (!peer.Ready)
+            {
+                peer.Snapshot = () => transport.SendSnapshot(peerId, data, ack);
+                return;
+            }
+        }
+        transport.SendSnapshot(peerId, data, ack);
     }
 
     public PeerPing[] PeerPings() => transport.PeerPings();
@@ -117,6 +140,7 @@ public sealed class ReadyLink(IServerTransport transport) : IServerLink
             transport.Disconnect(peerId, "phase readiness queue overflow");
             peer.Disconnecting = true;
             peer.Pending.Clear();
+            peer.Snapshot = null;
             return;
         }
         peer.Pending.Enqueue(send);

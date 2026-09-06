@@ -1,6 +1,7 @@
-using Mortz.Core.Input;
+using Mortz.Core.Features;
 using Mortz.Core.Match.Teams;
 using Mortz.Core.Sim;
+using Mortz.Protocol.Input;
 using Mortz.Server.Content;
 using Mortz.Server.Diagnostics;
 using Mortz.Server.Match;
@@ -46,11 +47,20 @@ public sealed class MatchPhase : ServerPhase
             _map.Zones);
 
         _services = MatchServices.Open(_runtime, _map, dependencies);
+        _keys.Seal();
+        Features.Own(_runtime.Dispose);
+        Features.OwnState(() =>
+        {
+            foreach (Player player in dependencies.Roster)
+            {
+                player.CloseMatch();
+            }
+        }, _keys.Describe);
     }
 
     public override ServerPhaseKind Kind => ServerPhaseKind.MATCH;
 
-    public override IReadOnlyList<object> Services => _services.All;
+    public override FeatureScope Features => _services.Scope;
 
     public static MatchPhase Open(
         IReadOnlyList<SeatAssignment> seats,
@@ -101,8 +111,12 @@ public sealed class MatchPhase : ServerPhase
 
     public override void Inputs(Player player, byte[] packet)
     {
-        if (!InputPacket.TryDecode(packet, out List<(int Seq, PlayerInput Input)> inputs))
+        if (!InputPacket.TryDecode(packet, out List<(int Seq, PlayerInput Input)> inputs, out int generation)
+            || generation != _runtime.Generation)
+        {
             return;
+        }
+
         _services.InputReceived(packet.Length);
         foreach ((int sequence, PlayerInput input) in inputs)
         {
@@ -123,7 +137,10 @@ public sealed class MatchPhase : ServerPhase
         return update.ReturnToLobby ? PhaseRequest.RETURN_TO_LOBBY : PhaseRequest.NONE;
     }
 
-    public override void Dispose() => _runtime.Dispose();
+    public override void Dispose()
+    {
+        _services.Dispose();
+    }
 
     private void Seat(Player player, Team? lobbyTeam)
     {

@@ -9,7 +9,7 @@ namespace Mortz.Server.Match;
 /// <summary>Frozen outputs from one completed match tick.</summary>
 public class MatchUpdate
 {
-    internal MatchUpdate(
+    public MatchUpdate(
         int tick,
         ServerTime time,
         ImmutableArray<SimWorld.MortarEvent> mortarEvents,
@@ -22,7 +22,8 @@ public class MatchUpdate
         ImmutableArray<MatchParticipationChange> participationChanges,
         Victor? matchEnded,
         FinalKillEvent? finalKill,
-        bool returnToLobby)
+        bool returnToLobby,
+        ImmutableArray<ModifierChange> modifierChanges = default)
     {
         Tick = tick;
         Time = time;
@@ -37,6 +38,7 @@ public class MatchUpdate
         MatchEnded = matchEnded;
         FinalKill = finalKill;
         ReturnToLobby = returnToLobby;
+        ModifierChanges = modifierChanges.IsDefault ? [] : modifierChanges;
     }
 
     public int Tick { get; }
@@ -64,4 +66,5 @@ public class MatchUpdate
     public FinalKillEvent? FinalKill { get; }
 
     public bool ReturnToLobby { get; }
+    public ImmutableArray<ModifierChange> ModifierChanges { get; }
 }

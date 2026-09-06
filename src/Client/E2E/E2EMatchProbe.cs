@@ -3,13 +3,12 @@ using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
 using Mortz.Client.Match;
-using Mortz.Core.Match;
 using Mortz.Core.Match.Scoring;
 using Mortz.Core.Match.Teams;
-using Mortz.Core.Net;
-using Mortz.Core.Net.Match;
 using Mortz.Core.Replication;
 using Mortz.Core.Sim;
+using Mortz.Protocol.Net;
+using Mortz.Protocol.Net.Match;
 using Mortz.Shared.Logging;
 using Serilog;
 

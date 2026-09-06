@@ -9,11 +9,15 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="Mortz.Protocol/Mortz.Protocol.csproj" />
     <Compile Remove="Mortz.Tests\**" />
+    <Compile Remove="Mortz.Runtime.Tests\**" />
     <Compile Remove="Mortz.E2E.Tests\**" />
     <Compile Remove="Mortz.E2E.Protocol\**" />
     <Compile Remove="Mortz.Content\**" />
     <Compile Remove="Mortz.Core\**" />
+    <Compile Remove="Mortz.Protocol\**" />
+    <Compile Remove="Mortz.Client\**" />
     <Compile Remove="Mortz.Server\**" />
     <Compile Remove="Mortz.Net.Gen\**" />
     <Compile Remove="tools\**" />
@@ -21,6 +25,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="Mortz.Core\Mortz.Core.csproj" />
+    <ProjectReference Include="Mortz.Client\Mortz.Client.csproj" />
     <ProjectReference Include="Mortz.Content\Mortz.Content.csproj" />
     <ProjectReference Include="Mortz.Server\Mortz.Server.csproj" />
     <!-- Debug only: TOOLS is the E2E gate; this reference must not survive into an export. -->

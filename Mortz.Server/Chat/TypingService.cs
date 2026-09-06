@@ -1,5 +1,5 @@
-using Mortz.Core.Net;
-using Mortz.Core.Net.Chat;
+using Mortz.Protocol.Net;
+using Mortz.Protocol.Net.Chat;
 using Mortz.Server.Players;
 using Mortz.Server.Services;
 
@@ -9,7 +9,7 @@ namespace Mortz.Server.Chat;
 /// still readable during the leave fan-out.</summary>
 public sealed class TypingService(ServerStateKeys keys, IServerLink link) : IHandle<Player, TypingMsg>, IObservePlayers
 {
-    private readonly ServerStateKey<TypingState> _typing = keys.Claim<TypingState>();
+    private readonly ServerStateKey<TypingState> _typing = keys.Claim<TypingState>(typeof(TypingService));
 
     public void Handle(Player sender, in TypingMsg message)
     {

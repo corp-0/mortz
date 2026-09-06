@@ -1,4 +1,4 @@
-using Mortz.Core.Net.Stats;
+using Mortz.Protocol.Net.Stats;
 using Mortz.Server.Services;
 
 namespace Mortz.Server.Pings;

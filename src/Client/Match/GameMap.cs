@@ -1,33 +1,21 @@
 using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
-using Mortz.Core.Net;
-using Mortz.Core.Net.Match;
-using Mortz.Core.Net.Sim;
 using Mortz.Core.Terrain;
-using Mortz.Net;
+using Mortz.Protocol.Net.Match;
 using Mortz.Shared;
 using Mortz.Shared.Logging;
 using Serilog;
-using Combat = Mortz.Core.Match.Configuration.Combat;
 
 namespace Mortz.Client.Match;
 
 /// <summary>The loaded map on screen: layer sprites, collision mask, and carve events.</summary>
 [Meta(typeof(IAutoNode))]
-public partial class GameMap : Node2D, IHandle<CarveMsg>
+public partial class GameMap : Node2D
 {
     private static readonly ILogger _log = MortzLog.For("client");
 
     private static readonly Color _hole = new(0, 0, 0, 0);
-
-    [Dependency]
-    private INetwork Network => this.DependOn<INetwork>();
-
-    [Dependency]
-    private NetRouter Router => this.DependOn<NetRouter>();
-
-    private NetRouter? _routed;
 
     public override void _Notification(int what) => this.Notify(what);
 
@@ -43,11 +31,11 @@ public partial class GameMap : Node2D, IHandle<CarveMsg>
 
     /// <summary>An explosion went off, carve or not. Solid rock explodes too,
     /// it just doesn't break.</summary>
-    public event Action<Vector2, int>? Exploded;
+    public event Action<ImpactIdentity, Vector2, int>? Exploded;
     /// <summary>A carve removed ground; the pixels and their colors, for debris.</summary>
-    public event Action<Vector2, List<(Vector2 Position, Color Color)>>? GroundRemoved;
+    public event Action<ImpactIdentity, Vector2, List<(Vector2 Position, Color Color)>>? GroundRemoved;
 
-    private readonly CarveLedger _ledger = new();
+    public ClientTerrain Terrain { get; private set; } = null!;
     private ZoneOverlay? _zoneOverlay;
 
     // Predicted carves use the match's radius; authoritative ones carry theirs.
@@ -60,30 +48,30 @@ public partial class GameMap : Node2D, IHandle<CarveMsg>
     private ImageTexture _destructibleTexture = null!;
     private Image _replayTerrainImage = null!;
     private ImageTexture _replayTerrainTexture = null!;
-    private readonly List<(Vector2 Center, List<(Vector2 Position, Color Color)> Pixels)>
+    private readonly List<(ImpactIdentity Identity, List<(Vector2 Position, Color Color)> Pixels)>
         _recentCarves = [];
     private List<(Vector2 Position, Color Color)> _activeReplayPixels = [];
 
     /// <summary>Must be called right after instantiating, before entering the tree.</summary>
-    public void Initialize(MapPackage map, Combat config,
-        TerrainSyncEncoding terrainEncoding, byte[] terrainData)
+    public void Initialize(MapPackage map, ClientTerrain terrain)
     {
-        Mask = map.BuildMask();
-        _carveRadius = config.MortarCarveRadius;
+        Terrain = terrain;
+        Mask = terrain.Mask;
 
         _pristineDestructible = map.Destructible;
         _destructibleImage = (Image)map.Destructible.Duplicate();
-        int alreadyRemoved = 0;
-        TerrainSync.Apply(Mask, terrainEncoding, terrainData, (x, y) =>
+        for (int y = 0; y < Mask.Height; y++)
         {
-            _destructibleImage.SetPixel(x, y, _hole);
-            alreadyRemoved++;
-        });
+            for (int x = 0; x < Mask.Width; x++)
+            {
+                if (!Mask.IsSolid(x, y))
+                    _destructibleImage.SetPixel(x, y, _hole);
+            }
+        }
         _destructibleTexture = ImageTexture.CreateFromImage(_destructibleImage);
         _replayTerrainImage = Image.CreateEmpty(
             Mask.Width, Mask.Height, false, Image.Format.Rgba8);
         _replayTerrainTexture = ImageTexture.CreateFromImage(_replayTerrainImage);
-        _log.Information("Terrain sync: {Pixels} px already removed", alreadyRemoved);
 
         _background.Texture = ImageTexture.CreateFromImage(map.Background);
         _solid.Texture = ImageTexture.CreateFromImage(map.Solid);
@@ -108,93 +96,43 @@ public partial class GameMap : Node2D, IHandle<CarveMsg>
 
     public void OnResolved()
     {
-        _routed = Router;
-        _routed.Add(this);
+        Terrain.Impact += PresentImpact;
+        Terrain.Restored += RestorePixels;
     }
 
     public void OnExitTree()
     {
-        _routed?.Remove(this);
-        _routed = null;
-    }
-
-    public override void _Process(double delta)
-    {
-        foreach ((int seq, CarveLedger.PendingCarve pending) in _ledger.Expire(Time.GetTicksMsec()))
-        {
-            _log.Information("predicted carve seq {Seq} expired, reverting", seq);
-            Restore(pending, confirmedX: 0, confirmedY: 0, confirmedRadius: -1);
-        }
-    }
-
-    /// <summary>The hole happens now instead of a round trip later. Skipped if
-    /// already pending or settled: carving twice would leave a hole the server
-    /// never confirms.</summary>
-    public void PredictCarve(int spawnSeq, Vector2 impact)
-    {
-        if (_ledger.IsPending(spawnSeq) || _ledger.IsSettled(spawnSeq))
+        if (Terrain == null)
             return;
-        int x = (int)impact.X, y = (int)impact.Y;
-        Exploded?.Invoke(new Vector2(x, y), _carveRadius);
-        List<(int X, int Y)> removed = Carve(x, y, _carveRadius);
-        _ledger.AddPending(spawnSeq, x, y, _carveRadius, removed, Time.GetTicksMsec());
+        Terrain.Impact -= PresentImpact;
+        Terrain.Restored -= RestorePixels;
     }
 
-    /// <summary>A parry took over this shell; its carve broadcasts -1 and never
-    /// confirms this seq, so revert now instead of on timeout. True if a
-    /// pending carve was reverted.</summary>
-    public bool RevertPredictedCarve(int spawnSeq)
+    private void PresentImpact(TerrainImpact impact)
     {
-        _ledger.MarkSettled(spawnSeq, Time.GetTicksMsec());
-        if (!_ledger.TryConfirm(spawnSeq, out CarveLedger.PendingCarve? pending))
-            return false;
-        _log.Information("predicted carve seq {Seq} deflected, reverting", spawnSeq);
-        Restore(pending, confirmedX: 0, confirmedY: 0, confirmedRadius: -1);
-        return true;
-    }
-
-    public void Handle(in CarveMsg msg)
-    {
-        (int x, int y, int radius) = (msg.X, msg.Y, msg.Radius);
-        ulong now = Time.GetTicksMsec();
-        _ledger.RecordConfirmed(x, y, radius, now);
-
-        bool mine = msg.OwnerId == Network.LocalPeerId && msg.SpawnSeq >= 0;
-        if (mine)
-            _ledger.MarkSettled(msg.SpawnSeq, now);
-
-        if (mine && _ledger.TryConfirm(msg.SpawnSeq, out CarveLedger.PendingCarve? pending))
+        Vector2 center = new(impact.X, impact.Y);
+        if (impact.PlayEffects)
+            Exploded?.Invoke(impact.Identity, center, impact.Radius);
+        EraseLooseBlood(impact.X, impact.Y, impact.Radius);
+        List<(Vector2 Position, Color Color)> debris = new(impact.Removed.Count);
+        foreach ((int x, int y) in impact.Removed)
         {
-            // Already predicted; on a mispredict this moves the hole quietly.
-            Restore(pending, x, y, radius);
-            Carve(x, y, radius, withDebris: false);
-            return;
+            debris.Add((new Vector2(x, y), _destructibleImage.GetPixel(x, y)));
+            _destructibleImage.SetPixel(x, y, _hole);
         }
-
-        Exploded?.Invoke(new Vector2(x, y), radius);
-        Carve(x, y, radius);
-    }
-
-    /// <summary>Punch the hole into mask, art and blood; returns the removed pixels.</summary>
-    private List<(int X, int Y)> Carve(int x, int y, int radius, bool withDebris = true)
-    {
-        List<(int X, int Y)> removed = Mask.CarveCircle(x, y, radius);
-        _log.Information("carve at ({X},{Y}) removed {Pixels} px", x, y, removed.Count);
-        EraseLooseBlood(x, y, radius);
-        if (removed.Count == 0)
-            return removed;
-
-        List<(Vector2 Position, Color Color)> debris = new(removed.Count);
-        foreach ((int px, int py) in removed)
-        {
-            debris.Add((new Vector2(px, py), _destructibleImage.GetPixel(px, py)));
-            _destructibleImage.SetPixel(px, py, _hole);
-        }
-        RememberCarve(new Vector2(x, y), debris);
+        RememberCarve(impact.Identity, debris);
         _destructibleTexture.Update(_destructibleImage);
-        if (withDebris)
-            GroundRemoved?.Invoke(new Vector2(x, y), debris);
-        return removed;
+        if (impact.PlayEffects && debris.Count > 0)
+            GroundRemoved?.Invoke(impact.Identity, center, debris);
+    }
+
+    private void RestorePixels(IReadOnlyList<(int X, int Y)> pixels)
+    {
+        foreach ((int x, int y) in pixels)
+        {
+            _destructibleImage.SetPixel(x, y, _pristineDestructible.GetPixel(x, y));
+        }
+        _destructibleTexture.Update(_destructibleImage);
     }
 
     /// <summary>Visually rebuild the pixels the winning blast removed; mask and
@@ -204,9 +142,8 @@ public partial class GameMap : Node2D, IHandle<CarveMsg>
         EndReplayTerrain();
         if (!final.Flags.HasFlag(FinalKillFlags.EXPLOSION))
             return;
-        Vector2 impact = new(final.ImpactX, final.ImpactY);
         int index = _recentCarves.FindLastIndex(
-            carve => carve.Center.DistanceSquaredTo(impact) <= 4f);
+            carve => MatchEffects.IsDecisive(carve.Identity, final));
         if (index < 0)
             return;
 
@@ -237,11 +174,11 @@ public partial class GameMap : Node2D, IHandle<CarveMsg>
     }
 
     private void RememberCarve(
-        Vector2 center, List<(Vector2 Position, Color Color)> pixels)
+        ImpactIdentity identity, List<(Vector2 Position, Color Color)> pixels)
     {
         if (pixels.Count == 0)
             return;
-        _recentCarves.Add((center, pixels));
+        _recentCarves.Add((identity, pixels));
         if (_recentCarves.Count > 16)
             _recentCarves.RemoveAt(0);
     }
@@ -262,20 +199,4 @@ public partial class GameMap : Node2D, IHandle<CarveMsg>
         }
     }
 
-    /// <summary>Give back pixels a predicted carve removed, where the ledger
-    /// says no confirmed or live carve covers them.</summary>
-    private void Restore(CarveLedger.PendingCarve pending, int confirmedX, int confirmedY, int confirmedRadius)
-    {
-        bool dirty = false;
-        foreach ((int px, int py) in pending.Removed)
-        {
-            if (!_ledger.ShouldRestore(px, py, confirmedX, confirmedY, confirmedRadius))
-                continue;
-            Mask.RestoreDestructible(px, py);
-            _destructibleImage.SetPixel(px, py, _pristineDestructible.GetPixel(px, py));
-            dirty = true;
-        }
-        if (dirty)
-            _destructibleTexture.Update(_destructibleImage);
-    }
 }

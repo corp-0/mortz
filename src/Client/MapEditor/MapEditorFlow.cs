@@ -1,6 +1,6 @@
 using Godot;
 using Mortz.Content;
-using Mortz.Core.Net;
+using Mortz.Protocol.Net;
 using Mortz.Shared;
 
 namespace Mortz.Client.MapEditor;

@@ -1,4 +1,4 @@
-using Mortz.Core.Net.Lobby;
+using Mortz.Protocol.Net.Lobby;
 
 namespace Mortz.Server.Settings;
 

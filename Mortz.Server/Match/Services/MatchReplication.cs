@@ -1,22 +1,24 @@
+using Mortz.Core.Match.Configuration;
 using Mortz.Core.Match.Participation;
 using Mortz.Core.Match.Scoring;
 using Mortz.Core.Match.Teams;
-using Mortz.Core.Net;
-using Mortz.Core.Net.Match;
-using Mortz.Core.Net.Roster;
-using Mortz.Core.Net.Score;
-using Mortz.Core.Net.Sim;
 using Mortz.Core.Replication;
 using Mortz.Core.Sim;
-using Mortz.Core.Sim.Modifiers;
-using Mortz.Core.Terrain;
+using Mortz.Protocol.Net;
+using Mortz.Protocol.Net.Match;
+using Mortz.Protocol.Net.Roster;
+using Mortz.Protocol.Net.Score;
+using Mortz.Protocol.Net.Sim;
+using Mortz.Protocol.Replication;
+using Mortz.Protocol.Sim.Modifiers;
+using Mortz.Protocol.Terrain;
 using Mortz.Server.Content;
 using Mortz.Server.Match.Events;
 using Mortz.Server.Match.Scoring;
 using Mortz.Server.Players;
 using Mortz.Server.Services;
 using Serilog;
-using ModeRules = Mortz.Core.Match.Configuration.ModeRules;
+using ModeRules = Mortz.Core.Match.Configuration.ModeRulesSnapshot;
 
 namespace Mortz.Server.Match.Services;
 
@@ -41,6 +43,8 @@ public class MatchReplication(
     private long _mortarPayloadBytes;
     private long _inputPayloadBytes;
     private int _nextTerrainTransferId;
+    private int _rosterRevision;
+    private readonly Dictionary<int, byte> _slots = [];
 
     public void Sync(Player jipPlayer)
         => SendCurrentState(jipPlayer);
@@ -65,20 +69,31 @@ public class MatchReplication(
 
     public void RosterChanged()
     {
+        foreach (int peerId in _slots.Keys.Where(id => !runtime.World.Players.ContainsKey(id)).ToArray())
+        {
+            _slots.Remove(peerId);
+        }
+        foreach (int peerId in runtime.World.Players.Keys)
+        {
+            if (!_slots.ContainsKey(peerId))
+                _slots.Add(peerId, Enumerable.Range(1, NetConfig.MAX_PLAYERS)
+                    .Select(slot => (byte)slot).First(slot => !_slots.ContainsValue(slot)));
+        }
         List<RosterEntry> entries = [];
         foreach (Player player in roster)
         {
             if (!runtime.World.Players.TryGetValue(player.PeerId, out PlayerState state))
                 continue;
             entries.Add(new RosterEntry(player.PeerId, player.Name,
-                state.Skin, state.Team, state.NetSlot));
+                player.Skin, state.Team, _slots[player.PeerId]));
         }
 
-        link.Broadcast(new RosterMsg([.. entries]));
+        link.Broadcast(new RosterMsg([.. entries], ++_rosterRevision));
         foreach (RosterEntry entry in entries)
         {
             link.Broadcast(new PlayerModifiersMsg(entry.PeerId,
-                ModifierWire.Serialize(runtime.World.Modifiers(entry.PeerId))));
+                ModifierWire.Serialize(runtime.World.Modifiers(entry.PeerId)),
+                runtime.World.ModifierRevision(entry.PeerId), runtime.World.ModifierEffectiveTick(entry.PeerId)));
         }
     }
 
@@ -87,6 +102,12 @@ public class MatchReplication(
         // Tick is frozen during VictoryLap; skip periodic snapshot/correction broadcasts.
         if (runtime.Stage == MatchStage.VICTORY_LAP && update.MatchEnded == null)
             return;
+
+        foreach (ModifierChange change in update.ModifierChanges)
+        {
+            link.Broadcast(new PlayerModifiersMsg(change.PeerId,
+                ModifierWire.Serialize(change.Modifiers), change.Revision, change.EffectiveTick));
+        }
 
         // Send before carve/death so clients arm effect suppression first.
         if (update.FinalKill is FinalKillEvent finalKill)
@@ -110,7 +131,7 @@ public class MatchReplication(
             log.Information("player {PeerId} gibbed at ({X},{Y}){Owned:l}", death.PeerId,
                 (int)death.Position.X, (int)death.Position.Y, death.Owned ? " (OWNED)" : "");
             link.Broadcast(new DeathMsg(death.PeerId, PackCoordinate((int)death.Position.X),
-                PackCoordinate((int)death.Position.Y)));
+                PackCoordinate((int)death.Position.Y), update.Tick, death.ShellId));
         }
 
         foreach (MatchParticipationChange participationChange in update.ParticipationChanges)
@@ -168,9 +189,9 @@ public class MatchReplication(
         [
             .. simulation.Players.Select(player => new ReplicatedPlayer(
                 player,
-                runtime.PresentationOf(player)))
+                runtime.PresentationOf(player), _slots[player.PeerId], roster.Find(player.PeerId)!.Skin))
         ];
-        return new MatchSnapshot(simulation.Tick, players);
+        return new MatchSnapshot(simulation.Tick, players, runtime.Generation, _rosterRevision);
     }
 
     private void BroadcastSnapshot()
@@ -248,10 +269,11 @@ public class MatchReplication(
         int ack = runtime.World.Players.TryGetValue(peerId, out PlayerState player)
             ? player.LastInputSeq
             : -1;
+        // The readiness gate holds the roster, so bootstrap must carry full peer IDs.
         link.Send(peerId, new MatchLoadMsg(map.MapId, map.Hash, runtime.Config.ToBytes(),
             (byte)terrain.Encoding, transferId, terrain.Data.Length, checked((short)chunkCount),
             participation.Seat, participation.Activity, participation.Reason,
-            participation.ReturnTick, initialSnapshot.SerializeFor(peerId), ack, generation));
+            participation.ReturnTick, initialSnapshot.Serialize(), ack, generation));
         for (int i = 0; i < chunkCount; i++)
         {
             int offset = i * NetConfig.TERRAIN_CHUNK_BYTES;
@@ -298,7 +320,7 @@ public class MatchReplication(
 
     private void BroadcastCarve(Explosion explosion) =>
         link.Broadcast(new CarveMsg(PackCoordinate(explosion.X), PackCoordinate(explosion.Y),
-            PackRadius(explosion.Radius), explosion.OwnerId, explosion.SpawnSeq));
+            PackRadius(explosion.Radius), explosion.OwnerId, explosion.SpawnSeq, runtime.World.Tick, explosion.ShellId));
 
     private void PrintStats(ServerTime time)
     {
@@ -352,6 +374,6 @@ public class MatchReplication(
             PackCoordinate((int)death.Position.Y),
             PackCoordinate(impactX),
             PackCoordinate(impactY),
-            PackRadius(explosion?.Radius ?? 0));
+            PackRadius(explosion?.Radius ?? 0), death.ShellId, explosion?.SpawnSeq ?? -1);
     }
 }

@@ -1,7 +1,7 @@
 using Mortz.Core.Chat;
-using Mortz.Core.Net;
-using Mortz.Core.Net.Chat;
 using Mortz.Core.Text;
+using Mortz.Protocol.Net;
+using Mortz.Protocol.Net.Chat;
 using Mortz.Server.Players;
 using Mortz.Server.Services;
 using Mortz.Server.Settings;
@@ -15,7 +15,7 @@ public sealed class ChatService(ServerStateKeys keys, IServerLink link, ServerCl
         IHandle<Player, RollRequestMsg>,
         IObservePlayers
 {
-    private readonly ServerStateKey<ChatBudget> _budget = keys.Claim<ChatBudget>();
+    private readonly ServerStateKey<ChatBudget> _budget = keys.Claim<ChatBudget>(typeof(ChatService));
 
     public void Handle(Player sender, in ChatSendMsg message)
     {

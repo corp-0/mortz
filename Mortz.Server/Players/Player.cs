@@ -18,6 +18,7 @@ public sealed class Player(
 
     private readonly object?[] _server = new object?[serverKeyCount];
     private object?[]? _match;
+    private bool _closed;
     private int _matchGen = CLOSED;
 
     public int PeerId { get; } = peerId;
@@ -28,6 +29,7 @@ public sealed class Player(
 
     public T State<T>(ServerStateKey<T> key) where T : class, new()
     {
+        ObjectDisposedException.ThrowIf(_closed, this);
         if (key.Generation != serverGeneration)
             throw new InvalidOperationException($"Stale {typeof(T).Name} state key.");
         return (T)(_server[key.Index] ??= new T());
@@ -42,6 +44,8 @@ public sealed class Player(
 
     public void OpenMatch(int keyCount, int generation)
     {
+        ObjectDisposedException.ThrowIf(_closed, this);
+        CloseMatch();
         _match = new object?[keyCount];
         _matchGen = generation;
     }
@@ -56,6 +60,9 @@ public sealed class Player(
     /// <summary>Disconnect and shutdown: match cells, then server cells, reverse claim order.</summary>
     public void Close(ServerPhaseKind active)
     {
+        if (_closed)
+            return;
+        _closed = true;
         if (active == ServerPhaseKind.MATCH)
             CloseMatch();
         DisposeReverse(_server);

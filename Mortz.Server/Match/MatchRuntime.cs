@@ -2,11 +2,12 @@ using Mortz.Core.Match.Configuration;
 using Mortz.Core.Match.Participation;
 using Mortz.Core.Match.Scoring;
 using Mortz.Core.Match.Teams;
-using Mortz.Core.Replication;
 using Mortz.Core.Sim;
 using Mortz.Core.Sim.Modifiers;
 using Mortz.Core.Terrain;
+using Mortz.Protocol.Replication;
 using Mortz.Server.Match.Events;
+using Mortz.Server.Match.Modes;
 using Mortz.Server.Match.Scoring;
 using Mortz.Server.Players;
 
@@ -16,8 +17,8 @@ namespace Mortz.Server.Match;
 public sealed class MatchRuntime : IDisposable
 {
     private readonly SortedDictionary<int, Player> _seated = [];
-    private readonly IMatchStep[] _steps;
     private readonly ScoringStep _scoring;
+    private readonly GameMode _mode;
     private readonly ParticipationStep _participation;
     private readonly GameEventsStep _gameEvents;
     private readonly EndingStep _ending;
@@ -27,28 +28,21 @@ public sealed class MatchRuntime : IDisposable
 
     public MatchRuntime(TerrainMask terrain, MatchConfig config, int victoryLapTicks,
         MatchStateKeys keys, IReadOnlyList<SpawnPoint>? spawnPoints = null,
-        MapZones? zones = null)
+        MapZones? zones = null, GameMode? mode = null)
     {
+        Generation = keys.Generation;
         World = new SimWorld(terrain, config, spawnPoints, zones);
         Context = new MatchContext(World, _seated);
 
-        SimulationStep simulation = new();
         _participation = new ParticipationStep(keys);
-        _scoring = new ScoringStep(config.Rules, keys, _seated);
+        _scoring = new ScoringStep(World.Config.Rules.ToMutable(), keys, _seated);
+        _mode = mode ?? GameMode.Create(World.Config.Rules);
         _gameEvents = new GameEventsStep(
             new GameEventJudge(keys, _seated, _scoring.TeamOf));
         _ending = new EndingStep(victoryLapTicks);
-
-        // order in this array determines execution order!
-        _steps =
-        [
-            simulation,
-            _scoring,
-            _participation,
-            _gameEvents,
-            _ending,
-        ];
     }
+
+    public int Generation { get; }
 
     public MatchContext Context { get; }
 
@@ -60,7 +54,7 @@ public sealed class MatchRuntime : IDisposable
 
     public FinalKillEvent? FinalKill => _ending.FinalKill;
 
-    public MatchConfig Config => World.Config;
+    public MatchConfigSnapshot Config => World.Config;
 
     public TeamKills TeamKills => _scoring.TeamKills;
 
@@ -80,7 +74,7 @@ public sealed class MatchRuntime : IDisposable
                 World.Players.Values.Select(member => member.Team));
         }
 
-        World.AddPlayer(player.PeerId, team, player.Skin);
+        World.AddPlayer(player.PeerId, team);
         _seated[player.PeerId] = player;
         _scoring.Seat(player, team);
         _participation.Seat(player);
@@ -128,19 +122,22 @@ public sealed class MatchRuntime : IDisposable
     public MatchUpdate Advance(ServerTime time)
     {
         EnsureOpen();
-        MatchTick tick = new(Context, time);
         if (Stage == MatchStage.VICTORY_LAP)
         {
-            AdvanceVictoryLap(tick);
-            return tick.Complete();
+            return new MatchUpdate(World.Tick, time, [], [], [], [], [],
+                _mode.Standing(new GameModeContext(World, _scoring.Rows(), _scoring.TeamKills, _scoring.TeamDeaths)), [], [], null, null, _ending.AdvanceVictoryLap(Context));
         }
 
-        foreach (IMatchStep step in _steps)
-        {
-            step.Advance(tick);
-        }
-
-        return tick.Complete();
+        World.Step();
+        GameModeUpdate mode = _mode.Advance(Context, _scoring, World.Deaths);
+        IReadOnlyList<MatchParticipationChange> participation =
+            _participation.Apply(Context, World.Deaths);
+        IReadOnlyList<Judgment> judgments = _gameEvents.Judge(mode.Eliminations, World.Tick);
+        EndingOutput ending = _ending.Apply(Context, mode.Outcome);
+        return new MatchUpdate(World.Tick, time, [.. World.MortarEvents],
+            [.. World.Explosions], [.. World.ShellRetirements], [.. World.Deaths],
+            [.. mode.Eliminations], mode.Standing, [.. judgments], [.. participation],
+            ending.Winner, ending.FinalKill, false, [.. World.DrainModifierChanges()]);
     }
 
     /// <summary>Players credited with the win: the winner itself, or everyone
@@ -166,15 +163,6 @@ public sealed class MatchRuntime : IDisposable
         }
 
         _disposed = true;
-    }
-
-    private void AdvanceVictoryLap(MatchTick tick)
-    {
-        tick.SetSimulationOutputs([], [], [], []);
-        tick.SetScoring([], _scoring.Standing(), null);
-        tick.SetParticipationChanges([]);
-        tick.SetGameEvents([]);
-        _ending.AdvanceVictoryLap(tick);
     }
 
     private void EnsureOpen()

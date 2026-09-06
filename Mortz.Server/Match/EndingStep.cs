@@ -1,16 +1,10 @@
 using Mortz.Core.Match.Scoring;
-using Mortz.Core.Sim;
+using Mortz.Server.Match.Modes;
 
 namespace Mortz.Server.Match;
 
-public readonly record struct FinalKillEvent(
-    int Tick,
-    ScoredKill Kill,
-    Death Death,
-    Explosion? Explosion);
-
 /// <summary>Owns the winning transition and victory-lap countdown.</summary>
-public class EndingStep(int victoryLapTicks) : IMatchStep
+public class EndingStep(int victoryLapTicks)
 {
     private readonly int _victoryLapTicks = Math.Max(1, victoryLapTicks);
     private int _ticksUntilLobby;
@@ -19,26 +13,13 @@ public class EndingStep(int victoryLapTicks) : IMatchStep
 
     public FinalKillEvent? FinalKill { get; private set; }
 
-    public void Advance(MatchTick tick)
+    public EndingOutput Apply(MatchContext match, MatchOutcome? outcome)
     {
-        Victor? matchEnded = null;
-        FinalKillEvent? finalKill = null;
-        if (tick.WinningScore is WinningScore winningScore)
-        {
-            ScoredKill elimination = winningScore.Elimination;
-            matchEnded = elimination.Score.Winner ??
-                throw new InvalidOperationException("A winning score has no winner.");
-            BeginVictoryLap(tick.Match, matchEnded);
-            finalKill = new FinalKillEvent(
-                tick.Match.World.Tick,
-                elimination,
-                winningScore.Death,
-                FindExplosion(winningScore.Death, tick.Explosions));
-            FinalKill = finalKill;
-        }
-
-        tick.SetEnding(matchEnded, finalKill);
-        tick.SetReturnToLobby(false);
+        if (outcome == null)
+            return default;
+        BeginVictoryLap(match, outcome.Winner);
+        FinalKill = outcome.FinalKill;
+        return new EndingOutput(outcome.Winner, outcome.FinalKill);
     }
 
     public void BeginVictoryLap(MatchContext match, Victor winner)
@@ -48,34 +29,13 @@ public class EndingStep(int victoryLapTicks) : IMatchStep
         _ticksUntilLobby = _victoryLapTicks;
     }
 
-    public void AdvanceVictoryLap(MatchTick tick)
+    public bool AdvanceVictoryLap(MatchContext match)
     {
-        if (tick.Match.Stage != MatchStage.VICTORY_LAP)
+        if (match.Stage != MatchStage.VICTORY_LAP)
             throw new InvalidOperationException("The match is not in its victory lap.");
 
-        tick.SetEnding(null, null);
-        tick.SetReturnToLobby(--_ticksUntilLobby <= 0);
-    }
-
-    private static Explosion? FindExplosion(
-        Death death,
-        IReadOnlyList<Explosion> explosions)
-    {
-        Explosion? nearest = null;
-        float nearestDistance = float.MaxValue;
-        foreach (Explosion explosion in explosions)
-        {
-            if (explosion.OwnerId != death.KillerId)
-                continue;
-            float dx = explosion.X - death.Position.X;
-            float dy = explosion.Y - death.Position.Y;
-            float distance = dx * dx + dy * dy;
-            if (distance >= nearestDistance)
-                continue;
-            nearest = explosion;
-            nearestDistance = distance;
-        }
-
-        return nearest;
+        return --_ticksUntilLobby <= 0;
     }
 }
+
+public readonly record struct EndingOutput(Victor? Winner, FinalKillEvent? FinalKill);

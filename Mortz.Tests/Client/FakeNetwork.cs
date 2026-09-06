@@ -1,5 +1,5 @@
-using Mortz.Core.Net;
 using Mortz.Net;
+using Mortz.Protocol.Net;
 
 namespace Mortz.Tests.Client;
 

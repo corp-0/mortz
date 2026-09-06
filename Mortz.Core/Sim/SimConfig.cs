@@ -8,6 +8,7 @@ namespace Mortz.Core.Sim;
 /// </summary>
 public static class SimConfig
 {
+    public const int MAX_PLAYERS = 8;
     public const int TICK_RATE = 60;
     public const float DT = 1f / TICK_RATE;
 

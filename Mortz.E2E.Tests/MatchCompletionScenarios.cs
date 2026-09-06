@@ -28,9 +28,9 @@ public sealed class MatchCompletionScenarios
 
         MatchSetupResponse setup = await scenario.Server.SetupAsync(
             TestContext.Current.CancellationToken);
-        MatchConfig config = MatchConfig.FromBytes(setup.Config);
+        MatchConfig config = MatchConfigCodec.FromBytes(setup.Config);
         Assert.Equal(1,
-            Assert.IsType<KillsVictoryRules>(config.Rules.Victory).Target);
+            Assert.IsType<ScoreTargetRules>(config.Rules.EndCondition).Target);
 
         await scenario.Server.PlacePlayerAsync(
             shooter.PeerId, new Vec2(400, FLOOR_Y), TestContext.Current.CancellationToken);

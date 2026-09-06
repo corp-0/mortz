@@ -1,5 +1,5 @@
-using Mortz.Core.Net;
-using Mortz.Core.Net.Stats;
+using Mortz.Protocol.Net;
+using Mortz.Protocol.Net.Stats;
 
 namespace Mortz.Server;
 

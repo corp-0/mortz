@@ -1,7 +1,7 @@
+using Mortz.Core.Collections;
 using Mortz.Core.Input;
 using Mortz.Core.Match.Configuration;
 using Mortz.Core.Match.Teams;
-using Mortz.Core.Net;
 using Mortz.Core.Replication;
 using Mortz.Core.Sim.Modifiers;
 using Mortz.Core.Terrain;
@@ -16,11 +16,7 @@ public readonly record struct PendingDamage(int PeerId, int Amount);
 /// unordered collections in here: the same inputs must always produce the
 /// same state.
 /// </summary>
-public sealed class SimWorld(
-    TerrainMask terrain,
-    MatchConfig config,
-    IReadOnlyList<SpawnPoint>? spawnPoints,
-    MapZones? zones = null)
+public class SimWorld
 {
     public enum MortarEventKind : byte
     {
@@ -32,23 +28,36 @@ public sealed class SimWorld(
     public readonly record struct MortarEvent(MortarEventKind Kind, MortarState State);
 
     public int Tick { get; private set; }
-    public TerrainMask Terrain { get; } = terrain;
-    public MatchConfig Config { get; } = config;
-    public MapZones Zones { get; } = zones ?? MapZones.None;
+    public TerrainMask Terrain { get; }
+    private readonly MatchConfig _config;
+    public MatchConfigSnapshot Config { get; }
 
-    // Sorted for deterministic iteration order.
-    private readonly SortedDictionary<int, PlayerState> _players = new();
-    private readonly SortedDictionary<int, InputQueue> _inputs = new();
-    // _stats replicates (config + persistent modifiers); situations compose
-    // on top into _effective, which is what the sim reads.
-    private readonly SortedDictionary<int, PlayerStats> _stats = new();
-    private readonly SortedDictionary<int, List<StatsModifier>> _modifiers = new();
-    private readonly SortedDictionary<int, Situations> _situations = new();
-    private readonly SortedDictionary<int, ulong> _zoneMasks = new();
-    private readonly SortedDictionary<int, PlayerStats> _effective = new();
-    private readonly SortedDictionary<int, byte> _netSlots = new();
-    private readonly SpawnPoint[] _spawnPoints = spawnPoints?.ToArray() ?? [];
-    private readonly Dictionary<int, int> _spawnAssignments = [];
+    private static MatchConfig Freeze(MatchConfig source)
+    {
+        MatchConfig copy = source.ToSnapshot().ToMutable();
+        copy.Rules.Clamp();
+        copy.Physics.Clamp();
+        copy.Combat.Clamp();
+        return copy;
+    }
+    public MapZones Zones { get; }
+
+    private readonly SortedDictionary<int, SimulatedPlayer> _entries = [];
+    private readonly IReadOnlyDictionary<int, PlayerState> _players;
+    private readonly IReadOnlyDictionary<int, PlayerStats> _stats;
+    private readonly SpawnPoint[] _spawnPoints;
+
+    public SimWorld(TerrainMask terrain, MatchConfig config,
+        IReadOnlyList<SpawnPoint>? spawnPoints, MapZones? zones = null)
+    {
+        Terrain = terrain;
+        _config = Freeze(config);
+        Config = _config.ToSnapshot();
+        Zones = zones ?? MapZones.None;
+        _spawnPoints = spawnPoints?.ToArray() ?? [];
+        _players = new DictionaryProjection<int, SimulatedPlayer, PlayerState>(_entries, entry => entry.State);
+        _stats = new DictionaryProjection<int, SimulatedPlayer, PlayerStats>(_entries, entry => entry.Stats);
+    }
 
     // Shells in flight, in spawn order.
     private readonly List<MortarState> _mortars = new();
@@ -58,6 +67,7 @@ public sealed class SimWorld(
     private readonly List<MortarEvent> _mortarEvents = new();
     private readonly List<Death> _deaths = new();
     private readonly List<PendingDamage> _pendingDamage = new();
+    private readonly List<ModifierChange> _modifierChanges = [];
     private ushort _nextMortarId;
 
     public IReadOnlyDictionary<int, PlayerState> Players => _players;
@@ -82,57 +92,65 @@ public sealed class SimWorld(
     {
     }
 
-    public void AddPlayer(int peerId, Team? team = null, byte skin = 0)
+    public void AddPlayer(int peerId, Team? team = null)
     {
-        if (team != null && !Config.Rules.Teams)
+        if (team != null && !_config.Rules.Teams)
             throw new ArgumentException("Team assignment with the Teams rule off.", nameof(team));
-        if (skin >= SimConfig.SKIN_COUNT)
-            throw new ArgumentOutOfRangeException(nameof(skin));
-        byte slot = Enumerable.Range(1, NetConfig.MAX_PLAYERS)
-            .Select(i => (byte)i)
-            .First(i => !_netSlots.ContainsValue(i));
-        _netSlots[peerId] = slot;
-        _modifiers[peerId] = [];
-        _situations[peerId] = Situations.NONE;
-        _zoneMasks[peerId] = 0;
-        _stats[peerId] = PlayerStats.Resolve(Config);
-        _effective[peerId] = _stats[peerId];
-        _players[peerId] = FreshState(peerId, team, lastInputSeq: -1) with
-        {
-            Skin = skin,
-            Team = team,
-        };
-        _inputs[peerId] = new InputQueue();
+        _entries.Add(peerId, new SimulatedPlayer(PlayerStats.Resolve(_config)));
+        _entries[peerId].State = FreshState(peerId, team, lastInputSeq: -1) with { Team = team };
     }
 
     /// <summary>Same id replaces; the stack stays sorted by id so composition is
-    /// order-independent. The caller must rebroadcast PlayerModifiersMsg.</summary>
+    /// order-independent. Replication consumes the recorded change.</summary>
     public void AddModifier(int peerId, StatsModifier modifier)
     {
-        if (!_modifiers.TryGetValue(peerId, out List<StatsModifier>? mods))
+        if (!_entries.TryGetValue(peerId, out SimulatedPlayer? entry))
             return;
+        List<StatsModifier> mods = entry.Modifiers;
         mods.RemoveAll(m => m.Id == modifier.Id);
         int at = mods.FindIndex(m => m.Id > modifier.Id);
         mods.Insert(at < 0 ? mods.Count : at, modifier);
         RecomputeStats(peerId);
+        RecordModifiers(peerId);
     }
 
     /// <summary>Recomputes from base without the id, never subtracts.</summary>
     public void RemoveModifier(int peerId, ModifierId id)
     {
-        if (_modifiers.TryGetValue(peerId, out List<StatsModifier>? mods) &&
-            mods.RemoveAll(m => m.Id == id) > 0)
+        if (_entries.TryGetValue(peerId, out SimulatedPlayer? entry) &&
+            entry.Modifiers.RemoveAll(m => m.Id == id) > 0)
+        {
             RecomputeStats(peerId);
+            RecordModifiers(peerId);
+        }
     }
 
-    public IReadOnlyList<StatsModifier> Modifiers(int peerId) => _modifiers[peerId];
+    public IReadOnlyList<StatsModifier> Modifiers(int peerId) => _entries[peerId].Modifiers.AsReadOnly();
+
+    public int ModifierRevision(int peerId) => _entries[peerId].ModifierRevision;
+
+    public int ModifierEffectiveTick(int peerId) => _entries[peerId].ModifierEffectiveTick;
+
+    private void RecordModifiers(int peerId)
+    {
+        int revision = ++_entries[peerId].ModifierRevision;
+        _entries[peerId].ModifierEffectiveTick = Tick + 1;
+        _modifierChanges.Add(new ModifierChange(peerId, revision, Tick + 1, [.. _entries[peerId].Modifiers]));
+    }
+
+    public ModifierChange[] DrainModifierChanges()
+    {
+        ModifierChange[] changes = [.. _modifierChanges];
+        _modifierChanges.Clear();
+        return changes;
+    }
 
     private void RecomputeStats(int peerId)
     {
-        _stats[peerId] = StatsPipeline.Resolve(Config, _modifiers[peerId]);
-        _effective[peerId] = PlayerStatComposition.ResolveEffective(
-            Config, _modifiers[peerId], _stats[peerId],
-            _situations[peerId], _zoneMasks[peerId], Zones);
+        _entries[peerId].Stats = StatsPipeline.Resolve(_config, _entries[peerId].Modifiers);
+        _entries[peerId].Effective = PlayerStatComposition.ResolveEffective(
+            _config, _entries[peerId].Modifiers, _stats[peerId],
+            _entries[peerId].Situations, _entries[peerId].ZoneMask, Zones);
     }
 
     /// <summary>Recomputes only when the situation flips, not every tick.</summary>
@@ -140,14 +158,14 @@ public sealed class SimWorld(
     {
         Situations flags = SituationEffects.Detect(state, Terrain, input);
         ulong zoneMask = SituationEffects.DetectZones(state, Zones);
-        if (flags != _situations[id] || zoneMask != _zoneMasks[id])
+        if (flags != _entries[id].Situations || zoneMask != _entries[id].ZoneMask)
         {
-            _situations[id] = flags;
-            _zoneMasks[id] = zoneMask;
-            _effective[id] = PlayerStatComposition.ResolveEffective(
-                Config, _modifiers[id], _stats[id], flags, zoneMask, Zones);
+            _entries[id].Situations = flags;
+            _entries[id].ZoneMask = zoneMask;
+            _entries[id].Effective = PlayerStatComposition.ResolveEffective(
+                _config, _entries[id].Modifiers, _stats[id], flags, zoneMask, Zones);
         }
-        return _effective[id];
+        return _entries[id].Effective;
     }
 
     private PlayerState FreshState(int peerId, Team? team, int lastInputSeq)
@@ -157,14 +175,13 @@ public sealed class SimWorld(
         return new PlayerState
         {
             PeerId = peerId,
-            NetSlot = _netSlots[peerId],
             Position = spawn,
             Grounded = PlayerSim.OnGround(Terrain, spawn),
             JumpsLeft = stats.TotalJumps,
             Ammo = stats.MaxAmmo,
             Health = stats.MaxHealth,
-            SpawnImmunityTicks = (byte)Config.Rules.SpawnImmunityTicks,
-            SpawnImmunityFireThroughSeq = lastInputSeq + Config.Rules.SpawnImmunityTicks,
+            SpawnImmunityTicks = (byte)_config.Rules.SpawnImmunityTicks,
+            SpawnImmunityFireThroughSeq = lastInputSeq + _config.Rules.SpawnImmunityTicks,
             LastInputSeq = lastInputSeq,
         };
     }
@@ -174,12 +191,18 @@ public sealed class SimWorld(
         if (_spawnPoints.Length > 0)
         {
             SpawnPoint[] pool = SpawnPool(team);
-            if (!_spawnAssignments.TryGetValue(peerId, out int assignment))
+            int assignment;
+            if (_entries[peerId].SpawnAssignment is not int assigned)
             {
-                assignment = Config.Rules.Teams && team != null
+                assignment = _config.Rules.Teams && team != null
                     ? _players.Values.Count(player => player.Team == team)
-                    : _netSlots[peerId] - 1;
-                _spawnAssignments[peerId] = assignment;
+                    : Enumerable.Range(0, _entries.Count + 1)
+                        .First(index => !_entries.Values.Any(entry => entry.SpawnAssignment == index));
+                _entries[peerId].SpawnAssignment = assignment;
+            }
+            else
+            {
+                assignment = assigned;
             }
             return pool[assignment % pool.Length].Position;
         }
@@ -198,7 +221,7 @@ public sealed class SimWorld(
 
     private SpawnPoint[] SpawnPool(Team? team)
     {
-        if (!Config.Rules.Teams || team == null)
+        if (!_config.Rules.Teams || team == null)
             return _spawnPoints;
         SpawnPoint[] owned = _spawnPoints.Where(point => point.Team == team).ToArray();
         if (owned.Length > 0)
@@ -209,21 +232,14 @@ public sealed class SimWorld(
 
     public void RemovePlayer(int peerId)
     {
-        _players.Remove(peerId);
-        _inputs.Remove(peerId);
-        _stats.Remove(peerId);
-        _modifiers.Remove(peerId);
-        _situations.Remove(peerId);
-        _zoneMasks.Remove(peerId);
-        _effective.Remove(peerId);
-        _netSlots.Remove(peerId);
-        _spawnAssignments.Remove(peerId);
+        _entries.Remove(peerId);
+        _modifierChanges.RemoveAll(change => change.PeerId == peerId);
     }
 
     public void EnqueueInput(int peerId, int seq, PlayerInput input)
     {
-        if (_inputs.TryGetValue(peerId, out InputQueue? queue))
-            queue.Enqueue(seq, input);
+        if (_entries.TryGetValue(peerId, out SimulatedPlayer? entry))
+            entry.Inputs.Enqueue(seq, input);
     }
 
     /// <summary>
@@ -234,7 +250,7 @@ public sealed class SimWorld(
     public void Teleport(int peerId, Vec2 position)
     {
         PlayerState player = _players[peerId];
-        _players[peerId] = player with
+        _entries[peerId].State = player with
         {
             Position = position,
             Velocity = Vec2.Zero,
@@ -258,7 +274,7 @@ public sealed class SimWorld(
 
     /// <summary>Diagnostics: input backlog in ticks.</summary>
     public int PendingInputs(int peerId) =>
-        _inputs.TryGetValue(peerId, out InputQueue? queue) ? queue.PendingCount : 0;
+        _entries.TryGetValue(peerId, out SimulatedPlayer? entry) ? entry.Inputs.PendingCount : 0;
 
     public void Step()
     {
@@ -269,7 +285,7 @@ public sealed class SimWorld(
         _deaths.Clear();
         foreach (int id in _players.Keys.ToArray())
         {
-            InputQueue queue = _inputs[id];
+            InputQueue queue = _entries[id].Inputs;
             PlayerInput input = queue.Next(); // consumed even by the dead: acks must keep flowing
             PlayerState prev = _players[id];
             PlayerState state;
@@ -279,7 +295,6 @@ public sealed class SimWorld(
                 if (--state.RespawnTicks == 0)
                     state = FreshState(id, prev.Team, queue.LastAppliedSeq) with
                     {
-                        Skin = prev.Skin,
                         Team = prev.Team,
                     };
             }
@@ -301,7 +316,7 @@ public sealed class SimWorld(
                 foreach ((int seq, PlayerInput consumed) in queue.Consumed)
                 {
                     if (WeaponSim.Tick(ref state, consumed, prevButtons, stats, seq))
-                        SpawnMortar(WeaponSim.NewShell(_nextMortarId++, seq, state, consumed, Config.Combat));
+                        SpawnMortar(WeaponSim.NewShell(_nextMortarId++, seq, state, consumed, _config.Combat));
                     prevButtons = consumed.Buttons;
                 }
                 state.PrevButtons = queue.RawAppliedInput.Buttons;
@@ -314,7 +329,7 @@ public sealed class SimWorld(
                 }
             }
             state.LastInputSeq = queue.LastAppliedSeq;
-            _players[id] = state;
+            _entries[id].State = state;
         }
         foreach (MortarState forced in _forcedMortarExplosions)
         {
@@ -338,11 +353,11 @@ public sealed class SimWorld(
             {
                 _deaths.Add(new Death(pending.PeerId, player.BodyCenter,
                     KillerId: pending.PeerId, Owned: false, ShellId: -1));
-                _players[pending.PeerId] = Corpse(player);
+                _entries[pending.PeerId].State = Corpse(player);
                 continue;
             }
             player.Health = (byte)(player.Health - pending.Amount);
-            _players[pending.PeerId] = player;
+            _entries[pending.PeerId].State = player;
         }
         _pendingDamage.Clear();
     }
@@ -366,7 +381,7 @@ public sealed class SimWorld(
         {
             MortarState m = _mortars[i];
             MortarOutcome outcome = MortarSim.Tick(
-                ref m, Terrain, Config.Combat, SimConfig.DT, Zones);
+                ref m, Terrain, _config.Combat, SimConfig.DT, Zones);
             if (outcome == MortarOutcome.FLYING)
                 TryDeflect(ref m);
             if (outcome == MortarOutcome.FLYING && DirectHit(m))
@@ -397,7 +412,7 @@ public sealed class SimWorld(
             if (p.ParryTicks == 0 || p.RespawnTicks > 0)
                 continue;
             Vec2 toCenter = p.BodyCenter - m.Position;
-            float radius = _effective[id].ParryRadius;
+            float radius = _entries[id].Effective.ParryRadius;
             if (toCenter.LengthSquared() > radius * radius || Vec2.Dot(m.Velocity, toCenter) <= 0)
                 continue;
             m.Velocity = -m.Velocity;
@@ -406,7 +421,7 @@ public sealed class SimWorld(
             m.OwnerId = id;
             m.Deflected = true;
             _mortarEvents.Add(new MortarEvent(MortarEventKind.DEFLECT, m));
-            _players[id] = p with { ParryCooldown = 0 };
+            _entries[id].State = p with { ParryCooldown = 0 };
             return;
         }
     }
@@ -436,12 +451,12 @@ public sealed class SimWorld(
     private void Explode(in MortarState m)
     {
         Vec2 at = m.Position;
-        Terrain.CarveCircle((int)at.X, (int)at.Y, Config.Combat.MortarCarveRadius);
+        Terrain.CarveCircle((int)at.X, (int)at.Y, _config.Combat.MortarCarveRadius);
         // A deflected shell keeps the shooter's seq for retirement, but its
         // carve matches no prediction: broadcast -1.
         int carveSeq = m.Deflected ? -1 : m.SpawnSeq;
         _explosions.Add(new Explosion((int)at.X, (int)at.Y,
-            Config.Combat.MortarCarveRadius, m.OwnerId, carveSeq));
+            _config.Combat.MortarCarveRadius, m.OwnerId, carveSeq, m.Id));
 
         foreach (int id in _players.Keys.ToArray())
         {
@@ -450,7 +465,7 @@ public sealed class SimWorld(
                 continue;
             if (!BlastSim.Reaches(p, at, Terrain))
                 continue;
-            int damage = BlastSim.Damage(p, at, Config.Combat);
+            int damage = BlastSim.Damage(p, at, _config.Combat);
             if (damage == 0 || SparedByFriendlyFire(p, m.OwnerId))
                 continue;
             if (damage >= p.Health)
@@ -458,17 +473,17 @@ public sealed class SimWorld(
                 // OWNED: the parried shell came back for its own shooter.
                 _deaths.Add(new Death(id, p.BodyCenter, m.OwnerId,
                     Owned: m.Deflected && id == m.FiredBy, ShellId: m.Id));
-                _players[id] = Corpse(p);
+                _entries[id].State = Corpse(p);
                 continue;
             }
             p.Health = (byte)(p.Health - damage);
-            _players[id] = p;
+            _entries[id].State = p;
         }
     }
 
     /// <summary>Only blast damage is spared; shells still explode and carve.</summary>
     private bool SparedByFriendlyFire(in PlayerState victim, int shooterId) =>
-        !Config.Rules.FriendlyFire && victim.PeerId != shooterId &&
+        !_config.Rules.FriendlyFire && victim.PeerId != shooterId &&
         _players.TryGetValue(shooterId, out PlayerState shooter) &&
         Teams.SameSide(victim.Team, shooter.Team);
 
@@ -479,7 +494,7 @@ public sealed class SimWorld(
         Velocity = Vec2.Zero,
         Health = 0,
         Rope = RopeMode.NONE,
-        RespawnTicks = (ushort)Math.Max(1, Config.Rules.RespawnDelayTicks),
+        RespawnTicks = (ushort)Math.Max(1, _config.Rules.RespawnDelayTicks),
         SpawnImmunityTicks = 0,
     };
 

@@ -2,8 +2,8 @@ using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
 using Mortz.Client.Audio;
-using Mortz.Core.Net;
 using Mortz.Net;
+using Mortz.Protocol.Net;
 
 namespace Mortz.Client;
 

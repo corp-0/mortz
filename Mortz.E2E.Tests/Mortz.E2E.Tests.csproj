@@ -9,6 +9,7 @@
     <NoWarn>$(NoWarn);EnableGenerateDocumentationFile</NoWarn>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="../Mortz.Protocol/Mortz.Protocol.csproj" />
     <PackageReference Include="DotNetEnv" Version="3.2.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.0" />
     <!-- Win32_Process command lines for the stale sweep; Windows-only, guarded. -->

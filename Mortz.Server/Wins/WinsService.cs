@@ -1,4 +1,4 @@
-using Mortz.Core.Net.Stats;
+using Mortz.Protocol.Net.Stats;
 using Mortz.Server.Players;
 using Mortz.Server.Services;
 using Serilog;
@@ -13,7 +13,7 @@ public sealed class WinsService(
     IServerLink link,
     ILogger log) : IObservePlayers
 {
-    private readonly ServerStateKey<SessionWins> _wins = keys.Claim<SessionWins>();
+    private readonly ServerStateKey<SessionWins> _wins = keys.Claim<SessionWins>(typeof(WinsService));
 
     public void PlayerJoined(Player jipPlayer) =>
         link.Send(jipPlayer.PeerId, SessionStatsProtocol.Encode(Table()));

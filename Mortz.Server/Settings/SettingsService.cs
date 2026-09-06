@@ -1,7 +1,7 @@
 using Mortz.Content;
 using Mortz.Core.Match.Configuration;
-using Mortz.Core.Net;
-using Mortz.Core.Net.Lobby;
+using Mortz.Protocol.Net;
+using Mortz.Protocol.Net.Lobby;
 using Mortz.Server.Content;
 using Mortz.Server.Phases;
 using Mortz.Server.Players;
@@ -59,7 +59,7 @@ public sealed class SettingsService : IObservePlayers, IObservePhase
         MatchConfig next;
         try
         {
-            next = MatchConfig.FromBytes(config);
+            next = MatchConfigCodec.FromBytes(config);
         }
         catch (Exception exception) when (exception is IOException or InvalidDataException)
         {

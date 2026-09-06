@@ -2,8 +2,8 @@ using Godot;
 using Mortz.Client.Audio;
 using Mortz.Client.Views;
 using Mortz.Core.Match.Configuration;
-using Mortz.Core.Replication;
 using Mortz.Core.Sim;
+using Mortz.Protocol.Replication;
 
 namespace Mortz.Client.Debug;
 

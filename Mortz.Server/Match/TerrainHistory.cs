@@ -1,4 +1,5 @@
 using Mortz.Core.Terrain;
+using Mortz.Protocol.Terrain;
 
 namespace Mortz.Server.Match;
 

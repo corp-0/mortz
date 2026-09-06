@@ -1,31 +1,16 @@
 using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
-using Mortz.Core.Input;
+using Mortz.Client.Replication;
 using Mortz.Core.Match.Participation;
-using Mortz.Core.Net;
-using Mortz.Core.Replication;
 using Mortz.Core.Sim;
-using Mortz.Core.Sim.Modifiers;
-using Mortz.Net;
-using Mortz.Shared.Logging;
-using Serilog;
 
 namespace Mortz.Client.Match;
 
-/// <summary>The locally predicted player: samples input, feeds the Predictor, ships
-/// input packets, and reconciles against incoming snapshots.</summary>
+/// <summary>Samples local input and exposes prediction for presentation and diagnostics.</summary>
 [Meta(typeof(IAutoNode))]
 public partial class LocalPlayerController : Node2D
 {
-    private static readonly ILogger _log = MortzLog.For("client");
-
-    /// <summary>How fast reconciliation corrections blend away (per second).</summary>
-    private const float CORRECTION_DECAY = 10f;
-    /// <summary>Corrections beyond this (respawn after a death pit) snap
-    /// immediately instead of sliding across the map.</summary>
-    private const float SNAP_DISTANCE = 150f;
-
     /// <summary>Diagnostics tap: an input packet went out; the newest seq it carries.</summary>
     public event Action<int>? PacketSent;
     /// <summary>Diagnostics tap: reconciled against a snapshot (ack, correction).</summary>
@@ -38,13 +23,10 @@ public partial class LocalPlayerController : Node2D
     /// <summary>Debug/E2E hook: recomputes the aim each tick (e.g. seek an enemy).</summary>
     public Func<byte>? AimProvider { get; set; }
 
-    private Predictor _predictor = null!;
-    private Vector2 _correctionOffset;
+    private ClientMatchRuntime _runtime = null!;
+    private Predictor _predictor => _runtime.Predictor;
     private byte _aim;
     private MatchParticipation _participation = MatchParticipation.Active;
-
-    [Dependency]
-    private INetwork Network => this.DependOn<INetwork>();
 
     [Dependency]
     private ClientMatchState MatchState => this.DependOn<ClientMatchState>();
@@ -54,12 +36,21 @@ public partial class LocalPlayerController : Node2D
     public PlayerState State => _predictor.State;
     public int NextSeq => _predictor.NextSeq;
     public byte Aim => _aim;
-    public Vector2 CorrectionOffset => _correctionOffset;
+    public Vector2 CorrectionOffset => new(_runtime.CorrectionOffset.X, _runtime.CorrectionOffset.Y);
     public IReadOnlyList<(int SpawnSeq, MortarState Shell)> Shells => _predictor.Shells;
-    public bool Frozen { get; set; }
+    public bool Frozen => !_runtime.CanAdvance;
 
     /// <summary>Must be called right after instantiating, before entering the tree.</summary>
-    public void Initialize(Predictor predictor) => _predictor = predictor;
+    public void Initialize(ClientMatchRuntime runtime)
+    {
+        _runtime = runtime;
+        runtime.SampleInput = Sample;
+        runtime.PacketSent += OnPacketSent;
+        runtime.Reconciled += OnReconciled;
+    }
+
+    private void OnPacketSent(int sequence) => PacketSent?.Invoke(sequence);
+    private void OnReconciled(int ack, Vec2 correction) => Reconciled?.Invoke(ack, correction);
 
     public override void _Notification(int what) => this.Notify(what);
 
@@ -69,17 +60,20 @@ public partial class LocalPlayerController : Node2D
         MatchState.ParticipationChanged += OnParticipationChanged;
     }
 
-    public void OnExitTree() => MatchState.ParticipationChanged -= OnParticipationChanged;
+    public void OnExitTree()
+    {
+        MatchState.ParticipationChanged -= OnParticipationChanged;
+        if (_runtime == null)
+            return;
+        _runtime.SampleInput = null;
+        _runtime.PacketSent -= OnPacketSent;
+        _runtime.Reconciled -= OnReconciled;
+    }
 
-    /// <summary>The server's replicated modifier list for us; prediction must
-    /// compose the same numbers the sim does.</summary>
-    public void SetModifiers(IReadOnlyList<StatsModifier> modifiers) =>
-        _predictor.SetModifiers(modifiers);
-
-    public override void _PhysicsProcess(double delta)
+    private PlayerInput Sample()
     {
         if (Frozen || _participation.Seat == MatchSeat.SPECTATOR)
-            return;
+            return default;
 
         InputButtons buttons = _participation.Activity == MatchActivity.ACTIVE
             ? InputSampler.Sample()
@@ -99,52 +93,10 @@ public partial class LocalPlayerController : Node2D
         if (AimProvider != null)
             _aim = AimProvider();
 
-        _predictor.LocalTick(new PlayerInput(buttons, _aim));
-        if (_predictor.NextSeq % NetConfig.TICKS_PER_INPUT_PACKET == 0)
-        {
-            Network.SendInputs(
-                InputPacket.Encode(_predictor.RecentInputs(NetConfig.INPUT_REDUNDANCY)));
-            PacketSent?.Invoke(_predictor.NextSeq - 1);
-        }
+        return new PlayerInput(buttons, _aim);
     }
 
-    public override void _Process(double delta) =>
-        _correctionOffset *= MathF.Max(0f, 1f - CORRECTION_DECAY * (float)delta);
-
-    /// <summary>Rewind-and-replay against the authoritative state, if the local player is in it.</summary>
-    public void Reconcile(Snapshot snapshot, int ack)
-    {
-        int localId = Network.LocalPeerId;
-        foreach (PlayerState player in snapshot.Players)
-        {
-            if (player.PeerId != localId)
-                continue;
-            if (!_predictor.Initialized)
-                _log.Information("prediction initialized");
-            Vec2 correction = _predictor.Reconcile(player, ack, snapshot.Tick);
-            if (correction.Length() > SNAP_DISTANCE)
-                _correctionOffset = Vector2.Zero;
-            else
-                _correctionOffset += new Vector2(correction.X, correction.Y);
-            Reconciled?.Invoke(ack, correction);
-            break;
-        }
-    }
-
-    /// <summary>Predicted terrain impacts since the last drain, for predicted carving.</summary>
-    public List<(int SpawnSeq, Vec2 Position)> DrainImpacts() => _predictor.DrainImpacts();
-
-    /// <summary>Retire one of our shells the server ended early; true if it was still flying.</summary>
-    public bool RetireShell(int spawnSeq) => _predictor.RetireShell(spawnSeq);
-
-    /// <summary>Shots the owner already watched end; their late authoritative copies stay hidden.</summary>
     public IReadOnlySet<int> CompletedShells => _predictor.CompletedShells;
-
-    /// <summary>The authoritative shell ended; its seq no longer needs hiding.</summary>
-    public void ForgetCompleted(int spawnSeq) => _predictor.ForgetCompleted(spawnSeq);
-
-    /// <summary>True if a predicted shell for this seq is still live.</summary>
-    public bool HasPredictedShell(int spawnSeq) => _predictor.HasShell(spawnSeq);
 
     private void OnParticipationChanged(MatchParticipation participation) =>
         _participation = participation;

@@ -1,8 +1,7 @@
 using Mortz.Client.Announcements;
-using Mortz.Core.Match;
 using Mortz.Core.Match.Scoring;
 using Mortz.Core.Match.Teams;
-using Mortz.Core.Net.Match;
+using Mortz.Protocol.Net.Match;
 
 namespace Mortz.Client.Debug;
 

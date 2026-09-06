@@ -1,7 +1,7 @@
 using Mortz.Core.Match.Teams;
-using Mortz.Core.Net;
-using Mortz.Core.Net.Lobby;
-using Mortz.Core.Net.Roster;
+using Mortz.Protocol.Net;
+using Mortz.Protocol.Net.Lobby;
+using Mortz.Protocol.Net.Roster;
 using Mortz.Server.Players;
 
 namespace Mortz.Server.Lobby;

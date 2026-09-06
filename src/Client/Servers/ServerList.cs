@@ -1,5 +1,5 @@
-using Mortz.Core.Net;
-using Mortz.Core.Net.Query;
+using Mortz.Protocol.Net;
+using Mortz.Protocol.Net.Query;
 
 namespace Mortz.Client.Servers;
 

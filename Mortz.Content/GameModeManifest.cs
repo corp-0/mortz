@@ -12,7 +12,7 @@ public sealed record GameModeManifest
     public required string Name { get; init; }
     public string Description { get; init; } = "";
     public string[] Identity { get; init; } =
-        ["rules.teams", "rules.victory.type"];
+        ["rules.teams", "rules.score", "rules.winner", "rules.evaluation", "rules.replay", "rules.end_condition.type"];
     public ModeRules Rules { get; init; } = new();
     public Physics Physics { get; init; } = new();
     public Combat Combat { get; init; } = new();

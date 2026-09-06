@@ -11,6 +11,6 @@ public sealed class StatsModifier
     public StatsModifier(ModifierId id, params StatChange[] changes)
     {
         Id = id;
-        Changes = changes;
+        Changes = Array.AsReadOnly((StatChange[])changes.Clone());
     }
 }

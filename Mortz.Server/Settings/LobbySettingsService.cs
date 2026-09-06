@@ -1,5 +1,5 @@
-using Mortz.Core.Net;
-using Mortz.Core.Net.Lobby;
+using Mortz.Protocol.Net;
+using Mortz.Protocol.Net.Lobby;
 using Mortz.Server.Admin;
 using Mortz.Server.Chat;
 using Mortz.Server.Lobby;

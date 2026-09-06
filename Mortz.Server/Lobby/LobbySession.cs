@@ -1,6 +1,6 @@
 using System.Collections.Immutable;
 using Mortz.Core.Match.Teams;
-using Mortz.Core.Net.Lobby;
+using Mortz.Protocol.Net.Lobby;
 using Mortz.Server.Phases;
 using Mortz.Server.Players;
 

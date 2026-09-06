@@ -1,5 +1,5 @@
 using Godot;
-using Mortz.Core.Net.Query;
+using Mortz.Protocol.Net.Query;
 using Mortz.Server.Hosting;
 using Mortz.Server.Pump;
 using Mortz.Shared;

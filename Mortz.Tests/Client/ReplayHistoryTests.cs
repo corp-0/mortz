@@ -2,8 +2,8 @@ using System.Collections.Immutable;
 using Godot;
 using Mortz.Client.Replay;
 using Mortz.Client.Views;
-using Mortz.Core.Replication;
 using Mortz.Core.Sim;
+using Mortz.Protocol.Replication;
 using Xunit;
 
 namespace Mortz.Tests.Client;

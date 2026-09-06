@@ -22,20 +22,20 @@ public class BundledModeTests
         Assert.True(catalog.TryGetMode("deathmatch", out ResolvedContent<GameModeManifest>? deathmatch));
         ModeRules dmRules = deathmatch!.Winner.Manifest.Rules;
         Assert.False(dmRules.Teams);
-        Assert.Equal(5, Assert.IsType<KillsVictoryRules>(dmRules.Victory).Target);
+        Assert.Equal(5, Assert.IsType<ScoreTargetRules>(dmRules.EndCondition).Target);
         Assert.Equal(SuicidePenalty.KILL_NO_NEGATIVE, dmRules.SuicidePenalty);
 
         Assert.True(catalog.TryGetMode("teamdeathmatch", out ResolvedContent<GameModeManifest>? teams));
         ModeRules rules = teams!.Winner.Manifest.Rules;
         Assert.True(rules.Teams);
-        Assert.IsType<KillsVictoryRules>(rules.Victory);
+        Assert.IsType<ScoreTargetRules>(rules.EndCondition);
         Assert.Equal(SuicidePenalty.REWARD_CLOSEST_ENEMY, rules.SuicidePenalty);
 
         Assert.True(catalog.TryGetMode("killlead", out ResolvedContent<GameModeManifest>? killLead));
         ModeRules killLeadRules = killLead!.Winner.Manifest.Rules;
         Assert.False(killLeadRules.Teams);
         Assert.Equal(3,
-            Assert.IsType<KillLeadVictoryRules>(killLeadRules.Victory).Target);
+            Assert.IsType<ScoreLeadRules>(killLeadRules.EndCondition).Target);
         Assert.Equal(SuicidePenalty.KILL_NO_NEGATIVE, killLeadRules.SuicidePenalty);
 
         Assert.True(catalog.TryGetMode(
@@ -43,14 +43,14 @@ public class BundledModeTests
         ModeRules teamKillLeadRules = teamKillLead!.Winner.Manifest.Rules;
         Assert.True(teamKillLeadRules.Teams);
         Assert.Equal(5,
-            Assert.IsType<KillLeadVictoryRules>(teamKillLeadRules.Victory).Target);
+            Assert.IsType<ScoreLeadRules>(teamKillLeadRules.EndCondition).Target);
         Assert.Equal(SuicidePenalty.REWARD_CLOSEST_ENEMY, teamKillLeadRules.SuicidePenalty);
 
         MatchConfig customizedDeathmatch = new()
         {
             Rules = deathmatch.Winner.Manifest.Rules.ToSnapshot().ToMutable(),
         };
-        Assert.IsType<KillsVictoryRules>(customizedDeathmatch.Rules.Victory).Target = 100;
+        Assert.IsType<ScoreTargetRules>(customizedDeathmatch.Rules.EndCondition).Target = 100;
         Assert.True(deathmatch.Winner.Manifest.Matches(customizedDeathmatch));
         Assert.False(teams.Winner.Manifest.Matches(customizedDeathmatch));
     }

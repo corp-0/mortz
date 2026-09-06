@@ -11,12 +11,13 @@ namespace Mortz.Server.Match;
 public class ScoringStep(
     ModeRules rules,
     MatchStateKeys keys,
-    IReadOnlyDictionary<int, Player> seated) : IMatchStep
+    IReadOnlyDictionary<int, Player> seated)
 {
     private readonly MatchScores _scores = new(rules, keys, seated);
     private bool _firstBloodClaimed;
 
     public TeamKills TeamKills => _scores.TeamKills;
+    public TeamDeaths TeamDeaths => _scores.TeamDeaths;
 
     public void Seat(Player player, Team? team) => _scores.Seat(player, team);
 
@@ -26,27 +27,18 @@ public class ScoringStep(
 
     public IReadOnlyList<SeatedScore> Rows() => _scores.Rows();
 
-    public MatchStanding Standing() => _scores.Standing();
-
-    public void Advance(MatchTick tick)
+    public IReadOnlyList<ScoredKill> Apply(MatchContext match, IReadOnlyList<Death> deaths)
     {
         List<ScoredKill> eliminations = [];
-        WinningScore? winningScore = null;
-        foreach (Death death in tick.Deaths)
+        foreach (Death death in deaths)
         {
-            if (ScoreDeath(tick.Match, death) is not ScoredKill elimination)
-                continue;
-            eliminations.Add(elimination);
-            if (elimination.Score.Winner == null)
-                continue;
-            winningScore = new WinningScore(death, elimination);
-            break;
+            if (ScoreDeath(match, death) is ScoredKill elimination)
+                eliminations.Add(elimination);
         }
-
-        tick.SetScoring(eliminations, _scores.Standing(), winningScore);
+        return eliminations;
     }
 
-    private ScoredKill? ScoreDeath(MatchContext match, Death death)
+    public ScoredKill? ScoreDeath(MatchContext match, Death death)
     {
         if (match.Stage != MatchStage.PLAYING)
             return null;
