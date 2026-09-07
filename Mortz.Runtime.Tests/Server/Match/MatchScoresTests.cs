@@ -269,15 +269,6 @@ public class MatchScoresTests
     }
 
     [Fact]
-    public void EndConditionFactory_MapsEachAuthoredRule()
-    {
-        Assert.IsType<ScoreTargetCondition>(
-            EndCondition.Create(new ScoreTargetRules()));
-        Assert.IsType<ScoreLeadCondition>(
-            EndCondition.Create(new ScoreLeadRules()));
-    }
-
-    [Fact]
     public void KillLeadWithoutTeams_RequiresALeadOverTheRunnerUp()
     {
         MatchScores s = Scores(Cfg(

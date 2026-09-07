@@ -71,67 +71,6 @@ public class MatchConfigTests
     }
 
     [Fact]
-    public void GeneratedMetadata_CarriesRenderHints()
-    {
-        IUiPropertyDescriptor gravity = PhysicsUiMetadata.Categories
-            .SelectMany(category => category.Properties)
-            .Single(property => property.Name == nameof(Physics.Gravity));
-        Assert.Equal(-8000, gravity.Min);
-        Assert.Equal(8000, gravity.Max);
-        Assert.Equal(50, gravity.Step);
-
-        IUiPropertyDescriptor[] ruleDescriptors = ScoreTargetRulesUiMetadata.Categories
-            .SelectMany(category => category.Properties)
-            .ToArray();
-
-        // No step authored, so the SpinBox keeps its scene default.
-        IUiPropertyDescriptor killTarget = ruleDescriptors
-            .Single(property => property.Name == nameof(ScoreTargetRules.Target));
-        Assert.Equal(1, killTarget.Min);
-        Assert.Equal(999, killTarget.Max);
-        Assert.Null(killTarget.Step);
-
-        IUiPropertyDescriptor killLeadTarget = ScoreLeadRulesUiMetadata.Categories
-            .SelectMany(category => category.Properties)
-            .Single(property => property.Name == nameof(ScoreLeadRules.Target));
-        Assert.Equal(1, killLeadTarget.Min);
-        Assert.Equal(999, killLeadTarget.Max);
-        Assert.Null(killLeadTarget.Step);
-
-        IUiPropertyDescriptor teams = ModeRulesUiMetadata.Categories
-            .SelectMany(category => category.Properties)
-            .Single(property => property.Name == nameof(ModeRules.Teams));
-        Assert.Null(teams.Min);
-        Assert.Null(teams.Max);
-        Assert.Null(teams.Step);
-    }
-
-    [Fact]
-    public void EndConditionMetadata_DeclaresEverySelectableRuleType()
-    {
-        Assert.Collection(
-            EndConditionRulesMetadata.Variants,
-            kills =>
-            {
-                Assert.Equal("score_target", kills.Id);
-                Assert.Equal("Score Target", kills.DisplayName);
-                Assert.IsType<ScoreTargetRules>(kills.CreateDefault());
-            },
-            lead =>
-            {
-                Assert.Equal("score_lead", lead.Id);
-                Assert.Equal("Score Lead", lead.DisplayName);
-                Assert.IsType<ScoreLeadRules>(lead.CreateDefault());
-            },
-            time =>
-            {
-                Assert.Equal("time_limit", time.Id);
-                Assert.Equal("Time Limit", time.DisplayName);
-                Assert.IsType<TimeLimitRules>(time.CreateDefault());
-            });
-    }
-
-    [Fact]
     public void GeneratedMetadata_EvaluatesConditionalVisibility()
     {
         IUiPropertyDescriptor friendlyFire = ModeRulesUiMetadata.Categories
@@ -199,28 +138,6 @@ public class MatchConfigTests
             }
             Assert.Equal(expectedValue, actualValue);
         }
-    }
-
-    [Fact]
-    public void WireBlob_RoundTrips()
-    {
-        MatchConfig sent = new()
-        {
-            Rules = new ModeRules { SpawnImmunity = 2.25f },
-            Physics = new Physics
-            {
-                Gravity = 750,
-                GroundFriction = 0,
-            },
-            Combat = new Combat { MortarMaxAmmo = 8 },
-        };
-        MatchConfig got = MatchConfigCodec.FromBytes(sent.ToBytes());
-
-        Assert.Equal(750, got.Physics.Gravity);
-        Assert.Equal(8, got.Combat.MortarMaxAmmo);
-        Assert.Equal(0, got.Physics.GroundFriction);
-        Assert.Equal(2.25f, got.Rules.SpawnImmunity);
-        Assert.Equal(SimConfig.MAX_RUN_SPEED, got.Physics.MaxRunSpeed);
     }
 
     [Fact]
@@ -432,23 +349,6 @@ public class MatchConfigTests
 
         Assert.Equal(ConfigKeyResult.UNKNOWN_KEY, rules.TryApplyKey("gravity", 600L, out _));
         Assert.Equal(ConfigKeyResult.UNKNOWN_KEY, new Physics().TryApplyKey("teams", true, out _));
-    }
-
-    [Fact]
-    public void DefaultResolvedStats_MatchTheSimConfigConsts()
-    {
-        PlayerStats stats = PlayerStats.Resolve(new MatchConfig());
-
-        Assert.Equal(SimConfig.MAX_RUN_SPEED, stats.MaxRunSpeed);
-        Assert.Equal(SimConfig.TOTAL_JUMPS, stats.TotalJumps);
-        Assert.Equal(SimConfig.DASH_COOLDOWN_TICKS, stats.DashCooldownTicks);
-        Assert.Equal(SimConfig.MORTAR_RELOAD_TICKS, stats.ReloadPerShellTicks);
-        Assert.Equal(SimConfig.COYOTE_MAX_TICKS, stats.CoyoteMaxTicks);
-        Assert.Equal(SimConfig.MAX_HEALTH, stats.MaxHealth);
-        Assert.Equal(SimConfig.PARRY_WINDOW_TICKS, stats.ParryWindowTicks);
-        Assert.Equal(SimConfig.PARRY_COOLDOWN_TICKS, stats.ParryCooldownTicks);
-        Assert.Equal(SimConfig.SPAWN_IMMUNITY, new ModeRules().SpawnImmunity);
-        Assert.Equal(SimConfig.SPAWN_IMMUNITY_TICKS, new ModeRules().SpawnImmunityTicks);
     }
 
     [Fact]

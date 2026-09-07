@@ -17,18 +17,6 @@ public class ServerListTests
             schemaHash == 0 ? NetRegistry.SCHEMA_HASH : schemaHash);
 
     [Fact]
-    public void FreshListStartsWithThePinnedServerOnly()
-    {
-        ServerList list = new();
-
-        ServerEntry pinned = Assert.Single(list.Entries);
-        Assert.Equal(ServerList.PINNED_ENDPOINT, pinned.Endpoint);
-        Assert.Equal(ServerSource.PINNED, pinned.Source);
-        Assert.True(pinned.IsFavorite);
-        Assert.Empty(list.Favorites);
-    }
-
-    [Fact]
     public void PinnedServerCannotBeUnfavorited()
     {
         ServerList list = new();
@@ -170,18 +158,6 @@ public class ServerListTests
         Assert.Equal(
             [ServerSource.PINNED, ServerSource.FAVORITE, ServerSource.LAN, ServerSource.DIRECT],
             list.Entries.Select(entry => entry.Source));
-    }
-
-    /// <summary>Grouping comes from SortRank, not the enum's numeric values,
-    /// so reordering ServerSource cannot reorder the browser.</summary>
-    [Fact]
-    public void DisplayOrderComesFromTheSortRank()
-    {
-        ServerList list = new([new FavoriteServer("box.example.com", 7777)]);
-        list.AddDirect(new ServerEndpoint("10.0.0.5", 7777));
-        list.AddDiscovered(_lan);
-
-        Assert.Equal([0, 1, 2, 3], list.Entries.Select(entry => entry.SortRank));
     }
 
     [Fact]

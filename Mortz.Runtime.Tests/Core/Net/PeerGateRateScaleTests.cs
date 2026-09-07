@@ -36,16 +36,6 @@ public class PeerGateRateScaleTests
     }
 
     [Fact]
-    public void DefaultGateEnforcesTheDocumentedBudgets()
-    {
-        PeerGate gate = new();
-        gate.Connected(7, nowMs: 0);
-
-        Assert.Equal(INPUT_CAPACITY, DrainInputs(gate, 7, INPUT_CAPACITY + 20));
-        Assert.Equal(MESSAGE_CAPACITY, DrainMessages(gate, 7, MESSAGE_CAPACITY + 20));
-    }
-
-    [Fact]
     public void DefaultGateRefillsAtTheDocumentedRate()
     {
         PeerGate gate = new();

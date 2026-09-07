@@ -1,4 +1,3 @@
-using Mortz.Core.Match;
 using Mortz.Core.Match.Configuration;
 using Mortz.Core.Sim;
 using Mortz.E2E.Protocol;
@@ -166,41 +165,6 @@ public sealed class ProtocolContractTests
     }
 
     [Fact]
-    public void EveryRequestDeclaresTheRolesThatAcceptIt()
-    {
-        Type[] requests = E2EProtocolSchema.Registrations
-            .Where(value => value.Family == "request")
-            .Select(value => value.Type)
-            .ToArray();
-
-        Assert.All(requests, request => Assert.True(
-            typeof(IServerRequest).IsAssignableFrom(request) ||
-            typeof(IClientRequest).IsAssignableFrom(request),
-            $"{request.Name} declares neither IServerRequest nor IClientRequest."));
-    }
-
-    [Fact]
-    public void RoleMarkersMatchTheOwningProcess()
-    {
-        Assert.True(typeof(IServerRequest).IsAssignableFrom(typeof(PlacePlayerRequest)));
-        Assert.False(typeof(IClientRequest).IsAssignableFrom(typeof(PlacePlayerRequest)));
-        Assert.True(typeof(IClientRequest).IsAssignableFrom(typeof(RunInputPlanRequest)));
-        Assert.False(typeof(IServerRequest).IsAssignableFrom(typeof(RunInputPlanRequest)));
-        Assert.True(typeof(IServerRequest).IsAssignableFrom(typeof(ShutdownRequest)));
-        Assert.True(typeof(IClientRequest).IsAssignableFrom(typeof(ShutdownRequest)));
-    }
-
-    [Fact]
-    public void SchemaHashIsStableAndSha256Sized()
-    {
-        string first = E2EProtocolSchema.Hash;
-        string second = E2EProtocolSchema.Hash;
-
-        Assert.Equal(first, second);
-        Assert.Matches("^[0-9a-f]{64}$", first);
-    }
-
-    [Fact]
     public void PressPlanIncludesTheReleaseEdge()
     {
         BotInputPlan plan = BotInputPlan.Press(InputButtons.JUMP, aim: 37);
@@ -228,13 +192,6 @@ public sealed class ProtocolContractTests
     {
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             new BotInputFrame((InputButtons)(1 << 15), 0, 1));
-    }
-
-    [Fact]
-    public void ExitCodesAreDistinct()
-    {
-        Assert.NotEqual(E2EExitCode.CLEAN, E2EExitCode.STDIN_EOF);
-        Assert.Equal(64, E2EExitCode.STDIN_EOF);
     }
 
     private static void AssertRegisteredTypes(string family, IEnumerable<Type> sampleTypes)

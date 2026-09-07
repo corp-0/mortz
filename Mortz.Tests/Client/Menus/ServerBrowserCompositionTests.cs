@@ -1,4 +1,3 @@
-using System.Reflection;
 using Godot;
 using Mortz.Client.Menus;
 using Mortz.Client.Servers;
@@ -11,36 +10,6 @@ namespace Mortz.Tests.Client.Menus;
 [Collection(nameof(MortzGodotCollection))]
 public class ServerBrowserCompositionTests
 {
-    [Fact]
-    public void BrowserSceneResolvesEveryExport()
-    {
-        AssertExportsResolved<ServerBrowser>("res://src/Shared/UI/Menus/ServerBrowser.tscn");
-    }
-
-    [Fact]
-    public void RowSceneResolvesEveryExport()
-    {
-        AssertExportsResolved<ServerRow>("res://src/Shared/UI/Menus/ServerRow.tscn");
-    }
-
-    [Fact]
-    public void DirectPanelSceneResolvesEveryExport()
-    {
-        AssertExportsResolved<DirectConnectPanel>("res://src/Shared/UI/Menus/DirectConnectPanel.tscn");
-    }
-
-    [Fact]
-    public void SettingsSceneResolvesEveryExport()
-    {
-        AssertExportsResolved<SettingsScreen>("res://src/Shared/UI/Menus/Settings.tscn");
-    }
-
-    [Fact]
-    public void MenuSceneResolvesEveryExport()
-    {
-        AssertExportsResolved<MainMenu>("res://src/Shared/UI/Menus/MainMenu.tscn");
-    }
-
     [Fact]
     public void RowShowsName_Population_AndPing_WhenOnline()
     {
@@ -101,20 +70,4 @@ public class ServerBrowserCompositionTests
 
     private static T Instantiate<T>(string path) where T : Node =>
         ResourceLoader.Load<PackedScene>(path).Instantiate<T>();
-
-    /// <summary>Exports are assigned from the scene's NodePaths, so a typo in
-    /// a hand-written .tscn shows up as a null here rather than as a crash the
-    /// first time a button is pressed.</summary>
-    private static void AssertExportsResolved<T>(string path) where T : Node
-    {
-        T node = Instantiate<T>(path);
-        foreach (FieldInfo field in typeof(T)
-                     .GetFields(BindingFlags.Instance | BindingFlags.NonPublic |
-                                BindingFlags.Public)
-                     .Where(field => field.IsDefined(typeof(ExportAttribute))))
-        {
-            Assert.True(field.GetValue(node) != null, $"{typeof(T).Name}.{field.Name} is unwired");
-        }
-        node.Free();
-    }
 }

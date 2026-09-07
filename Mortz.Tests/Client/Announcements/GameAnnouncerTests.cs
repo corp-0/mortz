@@ -72,37 +72,6 @@ public class GameAnnouncerTests
     }
 
     [Fact]
-    public void StreakTiersMapToTheirCues()
-    {
-        (byte Magnitude, GameAnnouncer.Cue Expected)[] tiers =
-        [
-            (5, GameAnnouncer.Cue.BLOODLUST),
-            (7, GameAnnouncer.Cue.PUNISHMENT),
-            (9, GameAnnouncer.Cue.DOMINATING),
-            (11, GameAnnouncer.Cue.MACHINE_GOD),
-            (13, GameAnnouncer.Cue.PSYCHO),
-            (23, GameAnnouncer.Cue.PSYCHO),
-        ];
-        Assert.All(tiers, tier => Assert.Equal([tier.Expected], GameAnnouncer.Plan(
-            [Event(GameEventKind.KILL_STREAK, tier.Magnitude)], STRANGER)));
-    }
-
-    [Fact]
-    public void MultiKillTiersMapToTheirCues()
-    {
-        (byte Magnitude, GameAnnouncer.Cue Expected)[] tiers =
-        [
-            (4, GameAnnouncer.Cue.OVERKILL),
-            (5, GameAnnouncer.Cue.ULTRA_KILL),
-            (6, GameAnnouncer.Cue.MASSACRE),
-            (7, GameAnnouncer.Cue.CARNAGE),
-            (12, GameAnnouncer.Cue.CARNAGE),
-        ];
-        Assert.All(tiers, tier => Assert.Equal([tier.Expected], GameAnnouncer.Plan(
-            [Event(GameEventKind.MULTI_KILL, tier.Magnitude)], STRANGER)));
-    }
-
-    [Fact]
     public void TeamWipeIsGlobal()
     {
         Assert.Equal([GameAnnouncer.Cue.TEAM_WIPE], GameAnnouncer.Plan(

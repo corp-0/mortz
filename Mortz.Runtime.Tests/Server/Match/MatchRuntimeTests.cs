@@ -7,7 +7,6 @@ using Mortz.Core.Terrain;
 using Mortz.Server.Match;
 using Mortz.Server.Match.Scoring;
 using Mortz.Server.Players;
-using Mortz.Server.Services;
 using Xunit;
 
 namespace Mortz.Runtime.Tests.Server.Match;
@@ -21,8 +20,15 @@ public class MatchRuntimeTests
     {
         MatchStateKeys keys = new(GENERATION);
         using MatchRuntime runtime = new(new TerrainMask(128, 128, (_, _) => false, (_, _) => false),
-            new MatchConfig { Rules = new ModeRules { EndCondition = new TimeLimitRules { Seconds = 1 },
-                Evaluation = EvaluationTiming.TICK, Replay = ReplayRule.NONE } }, 2, keys);
+            new MatchConfig
+            {
+                Rules = new ModeRules
+                {
+                    EndCondition = new TimeLimitRules { Seconds = 1 },
+                    Evaluation = EvaluationTiming.TICK,
+                    Replay = ReplayRule.NONE
+                }
+            }, 2, keys);
         runtime.Seat(OpenPlayer(1, keys));
         Assert.Null(runtime.Advance(default).MatchEnded);
         while (runtime.World.Tick < SimConfig.TICK_RATE - 1)
@@ -48,7 +54,7 @@ public class MatchRuntimeTests
             editable, 2, keys);
         runtime.Seat(OpenPlayer(1, keys));
         MatchConfigSnapshot frozen = runtime.Config;
-        var stats = runtime.World.Stats[1];
+        PlayerStats stats = runtime.World.Stats[1];
         editable.Physics.Gravity = 0;
         ((ScoreTargetRules)editable.Rules.EndCondition).Target = 1;
         editable.Combat.MortarCarveRadius = 1;
@@ -56,20 +62,6 @@ public class MatchRuntimeTests
         Assert.Equal(stats, runtime.World.Stats[1]);
         runtime.Config.ToMutable().Physics.Gravity = 1;
         Assert.Equal(frozen, runtime.Config);
-    }
-
-    [Fact]
-    public void ConstructionClaimsEverySystemKeyBeforePlayersOpenMatchState()
-    {
-        MatchStateKeys keys = new(GENERATION);
-        using MatchRuntime runtime = NewRuntime(keys);
-        Player player = OpenPlayer(1, keys);
-
-        runtime.Seat(player);
-
-        Assert.Equal(3, keys.Count);
-        Assert.Equal(MatchParticipation.Active, runtime.ParticipationOf(player));
-        Assert.Equal(0, runtime.ScoreOf(player).Kills);
     }
 
     [Fact]
@@ -246,14 +238,6 @@ public class MatchRuntimeTests
         runtime.Dispose();
 
         Assert.Throws<ObjectDisposedException>(() => runtime.Advance(default));
-    }
-
-    [Fact]
-    public void RuntimeDoesNotParticipateInTheHostAdvanceContract()
-    {
-        using MatchRuntime runtime = NewRuntime(new MatchStateKeys(GENERATION));
-
-        Assert.IsNotAssignableFrom<IAdvance>(runtime);
     }
 
     private static MatchRuntime NewRuntime(

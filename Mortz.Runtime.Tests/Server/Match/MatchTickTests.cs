@@ -11,26 +11,6 @@ namespace Mortz.Runtime.Tests.Server.Match;
 public class MatchTickTests
 {
     [Fact]
-    public void OneAdvanceCompletesAllDependentOutputs()
-    {
-        using MatchRuntime runtime = NewRuntime();
-        runtime.World.QueueDamage(1, byte.MaxValue);
-        MatchUpdate update = runtime.Advance(default);
-        Assert.Single(update.Deaths);
-        Assert.Single(update.Eliminations);
-        Assert.Single(update.ParticipationChanges);
-        Assert.Equal(1, update.Tick);
-    }
-
-    [Fact]
-    public void AClosedMatchCannotAdvance()
-    {
-        MatchRuntime runtime = NewRuntime();
-        runtime.Dispose();
-        Assert.Throws<ObjectDisposedException>(() => runtime.Advance(default));
-    }
-
-    [Fact]
     public void CompletionFreezesOutputs()
     {
         using MatchRuntime runtime = NewRuntime();

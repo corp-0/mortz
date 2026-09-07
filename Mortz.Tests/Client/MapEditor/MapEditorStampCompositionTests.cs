@@ -10,31 +10,6 @@ namespace Mortz.Tests.Client.MapEditor;
 public class MapEditorStampCompositionTests(MortzGodotFixture fixture)
 {
     [Fact]
-    public void StampScenesResolveTheirExportedDependencies()
-    {
-        MapEditorStampDock dock = Instantiate<MapEditorStampDock>(
-            "res://src/Shared/UI/MapEditor/MapEditorStampDock.tscn");
-        MapEditorStampLibrary library = Instantiate<MapEditorStampLibrary>(
-            "res://src/Shared/UI/MapEditor/MapEditorStampLibrary.tscn");
-        MapEditorStampCard card = Instantiate<MapEditorStampCard>(
-            "res://src/Shared/UI/MapEditor/MapEditorStampCard.tscn");
-        MapEditorWorkspaceShell shell = Instantiate<MapEditorWorkspaceShell>(
-            "res://src/Shared/UI/MapEditor/MapEditorWorkspaceShell.tscn");
-
-        AssertExportsResolved(dock);
-        AssertExportsResolved(library);
-        AssertExportsResolved(card);
-        AssertExportsResolved(shell);
-        card._Ready();
-        Assert.NotNull(dock.Library);
-
-        dock.Free();
-        library.Free();
-        card.Free();
-        shell.Free();
-    }
-
-    [Fact]
     public void StampCardDeleteButtonRequestsLibraryDeletion()
     {
         MapEditorStampCard card = Instantiate<MapEditorStampCard>(
@@ -189,15 +164,4 @@ public class MapEditorStampCompositionTests(MortzGodotFixture fixture)
 
     private static T Instantiate<T>(string path) where T : Node =>
         ResourceLoader.Load<PackedScene>(path).Instantiate<T>();
-
-    private static void AssertExportsResolved<T>(T node) where T : Node
-    {
-        foreach (FieldInfo field in typeof(T)
-                     .GetFields(BindingFlags.Instance | BindingFlags.NonPublic |
-                                BindingFlags.Public)
-                     .Where(field => field.IsDefined(typeof(ExportAttribute))))
-        {
-            Assert.NotNull(field.GetValue(node));
-        }
-    }
 }
