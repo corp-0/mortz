@@ -1,35 +1,27 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://c2gvkfucaibh2"]
 
-[ext_resource type="Script" path="res://src/Client/Match/GameView.cs" id="1_gview"]
-[ext_resource type="PackedScene" path="res://src/Shared/Scenes/Match/GameMap.tscn" id="2_gmap"]
-[ext_resource type="Script" path="res://src/Client/Views/RopeOverlay.cs" id="3_ropes"]
-[ext_resource type="PackedScene" path="res://src/Shared/Prefabs/Player.tscn" id="4_player"]
-[ext_resource type="Script" path="res://src/Client/Effects/EffectsSpawner.cs" id="5_effects"]
-[ext_resource type="Script" path="res://src/Client/Match/LocalPlayerController.cs" id="6_local"]
-[ext_resource type="Script" path="res://src/Client/Views/PlayerViewManager.cs" id="7_players"]
-[ext_resource type="Script" path="res://src/Client/Views/MortarViewManager.cs" id="8_mortars"]
-[ext_resource type="PackedScene" path="res://src/Shared/Prefabs/Mortar.tscn" id="9_mortar"]
-[ext_resource type="Script" path="res://src/Client/Diagnostics/NetStatsProbe.cs" id="10_netstats"]
-[ext_resource type="Script" path="res://src/Client/Diagnostics/LagProbes.cs" id="11_lagprobes"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/Hud/PlayerStatusHud.tscn" id="13_status"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/Hud/WinnerBanner.tscn" id="15_score"]
-[ext_resource type="Script" path="res://src/Client/Announcements/GameAnnouncer.cs" id="16_announcer"]
-[ext_resource type="Script" path="res://src/Client/Match/PlayerHud/PlayerStatusHud.cs" id="17_okguk"]
-[ext_resource type="Script" path="res://src/Client/Replay/FinalKillReplay.cs" id="17_replay"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/Hud/ScoreHudHost.tscn" id="18_scorehost"]
-[ext_resource type="Script" path="res://src/Client/Match/ScoreHudHost.cs" id="19_57ku2"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/Hud/PlayerKillsHud.tscn" id="20_nvms6"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/Hud/TeamKillsHud.tscn" id="21_gtuuo"]
-[ext_resource type="Script" path="res://src/Client/Match/WinnerBanner.cs" id="23_8wkdi"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/Chat/GameChat.tscn" id="23_gamechat"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/Hud/AnnouncementBanner.tscn" id="25_banner"]
-[ext_resource type="Script" path="res://src/Client/Announcements/AnnouncementBanner.cs" id="25_wmyoy"]
-[ext_resource type="Script" path="res://src/Client/Announcements/AnnouncementChat.cs" id="26_annchat"]
-[ext_resource type="Script" path="res://src/Client/Spectating/SpectatorHud.cs" id="27_ktg33"]
-[ext_resource type="Script" path="res://src/Client/Match/MortarClient.cs" id="27_mortarclient"]
-[ext_resource type="Script" path="res://src/Client/Spectating/SpectatorController.cs" id="28_spectator"]
-[ext_resource type="Script" path="res://src/Client/Chat/GameChat.cs" id="29_3y18n"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/Hud/SpectatorHud.tscn" id="29_spectator_hud"]
+[ext_resource type="Script" uid="uid://b4yn6nnq4p213" path="res://src/Client/Match/GameView.cs" id="1_gview"]
+[ext_resource type="PackedScene" uid="uid://pb6yifh4403o" path="res://src/Shared/Scenes/Match/GameMap.tscn" id="2_gmap"]
+[ext_resource type="Script" uid="uid://jylbysmnxgfg" path="res://src/Client/Views/RopeOverlay.cs" id="3_ropes"]
+[ext_resource type="PackedScene" uid="uid://4ksxyg8c7l8k" path="res://src/Shared/Prefabs/Player.tscn" id="4_player"]
+[ext_resource type="Script" uid="uid://djway50o388at" path="res://src/Client/Effects/EffectsSpawner.cs" id="5_effects"]
+[ext_resource type="Script" uid="uid://b1k2giw7spnjd" path="res://src/Client/Match/LocalPlayerController.cs" id="6_local"]
+[ext_resource type="Script" uid="uid://bctks7k1e0fq4" path="res://src/Client/Views/PlayerViewManager.cs" id="7_players"]
+[ext_resource type="Script" uid="uid://ca0vlxw757bdg" path="res://src/Client/Views/MortarViewManager.cs" id="8_mortars"]
+[ext_resource type="PackedScene" uid="uid://bs35s8cifnvm2" path="res://src/Shared/Prefabs/Mortar.tscn" id="9_mortar"]
+[ext_resource type="Script" uid="uid://da7tme6kkv2xu" path="res://src/Client/Diagnostics/NetStatsProbe.cs" id="10_netstats"]
+[ext_resource type="Script" uid="uid://b3jq6f2xj1ct" path="res://src/Client/Diagnostics/LagProbes.cs" id="11_lagprobes"]
+[ext_resource type="PackedScene" uid="uid://deqqno8148ut7" path="res://src/Shared/UI/Hud/PlayerStatusHud.tscn" id="13_status"]
+[ext_resource type="PackedScene" uid="uid://d0kvogyk6fo0q" path="res://src/Shared/UI/Hud/WinnerBanner.tscn" id="15_score"]
+[ext_resource type="Script" uid="uid://bxev1av5gpki2" path="res://src/Client/Announcements/GameAnnouncer.cs" id="16_announcer"]
+[ext_resource type="Script" uid="uid://6aqxhxbup147" path="res://src/Client/Replay/FinalKillReplay.cs" id="17_replay"]
+[ext_resource type="PackedScene" uid="uid://budfcpa7b1byw" path="res://src/Shared/UI/Hud/ScoreHudHost.tscn" id="18_scorehost"]
+[ext_resource type="PackedScene" uid="uid://jdflpktp0k7t" path="res://src/Shared/UI/Chat/GameChat.tscn" id="23_gamechat"]
+[ext_resource type="PackedScene" uid="uid://bkx20bfq77ejk" path="res://src/Shared/UI/Hud/AnnouncementBanner.tscn" id="25_banner"]
+[ext_resource type="Script" uid="uid://cukwng3fiyn6t" path="res://src/Client/Announcements/AnnouncementChat.cs" id="26_annchat"]
+[ext_resource type="Script" uid="uid://bxsnp7y1yhbw" path="res://src/Client/Match/MortarClient.cs" id="27_mortarclient"]
+[ext_resource type="Script" uid="uid://b2bgoraa6ierp" path="res://src/Client/Spectating/SpectatorController.cs" id="28_spectator"]
+[ext_resource type="PackedScene" uid="uid://dom3dqlui4in7" path="res://src/Shared/UI/Hud/SpectatorHud.tscn" id="29_spectator_hud"]
 
 [sub_resource type="Theme" id="Theme_outline"]
 Label/colors/font_outline_color = Color(0, 0, 0, 0.9)
@@ -99,72 +91,17 @@ script = ExtResource("26_annchat")
 
 [node name="Hud" type="CanvasLayer" parent="." unique_id=1180743937]
 
-[node name="PlayerStatus" type="Control" parent="Hud" unique_id=523373374 node_paths=PackedStringArray("_healthBar", "_shells", "_parry", "_rope", "_damageFlash") instance=ExtResource("13_status")]
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-script = ExtResource("17_okguk")
-_healthBar = NodePath("PanelContainer/MarginContainer/HBoxContainer/HpAndShells/HealthBar")
-_shells = NodePath("PanelContainer/MarginContainer/HBoxContainer/HpAndShells/ShellCounter")
-_parry = NodePath("PanelContainer/MarginContainer/HBoxContainer/Abilities/Row/Parry")
-_rope = NodePath("PanelContainer/MarginContainer/HBoxContainer/Abilities/Row/Rope")
-_damageFlash = NodePath("DamageFlash")
-metadata/_custom_type_script = "uid://bgioe7kfejn27"
-metadata/_edit_vertical_guides_ = [640.0]
-metadata/_edit_horizontal_guides_ = [624.0]
+[node name="PlayerStatus" parent="Hud" unique_id=523373374 instance=ExtResource("13_status")]
 
-[node name="ScoreHud" type="Control" parent="Hud" unique_id=1037392052 instance=ExtResource("18_scorehost")]
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-script = ExtResource("19_57ku2")
-_playerKills = ExtResource("20_nvms6")
-_teamKills = ExtResource("21_gtuuo")
+[node name="ScoreHud" parent="Hud" unique_id=1037392052 instance=ExtResource("18_scorehost")]
 
-[node name="WinnerBanner" type="Control" parent="Hud" unique_id=2120322481 node_paths=PackedStringArray("_winnerLabel") instance=ExtResource("15_score")]
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-script = ExtResource("23_8wkdi")
-_winnerLabel = NodePath("Winner")
+[node name="WinnerBanner" parent="Hud" unique_id=2120322481 instance=ExtResource("15_score")]
 
-[node name="AnnouncementBanner" type="Control" parent="Hud" unique_id=1206395185 node_paths=PackedStringArray("_matchPoint", "_lines") instance=ExtResource("25_banner")]
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-script = ExtResource("25_wmyoy")
-_matchPoint = NodePath("MatchPoint")
-_lines = NodePath("Lines")
+[node name="AnnouncementBanner" parent="Hud" unique_id=1206395185 instance=ExtResource("25_banner")]
 
-[node name="SpectatorHud" type="Control" parent="Hud" unique_id=6241584 node_paths=PackedStringArray("_status") instance=ExtResource("29_spectator_hud")]
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-script = ExtResource("27_ktg33")
-_status = NodePath("Status")
+[node name="SpectatorHud" parent="Hud" unique_id=6241584 instance=ExtResource("29_spectator_hud")]
 
-[node name="GameChat" type="Control" parent="Hud" unique_id=1206395184 node_paths=PackedStringArray("_background", "_scroll", "_feed", "_input") instance=ExtResource("23_gamechat")]
-layout_mode = 3
+[node name="GameChat" parent="Hud" unique_id=1206395184 instance=ExtResource("23_gamechat")]
 anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
@@ -173,13 +110,7 @@ offset_top = -340.0
 offset_right = 392.0
 offset_bottom = -56.0
 grow_vertical = 0
-mouse_filter = 2
 theme = SubResource("Theme_outline")
-script = ExtResource("29_3y18n")
-_background = NodePath("Background")
-_scroll = NodePath("Margin/Column/Scroll")
-_feed = NodePath("Margin/Column/Scroll/Feed")
-_input = NodePath("Margin/Column/Input")
 
 [node name="Diagnostics" type="Node" parent="." unique_id=576473914]
 

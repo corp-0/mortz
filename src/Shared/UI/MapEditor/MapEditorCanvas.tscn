@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://c5kp5hs8n4tbi"]
 
-[ext_resource type="Material" path="res://src/Shared/Shaders/MapEditorBrushPreviewMaterial.tres" id="1_owkea"]
+[ext_resource type="Material" uid="uid://dyvsyokgwjujl" path="res://src/Shared/Shaders/MapEditorBrushPreviewMaterial.tres" id="1_owkea"]
 [ext_resource type="Script" uid="uid://vxh227tygk51" path="res://src/Client/MapEditor/MapEditorCanvas.cs" id="2_b1vj8"]
 [ext_resource type="Texture2D" uid="uid://bixaxn83876w6" path="res://Assets/ScifiCritters4.PNG" id="3_player"]
 

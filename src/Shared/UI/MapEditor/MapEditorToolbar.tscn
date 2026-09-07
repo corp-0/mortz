@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://dde46auxnoxf6"]
 
-[ext_resource type="Script" path="res://src/Client/MapEditor/MapEditorToolbar.cs" id="1_ol30i"]
+[ext_resource type="Script" uid="uid://dwu4xy3g2nvli" path="res://src/Client/MapEditor/MapEditorToolbar.cs" id="1_ol30i"]
 
 [node name="Toolbar" type="HBoxContainer" unique_id=1324944853 node_paths=PackedStringArray("_geometryDomain", "_zonesDomain", "_spawnsDomain", "_selectTool", "_zoneRectangleTool", "_zoneEllipseTool", "_spawnTool", "_brushRectangleTool", "_brushEllipseTool", "_brushPolygonTool", "_workingLayer", "_selectAll", "_rasterize")]
 offset_right = 1000.0

@@ -1,12 +1,7 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://jmvltg0hk6ei"]
 
-[ext_resource type="Script" path="res://src/Client/Ui/VictoryRulesSheet.cs" id="1_sheet"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/Controls/UiPropertySheet.tscn" id="2_properties"]
-[ext_resource type="Script" path="res://src/Client/Ui/UiPropertySheet.cs" id="3_l2erq"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/Controls/BoolPropertyControl.tscn" id="4_nd2fb"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/Controls/IntPropertyControl.tscn" id="5_5r2bn"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/Controls/FloatPropertyControl.tscn" id="6_j58ng"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/Controls/EnumPropertyControl.tscn" id="7_0imy7"]
+[ext_resource type="Script" uid="uid://s32ifsnoltsr" path="res://src/Client/Ui/VictoryRulesSheet.cs" id="1_sheet"]
+[ext_resource type="PackedScene" uid="uid://pbne52ymu80j" path="res://src/Shared/UI/Controls/UiPropertySheet.tscn" id="2_properties"]
 
 [node name="VictoryRulesSheet" type="VBoxContainer" unique_id=529084953 node_paths=PackedStringArray("_variant", "_properties")]
 offset_right = 420.0
@@ -18,8 +13,8 @@ _properties = NodePath("Properties")
 
 [node name="Heading" type="Label" parent="." unique_id=1575485970]
 layout_mode = 2
-theme_override_font_sizes/font_size = 18
 theme_override_colors/font_color = Color(0.796078, 0.835294, 0.882353, 1)
+theme_override_font_sizes/font_size = 18
 text = "Victory"
 
 [node name="Separator" type="HSeparator" parent="." unique_id=958400881]
@@ -48,11 +43,5 @@ popup/item_1/id = 1
 popup/item_2/text = "Time Limit"
 popup/item_2/id = 2
 
-[node name="Properties" type="VBoxContainer" parent="." unique_id=2001500915 instance=ExtResource("2_properties")]
+[node name="Properties" parent="." unique_id=2001500915 instance=ExtResource("2_properties")]
 layout_mode = 2
-theme_override_constants/separation = 12
-script = ExtResource("3_l2erq")
-_boolControl = ExtResource("4_nd2fb")
-_intControl = ExtResource("5_5r2bn")
-_floatControl = ExtResource("6_j58ng")
-_enumControl = ExtResource("7_0imy7")

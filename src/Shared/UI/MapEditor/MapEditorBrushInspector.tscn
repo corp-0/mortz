@@ -3,7 +3,7 @@
 [ext_resource type="Script" uid="uid://xdo8an3isadx" path="res://src/Client/MapEditor/MapEditorBrushInspector.cs" id="1_lixkg"]
 [ext_resource type="Theme" uid="uid://cmgp4xl7r5v2k" path="res://src/Shared/UI/MapEditor/MapEditorTheme.tres" id="3_theme"]
 [ext_resource type="PackedScene" uid="uid://47j7m8k2w77e" path="res://src/Shared/UI/MapEditor/MapEditorInspectorField.tscn" id="4_field"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/MapEditor/MapEditorMaterialPicker.tscn" id="5_0gq38"]
+[ext_resource type="PackedScene" uid="uid://bxj8nwnkwsi02" path="res://src/Shared/UI/MapEditor/MapEditorMaterialPicker.tscn" id="5_0gq38"]
 
 [node name="BrushInspector" type="ScrollContainer" unique_id=1599459512 node_paths=PackedStringArray("_title", "_name", "_layer", "_visible", "_shape", "_x", "_y", "_width", "_height", "_rotation", "_vertices", "_material", "_materialStatus", "_projectionMode", "_originX", "_originY", "_scaleX", "_scaleY", "_projectionRotation", "_diagnostic", "_duplicate", "_delete")]
 size_flags_horizontal = 3

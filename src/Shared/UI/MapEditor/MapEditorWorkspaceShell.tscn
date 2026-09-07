@@ -1,27 +1,15 @@
 [gd_scene format=3 uid="uid://fxcrhc0rrkep"]
 
-[ext_resource type="Theme" path="res://src/Shared/UI/MapEditor/MapEditorTheme.tres" id="1"]
-[ext_resource type="Script" path="res://src/Client/MapEditor/MapEditorWorkspaceShell.cs" id="2"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/MapEditor/MapEditorCanvas.tscn" id="3"]
-[ext_resource type="Material" path="res://src/Shared/Shaders/MapEditorBrushPreviewMaterial.tres" id="4"]
-[ext_resource type="Script" path="res://src/Client/MapEditor/MapEditorCanvas.cs" id="5"]
-[ext_resource type="Texture2D" path="res://Assets/ScifiCritters4.PNG" id="6"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/MapEditor/MapEditorObjectBrowser.tscn" id="7"]
-[ext_resource type="Script" path="res://src/Client/MapEditor/MapEditorObjectBrowser.cs" id="8"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/MapEditor/MapEditorObjectBrowserItemRow.tscn" id="9"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/MapEditor/MapEditorObjectBrowserBrushRow.tscn" id="10"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/MapEditor/MapEditorBrushInspector.tscn" id="11"]
-[ext_resource type="Script" path="res://src/Client/MapEditor/MapEditorBrushInspector.cs" id="12"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/MapEditor/MapEditorZoneInspector.tscn" id="13"]
-[ext_resource type="Script" path="res://src/Client/MapEditor/MapEditorZoneInspector.cs" id="14"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/MapEditor/MapEditorSpawnInspector.tscn" id="15"]
-[ext_resource type="Script" path="res://src/Client/MapEditor/MapEditorSpawnInspector.cs" id="16"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/MapEditor/MapEditorToolbar.tscn" id="17"]
-[ext_resource type="Script" path="res://src/Client/MapEditor/MapEditorToolbar.cs" id="18"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/MapEditor/MapEditorViewControls.tscn" id="19"]
-[ext_resource type="Script" path="res://src/Client/MapEditor/MapEditorViewControls.cs" id="20"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/MapEditor/MapEditorStampDock.tscn" id="21"]
-[ext_resource type="Script" path="res://src/Client/MapEditor/MapEditorStampDock.cs" id="22"]
+[ext_resource type="Theme" uid="uid://cmgp4xl7r5v2k" path="res://src/Shared/UI/MapEditor/MapEditorTheme.tres" id="1"]
+[ext_resource type="Script" uid="uid://talsr7ianjun" path="res://src/Client/MapEditor/MapEditorWorkspaceShell.cs" id="2"]
+[ext_resource type="PackedScene" uid="uid://c5kp5hs8n4tbi" path="res://src/Shared/UI/MapEditor/MapEditorCanvas.tscn" id="3"]
+[ext_resource type="PackedScene" uid="uid://cuvp0mk5cu5lg" path="res://src/Shared/UI/MapEditor/MapEditorObjectBrowser.tscn" id="7"]
+[ext_resource type="PackedScene" uid="uid://dcgi27s3int38" path="res://src/Shared/UI/MapEditor/MapEditorBrushInspector.tscn" id="11"]
+[ext_resource type="PackedScene" uid="uid://dg6bhyme2mxfc" path="res://src/Shared/UI/MapEditor/MapEditorZoneInspector.tscn" id="13"]
+[ext_resource type="PackedScene" uid="uid://c8vybs2nmi3d4" path="res://src/Shared/UI/MapEditor/MapEditorSpawnInspector.tscn" id="15"]
+[ext_resource type="PackedScene" uid="uid://dde46auxnoxf6" path="res://src/Shared/UI/MapEditor/MapEditorToolbar.tscn" id="17"]
+[ext_resource type="PackedScene" uid="uid://npnfpg65r8jn" path="res://src/Shared/UI/MapEditor/MapEditorViewControls.tscn" id="19"]
+[ext_resource type="PackedScene" uid="uid://baih04wdf8af5" path="res://src/Shared/UI/MapEditor/MapEditorStampDock.tscn" id="21"]
 
 [node name="WorkspaceShell" type="Control" unique_id=421552827 node_paths=PackedStringArray("_chrome", "_canvasHost", "_canvas", "_objectDock", "_objectBrowserScroll", "_objectBrowser", "_inspectorFrame", "_inspectorStack", "_brushInspector", "_zoneInspector", "_spawnInspector", "_toolbar", "_viewControls", "_propertiesDock", "_statusBar", "_statusRow", "_modeStatus", "_viewStatus", "_boundsStatus", "_problemsButton", "_problemsDrawer", "_problemsList", "_problemsClose", "_drawerOpen", "_drawerClose", "_propertiesOpen", "_stampOpen", "_propertiesClose", "_dockResize", "_propertiesResize", "_stampDock")]
 layout_mode = 3
@@ -76,17 +64,8 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="Canvas" type="Control" parent="CanvasHost" unique_id=1016804261 instance=ExtResource("3")]
-texture_filter = 1
-material = ExtResource("4")
+[node name="Canvas" parent="CanvasHost" unique_id=1016804261 instance=ExtResource("3")]
 layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-script = ExtResource("5")
-_playerTexture = ExtResource("6")
 
 [node name="LeftDock" type="PanelContainer" parent="." unique_id=891624788]
 layout_mode = 0
@@ -128,25 +107,8 @@ layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
-[node name="ObjectBrowser" type="VBoxContainer" parent="LeftDock/Margin/DockColumn/ObjectBrowserScroll" unique_id=2145259449 node_paths=PackedStringArray("_initializationWarning", "_initializationDetail", "_initializationButton", "_backgroundLayer", "_backgroundSeparator", "_solidLayer", "_solidSeparator", "_destructibleLayer", "_zonesVisibility", "_zonesEmpty", "_spawnsVisibility", "_spawnsEmpty") instance=ExtResource("7")]
+[node name="ObjectBrowser" parent="LeftDock/Margin/DockColumn/ObjectBrowserScroll" unique_id=2145259449 instance=ExtResource("7")]
 layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 10
-script = ExtResource("8")
-_initializationWarning = NodePath("BrushInitializationWarning")
-_initializationDetail = NodePath("RasterOnlyDetail")
-_initializationButton = NodePath("InitializeBrushLayers")
-_backgroundLayer = NodePath("LayerBACKGROUND")
-_backgroundSeparator = NodePath("BackgroundSeparator")
-_solidLayer = NodePath("LayerSOLID")
-_solidSeparator = NodePath("SolidSeparator")
-_destructibleLayer = NodePath("LayerDESTRUCTIBLE")
-_zonesVisibility = NodePath("ZonesVisibility")
-_zonesEmpty = NodePath("ZonesEmpty")
-_spawnsVisibility = NodePath("SpawnsVisibility")
-_spawnsEmpty = NodePath("SpawnsEmpty")
-_brushRowScene = ExtResource("10")
-_itemRowScene = ExtResource("9")
 
 [node name="RightDock" type="PanelContainer" parent="." unique_id=2006254479]
 layout_mode = 0
@@ -191,7 +153,7 @@ size_flags_vertical = 3
 [node name="InspectorStack" type="Control" parent="RightDock/Margin/PropertiesColumn/InspectorFrame" unique_id=547802778]
 layout_mode = 2
 
-[node name="BrushInspector" type="ScrollContainer" parent="RightDock/Margin/PropertiesColumn/InspectorFrame/InspectorStack" unique_id=1772946175 node_paths=PackedStringArray("_title", "_name", "_layer", "_visible", "_shape", "_x", "_y", "_width", "_height", "_rotation", "_vertices", "_material", "_materialStatus", "_projectionMode", "_originX", "_originY", "_scaleX", "_scaleY", "_projectionRotation", "_diagnostic", "_duplicate", "_delete") instance=ExtResource("11")]
+[node name="BrushInspector" parent="RightDock/Margin/PropertiesColumn/InspectorFrame/InspectorStack" unique_id=1772946175 instance=ExtResource("11")]
 visible = false
 layout_mode = 1
 anchors_preset = 15
@@ -199,62 +161,19 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-theme = ExtResource("1")
-horizontal_scroll_mode = 0
-script = ExtResource("12")
-_title = NodePath("Margin/Content/Title")
-_name = NodePath("Margin/Content/Name")
-_layer = NodePath("Margin/Content/Layer")
-_visible = NodePath("Margin/Content/Visible")
-_shape = NodePath("Margin/Content/ShapeKind")
-_x = NodePath("Margin/Content/X")
-_y = NodePath("Margin/Content/Y")
-_width = NodePath("Margin/Content/Width")
-_height = NodePath("Margin/Content/Height")
-_rotation = NodePath("Margin/Content/Rotation")
-_vertices = NodePath("Margin/Content/Vertices")
-_material = NodePath("Margin/Content/MaterialSection/MaterialContent/Picker")
-_materialStatus = NodePath("Margin/Content/MaterialSection/MaterialContent/Status")
-_projectionMode = NodePath("Margin/Content/ProjectionMode")
-_originX = NodePath("Margin/Content/OriginX")
-_originY = NodePath("Margin/Content/OriginY")
-_scaleX = NodePath("Margin/Content/ScaleX")
-_scaleY = NodePath("Margin/Content/ScaleY")
-_projectionRotation = NodePath("Margin/Content/ProjectionRotation")
-_diagnostic = NodePath("Margin/Content/Diagnostic")
-_duplicate = NodePath("Margin/Content/Actions/Duplicate")
-_delete = NodePath("Margin/Content/Actions/Delete")
 
-[node name="ZoneInspector" type="ScrollContainer" parent="RightDock/Margin/PropertiesColumn/InspectorFrame/InspectorStack" unique_id=1327228011 node_paths=PackedStringArray("_title", "_name", "_shape", "_x", "_y", "_sizeA", "_sizeB", "_rotation", "_tags", "_effects", "_diagnostic", "_addEffect", "_delete") instance=ExtResource("13")]
+[node name="ZoneInspector" parent="RightDock/Margin/PropertiesColumn/InspectorFrame/InspectorStack" unique_id=1327228011 instance=ExtResource("13")]
 visible = false
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+offset_right = 0.0
+offset_bottom = 0.0
 grow_horizontal = 2
 grow_vertical = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-theme = ExtResource("1")
-horizontal_scroll_mode = 0
-script = ExtResource("14")
-_title = NodePath("Margin/Content/Title")
-_name = NodePath("Margin/Content/Name")
-_shape = NodePath("Margin/Content/ShapeKind")
-_x = NodePath("Margin/Content/X")
-_y = NodePath("Margin/Content/Y")
-_sizeA = NodePath("Margin/Content/SizeA")
-_sizeB = NodePath("Margin/Content/SizeB")
-_rotation = NodePath("Margin/Content/Rotation")
-_tags = NodePath("Margin/Content/Tags")
-_effects = NodePath("Margin/Content/EffectRows")
-_diagnostic = NodePath("Margin/Content/Diagnostic")
-_addEffect = NodePath("Margin/Content/AddEffect")
-_delete = NodePath("Margin/Content/Delete")
 
-[node name="SpawnInspector" type="ScrollContainer" parent="RightDock/Margin/PropertiesColumn/InspectorFrame/InspectorStack" unique_id=653249865 node_paths=PackedStringArray("_title", "_x", "_y", "_team", "_delete") instance=ExtResource("15")]
+[node name="SpawnInspector" parent="RightDock/Margin/PropertiesColumn/InspectorFrame/InspectorStack" unique_id=653249865 instance=ExtResource("15")]
 visible = false
 layout_mode = 1
 anchors_preset = 15
@@ -262,16 +181,6 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-theme = ExtResource("1")
-horizontal_scroll_mode = 0
-script = ExtResource("16")
-_title = NodePath("Margin/Content/Title")
-_x = NodePath("Margin/Content/X")
-_y = NodePath("Margin/Content/Y")
-_team = NodePath("Margin/Content/Team")
-_delete = NodePath("Margin/Content/Delete")
 
 [node name="DockResizeHandle" type="Button" parent="." unique_id=306158734]
 layout_mode = 0
@@ -415,29 +324,11 @@ size_flags_horizontal = 3
 theme_override_constants/h_separation = 8
 theme_override_constants/v_separation = 6
 
-[node name="Toolbar" type="HBoxContainer" parent="Chrome/ToolBar/Margin/ToolRow" unique_id=1753316472 node_paths=PackedStringArray("_geometryDomain", "_zonesDomain", "_spawnsDomain", "_selectTool", "_zoneRectangleTool", "_zoneEllipseTool", "_spawnTool", "_brushRectangleTool", "_brushEllipseTool", "_brushPolygonTool", "_workingLayer", "_selectAll", "_rasterize") instance=ExtResource("17")]
+[node name="Toolbar" parent="Chrome/ToolBar/Margin/ToolRow" unique_id=1753316472 instance=ExtResource("17")]
 layout_mode = 2
-theme_override_constants/separation = 6
-script = ExtResource("18")
-_geometryDomain = NodePath("GeometryDomain")
-_zonesDomain = NodePath("ZonesDomain")
-_spawnsDomain = NodePath("SpawnsDomain")
-_selectTool = NodePath("Select")
-_zoneRectangleTool = NodePath("Square")
-_zoneEllipseTool = NodePath("Circle")
-_spawnTool = NodePath("Spawn")
-_brushRectangleTool = NodePath("RectangleBrush")
-_brushEllipseTool = NodePath("EllipseBrush")
-_brushPolygonTool = NodePath("PolygonBrush")
-_workingLayer = NodePath("WorkingLayer")
-_selectAll = NodePath("SelectAll")
-_rasterize = NodePath("Rasterize")
 
-[node name="ViewControls" type="HBoxContainer" parent="Chrome/ToolBar/Margin/ToolRow" unique_id=895827706 node_paths=PackedStringArray("_snap", "_view") instance=ExtResource("19")]
+[node name="ViewControls" parent="Chrome/ToolBar/Margin/ToolRow" unique_id=895827706 instance=ExtResource("19")]
 layout_mode = 2
-script = ExtResource("20")
-_snap = NodePath("UniversalSnap")
-_view = NodePath("ViewOverflow")
 
 [node name="OpenObjectDrawer" type="Button" parent="Chrome/ToolBar/Margin/ToolRow" unique_id=959512674]
 layout_mode = 2
@@ -460,7 +351,7 @@ accessibility_name = "Show the stamp library"
 toggle_mode = true
 text = "Stamps"
 
-[node name="StampDock" type="ScrollContainer" parent="." unique_id=1938447199 node_paths=PackedStringArray("_library") instance=ExtResource("21")]
+[node name="StampDock" parent="." unique_id=1938447199 instance=ExtResource("21")]
 visible = false
 layout_mode = 0
 anchor_top = 1.0
@@ -470,10 +361,3 @@ offset_left = 356.0
 offset_top = -318.0
 offset_right = -356.0
 offset_bottom = -46.0
-mouse_filter = 0
-mouse_force_pass_scroll_events = false
-follow_focus = true
-horizontal_scroll_mode = 3
-vertical_scroll_mode = 2
-script = ExtResource("22")
-_library = NodePath("StampLibrary")

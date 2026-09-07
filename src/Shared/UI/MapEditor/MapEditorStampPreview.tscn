@@ -1,6 +1,6 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://bk4tf4qidf6gj"]
 
-[ext_resource type="Script" path="res://src/Client/MapEditor/MapEditorStampPreview.cs" id="1_psdjy"]
+[ext_resource type="Script" uid="uid://dttlfj11lecqc" path="res://src/Client/MapEditor/MapEditorStampPreview.cs" id="1_psdjy"]
 
 [node name="root" type="Control" unique_id=377226506]
 texture_filter = 1

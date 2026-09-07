@@ -1,9 +1,7 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://baih04wdf8af5"]
 
-[ext_resource type="Script" path="res://src/Client/MapEditor/MapEditorStampDock.cs" id="1"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/MapEditor/MapEditorStampLibrary.tscn" id="2"]
-[ext_resource type="Script" path="res://src/Client/MapEditor/MapEditorStampLibrary.cs" id="3"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/MapEditor/MapEditorStampCard.tscn" id="4"]
+[ext_resource type="Script" uid="uid://bnys8h7a45qbu" path="res://src/Client/MapEditor/MapEditorStampDock.cs" id="1"]
+[ext_resource type="PackedScene" uid="uid://sygg4bpaoryw" path="res://src/Shared/UI/MapEditor/MapEditorStampLibrary.tscn" id="2"]
 
 [node name="StampDock" type="ScrollContainer" unique_id=1938447199 node_paths=PackedStringArray("_library")]
 offset_right = 720.0
@@ -16,10 +14,5 @@ vertical_scroll_mode = 2
 script = ExtResource("1")
 _library = NodePath("StampLibrary")
 
-[node name="StampLibrary" type="GridContainer" parent="." unique_id=149097090 instance=ExtResource("2")]
+[node name="StampLibrary" parent="." unique_id=149097090 instance=ExtResource("2")]
 layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/h_separation = 8
-theme_override_constants/v_separation = 8
-script = ExtResource("3")
-_cardScene = ExtResource("4")

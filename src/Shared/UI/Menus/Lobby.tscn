@@ -1,13 +1,11 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://c2k8lsdrt5ar5"]
 
-[ext_resource type="Script" path="res://src/Client/Menus/Lobby.cs" id="1_lobby"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/Chat/LobbyChat.tscn" id="2_chat"]
-[ext_resource type="Script" path="res://src/Client/Menus/LobbySettingsPanel.cs" id="3_4fsb7"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/Menus/LobbySettingsPanel.tscn" id="3_settings"]
-[ext_resource type="Script" path="res://src/Client/Menus/RosterHost.cs" id="4_roster"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/Controls/SingleColumnRoster.tscn" id="5_single"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/Controls/TeamColumnsRoster.tscn" id="6_teams"]
-[ext_resource type="Script" path="res://src/Client/Chat/LobbyChat.cs" id="8_6f08g"]
+[ext_resource type="Script" uid="uid://dcji6fesaw34y" path="res://src/Client/Menus/Lobby.cs" id="1_lobby"]
+[ext_resource type="PackedScene" uid="uid://ciqycdoqosx85" path="res://src/Shared/UI/Chat/LobbyChat.tscn" id="2_chat"]
+[ext_resource type="PackedScene" uid="uid://d4e5uxg8yueq" path="res://src/Shared/UI/Menus/LobbySettingsPanel.tscn" id="3_settings"]
+[ext_resource type="Script" uid="uid://blykayha5ata5" path="res://src/Client/Menus/RosterHost.cs" id="4_roster"]
+[ext_resource type="PackedScene" uid="uid://dc28x1qimy8d1" path="res://src/Shared/UI/Controls/SingleColumnRoster.tscn" id="5_single"]
+[ext_resource type="PackedScene" uid="uid://bcyg5w5ortt37" path="res://src/Shared/UI/Controls/TeamColumnsRoster.tscn" id="6_teams"]
 
 [node name="Lobby" type="Control" unique_id=163944296 node_paths=PackedStringArray("_readyButton")]
 layout_mode = 3
@@ -45,20 +43,8 @@ theme_override_constants/margin_bottom = 18
 layout_mode = 2
 theme_override_constants/separation = 16
 
-[node name="Settings" type="PanelContainer" parent="Content/Main" unique_id=63379707 node_paths=PackedStringArray("_modePicker", "_mapPicker", "_mapPreview", "_mapStatus", "_rulesSheet", "_victoryRulesSheet", "_physicsSheet", "_combatSheet") instance=ExtResource("3_settings")]
-custom_minimum_size = Vector2(440, 0)
+[node name="Settings" parent="Content/Main" unique_id=63379707 instance=ExtResource("3_settings")]
 layout_mode = 2
-size_flags_horizontal = 0
-size_flags_vertical = 3
-script = ExtResource("3_4fsb7")
-_modePicker = NodePath("Margin/Column/Header/MapInfo/ModePicker")
-_mapPicker = NodePath("Margin/Column/Header/MapInfo/MapPicker")
-_mapPreview = NodePath("Margin/Column/Header/PreviewFrame/MapPreview")
-_mapStatus = NodePath("Margin/Column/Header/MapInfo/MapStatus")
-_rulesSheet = NodePath("Margin/Column/SettingsTabs/Rules/Sheets/RulesSheet")
-_victoryRulesSheet = NodePath("Margin/Column/SettingsTabs/Rules/Sheets/VictoryRulesSheet")
-_physicsSheet = NodePath("Margin/Column/SettingsTabs/Physics/Sheet")
-_combatSheet = NodePath("Margin/Column/SettingsTabs/Combat/Sheet")
 
 [node name="Sidebar" type="VBoxContainer" parent="Content/Main" unique_id=1573526163]
 custom_minimum_size = Vector2(620, 0)
@@ -84,8 +70,8 @@ theme_override_constants/separation = 10
 
 [node name="Title" type="Label" parent="Content/Main/Sidebar/LobbyCard/Margin/Column" unique_id=204873843]
 layout_mode = 2
-theme_override_font_sizes/font_size = 27
 theme_override_colors/font_color = Color(0.886, 0.925, 0.973, 1)
+theme_override_font_sizes/font_size = 27
 text = "PLAYERS"
 
 [node name="Subtitle" type="Label" parent="Content/Main/Sidebar/LobbyCard/Margin/Column" unique_id=575514524]
@@ -106,13 +92,9 @@ custom_minimum_size = Vector2(0, 46)
 layout_mode = 2
 text = "READY UP"
 
-[node name="ChatPanel" type="PanelContainer" parent="Content/Main/Sidebar" unique_id=565259309 node_paths=PackedStringArray("_scroll", "_feed", "_input") instance=ExtResource("2_chat")]
+[node name="ChatPanel" parent="Content/Main/Sidebar" unique_id=565259309 instance=ExtResource("2_chat")]
 custom_minimum_size = Vector2(0, 180)
 layout_mode = 2
 size_flags_vertical = 3
-script = ExtResource("8_6f08g")
-_scroll = NodePath("Margin/Column/Scroll")
-_feed = NodePath("Margin/Column/Scroll/Feed")
-_input = NodePath("Margin/Column/Input")
 
 [connection signal="pressed" from="Content/Main/Sidebar/LobbyCard/Margin/Column/ReadyButton" to="." method="OnReadyPressed"]

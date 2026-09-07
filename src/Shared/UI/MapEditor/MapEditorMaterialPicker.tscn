@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://bxj8nwnkwsi02"]
 
-[ext_resource type="Theme" path="res://src/Shared/UI/MapEditor/MapEditorTheme.tres" id="1_ksf41"]
-[ext_resource type="Script" path="res://src/Client/MapEditor/MapEditorMaterialPicker.cs" id="1_tj2eo"]
+[ext_resource type="Theme" uid="uid://cmgp4xl7r5v2k" path="res://src/Shared/UI/MapEditor/MapEditorTheme.tres" id="1_ksf41"]
+[ext_resource type="Script" uid="uid://4hnhksi34oiv" path="res://src/Client/MapEditor/MapEditorMaterialPicker.cs" id="1_tj2eo"]
 
 [node name="MaterialPicker" type="VBoxContainer" unique_id=284392351 node_paths=PackedStringArray("_kind", "_texturePanel", "_source", "_search", "_textureList", "_empty", "_colorPanel", "_color")]
 size_flags_horizontal = 3

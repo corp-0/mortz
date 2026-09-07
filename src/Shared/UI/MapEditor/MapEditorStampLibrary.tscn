@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://sygg4bpaoryw"]
 
-[ext_resource type="Script" path="res://src/Client/MapEditor/MapEditorStampLibrary.cs" id="1_vnkpu"]
-[ext_resource type="PackedScene" path="res://src/Shared/UI/MapEditor/MapEditorStampCard.tscn" id="2_aoh5j"]
+[ext_resource type="Script" uid="uid://dd7rlsy5gfy8s" path="res://src/Client/MapEditor/MapEditorStampLibrary.cs" id="1_vnkpu"]
+[ext_resource type="PackedScene" uid="uid://clqg7w7pqgt6k" path="res://src/Shared/UI/MapEditor/MapEditorStampCard.tscn" id="2_aoh5j"]
 
 [node name="StampLibrary" type="GridContainer" unique_id=149097090]
 size_flags_horizontal = 3

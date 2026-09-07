@@ -19,11 +19,12 @@ border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(1, 1, 1, 1)
+border_color = Color(0.08468992, 0.08468994, 0.08468988, 1)
 corner_radius_top_left = 4
 corner_radius_top_right = 4
 corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
+anti_aliasing = false
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xy4yy"]
 bg_color = Color(0.08468992, 0.08468994, 0.08468988, 1)
@@ -31,11 +32,12 @@ border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(1, 1, 1, 1)
+border_color = Color(0.08468992, 0.08468994, 0.08468988, 1)
 corner_radius_top_left = 4
 corner_radius_top_right = 4
 corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
+anti_aliasing = false
 
 [node name="PlayerStatusHud" type="Control" unique_id=1497648685 node_paths=PackedStringArray("_healthBar", "_shells", "_parry", "_rope", "_damageFlash")]
 layout_mode = 3

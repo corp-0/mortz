@@ -1,6 +1,6 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://btsip6ojof2u1"]
 
-[ext_resource type="Script" path="res://src/Client/Session/ConnectedSession.cs" id="1_root"]
+[ext_resource type="Script" uid="uid://b28br8dkvuhdv" path="res://src/Client/Session/ConnectedSession.cs" id="1_root"]
 
 [node name="ConnectedSession" type="Node" unique_id=724459621]
 script = ExtResource("1_root")
