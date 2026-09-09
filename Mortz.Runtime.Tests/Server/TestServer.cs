@@ -20,7 +20,7 @@ internal sealed class TestServer : IDisposable
 
     public TestServer(string adminPassword = "", MatchConfig? rules = null,
         IMatchObserver? observer = null, IMatchControl? control = null,
-        bool allowJoinInProgress = true)
+        bool allowJoinInProgress = true, string applicationVersion = "1.2.3-test")
     {
         Maps.Add(Map("arena", "Arena"));
         Boot = new ServerBoot
@@ -37,7 +37,7 @@ internal sealed class TestServer : IDisposable
             AllowJoinInProgress = allowJoinInProgress,
         };
         Server = new GameServer(Boot, Link, Maps, Logger.None,
-            observer ?? new NullMatchObserver(), control ?? new NullMatchControl());
+            observer ?? new NullMatchObserver(), control ?? new NullMatchControl(), applicationVersion);
     }
 
     public RecordingTransport Link { get; } = new();
@@ -71,7 +71,7 @@ internal sealed class TestServer : IDisposable
 
     public void Connect(int peerId, string name)
     {
-        Server.Connect(peerId, name);
+        Server.Connect(new(peerId, name, 0, null));
         Ready(peerId);
     }
 

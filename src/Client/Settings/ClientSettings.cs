@@ -30,11 +30,14 @@ public sealed class ClientSettings(string userDataDirectory)
 
     public static ClientSettings Load() => Load(MortzUserData.Resolve());
 
-    public static ClientSettings Load(string userDataDirectory)
+    public static ClientSettings Load(string userDataDirectory, string? initialName = null)
     {
         ClientSettings settings = new(userDataDirectory);
         if (!File.Exists(settings._path))
+        {
+            settings.PlayerName = PlayerNameSanitizer.Sanitize(initialName ?? "");
             return settings;
+        }
         try
         {
             settings.Read(File.ReadAllText(settings._path));
@@ -43,7 +46,10 @@ public sealed class ClientSettings(string userDataDirectory)
         catch (Exception exception)
         {
             _log.Error(exception, "unreadable {Path}, starting fresh", settings._path);
-            return new ClientSettings(userDataDirectory);
+            return new ClientSettings(userDataDirectory)
+            {
+                PlayerName = PlayerNameSanitizer.Sanitize(initialName ?? ""),
+            };
         }
     }
 

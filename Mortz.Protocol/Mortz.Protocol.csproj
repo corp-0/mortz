@@ -7,6 +7,7 @@
     <CompilerGeneratedFilesOutputPath>$(BaseIntermediateOutputPath)Generated</CompilerGeneratedFilesOutputPath>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="SharpZipLib" Version="1.4.2" />
     <ProjectReference Include="../Mortz.Core/Mortz.Core.csproj" />
     <ProjectReference Include="../Mortz.Net.Gen/Mortz.Net.Gen.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>

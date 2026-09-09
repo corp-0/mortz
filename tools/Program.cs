@@ -1,3 +1,5 @@
+using DotNetEnv;
+
 namespace Mortz.Tools;
 
 public static class Program
@@ -17,7 +19,7 @@ public static class Program
                 default:
                     Console.Error.WriteLine("usage:");
                     Console.Error.WriteLine("  dotnet run --project tools -- convert-lxl <path.lxl> <mapId> [--scale N] [--players N] [--out DIR]");
-                    Console.Error.WriteLine("  dotnet run --project tools -- export [client|server|all] [--debug] [--require-official]");
+                    Console.Error.WriteLine("  dotnet run --project tools -- export [client|server|all] [--steam|--standalone] [--linux|--windows] [--debug] [--require-official]");
                     Console.Error.WriteLine("  dotnet run --project tools -- official check");
                     Console.Error.WriteLine("  dotnet run --project tools -- official import-3d [--blender PATH] [--rebuild]");
                     Console.Error.WriteLine("  dotnet run --project tools -- publish-playtest [--skip-build] [--only itch,steam,docker]");
@@ -35,7 +37,7 @@ public static class Program
     {
         string path = Path.Combine(Directory.GetCurrentDirectory(), ".env");
         if (File.Exists(path))
-            DotNetEnv.Env.NoClobber().Load(path);
+            Env.NoClobber().Load(path);
     }
 
     public static string RepoRoot()

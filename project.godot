@@ -21,10 +21,6 @@ config/icon="res://icon.svg"
 
 buses/default_bus_layout="uid://bebvex8an0eju"
 
-[autoload]
-
-NetworkManager="*res://src/Net/NetworkManager.cs"
-
 [display]
 
 window/size/viewport_width=1280
@@ -145,3 +141,18 @@ vertex_snap_intensity={
 "type": "int",
 "value": 2
 }
+
+[steam]
+
+initialization/app_data/app_type=0
+initialization/app_data/app_id=5016960
+initialization/app_data/demo_id=0
+initialization/app_data/playtest_id=0
+initialization/app_data/tool_id=0
+initialization/processes/initialize_on_startup=false
+initialization/processes/embed_callbacks=false
+multiplayer_peer/max_channels=4
+
+[steam_server]
+
+initialization/embed_callbacks=false

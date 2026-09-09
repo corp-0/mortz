@@ -1,7 +1,6 @@
 using Mortz.Content;
 using Mortz.Core.Match.Configuration;
 using Mortz.Protocol.Net;
-using Mortz.Protocol.Net.Query;
 using Mortz.Shared;
 using Mortz.Shared.Logging;
 using Serilog;
@@ -44,6 +43,17 @@ public static class ServerBootLoader
         if (adminPassword.Length > 0)
             _log.Information("admin password set");
         int gamePort = CmdArgs.GetInt("--port", NetConfig.DEFAULT_PORT);
+        string? queryText = CmdArgs.GetValue("--query-port");
+        int queryPort = 0;
+        if (gamePort is < 0 or > 65535 ||
+            (CmdArgs.HasFlag("--port") && !int.TryParse(CmdArgs.GetValue("--port"), out gamePort)) ||
+            (CmdArgs.HasFlag("--query-port") &&
+             (!int.TryParse(queryText, out queryPort) || queryPort is < 1 or > 65535)) ||
+            (gamePort != 0 && queryPort == gamePort) || (gamePort == 65535 && queryPort == 0))
+        {
+            _log.Error("game and query ports must be distinct UDP ports; an omitted query port requires game port + 1");
+            return null;
+        }
         bool allowJoinInProgress = serverConfig.AllowJoinInProgress;
         if (CmdArgs.HasFlag("--allow-jip"))
             allowJoinInProgress = true;
@@ -58,7 +68,8 @@ public static class ServerBootLoader
             Name = ServerConfig.SanitizeName(
                 CmdArgs.GetValue("--server-name") ?? serverConfig.Name),
             GamePort = gamePort,
-            QueryPort = CmdArgs.GetInt("--query-port", ServerQueryProtocol.QueryPort(gamePort)),
+            QueryPort = queryPort,
+            SteamPublic = CmdArgs.HasFlag("--steam-public"),
             Seed = Random.Shared.Next(),
             NetStats = CmdArgs.HasFlag("--net-stats"),
             AllowJoinInProgress = allowJoinInProgress,

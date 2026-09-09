@@ -7,6 +7,42 @@ namespace Mortz.Tests.Client;
 public class ClientSettingsTests
 {
     [Fact]
+    public void NewProfileSuggestsASanitizedNameWithoutSavingOrChoosingASkin()
+    {
+        string directory = Path.Combine(Path.GetTempPath(), $"mortz-profile-{Guid.NewGuid():N}");
+        ClientSettings settings = ClientSettings.Load(directory, "  Steam\nPlayer  ");
+
+        Assert.Equal("SteamPlayer", settings.PlayerName);
+        Assert.Null(settings.SelectedSkin);
+        Assert.False(settings.HasIdentity);
+        Assert.False(Directory.Exists(directory));
+    }
+
+    [Theory]
+    [InlineData("Alice")]
+    [InlineData("")]
+    public void SavedProfileNameIsPreservedWhenSteamSuggestsAnother(string savedName)
+    {
+        string directory = Path.Combine(Path.GetTempPath(), $"mortz-profile-{Guid.NewGuid():N}");
+        try
+        {
+            ClientSettings settings = new(directory);
+            settings.SetIdentity(savedName, 4);
+
+            ClientSettings loaded = ClientSettings.Load(directory, "Steam Player");
+
+            Assert.Equal(savedName, loaded.PlayerName);
+            Assert.Equal(4, loaded.SelectedSkin);
+            Assert.Equal(savedName, ClientSettings.Load(directory).PlayerName);
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+                Directory.Delete(directory, true);
+        }
+    }
+
+    [Fact]
     public void IdentityRequiresBothANameAndAValidSkin()
     {
         ClientSettings settings = new() { PlayerName = "Alice" };

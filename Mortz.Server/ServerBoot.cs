@@ -1,5 +1,4 @@
 using Mortz.Content;
-using Mortz.Core.Match;
 using Mortz.Core.Match.Configuration;
 using Mortz.Server.Content;
 
@@ -16,6 +15,7 @@ public sealed record ServerBoot
     public required string Name { get; init; }
     public required int GamePort { get; init; }
     public required int QueryPort { get; init; }
+    public bool SteamPublic { get; init; }
 
     /// <summary>The root of all server randomness. Chance enters the process once, at load.</summary>
     public required int Seed { get; init; }

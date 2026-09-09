@@ -2,57 +2,39 @@ using System.Net;
 using Godot;
 using Mortz.Protocol.Net;
 using Mortz.Protocol.Net.Query;
-using Mortz.Shared.Logging;
-using Serilog;
 
 namespace Mortz.Client.Servers;
 
-/// <summary>A hostname probe parked in Godot's resolver queue.</summary>
-public readonly record struct PendingResolve(int ResolveId, ServerEndpoint Endpoint);
-
-/// <summary>Sockets and DNS around ProbeTracker, which decides what a datagram means.</summary>
-public partial class ServerProbe : Node
+[GlobalClass]
+public partial class ServerProbe : Node, IServerProbe
 {
-    private static readonly ILogger _log = MortzLog.For("browser");
+    private class Pending(ServerProbeWork work)
+    {
+        public ServerProbeWork Work { get; } = work;
+        public ServerEndpoint Endpoint => Work.Endpoint;
+        public ulong StartedAt => Work.StartedAt;
+        public int ResolveId { get; set; } = -1;
+        public PacketPeerUdp? Socket { get; set; }
+        public A2SProbe? Exchange { get; set; }
+    }
 
-    private const int MAX_PACKETS_PER_FRAME = 64;
-
-    private readonly ProbeTracker _tracker = new();
-    private readonly Dictionary<uint, PendingResolve> _resolves = [];
-    private PacketPeerUdp? _socket;
+    private readonly ServerProbeCoordinator _coordinator = new();
+    private readonly List<Pending> _active = [];
+    private PacketPeerUdp? _lan;
 
     public event Action<ServerProbeReply>? Replied;
-
     public event Action<ServerEndpoint>? TimedOut;
-
-    /// <summary>A server answered a broadcast we did not address to it.</summary>
     public event Action<ServerProbeReply>? Discovered;
 
-    public override void _Ready()
+    public ServerProbe()
     {
-        _tracker.Replied += OnTrackerReplied;
-        _tracker.TimedOut += OnTrackerTimedOut;
-        _tracker.Discovered += OnTrackerDiscovered;
-        PacketPeerUdp socket = new PacketPeerUdp();
-        Error error = socket.Bind(0);
-        if (error != Error.Ok)
-        {
-            _log.Error("no query socket: {Error}", error);
-            socket.Dispose();
-            return;
-        }
-        socket.SetBroadcastEnabled(true);
-        _socket = socket;
+        _coordinator.Replied += reply => Replied?.Invoke(reply);
+        _coordinator.Discovered += reply => Discovered?.Invoke(reply);
+        _coordinator.TimedOut += endpoint => TimedOut?.Invoke(endpoint);
     }
 
-    public override void _ExitTree()
-    {
-        _tracker.Replied -= OnTrackerReplied;
-        _tracker.TimedOut -= OnTrackerTimedOut;
-        _tracker.Discovered -= OnTrackerDiscovered;
-        _socket?.Close();
-        _socket = null;
-    }
+    public override void _Ready() => ProcessMode = ProcessModeEnum.Always;
+    public override void _ExitTree() => Cancel();
 
     public void Probe(IEnumerable<ServerEndpoint> endpoints)
     {
@@ -62,92 +44,157 @@ public partial class ServerProbe : Node
         }
     }
 
-    public void Probe(ServerEndpoint endpoint)
-    {
-        if (_socket == null)
-            return;
-        ulong now = Time.GetTicksMsec();
-        uint nonce = _tracker.Track(endpoint, now);
-        if (IPAddress.TryParse(endpoint.Address, out _))
-            Send(nonce, endpoint.Address, endpoint.QueryPort, now);
-        else
-            _resolves[nonce] = new PendingResolve(
-                IP.ResolveHostnameQueueItem(endpoint.Address), endpoint);
-    }
+    public void Probe(ServerEndpoint endpoint) => _coordinator.Schedule(endpoint);
 
-    /// <summary>Drops everything in flight without reporting it.</summary>
     public void Cancel()
     {
-        foreach (PendingResolve resolve in _resolves.Values)
+        _coordinator.Cancel();
+        foreach (Pending pending in _active)
         {
-            IP.EraseResolveItem(resolve.ResolveId);
+            Release(pending);
         }
-        _resolves.Clear();
-        _tracker.Cancel();
+        _active.Clear();
+        CloseLan();
     }
 
-    /// <summary>Shouts at the subnet on the usual query port. A server on a
-    /// custom one is only reachable by direct connect.</summary>
     public void DiscoverLan()
     {
-        if (_socket is not PacketPeerUdp socket)
+        CloseLan();
+        PacketPeerUdp socket = new();
+        if (socket.Bind(0) != Error.Ok)
+        {
+            socket.Dispose();
             return;
-        int port = ServerQueryProtocol.QueryPort(NetConfig.DEFAULT_PORT);
-        uint nonce = _tracker.BeginBroadcast(Time.GetTicksMsec(), port);
-        socket.SetDestAddress("255.255.255.255", port);
-        socket.PutPacket(ServerQueryProtocol.EncodeRequest(nonce));
+        }
+        socket.SetBroadcastEnabled(true);
+        socket.SetDestAddress("255.255.255.255", ServerQueryProtocol.QueryPort(NetConfig.DEFAULT_PORT));
+        socket.PutPacket(ServerQueryProtocol.EncodeInfoRequest());
+        _lan = socket;
+        _coordinator.BeginLan(Time.GetTicksMsec());
     }
 
     public override void _Process(double delta)
     {
-        if (_socket is not PacketPeerUdp socket)
-            return;
         ulong now = Time.GetTicksMsec();
-        AdvanceResolves(now);
-        for (int i = 0; i < MAX_PACKETS_PER_FRAME && socket.GetAvailablePacketCount() > 0; i++)
+        PollLan(now);
+        while (_coordinator.TryStartNext(now, out ServerProbeWork work))
         {
-            byte[] datagram = socket.GetPacket();
-            _tracker.OnResponse(datagram, socket.GetPacketIP(), socket.GetPacketPort(), now);
-        }
-        _tracker.Expire(now);
-    }
-
-    private void AdvanceResolves(ulong now)
-    {
-        foreach ((uint nonce, PendingResolve resolve) in _resolves.ToArray())
-        {
-            IP.ResolverStatus status = IP.GetResolveItemStatus(resolve.ResolveId);
-            if (status == IP.ResolverStatus.Waiting)
-                continue;
-            string address = status == IP.ResolverStatus.Done
-                ? IP.GetResolveItemAddress(resolve.ResolveId)
-                : "";
-            IP.EraseResolveItem(resolve.ResolveId);
-            _resolves.Remove(nonce);
-            if (address.Length == 0)
-                _tracker.Fail(nonce);
+            Pending pending = new(work);
+            _active.Add(pending);
+            if (IPAddress.TryParse(work.Endpoint.Address, out IPAddress? address))
+            {
+                Send(pending, address.ToString());
+            }
             else
-                Send(nonce, address, resolve.Endpoint.QueryPort, now);
+            {
+                pending.ResolveId = IP.ResolveHostnameQueueItem(work.Endpoint.Address);
+            }
+        }
+        foreach (Pending pending in _active.ToArray())
+        {
+            if (!_coordinator.IsActive(pending.Work))
+            {
+                continue;
+            }
+            if (_coordinator.HasExpired(pending.Work, now))
+            {
+                Complete(pending, now);
+                continue;
+            }
+            if (pending.ResolveId != -1)
+            {
+                IP.ResolverStatus status = IP.GetResolveItemStatus(pending.ResolveId);
+                if (status == IP.ResolverStatus.Waiting)
+                {
+                    continue;
+                }
+                string address = status == IP.ResolverStatus.Done ? IP.GetResolveItemAddress(pending.ResolveId) : "";
+                IP.EraseResolveItem(pending.ResolveId);
+                pending.ResolveId = -1;
+                if (address.Length == 0)
+                {
+                    Complete(pending, now);
+                    continue;
+                }
+                Send(pending, address);
+            }
+            if (pending.Socket is not PacketPeerUdp socket || pending.Exchange is not A2SProbe exchange)
+            {
+                Complete(pending, now);
+                continue;
+            }
+            for (int i = 0; i < 64 && socket.GetAvailablePacketCount() > 0 && !exchange.IsComplete; i++)
+            {
+                byte[] response = socket.GetPacket();
+                byte[]? request = exchange.Receive(response, socket.GetPacketIP(), socket.GetPacketPort(), now);
+                if (request != null)
+                {
+                    socket.PutPacket(request);
+                }
+            }
+            if (exchange.IsComplete)
+            {
+                Complete(pending, now);
+            }
         }
     }
 
-    private void Send(uint nonce, string address, int port, ulong now)
+    private static void Send(Pending pending, string address)
     {
-        if (_socket is not PacketPeerUdp socket)
+        PacketPeerUdp socket = new();
+        if (socket.ConnectToHost(address, pending.Endpoint.QueryPort) != Error.Ok)
+        {
+            socket.Dispose();
             return;
-        socket.SetDestAddress(address, port);
-        socket.PutPacket(ServerQueryProtocol.EncodeRequest(nonce));
-        _tracker.MarkSent(nonce, address, now);
+        }
+        pending.Socket = socket;
+        pending.Exchange = new A2SProbe(pending.Endpoint, address, pending.StartedAt, pending.Work.Discovered);
+        socket.PutPacket(pending.Exchange.StartRequest());
     }
 
-    private void OnTrackerReplied(ServerProbeReply reply) => Replied?.Invoke(reply);
-
-    private void OnTrackerTimedOut(uint nonce, ServerEndpoint endpoint)
+    private void Complete(Pending pending, ulong now)
     {
-        if (_resolves.Remove(nonce, out PendingResolve resolve))
-            IP.EraseResolveItem(resolve.ResolveId);
-        TimedOut?.Invoke(endpoint);
+        pending.Exchange?.Finish(now);
+        ServerProbeReply? result = pending.Exchange?.Result;
+        Release(pending);
+        _active.Remove(pending);
+        _coordinator.Complete(pending.Work, result);
     }
 
-    private void OnTrackerDiscovered(ServerProbeReply reply) => Discovered?.Invoke(reply);
+    private void PollLan(ulong now)
+    {
+        if (!_coordinator.IsLanActive(now))
+        {
+            CloseLan();
+            return;
+        }
+        if (_lan is not PacketPeerUdp socket)
+        {
+            return;
+        }
+        for (int i = 0; i < 64 && socket.GetAvailablePacketCount() > 0; i++)
+        {
+            byte[] packet = socket.GetPacket();
+            _coordinator.ObserveLan(packet, socket.GetPacketIP(), socket.GetPacketPort(), now);
+        }
+    }
+
+    private static void Release(Pending pending)
+    {
+        if (pending.ResolveId != -1)
+        {
+            IP.EraseResolveItem(pending.ResolveId);
+            pending.ResolveId = -1;
+        }
+        pending.Socket?.Close();
+        pending.Socket?.Dispose();
+        pending.Socket = null;
+    }
+
+    private void CloseLan()
+    {
+        _lan?.Close();
+        _lan?.Dispose();
+        _lan = null;
+    }
 }

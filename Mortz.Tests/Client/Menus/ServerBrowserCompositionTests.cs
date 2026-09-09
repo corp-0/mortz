@@ -1,4 +1,6 @@
+using Chickensoft.AutoInject;
 using Godot;
+using Moq;
 using Mortz.Client.Menus;
 using Mortz.Client.Servers;
 using Mortz.Protocol.Net;
@@ -10,6 +12,53 @@ namespace Mortz.Tests.Client.Menus;
 [Collection(nameof(MortzGodotCollection))]
 public class ServerBrowserCompositionTests
 {
+    [Fact]
+    public void BrowserSceneForwardsActionsAndRendersControllerResults()
+    {
+        Mock<IServerProbe> probe = new();
+        List<FavoriteServer> saved = [];
+        using ServerBrowserController controller = new(probe.Object, () => saved,
+            favorites => saved = favorites.ToList());
+        ServerBrowser browser = Instantiate<ServerBrowser>("res://src/Shared/UI/Menus/ServerBrowser.tscn");
+        browser.FakeDependency(controller);
+        ((SceneTree)Engine.GetMainLoop()).Root.AddChild(browser);
+        try
+        {
+            Assert.Empty(browser.GetChildren().OfType<ServerProbe>());
+            browser.Open();
+            browser.OnDirectConnectPressed();
+            DirectConnectPanel panel = browser.GetNode<DirectConnectPanel>("Margin/Column/DirectPanel");
+            panel.GetNode<LineEdit>("DirectMargin/DirectColumn/Fields/Address").Text = "example.test";
+            panel.GetNode<LineEdit>("DirectMargin/DirectColumn/Fields/Port").Text = "30000";
+            panel.GetNode<LineEdit>("DirectMargin/DirectColumn/Fields/QueryPort").Text = "28000";
+            panel.GetNode<Button>("DirectMargin/DirectColumn/DirectActions/Find").EmitSignal(Button.SignalName.Pressed);
+            ServerEndpoint endpoint = new("example.test", 30000, 28000);
+            probe.Verify(value => value.Probe(endpoint), Times.Once);
+            ServerInfo info = new("Basement Box", "deathmatch", "Arena", 3, 8, true, true,
+                7777, NetConfig.PROTOCOL_VERSION, NetRegistry.SCHEMA_HASH);
+            probe.Raise(value => value.Replied += null, new ServerProbeReply(endpoint, info, 24));
+            Assert.False(panel.Visible);
+            Assert.Contains("Found example.test:30000", browser.GetNode<Label>("Margin/Column/Status").Text);
+            ServerRow row = browser.GetNode<Container>("Margin/Column/Scroll/Rows")
+                .GetChildren().OfType<ServerRow>()
+                .Single(value => Label(value, "Margin/Row/Text/Name").Text == "Basement Box");
+            Assert.Equal("3/8", Label(row, "Margin/Row/Population").Text);
+            browser.OnFavoritePressed();
+            Assert.Equal(28000, Assert.Single(saved).QueryPort);
+            (string, int)? joined = null;
+            controller.JoinRequested += request => joined = (request.Address, request.Port);
+            browser.OnJoinPressed();
+            Assert.Equal(("example.test", 30000), joined);
+            probe.Invocations.Clear();
+            browser.Hide();
+            probe.Verify(value => value.Cancel(), Times.Once);
+        }
+        finally
+        {
+            browser.Free();
+        }
+    }
+
     [Fact]
     public void RowShowsName_Population_AndPing_WhenOnline()
     {
@@ -57,7 +106,7 @@ public class ServerBrowserCompositionTests
     {
         ServerRow row = Instantiate<ServerRow>("res://src/Shared/UI/Menus/ServerRow.tscn");
 
-        row.Bind(new ServerEntry(ServerList.PINNED_ENDPOINT, ServerSource.PINNED, "Mortz Playtest"));
+        row.Bind(new ServerEntry(ServerList.PinnedEndpoint, ServerSource.PINNED, "Mortz Playtest"));
 
         Button star = row.GetNode<Button>("Margin/Row/Star");
         Assert.True(star.Disabled);

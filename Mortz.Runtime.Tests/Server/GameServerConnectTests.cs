@@ -1,7 +1,13 @@
+using Mortz.Core.Identity;
+using Mortz.Protocol.Net;
 using Mortz.Protocol.Net.Chat;
 using Mortz.Protocol.Net.Lobby;
+using Mortz.Protocol.Net.Query;
 using Mortz.Protocol.Net.Stats;
+using Mortz.Server.Diagnostics;
+using Mortz.Server.Match;
 using Mortz.Server.Phases;
+using Mortz.Server.Players;
 using Xunit;
 
 namespace Mortz.Runtime.Tests.Server;
@@ -13,6 +19,42 @@ public class GameServerConnectTests : IDisposable
     private readonly TestServer _server = new();
 
     public void Dispose() => _server.Dispose();
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void AdmittedAccountSurvivesMatchEntryAndDisconnect(bool verified)
+    {
+        AccountObserver observer = new();
+        using TestServer server = new(observer: observer);
+        VerifiedAccount? account = verified ? new(AccountProvider.STEAM, ulong.MaxValue) : null;
+
+        server.Server.Connect(new(7, "alice", 4, account));
+        server.Ready(7);
+        Player player = Assert.IsType<Player>(observer.Joined);
+        Assert.Equal(account, player.Account);
+        Assert.Equal(4, player.Skin);
+
+        server.Receive(7, new SetReadyMsg(true));
+        server.Tick();
+        Assert.Equal(ServerPhaseKind.MATCH, server.Server.Phase);
+        Assert.Equal(account, player.Account);
+
+        server.Server.Disconnect(7);
+        Assert.Same(player, observer.Left);
+        Assert.Equal(account, Assert.IsType<Player>(observer.Left).Account);
+        Assert.Equal(0, server.Server.PlayerCount);
+    }
+
+    private class AccountObserver : IMatchObserver
+    {
+        public Player? Joined;
+        public Player? Left;
+        public void PlayerJoined(Player player, ServerPhaseKind phase) => Joined = player;
+        public void PlayerLeft(Player player, ServerPhaseKind phase) => Left = player;
+        public void PhaseChanged(ServerPhaseKind kind) { }
+        public void MatchAdvanced(MatchUpdate update) { }
+    }
 
     [Fact]
     public void JoiningAnnouncesThenSeatsThenCatchesTheArrivalUp()
@@ -132,5 +174,18 @@ public class GameServerConnectTests : IDisposable
         Assert.True(_server.Server.Describe().InLobby);
         Assert.Equal("test", _server.Server.Describe().Name);
         Assert.Equal("Arena", _server.Server.Describe().Map);
+    }
+
+    [Theory]
+    [InlineData("2.4.0")]
+    [InlineData("2.4.0-preview.1+abc123")]
+    public void QueryReportsTheSuppliedBuildVersion(string version)
+    {
+        using TestServer server = new(applicationVersion: version);
+        ServerInfo metadata = server.Server.Describe();
+        Assert.Equal(NetConfig.PROTOCOL_VERSION, metadata.ProtocolVersion);
+        Assert.True(ServerQueryProtocol.TryDecodeInfo(
+            ServerQueryProtocol.EncodeInfoResponse(metadata), 7777, out ServerInfo decoded));
+        Assert.Equal(version, decoded.Version);
     }
 }

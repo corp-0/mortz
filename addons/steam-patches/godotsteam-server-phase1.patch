@@ -1,0 +1,98 @@
+--- a/godotsteam_server/godotsteam_server.cpp
++++ b/godotsteam_server/godotsteam_server.cpp
+@@ -348,6 +348,7 @@
+ 	if (!SteamGameServer_Init(getIPFromString(ip), game_port, query_port, (EServerMode)server_mode, version_number.utf8().get_data())) {
+ 		return false;
+ 	}
++	is_init_success = true;
+ 	set_internal_callbacks();
+ 	return true;
+ }
+@@ -374,13 +375,17 @@
+ 
+ // Shut down the server connection to Steam.
+ void SteamServer::serverShutdown() {
+-	// If callbacks were connected internally
++	if (!is_init_success) {
++		return;
++	}
++	is_init_success = false;
++
+ 	if (were_callbacks_embedded) {
++		were_callbacks_embedded = false;
+ 		RenderingServer *rendering_server = RenderingServer::get_singleton();
+-		ERR_FAIL_COND_MSG(rendering_server == nullptr, "RenderingServer is not present, cannot disconnect Steam Server callbacks internally.");
+-		rendering_server->disconnect("frame_post_draw", callable_mp(this, &SteamServer::run_internal_callbacks));
+-
+-		were_callbacks_embedded = false;
++		if (rendering_server != nullptr && rendering_server->is_connected("frame_post_draw", callable_mp(this, &SteamServer::run_internal_callbacks))) {
++			rendering_server->disconnect("frame_post_draw", callable_mp(this, &SteamServer::run_internal_callbacks));
++		}
+ 	}
+ 	SteamGameServer_Shutdown();
+ }
+@@ -564,6 +569,11 @@
+ SteamServer::BeginAuthSessionResult SteamServer::beginAuthSession(PackedByteArray ticket, int ticket_size, uint64_t steam_id) {
+ 	ERR_FAIL_COND_V_MSG(SteamAPI_SteamGameServer() == nullptr, BeginAuthSessionResult(-1), "Server class not found, Steam may not be initialized: beginAuthSession");
+ 	return (BeginAuthSessionResult)SteamAPI_ISteamGameServer_BeginAuthSession(SteamAPI_SteamGameServer(), ticket.ptr(), ticket_size, steam_id);
++}
++
++uint64_t SteamServer::createUnauthenticatedUserConnection() {
++	ERR_FAIL_COND_V_MSG(SteamAPI_SteamGameServer() == nullptr, uint64_t(0), "Server class not found, Steam may not be initialized: createUnauthenticatedUserConnection");
++	return SteamAPI_ISteamGameServer_CreateUnauthenticatedUserConnection(SteamAPI_SteamGameServer());
+ }
+ 
+ // Stop tracking started by beginAuthSession; called when no longer playing game with this entity.
+@@ -4315,6 +4325,7 @@
+ 	ClassDB::bind_method(D_METHOD("associateWithClan", "clan_id"), &SteamServer::associateWithClan);
+ 	ClassDB::bind_method(D_METHOD("beginAuthSession", "ticket", "ticket_size", "steam_id"), &SteamServer::beginAuthSession);
+ 	ClassDB::bind_method(D_METHOD("cancelAuthTicket", "auth_ticket"), &SteamServer::cancelAuthTicket);
++	ClassDB::bind_method(D_METHOD("createUnauthenticatedUserConnection"), &SteamServer::createUnauthenticatedUserConnection);
+ 	ClassDB::bind_method(D_METHOD("clearAllKeyValues"), &SteamServer::clearAllKeyValues);
+ 	ClassDB::bind_method(D_METHOD("computeNewPlayerCompatibility", "steam_id"), &SteamServer::computeNewPlayerCompatibility);
+ 	ClassDB::bind_method(D_METHOD("endAuthSession", "steam_id"), &SteamServer::endAuthSession);
+@@ -5546,9 +5557,7 @@
+ 
+ 
+ SteamServer::~SteamServer() {
+-	if (is_init_success) {
+-		SteamGameServer_Shutdown();
+-	}
++	serverShutdown();
+ 
+ 	singleton = nullptr;
+ }
+--- a/godotsteam_server/godotsteam_server.h
++++ b/godotsteam_server/godotsteam_server.h
+@@ -111,6 +111,7 @@
+ 	void associateWithClan(uint64_t clan_id);
+ 	BeginAuthSessionResult beginAuthSession(PackedByteArray ticket, int ticket_size, uint64_t steam_id);
+ 	void cancelAuthTicket(uint32_t auth_ticket);
++	uint64_t createUnauthenticatedUserConnection();
+ 	void clearAllKeyValues();
+ 	void computeNewPlayerCompatibility(uint64_t steam_id);
+ 	void endAuthSession(uint64_t steam_id);
+--- a/godotsteam_server/godotsteam_server_project_settings.cpp
++++ b/godotsteam_server/godotsteam_server_project_settings.cpp
+@@ -41,7 +41,7 @@
+ 
+ 
+ bool SteamProjectSettings::get_embed_callbacks() {
+-	return ProjectSettings::get_singleton()->get_setting_with_override("steam/initialization/embed_callbacks");
++	return ProjectSettings::get_singleton()->get_setting_with_override("steam_server/initialization/embed_callbacks");
+ }
+ 
+ }
+--- a/godotsteam_server/doc_classes/SteamServer.xml
++++ b/godotsteam_server/doc_classes/SteamServer.xml
+@@ -5068,8 +5068,8 @@
+ 		<constant name="RESULT_ACCOUNT_LOCKED_DOWN" value="73" enum="Result">
+ 			-
+ 		</constant>
+-		<constant name="RESULT_ACCOUNT_LOG_ON_DENIED_VERIFIED_EMAIL_REQUIRED" enum="Result">
+-			-k_EResultAccountLogonDeniedVerifiedEmailRequired" value="-
++		<constant name="RESULT_ACCOUNT_LOG_ON_DENIED_VERIFIED_EMAIL_REQUIRED" value="74" enum="Result">
++			Account login denied due to 2nd-factor verified-email requirement.
+ 		</constant>
+ 		<constant name="RESULT_NO_MATCHING_URL" value="75" enum="Result">
+ 			-

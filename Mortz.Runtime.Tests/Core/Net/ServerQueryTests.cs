@@ -1,4 +1,3 @@
-using System.Text;
 using Mortz.Protocol.Net.Query;
 using Xunit;
 
@@ -6,125 +5,118 @@ namespace Mortz.Runtime.Tests.Core.Net;
 
 public class ServerQueryTests
 {
-    private static ServerInfo Sample(string name = "Gilles' Box") =>
-        new(name, "Teams - Team Kills", "castlewars", Players: 3, MaxPlayers: 8,
-            InLobby: true, AllowJoinInProgress: true, GamePort: 7777,
-            ProtocolVersion: 32, SchemaHash: 0xDEADBEEFCAFEUL);
+    public static ServerInfo Sample(string name = "Gilles' Box") =>
+        new(name, "Teams", "castlewars", 3, 8, true, true, 7777, 32,
+            0xDEADBEEFCAFEUL, 5016960, "0.1.0");
 
     [Fact]
-    public void Request_RoundTripsNonceAndIsPadded()
+    public void Requests_MatchStandardWireFixtures()
     {
-        byte[] datagram = ServerQueryProtocol.EncodeRequest(0xA1B2C3D4);
-
-        Assert.Equal(ServerQueryProtocol.REQUEST_BYTES, datagram.Length);
-        Assert.True(ServerQueryProtocol.TryDecodeRequest(datagram, out uint nonce));
-        Assert.Equal(0xA1B2C3D4u, nonce);
+        Assert.Equal(Convert.FromHexString("FFFFFFFF54536F7572636520456E67696E6520517565727900"),
+            ServerQueryProtocol.EncodeInfoRequest());
+        Assert.Equal(Convert.FromHexString("FFFFFFFF56FFFFFFFF"), ServerQueryProtocol.EncodeRulesRequest());
+        Assert.Equal(Convert.FromHexString("FFFFFFFF4178563412"), ServerQueryProtocol.EncodeChallenge(0x12345678));
+        Assert.True(ServerQueryProtocol.TryDecodeRequest(ServerQueryProtocol.EncodeInfoRequest(42), out byte kind, out int? token));
+        Assert.Equal(ServerQueryProtocol.INFO_REQUEST, kind);
+        Assert.Equal(42, token);
     }
 
     [Fact]
-    public void Response_RoundTripsEveryField()
+    public void Info_DecodesIndependentValveStyleFixtureWithAllExtraFields()
     {
-        ServerInfo info = Sample();
-
-        byte[] datagram = ServerQueryProtocol.EncodeResponse(7, info);
-
-        Assert.True(datagram.Length <= ServerQueryProtocol.MAX_RESPONSE_BYTES);
-        Assert.True(ServerQueryProtocol.TryDecodeResponse(datagram, out ServerQueryReply reply));
-        Assert.Equal(7u, reply.Nonce);
-        Assert.Equal(info, reply.Info);
+        byte[] fixture = Convert.FromHexString(
+            "FFFFFFFF49114D79205365727665720064655F64757374320063737472696B6500436F756E7465722D537472696B6500" +
+            "0A00030800646C0000312E302E3000F1611E0100000000000000B86952656C6179006B6579776F72647300" +
+            "808D4C0000000000");
+        Assert.True(ServerQueryProtocol.TryDecodeInfo(fixture, 9999, out ServerInfo info));
+        Assert.Equal("My Server", info.Name);
+        Assert.Equal("de_dust2", info.Map);
+        Assert.Equal(7777, info.GamePort);
+        Assert.Equal(5016960u, info.AppId);
+        Assert.Equal("1.0.0", info.Version);
+        Assert.False(info.MetadataValid);
     }
 
     [Fact]
-    public void Response_TruncatesOverlongText()
+    public void InfoAndRules_RoundTripSharedSnapshot()
     {
-        string name = new('x', ServerQueryProtocol.MAX_TEXT_LENGTH + 40);
-
-        byte[] datagram = ServerQueryProtocol.EncodeResponse(1, Sample(name));
-
-        Assert.True(ServerQueryProtocol.TryDecodeResponse(datagram, out ServerQueryReply reply));
-        Assert.Equal(ServerQueryProtocol.MAX_TEXT_LENGTH, reply.Info.Name.Length);
-    }
-
-    /// <summary>Hand-built, not round-tripped: a modified server will not run
-    /// our encoder, so decode has to sanitize on its own.</summary>
-    [Fact]
-    public void Response_SanitizesHostileTextOnDecode()
-    {
-        string hostile = "evil\r\nname\u202E";
-        string pairSplitter = new string('x', ServerQueryProtocol.MAX_TEXT_LENGTH - 1) + "😀";
-
-        byte[] datagram = RawResponse(9, hostile, "mode", pairSplitter);
-
-        Assert.True(ServerQueryProtocol.TryDecodeResponse(datagram, out ServerQueryReply reply));
-        Assert.Equal("evilname", reply.Info.Name);
-        // The emoji straddles the cap; rune truncation drops it whole instead
-        // of leaving a lone surrogate.
-        Assert.Equal(new string('x', ServerQueryProtocol.MAX_TEXT_LENGTH - 1), reply.Info.Map);
-    }
-
-    private static byte[] RawResponse(uint nonce, string name, string mode, string map)
-    {
-        using MemoryStream stream = new MemoryStream();
-        using BinaryWriter writer = new BinaryWriter(stream, Encoding.UTF8);
-        writer.Write("MZQ1"u8.ToArray());
-        writer.Write(ServerQueryProtocol.VERSION);
-        writer.Write((byte)2); // KIND_RESPONSE
-        writer.Write(nonce);
-        writer.Write(32); // protocol version
-        writer.Write(0xFEEDUL); // schema hash
-        writer.Write((ushort)7777);
-        writer.Write((byte)3);
-        writer.Write((byte)8);
-        writer.Write(true);
-        writer.Write(true);
-        writer.Write(name);
-        writer.Write(mode);
-        writer.Write(map);
-        return stream.ToArray();
+        ServerInfo original = Sample();
+        Assert.True(ServerQueryProtocol.TryDecodeInfo(ServerQueryProtocol.EncodeInfoResponse(original), 1, out ServerInfo info));
+        Assert.True(ServerQueryProtocol.TryDecodeRules(ServerQueryProtocol.EncodeRulesResponse(original), out Dictionary<string, string>? rules));
+        Assert.Equal(original, ServerQueryMetadata.ApplyRules(info, rules));
+        Assert.Equal("0000deadbeefcafe", rules["mortz_schema"]);
     }
 
     [Fact]
-    public void Request_RejectsUnpaddedDatagram()
+    public void Info_RejectsEveryTruncatedMandatoryFieldAndTrailingGarbage()
     {
-        byte[] datagram = ServerQueryProtocol.EncodeRequest(1)[..16];
-
-        Assert.False(ServerQueryProtocol.TryDecodeRequest(datagram, out _));
+        byte[] packet = ServerQueryProtocol.EncodeInfoResponse(Sample());
+        for (int length = 0; length < packet.Length - 11; length++)
+        {
+            Assert.False(ServerQueryProtocol.TryDecodeInfo(packet.AsSpan(0, length), 7777, out _));
+        }
+        Assert.False(ServerQueryProtocol.TryDecodeInfo([.. packet, 0], 7777, out _));
     }
 
     [Fact]
-    public void Request_RejectsForeignMagicAndWrongKind()
+    public void Rules_RejectMalformedStringsCountsDuplicatesAndTrailingBytes()
     {
-        byte[] foreign = ServerQueryProtocol.EncodeRequest(1);
-        foreign[0] = (byte)'X';
-        byte[] response = ServerQueryProtocol.EncodeResponse(1, Sample());
-
-        Assert.False(ServerQueryProtocol.TryDecodeRequest(foreign, out _));
-        Assert.False(ServerQueryProtocol.TryDecodeRequest(response, out _));
-        Assert.False(ServerQueryProtocol.TryDecodeResponse(
-            ServerQueryProtocol.EncodeRequest(1), out _));
+        Assert.False(ServerQueryProtocol.TryDecodeRules(Convert.FromHexString("FFFFFFFF458100"), out _));
+        Assert.False(ServerQueryProtocol.TryDecodeRules(Convert.FromHexString("FFFFFFFF4501006B0076"), out _));
+        Assert.False(ServerQueryProtocol.TryDecodeRules(Convert.FromHexString("FFFFFFFF4502006B0076006B007700"), out _));
+        Assert.False(ServerQueryProtocol.TryDecodeRules(Convert.FromHexString("FFFFFFFF4501006B00FF00"), out _));
+        Assert.False(ServerQueryProtocol.TryDecodeRules(Convert.FromHexString("FFFFFFFF45000000"), out _));
+        byte[] overlong = [.. Convert.FromHexString("FFFFFFFF4501006B00"), .. new byte[257].Select(_ => (byte)'x'), 0];
+        Assert.False(ServerQueryProtocol.TryDecodeRules(overlong, out _));
     }
 
     [Fact]
-    public void Response_RejectsTruncatedPayload()
+    public void Rules_ValueBoundsCountUtf8Bytes()
     {
-        byte[] datagram = ServerQueryProtocol.EncodeResponse(1, Sample());
+        var rules = new Dictionary<string, string> { ["k"] = new('é', 128) };
+        Assert.True(ServerQueryProtocol.TryDecodeRules(ServerQueryProtocol.EncodeRulesResponse(rules), out _));
+        rules["k"] += "é";
+        Assert.Throws<ArgumentOutOfRangeException>(() => ServerQueryProtocol.EncodeRulesResponse(rules));
+    }
 
-        Assert.False(ServerQueryProtocol.TryDecodeResponse(datagram[..(datagram.Length - 4)], out _));
+    [Theory]
+    [InlineData("mortz_query", "2")]
+    [InlineData("mortz_app", "-1")]
+    [InlineData("mortz_protocol", " 32")]
+    [InlineData("mortz_schema", "deadbeef")]
+    [InlineData("mortz_schema", "000000000000000g")]
+    [InlineData("mortz_lobby", "true")]
+    [InlineData("mortz_join", "2")]
+    [InlineData("mortz_mode", "")]
+    [InlineData("mortz_mode", "\u202e")]
+    [InlineData("mortz_players", "9")]
+    public void Metadata_MalformedRequiredValueIsUnknown(string key, string value)
+    {
+        Dictionary<string, string> rules = ServerQueryMetadata.ToRules(Sample());
+        rules[key] = value;
+        Assert.False(ServerQueryMetadata.ApplyRules(Sample(), rules).MetadataValid);
     }
 
     [Fact]
-    public void Response_RejectsOversizedDatagram()
+    public void Metadata_EveryRequiredRuleMustBePresent()
     {
-        byte[] datagram = new byte[ServerQueryProtocol.MAX_RESPONSE_BYTES + 1];
-        ServerQueryProtocol.EncodeResponse(1, Sample()).CopyTo(datagram, 0);
-
-        Assert.False(ServerQueryProtocol.TryDecodeResponse(datagram, out _));
+        foreach (string key in ServerQueryMetadata.ToRules(Sample()).Keys)
+        {
+            Dictionary<string, string> rules = ServerQueryMetadata.ToRules(Sample());
+            rules.Remove(key);
+            Assert.False(ServerQueryMetadata.ApplyRules(Sample(), rules).MetadataValid);
+        }
     }
 
     [Fact]
-    public void QueryPort_SitsOneAboveTheGamePort()
+    public void Endpoints_ValidateDefaultsAndRetainExplicitPorts()
     {
-        Assert.Equal(7778, ServerQueryProtocol.QueryPort(7777));
+        Assert.Equal(7778, new ServerEndpoint("example.org", 7777).QueryPort);
+        Assert.Equal(27015, new ServerEndpoint("example.org", 65535, 27015).QueryPort);
+        Assert.Throws<ArgumentOutOfRangeException>(() => new ServerEndpoint("example.org", 65535));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new ServerEndpoint("example.org", 0));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new ServerEndpoint("example.org", 7777, 65536));
+        Assert.Throws<ArgumentException>(() => new ServerEndpoint("example.org", 7777, 7777));
     }
 
     [Fact]

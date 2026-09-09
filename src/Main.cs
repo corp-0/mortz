@@ -1,4 +1,7 @@
+using Chickensoft.AutoInject;
+using Chickensoft.Introspection;
 using Godot;
+using Mortz.Net;
 using Mortz.Shared;
 using Mortz.Shared.Logging;
 
@@ -6,13 +9,19 @@ namespace Mortz;
 
 /// <summary>Boot gate: decides once, at startup, whether this process is a
 /// dedicated server or a game client.</summary>
-public partial class Main : Node
+[Meta(typeof(IAutoNode))]
+public partial class Main : Node, IProvide<NetworkManager>
 {
+    [Export] private NetworkManager _network = null!;
     [Export] private PackedScene _clientScene = null!;
     [Export] private PackedScene _serverScene = null!;
 
-    public override void _Ready()
+    NetworkManager IProvide<NetworkManager>.Value() => _network;
+    public override void _Notification(int what) => this.Notify(what);
+
+    public void OnReady()
     {
+        this.Provide();
         bool serverMode = RunMode.IsDedicatedServer;
         if (!serverMode && !CmdArgs.HasFlag("--windowed") && !OS.HasFeature("editor"))
             GoFullScreen();

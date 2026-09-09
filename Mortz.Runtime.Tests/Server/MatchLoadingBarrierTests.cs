@@ -66,7 +66,7 @@ public sealed class MatchLoadingBarrierTests : IDisposable
     public void AJoinDuringLoadingDoesNotExtendTheLobbyCohort()
     {
         BeginLoadingMatch();
-        _server.Server.Connect(9, "jip");
+        _server.Server.Connect(new(9, "jip", 0, null));
 
         _server.Ready(7);
         _server.Ready(8);
@@ -78,7 +78,7 @@ public sealed class MatchLoadingBarrierTests : IDisposable
     public void JipReadySyncsOnlyTheJoinerAndDoesNotReleaseTheLobbyCohort()
     {
         BeginLoadingMatch();
-        _server.Server.Connect(9, "jip");
+        _server.Server.Connect(new(9, "jip", 0, null));
         int generation = _server.Link.Messages.Select(sent => sent.Message)
             .OfType<MatchLoadMsg>()
             .Last()

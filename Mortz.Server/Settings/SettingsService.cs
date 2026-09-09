@@ -39,6 +39,7 @@ public sealed class SettingsService : IObservePlayers, IObservePhase
     public MatchConfig Config { get; private set; }
 
     public string ModeName => CurrentMode()?.Name ?? "Custom";
+    public string ModeId => CurrentMode()?.Id ?? "custom";
 
     public void PlayerJoined(Player player) => SendTo(player.PeerId);
 

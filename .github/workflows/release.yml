@@ -26,20 +26,17 @@ jobs:
           version: ${{ steps.godot.outputs.version }}
           include-templates: true
 
-      # Fresh checkout has no .godot/; import before exporting. The import
-      # pass is known to exit nonzero on init races, hence the || true.
-      - name: Import resources
-        run: '"$GODOT" --headless --path . --import || true'
-
       - name: Export
-        run: GODOT_PATH="$GODOT" dotnet run --project tools -- export
+        run: Version="${GITHUB_REF_NAME#v}" GODOT_PATH="$GODOT" dotnet run --project tools -- export --standalone
 
       - name: Package
         env:
           TAG: ${{ github.ref_name }}
         run: |
           cd build
-          chmod +x Mortz-lin/*.x86_64
+          cp -a standalone/windows/client Mortz-win
+          cp -a standalone/linux/client Mortz-lin
+          chmod +x Mortz-lin/*.x86_64 Mortz-lin/server/*.x86_64
           zip -qr "Mortz-win-${TAG}.zip" Mortz-win
           tar -czf "Mortz-lin-${TAG}.tar.gz" Mortz-lin
 

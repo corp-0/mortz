@@ -14,7 +14,7 @@ public partial class ClientMain : IProvide<IE2EClientBridge>
     partial void OnToolsReady()
     {
         if (E2ELaunch.Enabled)
-            _bridge = ClientE2ERoot.Attach(this, _network);
+            _bridge = ClientE2ERoot.Attach(this, Network);
     }
 }
 #endif

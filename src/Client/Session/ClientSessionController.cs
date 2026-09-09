@@ -4,10 +4,13 @@ using Godot;
 using Mortz.Client.MapEditor;
 using Mortz.Client.Match;
 using Mortz.Client.Menus;
+using Mortz.Client.Servers;
 using Mortz.Client.Settings;
 using Mortz.Core.Terrain;
 using Mortz.Net;
+using Mortz.Platform;
 using Mortz.Protocol.Net;
+using Mortz.Protocol.Net.Admission;
 using Mortz.Protocol.Net.Lobby;
 using Mortz.Protocol.Net.Sim;
 using Mortz.Protocol.Terrain;
@@ -29,7 +32,7 @@ public partial class ClientSessionController : Node, ISessionExit,
     IHandle<LobbyLoadMsg>,
     IHandle<MatchLoadMsg>,
     IHandle<TerrainChunkMsg>,
-    IProvide<ISessionExit>, IProvide<ClientSettings>
+    IProvide<ISessionExit>, IProvide<ServerBrowserController>
 {
     private static readonly ILogger _log = MortzLog.For("client");
 
@@ -43,7 +46,12 @@ public partial class ClientSessionController : Node, ISessionExit,
 
     private readonly ClientConnectionAttempt _connection = new(CONNECT_RETRIES);
     private readonly ClientSession _session = new();
-    private ClientSettings _settings = new();
+    [Dependency] private ClientSettings Settings => this.DependOn<ClientSettings>();
+    [Dependency] private IClientTicketProvider Tickets => this.DependOn<IClientTicketProvider>();
+    [Dependency] private IInternetDiscovery Discovery => this.DependOn<IInternetDiscovery>();
+    private ulong _knownRecipient;
+    private ClientAdmission? _admission;
+    private ServerBrowserController? _browser;
     private PendingMatchEntry? _pendingMatch;
     private ConnectedSession? _connectedSession;
     private ClientMatchState? _matchState;
@@ -60,7 +68,7 @@ public partial class ClientSessionController : Node, ISessionExit,
     private NetworkManager Network => this.DependOn<NetworkManager>();
 
     ISessionExit IProvide<ISessionExit>.Value() => this;
-    ClientSettings IProvide<ClientSettings>.Value() => _settings;
+    ServerBrowserController IProvide<ServerBrowserController>.Value() => _browser!;
 
     public override void _Notification(int what)
     {
@@ -71,15 +79,28 @@ public partial class ClientSessionController : Node, ISessionExit,
 
     public void OnResolved()
     {
-        _settings = ClientSettings.Load();
+        _admission = new ClientAdmission(Tickets, Network, Time.GetTicksMsec);
+        _admission.Accepted += OnAdmitted;
+        _admission.Rejected += OnAdmissionRejected;
+        PlatformRuntimeOwner admissionLifetime = new();
+        admissionLifetime.Initialize(() =>
+        {
+            _admission.Advance(Time.GetTicksMsec());
+            _browser?.Advance();
+        }, _admission.Dispose);
+        AddChild(admissionLifetime);
+        ServerProbe probe = new() { Name = "ServerProbe" };
+        AddChild(probe);
+        _browser = new ServerBrowserController(probe, () => Settings.Favorites, Settings.SetFavorites, Discovery, Time.GetTicksMsec);
+        _browser.JoinRequested += OnBrowserJoinRequested;
         this.Provide();
         Subscribe();
         CreateMenu(autoStartIntro: false);
         string? autoConnect = CmdArgs.GetValue("--connect");
         if (autoConnect == null)
             return;
-        string playerName = CmdArgs.GetValue("--name") ?? _settings.PlayerName;
-        int skin = CmdArgs.GetInt("--skin", _settings.Skin);
+        string playerName = CmdArgs.GetValue("--name") ?? Settings.PlayerName;
+        int skin = CmdArgs.GetInt("--skin", Settings.Skin);
         if (!ClientSettings.IsValidSkin(skin))
         {
             _log.Error("invalid --skin {Skin}, using 0", skin);
@@ -91,6 +112,12 @@ public partial class ClientSessionController : Node, ISessionExit,
 
     public void OnExitTree()
     {
+        _admission?.Dispose();
+        if (_browser != null)
+        {
+            _browser.JoinRequested -= OnBrowserJoinRequested;
+            _browser.Dispose();
+        }
         Unsubscribe();
         _connection.Cancel();
         ServerLauncher.Kill();
@@ -115,12 +142,19 @@ public partial class ClientSessionController : Node, ISessionExit,
     public void OnJoinRequested(string address, int port, string playerName, int skin = 0) =>
         StartConnecting(address, port, playerName, skin);
 
+    private void OnBrowserJoinRequested(ServerJoinRequest request) =>
+        StartConnecting(request.Address, request.Port, Settings.PlayerName, Settings.Skin, request.KnownSteamAccountId);
+
     public void OnReadyToggled(bool ready) => new SetReadyMsg(ready).SendToServer(Network);
 
     public void LeaveSession(string reason) => ReturnToMenu(reason, stopLocalServer: true);
 
     private void Subscribe()
     {
+        Network.OfferReceived += OnOffer;
+        Network.AdmissionAcceptedReceived += OnAccepted;
+        Network.AdmissionRejectedReceived += OnRejected;
+        Network.TransportReset += OnTransportReset;
         Network.Connected += OnConnected;
         Network.ConnectionFailed += OnConnectionFailed;
         Network.Disconnected += OnDisconnected;
@@ -133,6 +167,10 @@ public partial class ClientSessionController : Node, ISessionExit,
     {
         if (!_subscribed)
             return;
+        Network.OfferReceived -= OnOffer;
+        Network.AdmissionAcceptedReceived -= OnAccepted;
+        Network.AdmissionRejectedReceived -= OnRejected;
+        Network.TransportReset -= OnTransportReset;
         Network.Connected -= OnConnected;
         Network.ConnectionFailed -= OnConnectionFailed;
         Network.Disconnected -= OnDisconnected;
@@ -141,10 +179,12 @@ public partial class ClientSessionController : Node, ISessionExit,
         _subscribed = false;
     }
 
-    private void StartConnecting(string address, int port, string playerName, int skin)
+    private void StartConnecting(string address, int port, string playerName, int skin, ulong knownRecipient = 0)
     {
         if (!_session.TryBeginConnecting())
             return;
+        _knownRecipient = knownRecipient;
+        _browser?.Close();
         _connection.Start(address, port, playerName, skin);
         _pendingMatch = null;
         _menu?.SetStatus($"Connecting to {address}:{port}...");
@@ -182,9 +222,32 @@ public partial class ClientSessionController : Node, ISessionExit,
     {
         _connection.Connected();
         _log.Information("connected, peer id {PeerId}", Network.LocalPeerId);
+        _menu?.SetStatus("Waiting for admission...");
+        _admission!.Begin(_connection.PlayerName, _connection.Skin, Time.GetTicksMsec(), _knownRecipient);
+    }
+
+    private void OnOffer(AdmissionOffer offer)
+    {
+        _menu?.SetStatus(offer.Mode == AdmissionMode.STEAM ? "Verifying Steam account..." : "Joining as guest...");
+        _admission?.Offer(offer, Time.GetTicksMsec());
+    }
+
+    private void OnAccepted(AdmissionAccepted accepted) => _admission?.Accept(accepted);
+    private void OnRejected(AdmissionRejected rejected) => _admission?.Reject(rejected);
+    private void OnTransportReset() => _admission?.Reset();
+
+    private void OnAdmitted(AdmissionMode mode)
+    {
+        Network.MarkClientAdmitted();
         CreateConnectedSession();
-        Network.SendHello(_connection.PlayerName, _connection.Skin);
-        _menu?.SetStatus("Entering lobby...");
+        _menu?.SetStatus("Entering game...");
+        _log.Information("admitted as {Mode}, peer id {PeerId}", mode, Network.LocalPeerId);
+    }
+
+    private void OnAdmissionRejected(AdmissionRejection reason)
+    {
+        _log.Information("admission rejected: {Reason}", reason);
+        ReturnToMenu(AdmissionReasons.Describe(reason), stopLocalServer: true);
     }
 
     public void Handle(in LobbyLoadMsg message)
@@ -364,7 +427,6 @@ public partial class ClientSessionController : Node, ISessionExit,
             return;
         _menu = _menuScene.Instantiate<MainMenu>();
         _menu.HostRequested += OnHostRequested;
-        _menu.JoinRequested += OnJoinRequested;
         _menu.MapEditorRequested += OpenMapEditor;
         AddChild(_menu);
         if (autoStartIntro)

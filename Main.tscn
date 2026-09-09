@@ -3,8 +3,14 @@
 [ext_resource type="Script" uid="uid://u3egvuiqy0oh" path="res://src/Main.cs" id="1_main"]
 [ext_resource type="PackedScene" uid="uid://cvsgjdvwcbnme" path="res://src/Shared/Scenes/Root/ClientMain.tscn" id="2_client"]
 [ext_resource type="PackedScene" uid="uid://wf7xp36uxmws" path="res://src/Shared/Scenes/Root/ServerMain.tscn" id="3_server"]
+[ext_resource type="Script" uid="uid://ctpdxmru1pj7p" path="res://src/Net/NetworkManager.cs" id="4_cm0pq"]
 
-[node name="Main" type="Node" unique_id=516637040]
+[node name="Main" type="Node" unique_id=516637040 node_paths=PackedStringArray("_network")]
 script = ExtResource("1_main")
+_network = NodePath("NetworkManager")
 _clientScene = ExtResource("2_client")
 _serverScene = ExtResource("3_server")
+
+[node name="NetworkManager" type="Node" parent="." unique_id=1007320924]
+process_mode = 3
+script = ExtResource("4_cm0pq")

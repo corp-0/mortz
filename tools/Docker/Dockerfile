@@ -1,5 +1,5 @@
-FROM debian:bookworm-slim
-RUN apt-get update && apt-get install -y --no-install-recommends libssl3 \
+FROM debian:bookworm-slim AS runtime
+RUN apt-get update && apt-get install -y --no-install-recommends libssl3 ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 RUN useradd --create-home mortz
 WORKDIR /home/mortz
@@ -12,6 +12,11 @@ COPY --chown=mortz:mortz data_Mortz_linuxbsd_x86_64 ./data_Mortz_linuxbsd_x86_64
 COPY --chown=mortz:mortz content ./content
 USER mortz
 EXPOSE 7777/udp
-# Server-browser queries (game port + 1).
+# Server-browser queries override with --query-port when needed.
 EXPOSE 7778/udp
 ENTRYPOINT ["./MortzServer.x86_64", "--headless", "++"]
+
+FROM runtime AS standalone
+
+FROM runtime AS steam
+COPY --chown=mortz:mortz *.so steam_appid.txt ./

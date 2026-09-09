@@ -7,15 +7,14 @@ public static class NetConfig
 {
     public const int BROADCAST_PEER_ID = 0;
     public const int SERVER_PEER_ID = 1;
-
-    // Generation, roster revision, and causal shell IDs break compatibility with version 43.
-    public const int PROTOCOL_VERSION = 45;
+    public const int PROTOCOL_VERSION = 47;
 
     public const ulong PHASE_READY_TIMEOUT_MS = 30_000;
 
     public const int MAX_LOADING_MESSAGES = 256;
 
     public const int DEFAULT_PORT = 7777;
+    public const uint GAME_APP_ID = 5016960;
     public const int MAX_PLAYERS = SimConfig.MAX_PLAYERS;
     public const int MAX_NAME_LENGTH = 24;
     /// <summary>Stays under ServerQueryProtocol.MAX_TEXT_LENGTH so the browser
@@ -38,8 +37,6 @@ public static class NetConfig
     public const int MAX_TERRAIN_SYNC_CHUNKS =
         (MAX_TERRAIN_SYNC_BYTES + TERRAIN_CHUNK_BYTES - 1) / TERRAIN_CHUNK_BYTES;
 
-    /// <summary>Peers must complete Hello shortly after ENet connects.</summary>
-    public const int HELLO_TIMEOUT_MS = 5_000;
     public const int ADMIN_CHALLENGE_TIMEOUT_MS = 10_000;
 
     /// <summary>

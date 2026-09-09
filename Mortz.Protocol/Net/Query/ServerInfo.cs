@@ -2,7 +2,7 @@ namespace Mortz.Protocol.Net.Query;
 
 /// <summary>What a server tells the browser about itself. The version fields
 /// are there so an unjoinable server reads as incompatible rather than dead.</summary>
-public sealed record ServerInfo(
+public record ServerInfo(
     string Name,
     string Mode,
     string Map,
@@ -12,4 +12,7 @@ public sealed record ServerInfo(
     bool AllowJoinInProgress,
     int GamePort,
     int ProtocolVersion,
-    ulong SchemaHash);
+    ulong SchemaHash,
+    uint AppId = 0,
+    string Version = "",
+    bool MetadataValid = true);

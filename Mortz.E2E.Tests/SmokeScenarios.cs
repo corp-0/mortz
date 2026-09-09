@@ -19,7 +19,7 @@ public sealed class SmokeScenarios
         }, TestContext.Current.CancellationToken);
 
         Assert.True(scenario.GamePort > 0);
-        Assert.Equal(-1, scenario.QueryPort);
+        Assert.Equal(scenario.GamePort + 1, scenario.QueryPort);
         PongResponse pong = await scenario.Server.PingAsync(TestContext.Current.CancellationToken);
         Assert.Equal(E2EProtocolSchema.Hash, pong.SchemaHash);
         ServerStateResponse state = await scenario.Server.StateAsync(

@@ -11,28 +11,59 @@ public static class PublishDocker
     public static void Push(string docker, string root)
     {
         string sha = CaptureGit(root, ["rev-parse", "--short", "HEAD"]).Trim();
-        string context = StageContext(root);
         string dockerfile = Path.Combine(root, "tools", "Docker", "Dockerfile");
-
-        Console.WriteLine($"==> building {IMAGE}:latest and :{sha}");
-        RunDocker(docker, ["buildx", "build", "--platform", "linux/amd64", "--push",
-            "-f", dockerfile, "-t", $"{IMAGE}:latest", "-t", $"{IMAGE}:{sha}", context]);
+        foreach (string flavor in new[] { "standalone", "steam" })
+        {
+            string context = StageContext(root, flavor);
+            List<string> args =
+            [
+                "buildx", "build", "--platform", "linux/amd64", "--push", "--target", flavor,
+                "-f", dockerfile, "-t", $"{IMAGE}:{flavor}", "-t", $"{IMAGE}:{flavor}-{sha}"
+            ];
+            Console.WriteLine($"==> building {IMAGE}:{flavor} and :{flavor}-{sha} from {flavor}/linux/server");
+            if (flavor == "standalone")
+            {
+                // Existing deployments use these tags for the standalone server.
+                args.AddRange(["-t", $"{IMAGE}:latest", "-t", $"{IMAGE}:{sha}"]);
+                Console.WriteLine($"==> retaining standalone aliases :latest and :{sha}");
+            }
+            args.Add(context);
+            RunDocker(docker, args.ToArray());
+        }
     }
 
-    private static string StageContext(string root)
+    private static string StageContext(string root, string flavor)
     {
-        string linuxDirectory = Path.Combine(root, "build", "Mortz-lin");
-        string context = Path.Combine(root, "build", "docker");
+        if (flavor is not ("steam" or "standalone"))
+        {
+            throw new ArgumentException("Docker flavor must be steam or standalone.", nameof(flavor));
+        }
+        string linuxDirectory = Export.PackageDirectory(root, flavor, "linux", "server");
+        List<string> requiredFiles =
+        [
+            "MortzServer.x86_64", "data_Mortz_linuxbsd_x86_64/Mortz.dll"
+        ];
+        if (flavor == "steam")
+        {
+            requiredFiles.AddRange(
+            [
+                "steam_appid.txt", "libgodotsteam_server.linux.template_release.x86_64.so",
+                "libsteam_api.so", "steamclient.so", "libsteamwebrtc.so"
+            ]);
+        }
+        foreach (string file in requiredFiles)
+        {
+            if (!File.Exists(Path.Combine(linuxDirectory, file)))
+            {
+                throw new Exception($"{flavor} server package is missing {file}; export server --{flavor} --linux before publishing Docker");
+            }
+        }
+        string context = Path.Combine(root, "build", "docker", flavor);
         if (Directory.Exists(context))
             Directory.Delete(context, recursive: true);
         Directory.CreateDirectory(context);
 
-        File.Copy(Path.Combine(linuxDirectory, "MortzServer.x86_64"),
-            Path.Combine(context, "MortzServer.x86_64"));
-        CopyTree(Path.Combine(linuxDirectory, "content"), Path.Combine(context, "content"));
-        // The pck does not carry the .NET runtime and assemblies.
-        CopyTree(Path.Combine(linuxDirectory, "data_Mortz_linuxbsd_x86_64"),
-            Path.Combine(context, "data_Mortz_linuxbsd_x86_64"));
+        CopyTree(linuxDirectory, context);
         return context;
     }
 

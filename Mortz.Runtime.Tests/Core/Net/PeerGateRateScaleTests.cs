@@ -39,7 +39,7 @@ public class PeerGateRateScaleTests
     public void DefaultGateRefillsAtTheDocumentedRate()
     {
         PeerGate gate = new();
-        gate.Connected(7, nowMs: 0);
+        gate.Connected(7);
         DrainInputs(gate, 7, INPUT_CAPACITY);
 
         int refilled = 0;
@@ -59,7 +59,7 @@ public class PeerGateRateScaleTests
     public void RateScaleScalesBothBucketsLinearly(int scale)
     {
         PeerGate gate = new(rateScale: scale);
-        gate.Connected(7, nowMs: 0);
+        gate.Connected(7);
 
         Assert.Equal(INPUT_CAPACITY * scale, DrainInputs(gate, 7, INPUT_CAPACITY * scale + 20));
         Assert.Equal(MESSAGE_CAPACITY * scale, DrainMessages(gate, 7, MESSAGE_CAPACITY * scale + 20));
@@ -69,7 +69,7 @@ public class PeerGateRateScaleTests
     public void RateScaleScalesTheRefillToo()
     {
         PeerGate gate = new(rateScale: 4);
-        gate.Connected(7, nowMs: 0);
+        gate.Connected(7);
         DrainInputs(gate, 7, INPUT_CAPACITY * 4);
 
         int refilled = DrainInputsAt(gate, 7, nowMs: 1000, attempts: INPUT_PER_SECOND * 4 + 10);

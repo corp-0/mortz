@@ -23,11 +23,28 @@ public static class PublishPlaytest
         string dockerCli = docker ? PublishDocker.ResolveDocker() : "";
 
         if (!skipBuild)
-            Export.Run(["all", "--require-official"]);
+        {
+            if (itch)
+            {
+                Export.Run(["all", "--standalone", "--require-official"]);
+            }
+            else if (docker)
+            {
+                Export.Run(["server", "--standalone", "--linux", "--require-official"]);
+            }
+            if (steam)
+            {
+                Export.Run(["all", "--steam", "--require-official"]);
+            }
+            else if (docker)
+            {
+                Export.Run(["server", "--steam", "--linux", "--require-official"]);
+            }
+        }
 
         string buildDirectory = Path.Combine(root, "build");
-        string windowsDirectory = Path.Combine(buildDirectory, "Mortz-win");
-        string linuxDirectory = Path.Combine(buildDirectory, "Mortz-lin");
+        string windowsDirectory = Export.PackageDirectory(root, "standalone", "windows", "client");
+        string linuxDirectory = Export.PackageDirectory(root, "standalone", "linux", "client");
 
         // Steam first: the itch manifests written below must not land in the depots.
         if (steam)
@@ -85,6 +102,7 @@ public static class PublishPlaytest
     public static void CreateArchives(string buildDirectory, string windowsDirectory, string linuxDirectory)
     {
         string windowsArchive = Path.Combine(buildDirectory, "Mortz-win.zip");
+        File.Delete(windowsArchive);
         ZipFile.CreateFromDirectory(windowsDirectory, windowsArchive,
             CompressionLevel.SmallestSize, includeBaseDirectory: true);
         Console.WriteLine($"==> archived {windowsArchive}");

@@ -15,11 +15,8 @@ _query = NodePath("Query")
 script = ExtResource("3_host")
 _defaultMap = "duel"
 
-[node name="Pump" type="Node" parent="." unique_id=853542824 node_paths=PackedStringArray("_host")]
+[node name="Pump" type="Node" parent="." unique_id=853542824]
 script = ExtResource("4_pump")
-_host = NodePath("../Host")
 
-[node name="Query" type="Node" parent="." unique_id=1408552391 node_paths=PackedStringArray("_host", "_pump")]
+[node name="Query" type="Node" parent="." unique_id=1408552391]
 script = ExtResource("6_query")
-_host = NodePath("../Host")
-_pump = NodePath("../Pump")

@@ -2,16 +2,18 @@
 # Game args go under command:, they get appended to the entrypoint.
 services:
   mortz-server:
-    image: ghcr.io/corp-0/mortz-server:latest
+    image: ghcr.io/corp-0/mortz-server:steam
     container_name: mortz-server
     restart: unless-stopped
+    command: ["--steam-public"]
+    # For standalone, use :standalone and remove --steam-public.
     ports:
       - "7777:7777/udp"
       # Server-browser queries; without it the server never shows up alive.
       - "7778:7778/udp"
     labels:
       com.centurylinklabs.watchtower.enable: "true"
-    # command: ["--mode", "teamdeathmatch"]
-    # command: ["--ruleset", "/home/mortz/ruleset.toml"]
+    # command: ["--steam-public", "--mode", "teamdeathmatch"]
+    # command: ["--steam-public", "--ruleset", "/home/mortz/ruleset.toml"]
     # volumes:
     #   - ./ruleset.toml:/home/mortz/ruleset.toml:ro

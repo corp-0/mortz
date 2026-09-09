@@ -80,7 +80,7 @@ public partial class ServerE2EHandler : Node, IE2EHandler, IMatchObserver
     public void PlayerJoined(Player player, ServerPhaseKind phase)
     {
         _names[player.PeerId] = player.Name;
-        _responder?.Emit(new PlayerJoinedEvent(player.PeerId, player.Name, Map(phase)));
+        _responder?.Emit(new PlayerJoinedEvent(player.PeerId, player.Name, Map(phase), player.Account));
     }
 
     public void PlayerLeft(Player player, ServerPhaseKind phase)

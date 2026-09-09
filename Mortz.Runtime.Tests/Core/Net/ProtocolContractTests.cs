@@ -6,9 +6,9 @@ namespace Mortz.Runtime.Tests.Core.Net;
 public class ProtocolContractTests
 {
     [Fact]
-    public void ComposedModeConfigurationBreakIsVersion45()
+    public void AdmissionHandshakeBreakIsVersion47()
     {
-        Assert.Equal(45, NetConfig.PROTOCOL_VERSION);
+        Assert.Equal(47, NetConfig.PROTOCOL_VERSION);
     }
 
     [Fact]

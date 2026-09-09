@@ -1,0 +1,35 @@
+--- a/godotsteam/godotsteam.cpp
++++ b/godotsteam/godotsteam.cpp
+@@ -536,13 +536,17 @@
+ 
+ // Shuts down the Steamworks API, releases pointers and frees memory.
+ void Steam::steamShutdown() {
+-	// If callbacks were connected internally
++	if (!is_init_success) {
++		return;
++	}
++	is_init_success = false;
++
+ 	if (were_callbacks_embedded) {
++		were_callbacks_embedded = false;
+ 		RenderingServer *rendering_server = RenderingServer::get_singleton();
+-		ERR_FAIL_COND_MSG(rendering_server == nullptr, "RenderingServer is not present, cannot disconnect Steam callbacks internally.");
+-		rendering_server->disconnect("frame_post_draw", callable_mp(this, &Steam::run_internal_callbacks));
+-
+-		were_callbacks_embedded = false;
++		if (rendering_server != nullptr && rendering_server->is_connected("frame_post_draw", callable_mp(this, &Steam::run_internal_callbacks))) {
++			rendering_server->disconnect("frame_post_draw", callable_mp(this, &Steam::run_internal_callbacks));
++		}
+ 	}
+ 	SteamAPI_Shutdown();
+ }
+@@ -12017,8 +12021,6 @@
+ 
+ 
+ Steam::~Steam() {
+-	if (is_init_success) {
+-		SteamAPI_Shutdown();
+-	}
++	steamShutdown();
+ 	singleton = nullptr;
+ }

@@ -1,12 +1,12 @@
 using Godot;
 using Mortz.Client.Session;
-using Mortz.Core.Sim;
 using Mortz.Protocol.Input;
 using Mortz.Protocol.Net;
 using Mortz.Protocol.Net.Abuse;
-using Mortz.Protocol.Net.Names;
+using Mortz.Protocol.Net.Admission;
 using Mortz.Protocol.Net.Stats;
 using Mortz.Server;
+using Mortz.Server.Admission;
 using Mortz.Shared;
 using Mortz.Shared.Logging;
 using Serilog;
@@ -16,18 +16,20 @@ using Mortz.Shared.E2E;
 
 namespace Mortz.Net;
 
-/// <summary>Autoload owning the ENet peer: connection lifecycle, peer validation
-/// (Hello), and the envelope every generated [NetMessage] rides.</summary>
-public partial class NetworkManager : Node, INetwork, IClientSender
+/// <summary>Owns ENet transport, reliable admission RPCs, and gated gameplay delivery.</summary>
+[GlobalClass]
+public partial class NetworkManager : Node, INetwork, IClientSender, IServerAdmissionTransport, IClientAdmissionTransport
 {
     private static readonly ILogger _log = MortzLog.For("net");
 
-    /// <summary>Composition roots resolve the autoload here.</summary>
-    public const string AUTOLOAD_PATH = "/root/NetworkManager";
-
-    /// <summary>Server side: a peer connected AND passed the protocol/schema check.</summary>
-    [Signal] public delegate void PeerJoinedEventHandler(int peerId, string playerName, int skin);
-    [Signal] public delegate void PeerLeftEventHandler(int peerId);
+    public event Action<int>? TransportPeerConnected;
+    public event Action<int>? TransportPeerDisconnected;
+    public event Action<int, AdmissionHello>? HelloReceived;
+    public event Action<int, SteamProof>? ProofReceived;
+    public event Action<AdmissionOffer>? OfferReceived;
+    public event Action<AdmissionAccepted>? AdmissionAcceptedReceived;
+    public event Action<AdmissionRejected>? AdmissionRejectedReceived;
+    public bool ClientAdmitted { get; private set; }
     [Signal] public delegate void InputsReceivedEventHandler(int peerId, byte[] packet);
 
     /// <summary>Client side: the connection lifecycle.</summary>
@@ -59,10 +61,10 @@ public partial class NetworkManager : Node, INetwork, IClientSender
     private int _fakeLagMs;
     private readonly DelayedConnectionWork _delayed = new();
 
-    public bool IsServer => Multiplayer.MultiplayerPeer != null && Multiplayer.IsServer();
+    public bool IsServer => IsInsideTree() && Multiplayer.MultiplayerPeer != null && Multiplayer.IsServer();
 
     /// <summary>Safe at any time; 0 means no session (no real peer ever has id 0).</summary>
-    public int LocalPeerId => Multiplayer.HasMultiplayerPeer() ? Multiplayer.GetUniqueId() : 0;
+    public int LocalPeerId => IsInsideTree() && Multiplayer.HasMultiplayerPeer() ? Multiplayer.GetUniqueId() : 0;
 
     public override void _Ready()
     {
@@ -75,6 +77,8 @@ public partial class NetworkManager : Node, INetwork, IClientSender
         Multiplayer.ConnectionFailed += () => ConnectionFailed?.Invoke();
         Multiplayer.ServerDisconnected += () => Disconnected?.Invoke();
     }
+
+    public override void _ExitTree() => Shutdown();
 
     public Error StartServer(int port)
     {
@@ -108,6 +112,7 @@ public partial class NetworkManager : Node, INetwork, IClientSender
 
     public void ResetPeer()
     {
+        ClientAdmitted = false;
         Router.MatchGeneration = -1;
         _delayed.Reset();
         _undispatched.Clear();
@@ -117,13 +122,30 @@ public partial class NetworkManager : Node, INetwork, IClientSender
         TransportReset?.Invoke();
     }
 
+    public void Shutdown()
+    {
+        ClientAdmitted = false;
+        Router.MatchGeneration = -1;
+        _delayed.Reset();
+        _undispatched.Clear();
+        _gate.Reset();
+        // Tree teardown removes RPC caches; detaching here races that cleanup in release templates.
+        if (IsInsideTree() && Multiplayer.MultiplayerPeer is ENetMultiplayerPeer peer)
+        {
+            peer.Close();
+        }
+    }
+
     // Godot hands these ids over as long, the rest of the code uses int.
     private void OnPeerConnected(long id)
     {
         int peerId = (int)id;
         // Server waits for Hello before considering the peer part of the game.
         if (IsServer)
-            _gate.Connected(peerId, Time.GetTicksMsec());
+        {
+            _gate.Connected(peerId);
+            TransportPeerConnected?.Invoke(peerId);
+        }
         _log.Information("peer {PeerId} connected", peerId);
     }
 
@@ -131,41 +153,87 @@ public partial class NetworkManager : Node, INetwork, IClientSender
     {
         int peerId = (int)id;
         _log.Information("peer {PeerId} disconnected", peerId);
-        if (_gate.Remove(peerId))
-            EmitSignal(SignalName.PeerLeft, peerId);
+        _gate.Remove(peerId);
+        if (IsServer)
+        {
+            TransportPeerDisconnected?.Invoke(peerId);
+        }
     }
 
-    public void SendHello(string playerName, int skin) =>
-        RpcId(1, MethodName.Hello, NetConfig.PROTOCOL_VERSION, NetRegistry.SCHEMA_HASH,
-            playerName, skin);
+    void IClientAdmissionTransport.Hello(AdmissionHello hello) =>
+        RpcId(NetConfig.SERVER_PEER_ID, MethodName.Hello, hello.ProtocolVersion, hello.SchemaHash,
+            hello.Name, hello.Skin, hello.Steam);
+
+    void IClientAdmissionTransport.Proof(SteamProof proof) =>
+        RpcId(NetConfig.SERVER_PEER_ID, MethodName.SubmitSteamProof, proof.Attempt, proof.AccountId, proof.Ticket);
+
+    void IServerAdmissionTransport.Offer(int peerId, AdmissionOffer offer) =>
+        RpcId(peerId, MethodName.ReceiveAdmissionOffer, offer.Attempt, (int)offer.Mode, offer.ServerAccountId);
+
+    void IServerAdmissionTransport.Accept(int peerId, AdmissionAccepted accepted)
+    {
+        RpcId(peerId, MethodName.ReceiveAdmissionAccepted, accepted.Attempt, (int)accepted.Mode);
+        if (!_gate.TryValidate(peerId))
+        {
+            throw new InvalidOperationException("Only a pending connected peer can be admitted.");
+        }
+    }
+
+    void IServerAdmissionTransport.Reject(int peerId, AdmissionRejected rejected)
+    {
+        _gate.Remove(peerId);
+        RpcId(peerId, MethodName.ReceiveAdmissionRejected, rejected.Attempt, (int)rejected.Reason);
+        // SceneMultiplayer disconnect drops queued RPCs; drain the reliable rejection first.
+        ((ENetMultiplayerPeer)Multiplayer.MultiplayerPeer).GetPeer(peerId).PeerDisconnectLater();
+    }
+
+    public void MarkClientAdmitted() => ClientAdmitted = true;
 
     [Rpc(MultiplayerApi.RpcMode.AnyPeer, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
-    private void Hello(int protocolVersion, ulong schemaHash, string playerName, int skin)
+    private void Hello(int protocolVersion, ulong schemaHash, string playerName, int skin, bool steam)
     {
-        if (!IsServer) return;
-        int sender = Multiplayer.GetRemoteSenderId();
-        if (protocolVersion != NetConfig.PROTOCOL_VERSION || schemaHash != NetRegistry.SCHEMA_HASH)
+        if (IsServer)
         {
-            _log.Information(
-                "peer {PeerId} rejected: protocol {Protocol}/{Schema:X16} != {OurProtocol}/{OurSchema:X16}",
-                sender, protocolVersion, schemaHash, NetConfig.PROTOCOL_VERSION,
-                NetRegistry.SCHEMA_HASH);
-            Multiplayer.MultiplayerPeer.DisconnectPeer(sender);
-            return;
+            HelloReceived?.Invoke(Multiplayer.GetRemoteSenderId(),
+                new AdmissionHello(protocolVersion, schemaHash, playerName, skin, steam));
         }
-        if (skin is < 0 or >= SimConfig.SKIN_COUNT)
+    }
+
+    [Rpc(MultiplayerApi.RpcMode.AnyPeer, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
+    private void SubmitSteamProof(int attempt, ulong accountId, byte[]? ticket)
+    {
+        if (IsServer)
         {
-            _log.Information("peer {PeerId} rejected: invalid skin {Skin}", sender, skin);
-            Multiplayer.MultiplayerPeer.DisconnectPeer(sender);
-            return;
+            ProofReceived?.Invoke(Multiplayer.GetRemoteSenderId(), new SteamProof(attempt, accountId, ticket));
         }
-        if (!_gate.TryValidate(sender))
+    }
+
+    [Rpc(TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
+    private void ReceiveAdmissionOffer(int attempt, int mode, ulong recipient)
+    {
+        if (!IsServer && Multiplayer.GetRemoteSenderId() == NetConfig.SERVER_PEER_ID)
         {
-            _log.Information("peer {PeerId} rejected: duplicate or unsolicited Hello", sender);
-            Multiplayer.MultiplayerPeer.DisconnectPeer(sender);
-            return;
+            OfferReceived?.Invoke(new AdmissionOffer(attempt, (AdmissionMode)mode, recipient));
         }
-        EmitSignal(SignalName.PeerJoined, sender, PlayerNameSanitizer.Sanitize(playerName), skin);
+    }
+
+    [Rpc(TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
+    private void ReceiveAdmissionAccepted(int attempt, int mode)
+    {
+        if (!IsServer && Multiplayer.GetRemoteSenderId() == NetConfig.SERVER_PEER_ID)
+        {
+            AdmissionAcceptedReceived?.Invoke(new AdmissionAccepted(attempt, (AdmissionMode)mode));
+        }
+    }
+
+    [Rpc(TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
+    private void ReceiveAdmissionRejected(int attempt, int reason)
+    {
+        if (!IsServer && Multiplayer.GetRemoteSenderId() == NetConfig.SERVER_PEER_ID)
+        {
+            ClientAdmitted = false;
+            AdmissionRejectedReceived?.Invoke(new AdmissionRejected(attempt, (AdmissionRejection)reason));
+        }
     }
 
     public void SendEnvelope(ushort msgId, byte[] payload, int target, NetChannel channel)
@@ -203,7 +271,7 @@ public partial class NetworkManager : Node, INetwork, IClientSender
                 RpcId(peer, endpoint, msgId, payload);
             }
         }
-        else
+        else if (!IsServer || _gate.IsValidated(target))
         {
             RpcId(target, endpoint, msgId, payload);
         }
@@ -226,7 +294,7 @@ public partial class NetworkManager : Node, INetwork, IClientSender
                 !_gate.AllowMessage(sender, Time.GetTicksMsec(), NetAbusePolicy.EnvelopeCost(payload.Length)))
                 return;
         }
-        else if (sender != NetConfig.SERVER_PEER_ID)
+        else if (!ClientAdmitted || sender != NetConfig.SERVER_PEER_ID)
         {
             return;
         }
@@ -245,6 +313,10 @@ public partial class NetworkManager : Node, INetwork, IClientSender
         // cannot place; the client routes through its own NetRouter.
         if (IsServer)
         {
+            if (!_gate.IsValidated(sender))
+            {
+                return;
+            }
             ServerSink?.Invoke(sender, (ushort)msgId, payload);
             return;
         }
@@ -277,7 +349,12 @@ public partial class NetworkManager : Node, INetwork, IClientSender
     }
 
     /// <summary>Server side: drop a peer without waiting for it to leave.</summary>
-    public void Kick(int peerId) => Multiplayer.MultiplayerPeer.DisconnectPeer(peerId);
+    public void Kick(int peerId)
+    {
+        _gate.Remove(peerId);
+        TransportPeerDisconnected?.Invoke(peerId);
+        Multiplayer.MultiplayerPeer.DisconnectPeer(peerId);
+    }
 
     /// <summary>Each peer gets a snapshot with its own full prediction record;
     /// other players are compact render-only records.</summary>
@@ -295,6 +372,10 @@ public partial class NetworkManager : Node, INetwork, IClientSender
 
     public int SendSnapshot(int peerId, byte[] data, int ack)
     {
+        if (!_gate.IsValidated(peerId))
+        {
+            return 0;
+        }
         RpcId(peerId, MethodName.ReceiveSnapshot, data, ack);
         return data.Length + sizeof(int);
     }
@@ -302,6 +383,10 @@ public partial class NetworkManager : Node, INetwork, IClientSender
     [Rpc(TransferMode = MultiplayerPeer.TransferModeEnum.Unreliable)]
     private void ReceiveSnapshot(byte[] data, int ack)
     {
+        if (!ClientAdmitted || IsServer || Multiplayer.GetRemoteSenderId() != NetConfig.SERVER_PEER_ID)
+        {
+            return;
+        }
         if (_fakeLagMs > 0)
             _delayed.Schedule(Time.GetTicksMsec() + (ulong)(_fakeLagMs / 2),
                 () => SnapshotReceived?.Invoke(data, ack));
@@ -346,14 +431,6 @@ public partial class NetworkManager : Node, INetwork, IClientSender
     public override void _Process(double delta)
     {
         ulong now = Time.GetTicksMsec();
-        if (IsServer)
-        {
-            foreach (int peerId in _gate.Expire(now))
-            {
-                _log.Information("peer {PeerId} rejected: Hello timeout", peerId);
-                Multiplayer.MultiplayerPeer.DisconnectPeer(peerId);
-            }
-        }
         if (_fakeLagMs <= 0)
             return;
         _delayed.Advance(now);

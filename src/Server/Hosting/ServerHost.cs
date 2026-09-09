@@ -9,6 +9,7 @@ namespace Mortz.Server.Hosting;
 
 /// <summary>Owns the listening transport. Loads the boot record here so the
 /// port is settled before any sibling binds a socket.</summary>
+[GlobalClass]
 public partial class ServerHost : Node
 {
     private static readonly ILogger _log = MortzLog.For("server");
@@ -30,6 +31,16 @@ public partial class ServerHost : Node
             _log.Error("failed to listen on port {Port}: {Error}", boot.GamePort, error);
             return false;
         }
+
+        int gamePort = network.BoundPort();
+        int queryPort = boot.QueryPort == 0 ? gamePort + 1 : boot.QueryPort;
+        if (queryPort is < 1 or > 65535 || queryPort == gamePort)
+        {
+            _log.Error("bound game port {Port} needs an explicit distinct --query-port", gamePort);
+            network.ResetPeer();
+            return false;
+        }
+        Load = load with { Boot = boot with { GamePort = gamePort, QueryPort = queryPort } };
 
         _log.Information(
             "'{Name}' listening on port {Port} (protocol v{Protocol}, " +

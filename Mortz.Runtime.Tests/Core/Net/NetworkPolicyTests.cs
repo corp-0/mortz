@@ -8,10 +8,10 @@ namespace Mortz.Runtime.Tests.Core.Net;
 public class NetworkPolicyTests
 {
     [Fact]
-    public void Gate_AllowsHelloOnceAndCleansDisconnect()
+    public void Gate_OpensOnceAfterAdmissionAndCleansDisconnect()
     {
-        var gate = new PeerGate(helloTimeoutMs: 100);
-        gate.Connected(7, nowMs: 10);
+        var gate = new PeerGate();
+        gate.Connected(7);
         Assert.True(gate.TryValidate(7));
         Assert.True(gate.IsValidated(7));
         Assert.Equal([7], gate.ValidatedPeers.ToArray());
@@ -23,37 +23,23 @@ public class NetworkPolicyTests
     }
 
     [Fact]
-    public void Gate_ExpiresSilentPeersAndResetClearsAllState()
+    public void Gate_ResetClearsPendingAndAdmittedPeers()
     {
-        var gate = new PeerGate(helloTimeoutMs: 100);
-        gate.Connected(1, nowMs: 50);
-        gate.Connected(2, nowMs: 75);
-        Assert.Empty(gate.Expire(149));
-        Assert.Equal([1], gate.Expire(150));
+        var gate = new PeerGate();
+        gate.Connected(2);
+        gate.Connected(3);
         Assert.True(gate.TryValidate(2));
-
-        gate.Connected(3, nowMs: 100);
+        Assert.False(gate.IsValidated(3));
         gate.Reset();
         Assert.Empty(gate.ValidatedPeers);
-        Assert.Empty(gate.Expire(ulong.MaxValue));
         Assert.False(gate.TryValidate(3));
-    }
-
-    [Fact]
-    public void Gate_NeverExpiresAValidatedPeer()
-    {
-        var gate = new PeerGate(helloTimeoutMs: 100);
-        gate.Connected(4, nowMs: 0);
-        Assert.True(gate.TryValidate(4));
-        Assert.Empty(gate.Expire(ulong.MaxValue));
-        Assert.True(gate.IsValidated(4));
     }
 
     [Fact]
     public void Gate_RemoveReportsFalseForAPeerThatNeverValidated()
     {
-        var gate = new PeerGate(helloTimeoutMs: 100);
-        gate.Connected(9, nowMs: 0);
+        var gate = new PeerGate();
+        gate.Connected(9);
         Assert.False(gate.Remove(9));
         Assert.False(gate.Remove(9));
     }
@@ -90,8 +76,8 @@ public class NetworkPolicyTests
     public void Gate_BudgetsArePerPeerAndReconnectRestoresFreshBurst()
     {
         var gate = new PeerGate();
-        gate.Connected(1, nowMs: 0);
-        gate.Connected(2, nowMs: 0);
+        gate.Connected(1);
+        gate.Connected(2);
 
         Assert.True(gate.AllowMessage(1, 0, cost: 64));
         Assert.False(gate.AllowMessage(1, 0, cost: 1));
@@ -99,7 +85,7 @@ public class NetworkPolicyTests
 
         gate.Remove(1);
         Assert.False(gate.AllowMessage(1, 0, cost: 1));
-        gate.Connected(1, nowMs: 0);
+        gate.Connected(1);
         Assert.True(gate.AllowMessage(1, 0, cost: 64));
 
         gate.Reset();
@@ -110,7 +96,7 @@ public class NetworkPolicyTests
     public void Gate_InputAndMessageBudgetsAreIndependent()
     {
         var gate = new PeerGate();
-        gate.Connected(1, nowMs: 0);
+        gate.Connected(1);
         Assert.True(gate.AllowMessage(1, 0, cost: 64));
         Assert.False(gate.AllowMessage(1, 0, cost: 1));
         Assert.True(gate.AllowInput(1, 0));

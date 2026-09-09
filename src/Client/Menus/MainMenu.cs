@@ -19,10 +19,6 @@ public partial class MainMenu : Control
         string adminPassword, string serverName, int skin, bool allowJoinInProgress);
 
     [Signal]
-    public delegate void JoinRequestedEventHandler(string address, int port,
-        string playerName, int skin);
-
-    [Signal]
     public delegate void MapEditorRequestedEventHandler();
 
     [Export] private MenuBackdrop _backdrop = null!;
@@ -54,7 +50,6 @@ public partial class MainMenu : Control
     public override void _Ready()
     {
         _portEdit.Text = NetConfig.DEFAULT_PORT.ToString();
-        _browser.JoinRequested += OnBrowserJoinRequested;
         _browser.BackRequested += ShowHome;
         _settingsScreen.BackRequested += OnSettingsBackRequested;
         _settingsScreen.Saved += OnSettingsSaved;
@@ -70,7 +65,6 @@ public partial class MainMenu : Control
 
     public override void _ExitTree()
     {
-        _browser.JoinRequested -= OnBrowserJoinRequested;
         _browser.BackRequested -= ShowHome;
         _settingsScreen.BackRequested -= OnSettingsBackRequested;
         _settingsScreen.Saved -= OnSettingsSaved;
@@ -152,9 +146,6 @@ public partial class MainMenu : Control
             _adminPasswordEdit.Text, _serverNameEdit.Text.Trim(), Settings.Skin,
             _allowJip.ButtonPressed);
     }
-
-    private void OnBrowserJoinRequested(string address, int port) =>
-        EmitSignal(SignalName.JoinRequested, address, port, Settings.PlayerName, Settings.Skin);
 
     private bool HasIdentity(PendingAction action)
     {

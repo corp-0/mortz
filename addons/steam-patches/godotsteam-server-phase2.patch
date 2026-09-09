@@ -1,0 +1,89 @@
+--- a/SConstruct
++++ b/SConstruct
+@@ -29,7 +29,9 @@
+ 	steamworks_library = 'steam_api'
+ 
+ elif env['platform'] in ('linuxbsd', 'linux'):
+-	env.Append(RPATH=env.Literal('\\$$ORIGIN'))
++	env.Append(RPATH=[env.Literal('\\$$ORIGIN'), env.Literal('\\$$ORIGIN/../redistributables/linux64')])
++	# The SDK dlopens steamclient.so from its dependency; RUNPATH is not inherited.
++	env.Append(LINKFLAGS=['-Wl,--disable-new-dtags'])
+ 	# Set correct Steam library
+ 	if env['arch'] == "x86_32":
+ 		steam_lib_path += "/linux32"
+--- a/godotsteam_server/godotsteam_server.cpp
++++ b/godotsteam_server/godotsteam_server.cpp
+@@ -613,15 +613,10 @@
+ //
+ // These are used when you've elected to multiplex the game server's UDP socket rather than having
+ // the master server updater use its own sockets.
+-Dictionary SteamServer::handleIncomingPacket(int packet, const String &ip, uint16 port) {
+-	Dictionary result;
+-	ERR_FAIL_COND_V_MSG(SteamAPI_SteamGameServer() == nullptr, result, "Server class not found, Steam may not be initialized: handleIncomingPacket");
+-	PackedByteArray data;
+-	data.resize(packet);
+-	if (SteamAPI_ISteamGameServer_HandleIncomingPacket(SteamAPI_SteamGameServer(), data.ptrw(), packet, getIPFromString(ip), port)) {
+-		result["data"] = data;
+-	}
+-	return result;
++bool SteamServer::handleIncomingPacket(const PackedByteArray &packet, const String &ip, uint16 port) {
++	ERR_FAIL_COND_V_MSG(SteamAPI_SteamGameServer() == nullptr, false, "Server class not found, Steam may not be initialized: handleIncomingPacket");
++	ERR_FAIL_COND_V_MSG(packet.is_empty() || packet.size() > 65507, false, "Invalid incoming UDP packet size.");
++	return SteamAPI_ISteamGameServer_HandleIncomingPacket(SteamAPI_SteamGameServer(), packet.ptr(), packet.size(), getIPFromString(ip), port);
+ }
+ 
+ // AFTER calling HandleIncomingPacket for any packets that came in that frame, call this. This gets
+@@ -631,10 +626,13 @@
+ 	Dictionary packet;
+ 	ERR_FAIL_COND_V_MSG(SteamAPI_SteamGameServer() == nullptr, packet, "Server class not found, Steam may not be initialized: getNextOutgoingPacket");
+ 	PackedByteArray out;
+-	int max_out = 16 * 1024;
+-	uint32 address;
+-	uint16 port;
+-	int length = SteamAPI_ISteamGameServer_GetNextOutgoingPacket(SteamAPI_SteamGameServer(), &out, max_out, &address, &port);
++	const int max_out = 16 * 1024;
++	ERR_FAIL_COND_V_MSG(out.resize(max_out) != OK, packet, "Cannot allocate outgoing Steam packet buffer.");
++	uint32 address = 0;
++	uint16 port = 0;
++	int length = SteamAPI_ISteamGameServer_GetNextOutgoingPacket(SteamAPI_SteamGameServer(), out.ptrw(), max_out, &address, &port);
++	ERR_FAIL_COND_V_MSG(length < 0 || length > max_out, packet, "Invalid outgoing Steam packet size.");
++	out.resize(length);
+ 	packet["length"] = length;
+ 	packet["out"] = out;
+ 	packet["address"] = address;
+--- a/godotsteam_server/godotsteam_server.h
++++ b/godotsteam_server/godotsteam_server.h
+@@ -119,7 +119,7 @@
+ 	Dictionary getNextOutgoingPacket();
+ 	Dictionary getPublicIP();
+ 	uint64_t getSteamID();
+-	Dictionary handleIncomingPacket(int packet, const String &ip, uint16_t port);
++	bool handleIncomingPacket(const PackedByteArray &packet, const String &ip, uint16_t port);
+ 	bool loggedOn();
+ 	void logOff();
+ 	void logOn(const String &token);
+--- a/godotsteam_server/doc_classes/SteamServer.xml
++++ b/godotsteam_server/doc_classes/SteamServer.xml
+@@ -1641,8 +1641,8 @@
+ 			</description>
+ 		</method>
+ 		<method name="handleIncomingPacket">
+-			<return type="Dictionary" />
+-			<param index="0" name="packet" type="int" />
++			<return type="bool" />
++			<param index="0" name="packet" type="PackedByteArray" />
+ 			<param index="1" name="ip" type="String" />
+ 			<param index="2" name="port" type="int" />
+ 			<description>
+@@ -1653,10 +1653,7 @@
+ 				Source engine games use this to simplify the job of the server admins, so they don't have to open up more ports on their firewalls.
+ 				Only AFTER calling this, you should call [method SteamServer.getNextOutgoingPacket].
+ 				GameSocketShare mode can be enabled when calling [method SteamServer.serverInit].
+-				The returned dictionary contains the following keys:
+-				[codeblock]
+-				┖╴data (PackedByteArray)
+-				[/codeblock]
++				Returns whether Steam handled the supplied packet bytes.
+ 			</description>
+ 		</method>
+ 		<method name="initAuthentication">

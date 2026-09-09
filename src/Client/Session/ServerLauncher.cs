@@ -40,7 +40,7 @@ public static class ServerLauncher
         }
         else
         {
-            exe = OS.GetExecutablePath().GetBaseDir().PathJoin(ServerExeName);
+            exe = OS.GetExecutablePath().GetBaseDir().PathJoin("server").PathJoin(ServerExeName);
             args = ["--headless", "++", .. gameArgs];
         }
 

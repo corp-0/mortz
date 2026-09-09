@@ -1,7 +1,10 @@
+using System.Reflection;
 using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
 using Mortz.Net;
+using Mortz.Protocol.Net.Admission;
+using Mortz.Server.Admission;
 using Mortz.Server.Diagnostics;
 using Mortz.Server.Hosting;
 using Mortz.Shared.Logging;
@@ -10,12 +13,11 @@ namespace Mortz.Server.Pump;
 
 /// <summary>The only file that connects the engine to server logic.</summary>
 [Meta(typeof(IAutoNode))]
+[GlobalClass]
 public partial class ServerPump : Node
 {
-    [Export] private ServerHost _host = null!;
-
-    [Dependency]
-    private NetworkManager Network => this.DependOn<NetworkManager>();
+    private NetworkManager? _network;
+    private ServerAdmission? _admission;
 
     public GameServer Server { get; private set; } = null!;
 
@@ -23,23 +25,54 @@ public partial class ServerPump : Node
 
     partial void AttachE2E(ref IMatchObserver observer, ref IMatchControl control);
 
-    public void OnResolved()
+    public GameServer Start(ServerBootLoad load, NetworkManager network, IAdmissionVerifier verifier)
     {
-        ServerBootLoad load = _host.Load!.Value;
+        _network = network;
         IMatchObserver observer = new NullMatchObserver();
         IMatchControl control = new NullMatchControl();
         AttachE2E(ref observer, ref control);
-        Server = new GameServer(load.Boot, new GodotTransport(Network),
+        string version = typeof(ServerPump).Assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()!.InformationalVersion;
+        Server = new GameServer(load.Boot, new GodotTransport(network),
             new GodotMapSource(load.Content), MortzLog.For("server"),
-            observer, control);
-        Network.PeerJoined += Server.Connect;
-        Network.PeerLeft += Server.Disconnect;
-        Network.InputsReceived += Server.Inputs;
-        Network.ServerSink = Server.Receive;
+            observer, control, version);
+        _admission = new ServerAdmission(verifier, network, Time.GetTicksMsec);
+        _admission.Admitted += Server.Connect;
+        _admission.Departed += Server.Disconnect;
+        network.TransportPeerConnected += Connected;
+        network.TransportPeerDisconnected += _admission.Disconnected;
+        network.HelloReceived += Hello;
+        network.ProofReceived += Proof;
+        network.InputsReceived += Server.Inputs;
+        network.ServerSink = Server.Receive;
+        return Server;
     }
 
-    public void OnExitTree() => Server.Dispose();
+    public void Stop()
+    {
+        if (_network == null)
+        {
+            return;
+        }
+        _network.TransportPeerConnected -= Connected;
+        _network.TransportPeerDisconnected -= _admission!.Disconnected;
+        _network.HelloReceived -= Hello;
+        _network.ProofReceived -= Proof;
+        _admission.Dispose();
+        _admission = null;
+        _network.InputsReceived -= Server.Inputs;
+        _network.ServerSink = null;
+        _network = null;
+        Server.Dispose();
+    }
+
+    public void OnExitTree() => Stop();
+
+    private void Connected(int peerId) => _admission?.Connected(peerId, Time.GetTicksMsec());
+    private void Hello(int peerId, AdmissionHello hello) => _admission?.Hello(peerId, hello, Time.GetTicksMsec());
+    private void Proof(int peerId, SteamProof proof) => _admission?.Proof(peerId, proof, Time.GetTicksMsec());
+    public void AdvanceAdmission() => _admission?.Advance(Time.GetTicksMsec());
 
     public override void _PhysicsProcess(double delta) =>
-        Server.Advance(new ServerTime(Time.GetTicksMsec(), delta));
+        Server?.Advance(new ServerTime(Time.GetTicksMsec(), delta));
 }

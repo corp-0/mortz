@@ -1,12 +1,10 @@
 namespace Mortz.Protocol.Net.Abuse;
 
-/// <summary>Everything the transport knows about a peer before and after Hello.</summary>
+/// <summary>Tracks transport rate limits and the gameplay gate opened by admission.</summary>
 /// <param name="rateScale">Multiplies both budgets. 1 everywhere except an E2E
 /// process running at timescale, where game time runs faster than the wall
 /// clock the buckets refill against.</param>
-public sealed class PeerGate(
-    ulong helloTimeoutMs = NetConfig.HELLO_TIMEOUT_MS,
-    double rateScale = 1)
+public class PeerGate(double rateScale = 1)
 {
     // Normal traffic is ~30 input datagrams/s and only occasional messages.
     // These bursts tolerate jitter while bounding work from any one peer.
@@ -17,7 +15,6 @@ public sealed class PeerGate(
 
     private sealed class Entry(double rateScale)
     {
-        public ulong HelloDeadlineMs;
         public bool Validated;
         public RateBucket Inputs =
             new(INPUT_CAPACITY * rateScale, INPUT_PER_SECOND * rateScale);
@@ -34,18 +31,15 @@ public sealed class PeerGate(
 
     public bool IsValidated(int peerId) => _peers.TryGetValue(peerId, out Entry? entry) && entry.Validated;
 
-    public void Connected(int peerId, ulong nowMs)
+    public void Connected(int peerId)
     {
         bool wasValidated = IsValidated(peerId);
-        _peers[peerId] = new Entry(rateScale)
-        {
-            HelloDeadlineMs = SaturatingAdd(nowMs, helloTimeoutMs),
-        };
+        _peers[peerId] = new Entry(rateScale);
         if (wasValidated)
             RebuildValidated();
     }
 
-    /// <summary>True only for the first Hello from a connected pending peer.</summary>
+    /// <summary>Opens gameplay once for a connected pending peer after admission succeeds.</summary>
     public bool TryValidate(int peerId)
     {
         if (!_peers.TryGetValue(peerId, out Entry? entry) || entry.Validated)
@@ -53,19 +47,6 @@ public sealed class PeerGate(
         entry.Validated = true;
         RebuildValidated();
         return true;
-    }
-
-    public int[] Expire(ulong nowMs)
-    {
-        int[] expired = _peers
-            .Where(pair => !pair.Value.Validated && pair.Value.HelloDeadlineMs <= nowMs)
-            .Select(pair => pair.Key)
-            .ToArray();
-        foreach (int peerId in expired)
-        {
-            _peers.Remove(peerId);
-        }
-        return expired;
     }
 
     /// <summary>True when the peer was validated, i.e. the game knew about it.</summary>
@@ -93,7 +74,4 @@ public sealed class PeerGate(
 
     private void RebuildValidated() =>
         _validated = _peers.Where(pair => pair.Value.Validated).Select(pair => pair.Key).ToArray();
-
-    private static ulong SaturatingAdd(ulong left, ulong right) =>
-        ulong.MaxValue - left < right ? ulong.MaxValue : left + right;
 }

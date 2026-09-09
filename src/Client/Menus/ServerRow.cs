@@ -77,6 +77,8 @@ public partial class ServerRow : Button
                 return "no response";
             case ServerStatus.INCOMPATIBLE:
                 return "different game version";
+            case ServerStatus.UNKNOWN when Entry.Info != null:
+                return "compatibility unknown";
             case ServerStatus.ONLINE when Entry.Info is ServerInfo info:
                 string phase;
                 if (info.InLobby)

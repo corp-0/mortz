@@ -2,6 +2,7 @@ using Mortz.Core.Features;
 using Mortz.Protocol.Net;
 using Mortz.Protocol.Net.Query;
 using Mortz.Server.Admin;
+using Mortz.Server.Admission;
 using Mortz.Server.Chat;
 using Mortz.Server.Content;
 using Mortz.Server.Diagnostics;
@@ -20,6 +21,7 @@ namespace Mortz.Server;
 public sealed class GameServer : IDisposable, IHandle<Player, PhaseReadyMsg>
 {
     private readonly ServerBoot _boot;
+    private readonly string _applicationVersion;
     private readonly ReadyLink _link;
     private readonly ILogger _log;
     private readonly IMatchObserver _matchObserver;
@@ -37,9 +39,10 @@ public sealed class GameServer : IDisposable, IHandle<Player, PhaseReadyMsg>
     private bool _disposed;
 
     public GameServer(ServerBoot boot, IServerTransport transport, IMapSource maps, ILogger log,
-        IMatchObserver observer, IMatchControl control)
+        IMatchObserver observer, IMatchControl control, string applicationVersion)
     {
         _boot = boot;
+        _applicationVersion = applicationVersion;
         _link = new ReadyLink(transport);
         _log = log;
         _matchObserver = observer;
@@ -99,11 +102,11 @@ public sealed class GameServer : IDisposable, IHandle<Player, PhaseReadyMsg>
 
     public int PlayerCount => _roster.Count;
 
-    public void Connect(int peerId, string requestedName, int requestedSkin = 0)
+    public void Connect(AdmittedPlayer admitted)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        _link.BeginLoading(peerId, _host.Generation, _clock.Ms);
-        Player player = _roster.Join(peerId, requestedName, requestedSkin);
+        _link.BeginLoading(admitted.PeerId, _host.Generation, _clock.Ms);
+        Player player = _roster.Join(admitted.PeerId, admitted.Name, admitted.Skin, admitted.Account);
         _host.OpenPhaseKeys(player);
         foreach (IObservePlayers feature in Live<IObservePlayers>())
         {
@@ -175,9 +178,11 @@ public sealed class GameServer : IDisposable, IHandle<Player, PhaseReadyMsg>
         Execute(_host.Advance(time));
     }
 
+    public IEnumerable<Player> PublicationPlayers => _roster;
+
     public ServerInfo Describe() => new(
         _boot.Name,
-        _settings.ModeName,
+        _settings.ModeId,
         _settings.Map.DisplayName,
         _roster.Count,
         NetConfig.MAX_PLAYERS,
@@ -185,7 +190,9 @@ public sealed class GameServer : IDisposable, IHandle<Player, PhaseReadyMsg>
         _boot.AllowJoinInProgress,
         _boot.GamePort,
         NetConfig.PROTOCOL_VERSION,
-        NetRegistry.SCHEMA_HASH);
+        NetRegistry.SCHEMA_HASH,
+        NetConfig.GAME_APP_ID,
+        _applicationVersion);
 
     public void Dispose()
     {

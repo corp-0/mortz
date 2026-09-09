@@ -32,7 +32,7 @@ public class ServerListTests
     {
         ServerList list = new([
             new FavoriteServer("box.example.com", 7777, "Weekly game"),
-            new FavoriteServer(ServerList.PINNED_ENDPOINT.Address, ServerList.PINNED_ENDPOINT.Port),
+            new FavoriteServer(ServerList.PinnedEndpoint.Address, ServerList.PinnedEndpoint.Port),
         ]);
 
         Assert.Equal(2, list.Entries.Count);
@@ -95,7 +95,7 @@ public class ServerListTests
         list.MarkProbing();
         Assert.Equal(ServerStatus.PROBING, list.Entries[0].Status);
 
-        list.ApplyReply(ServerList.PINNED_ENDPOINT, Info(), pingMs: 42);
+        list.ApplyReply(ServerList.PinnedEndpoint, Info(), pingMs: 42);
 
         ServerEntry pinned = list.Entries[0];
         Assert.Equal(ServerStatus.ONLINE, pinned.Status);
@@ -109,7 +109,7 @@ public class ServerListTests
     {
         ServerList list = new();
 
-        list.ApplyReply(ServerList.PINNED_ENDPOINT,
+        list.ApplyReply(ServerList.PinnedEndpoint,
             Info(protocolVersion: NetConfig.PROTOCOL_VERSION + 1), pingMs: 10);
 
         Assert.Equal(ServerStatus.INCOMPATIBLE, list.Entries[0].Status);
@@ -120,7 +120,7 @@ public class ServerListTests
     {
         ServerList list = new();
 
-        list.ApplyReply(ServerList.PINNED_ENDPOINT, Info(schemaHash: 0xBADF00D), pingMs: 10);
+        list.ApplyReply(ServerList.PinnedEndpoint, Info(schemaHash: 0xBADF00D), pingMs: 10);
 
         Assert.Equal(ServerStatus.INCOMPATIBLE, list.Entries[0].Status);
     }
@@ -129,9 +129,9 @@ public class ServerListTests
     public void TimeoutClearsTheStalePing()
     {
         ServerList list = new();
-        list.ApplyReply(ServerList.PINNED_ENDPOINT, Info(), pingMs: 42);
+        list.ApplyReply(ServerList.PinnedEndpoint, Info(), pingMs: 42);
 
-        list.ApplyTimeout(ServerList.PINNED_ENDPOINT);
+        list.ApplyTimeout(ServerList.PinnedEndpoint);
 
         Assert.Equal(ServerStatus.OFFLINE, list.Entries[0].Status);
         Assert.Equal(0, list.Entries[0].PingMs);

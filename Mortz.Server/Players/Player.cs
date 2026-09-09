@@ -1,3 +1,4 @@
+using Mortz.Core.Identity;
 using Mortz.Server.Phases;
 
 namespace Mortz.Server.Players;
@@ -9,7 +10,8 @@ public sealed class Player(
     string name,
     int serverKeyCount,
     int serverGeneration,
-    byte skin = 0)
+    byte skin = 0,
+    VerifiedAccount? account = null)
 {
     /// <summary>Neither an issued generation (those start at 1) nor the 0 a
     /// default key carries, so both fail the check instead of one of them
@@ -26,6 +28,8 @@ public sealed class Player(
     public string Name { get; } = name;
 
     public byte Skin { get; } = skin;
+
+    public VerifiedAccount? Account { get; } = account;
 
     public T State<T>(ServerStateKey<T> key) where T : class, new()
     {
