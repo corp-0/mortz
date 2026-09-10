@@ -1,4 +1,3 @@
-using Mortz.Core.Match;
 using Combat = Mortz.Core.Match.Configuration.Combat;
 
 namespace Mortz.Core.Sim;
@@ -18,6 +17,15 @@ public static class WeaponSim
     public static bool Tick(ref PlayerState p, PlayerInput input, InputButtons prevButtons,
         PlayerStats stats, int inputSeq)
     {
+        bool fired = ApplyInput(ref p, input, prevButtons, stats, inputSeq);
+        Advance(ref p, stats);
+        return fired;
+    }
+
+    /// <summary>Applies an input's weapon actions without advancing reload time.</summary>
+    public static bool ApplyInput(ref PlayerState p, PlayerInput input, InputButtons prevButtons,
+        PlayerStats stats, int inputSeq)
+    {
         if (p.RespawnTicks > 0)
             return false; // corpses don't fire or reload
 
@@ -33,10 +41,19 @@ public static class WeaponSim
 
         if (p.ReloadTicks == 0 && (p.Ammo == 0 || (reloadPressed && p.Ammo < stats.MaxAmmo)))
             p.ReloadTicks = stats.ReloadPerShellTicks;
-        if (p.ReloadTicks > 0 && --p.ReloadTicks == 0 && ++p.Ammo < stats.MaxAmmo)
-            p.ReloadTicks = stats.ReloadPerShellTicks; // next shell
 
         return fired;
+    }
+
+    /// <summary>Advances reload time once per simulation tick, including ticks without input.</summary>
+    public static void Advance(ref PlayerState p, PlayerStats stats)
+    {
+        if (p.RespawnTicks > 0)
+            return;
+        if (p.ReloadTicks == 0 && p.Ammo == 0)
+            p.ReloadTicks = stats.ReloadPerShellTicks;
+        if (p.ReloadTicks > 0 && --p.ReloadTicks == 0 && ++p.Ammo < stats.MaxAmmo)
+            p.ReloadTicks = stats.ReloadPerShellTicks; // next shell
     }
 
     /// <summary>The one spawn formula, shared so a predicted shell and the

@@ -20,8 +20,7 @@ namespace Mortz.Core.Input;
 public sealed class InputQueue
 {
     /// <summary>Max inputs one <see cref="Next"/> consumes: the catch-up skip
-    /// plus the apply. The sim runs the weapon per consumed input, so this also
-    /// caps the weapon time one tick can buy.</summary>
+    /// plus the apply. This also bounds the number of weapon actions per tick.</summary>
     public const int MAX_CONSUMED = 2;
 
     /// <summary>New sequences admissible at once. Refills one per tick, so a
@@ -120,8 +119,7 @@ public sealed class InputQueue
     {
         if (_pending.Count == 0)
         {
-            // Starvation: repeat the last input for movement only. Counting it
-            // as consumed would hand out free weapon time.
+            // Repeated movement isn't a new input and must not repeat weapon actions.
             _lastInput = _rawLastInput;
             return;
         }

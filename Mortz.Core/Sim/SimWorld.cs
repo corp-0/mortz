@@ -309,16 +309,15 @@ public class SimWorld
                     PrevButtons = prev.PrevButtons.Except(queue.PressedButtons),
                 };
                 state = PlayerSim.Tick(simPrev, input, Terrain, stats);
-                // Run the weapon per consumed input, not just the applied one: a
-                // fire the drain overtook still fires with its own aim and seq,
-                // and reload advances a step per input.
+                // Overtaken actions keep their aim and sequence; reload time advances once below.
                 InputButtons prevButtons = prev.PrevButtons;
                 foreach ((int seq, PlayerInput consumed) in queue.Consumed)
                 {
-                    if (WeaponSim.Tick(ref state, consumed, prevButtons, stats, seq))
+                    if (WeaponSim.ApplyInput(ref state, consumed, prevButtons, stats, seq))
                         SpawnMortar(WeaponSim.NewShell(_nextMortarId++, seq, state, consumed, _config.Combat));
                     prevButtons = consumed.Buttons;
                 }
+                WeaponSim.Advance(ref state, stats);
                 state.PrevButtons = queue.RawAppliedInput.Buttons;
                 state.Aim = queue.RawAppliedInput.Aim;
                 if (FellOutOfTheMap(state))

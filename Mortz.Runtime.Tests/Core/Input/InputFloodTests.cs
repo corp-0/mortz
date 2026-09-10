@@ -1,14 +1,11 @@
 using Mortz.Core.Input;
 using Mortz.Core.Sim;
+using Mortz.Protocol.Input;
+using Mortz.Protocol.Net;
 using Xunit;
 
 namespace Mortz.Runtime.Tests.Core.Input;
 
-/// <summary>The sim runs the weapon once per consumed input, so whoever sets
-/// the input rate sets the fire rate. A client picks its own sequence numbers
-/// and can send far more than one per tick, so admission is anchored to the
-/// drain: bunched packets get through whole, fabricated sequences are
-/// throttled back to honest rate once the burst allowance is spent.</summary>
 public class InputFloodTests
 {
     private const byte AIM_UP_LEFT = 160; // shells die on the wall, not on the shooter
@@ -24,8 +21,6 @@ public class InputFloodTests
         w.Step();
     }
 
-    /// <summary>The flood buys at most its burst allowance of extra weapon
-    /// time, once. It must not buy a rate, however long the match runs.</summary>
     [Theory]
     [InlineData(2)]
     [InlineData(4)]
@@ -35,13 +30,9 @@ public class InputFloodTests
         int flooded = TicksToRefillMagazine(perTick);
 
         Assert.True(honest > 4 * SimConfig.MORTAR_RELOAD_TICKS, $"sanity: honest took {honest} ticks");
-        Assert.True(flooded >= honest - InputQueue.BURST_SEQS,
-            $"flooding at {perTick}/tick refilled in {flooded} ticks against an honest {honest}");
+        Assert.Equal(honest, flooded);
     }
 
-    /// <summary>Cycling starve and burst must refill no faster than honest
-    /// play beyond the one-time allowance. With phantom starvation consumes
-    /// this cycle hit 1.45x sustained.</summary>
     [Fact]
     public void StarveThenBurstCycles_BuyNoSustainedReloadRate()
     {
@@ -64,28 +55,25 @@ public class InputFloodTests
             ticks++;
         }
 
-        Assert.True(ticks >= honest - InputQueue.BURST_SEQS,
-            $"starve/burst cycling refilled in {ticks} ticks against an honest {honest}");
+        Assert.Equal(honest, ticks);
     }
 
-    /// <summary>Reload advances per input, not per tick of silence, and the
-    /// frozen ticks are repaid in full once the inputs arrive.</summary>
     [Fact]
-    public void Starvation_FreezesTheReload_UntilTheInputsArrive()
+    public void StarvationAndCatchUp_AdvanceReloadOncePerServerTick()
     {
         SimWorld w = new SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
         w.AddPlayer(1);
         int seq = 0;
         FeedTick(w, ref seq, perTick: 1, InputButtons.FIRE);
         FeedTick(w, ref seq, perTick: 1, InputButtons.RELOAD);
-        int frozen = w.Players[1].ReloadTicks;
-        Assert.True(frozen > 0, "sanity: a reload is in progress");
+        int initial = w.Players[1].ReloadTicks;
+        Assert.True(initial > 10, "sanity: a reload is in progress");
 
         for (int t = 0; t < 6; t++)
         {
             w.Step();
         }
-        Assert.Equal(frozen, w.Players[1].ReloadTicks);
+        Assert.Equal(initial - 6, w.Players[1].ReloadTicks);
 
         for (int s = 0; s < 6; s++)
         {
@@ -95,7 +83,51 @@ public class InputFloodTests
         {
             w.Step(); // drains 2, 2, 1, 1
         }
-        Assert.Equal(frozen - 6, w.Players[1].ReloadTicks);
+        Assert.Equal(initial - 10, w.Players[1].ReloadTicks);
+    }
+
+    [Theory]
+    [InlineData(2)]
+    [InlineData(3)]
+    public void PacketLossBeyondRedundancy_DoesNotDelayReload(int consecutiveLosses)
+    {
+        Assert.Equal(RefillWithPacketLoss(0), RefillWithPacketLoss(consecutiveLosses));
+    }
+
+    private static int RefillWithPacketLoss(int consecutiveLosses)
+    {
+        SimWorld world = new(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
+        world.AddPlayer(1);
+        List<(int Seq, PlayerInput Input)> history = [];
+        int packetIndex = 0;
+        for (int tick = 0; tick < 300; tick++)
+        {
+            InputButtons buttons = tick switch
+            {
+                0 => InputButtons.FIRE,
+                1 => InputButtons.RELOAD,
+                _ => InputButtons.NONE,
+            };
+            history.Add((tick, In(buttons)));
+            if ((tick + 1) % NetConfig.TICKS_PER_INPUT_PACKET == 0)
+            {
+                byte[] packet = InputPacket.Encode(history.TakeLast(NetConfig.INPUT_REDUNDANCY).ToArray());
+                int burstIndex = packetIndex++ % 10;
+                if (burstIndex < 4 || burstIndex >= 4 + consecutiveLosses)
+                {
+                    Assert.True(InputPacket.TryDecode(packet, out List<(int Seq, PlayerInput Input)>? inputs));
+                    foreach ((int sequence, PlayerInput input) in inputs)
+                    {
+                        world.EnqueueInput(1, sequence, input);
+                    }
+                }
+            }
+            world.Step();
+            if (tick > 4 && world.Players[1].Ammo == SimConfig.MORTAR_MAX_AMMO)
+                return tick;
+        }
+        Assert.Fail("Reload did not complete.");
+        return -1;
     }
 
     /// <summary>A stall that bunches three packets delivers six sequences at
