@@ -12,7 +12,6 @@ public partial class ServerProbe : Node, IServerProbe
     {
         public ServerProbeWork Work { get; } = work;
         public ServerEndpoint Endpoint => Work.Endpoint;
-        public ulong StartedAt => Work.StartedAt;
         public int ResolveId { get; set; } = -1;
         public PacketPeerUdp? Socket { get; set; }
         public A2SProbe? Exchange { get; set; }
@@ -98,7 +97,7 @@ public partial class ServerProbe : Node, IServerProbe
             }
             if (_coordinator.HasExpired(pending.Work, now))
             {
-                Complete(pending, now);
+                Complete(pending);
                 continue;
             }
             if (pending.ResolveId != -1)
@@ -113,20 +112,21 @@ public partial class ServerProbe : Node, IServerProbe
                 pending.ResolveId = -1;
                 if (address.Length == 0)
                 {
-                    Complete(pending, now);
+                    Complete(pending);
                     continue;
                 }
                 Send(pending, address);
             }
             if (pending.Socket is not PacketPeerUdp socket || pending.Exchange is not A2SProbe exchange)
             {
-                Complete(pending, now);
+                Complete(pending);
                 continue;
             }
             for (int i = 0; i < 64 && socket.GetAvailablePacketCount() > 0 && !exchange.IsComplete; i++)
             {
                 byte[] response = socket.GetPacket();
-                byte[]? request = exchange.Receive(response, socket.GetPacketIP(), socket.GetPacketPort(), now);
+                ulong receivedAt = Time.GetTicksMsec();
+                byte[]? request = exchange.Receive(response, socket.GetPacketIP(), socket.GetPacketPort(), receivedAt);
                 if (request != null)
                 {
                     socket.PutPacket(request);
@@ -134,7 +134,7 @@ public partial class ServerProbe : Node, IServerProbe
             }
             if (exchange.IsComplete)
             {
-                Complete(pending, now);
+                Complete(pending);
             }
         }
     }
@@ -148,13 +148,14 @@ public partial class ServerProbe : Node, IServerProbe
             return;
         }
         pending.Socket = socket;
-        pending.Exchange = new A2SProbe(pending.Endpoint, address, pending.StartedAt, pending.Work.Discovered);
+        ulong sentAt = Time.GetTicksMsec();
+        pending.Exchange = new A2SProbe(pending.Endpoint, address, sentAt, pending.Work.Discovered);
         socket.PutPacket(pending.Exchange.StartRequest());
     }
 
-    private void Complete(Pending pending, ulong now)
+    private void Complete(Pending pending)
     {
-        pending.Exchange?.Finish(now);
+        pending.Exchange?.Finish();
         ServerProbeReply? result = pending.Exchange?.Result;
         Release(pending);
         _active.Remove(pending);

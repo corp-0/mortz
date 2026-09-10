@@ -9,6 +9,8 @@ public class A2SProbe(ServerEndpoint endpoint, string resolvedAddress, ulong sta
     public const int MAX_CONCURRENT = 16;
     private A2SReassembler _response = new();
     private int _challengeRetries;
+    private ulong _infoRequestedAtMs;
+    private int _pingMs;
     private bool _started;
     private ServerInfo? _info;
     public bool IsComplete { get; private set; }
@@ -20,6 +22,7 @@ public class A2SProbe(ServerEndpoint endpoint, string resolvedAddress, ulong sta
         if (_started)
             throw new InvalidOperationException("The endpoint probe has already started.");
         _started = true;
+        _infoRequestedAtMs = startedAtMs;
         return ServerQueryProtocol.EncodeInfoRequest();
     }
 
@@ -34,13 +37,16 @@ public class A2SProbe(ServerEndpoint endpoint, string resolvedAddress, ulong sta
         {
             if (_challengeRetries++ >= ServerQueryProtocol.MAX_CHALLENGE_RETRIES)
             {
-                Finish(nowMs);
+                Finish();
                 return null;
             }
             _response = new A2SReassembler();
-            return _info == null
-                ? ServerQueryProtocol.EncodeInfoRequest(challenge)
-                : ServerQueryProtocol.EncodeRulesRequest(challenge);
+            if (_info == null)
+            {
+                _infoRequestedAtMs = nowMs;
+                return ServerQueryProtocol.EncodeInfoRequest(challenge);
+            }
+            return ServerQueryProtocol.EncodeRulesRequest(challenge);
         }
         if (!_response.TryAdd(packet, out byte[] response))
             return null;
@@ -50,6 +56,8 @@ public class A2SProbe(ServerEndpoint endpoint, string resolvedAddress, ulong sta
                 discoverGamePort && info.GamePort == endpoint.QueryPort)
                 return null;
             _info = info;
+            // Measure one INFO round trip, excluding challenges and the later RULES exchange.
+            _pingMs = (int)Math.Min(nowMs - _infoRequestedAtMs, int.MaxValue);
             _response = new A2SReassembler();
             _challengeRetries = 0;
             return ServerQueryProtocol.EncodeRulesRequest();
@@ -57,13 +65,13 @@ public class A2SProbe(ServerEndpoint endpoint, string resolvedAddress, ulong sta
         if (ServerQueryProtocol.TryDecodeRules(response, out Dictionary<string, string> rules))
         {
             _info = ServerQueryMetadata.ApplyRules(_info, rules);
-            Finish(nowMs);
+            Finish();
         }
         return null;
     }
 
     /// <summary>Retains readable INFO as unknown compatibility when RULES fail or time out.</summary>
-    public void Finish(ulong nowMs)
+    public void Finish()
     {
         if (IsComplete)
             return;
@@ -76,8 +84,7 @@ public class A2SProbe(ServerEndpoint endpoint, string resolvedAddress, ulong sta
             {
                 resultEndpoint = new ServerEndpoint(endpoint.Address, _info.GamePort, endpoint.QueryPort);
             }
-            int pingMs = (int)Math.Min(nowMs - startedAtMs, int.MaxValue);
-            Result = new ServerProbeReply(resultEndpoint, _info, pingMs, resolvedAddress);
+            Result = new ServerProbeReply(resultEndpoint, _info, _pingMs, resolvedAddress);
         }
     }
 }

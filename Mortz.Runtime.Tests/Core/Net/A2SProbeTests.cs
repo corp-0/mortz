@@ -25,7 +25,7 @@ public class A2SProbeTests
         Assert.True(probe.IsComplete);
         Assert.Equal(ServerQueryTests.Sample(), probe.Result!.Value.Info);
         Assert.Equal(_endpoint, probe.Result.Value.Endpoint);
-        Assert.Equal(40, probe.Result.Value.PingMs);
+        Assert.Equal(10, probe.Result.Value.PingMs);
         Assert.Null(probe.Receive(ServerQueryProtocol.EncodeChallenge(1), ADDRESS, _endpoint.QueryPort, 41));
     }
 
@@ -39,7 +39,7 @@ public class A2SProbeTests
         Assert.Null(probe.Receive(info, ADDRESS, _endpoint.QueryPort + 1, 200));
         Assert.Null(probe.Receive(info, ADDRESS, _endpoint.QueryPort, 3100));
         Assert.True(probe.HasExpired(3100));
-        probe.Finish(3100);
+        probe.Finish();
         Assert.Null(probe.Result);
     }
 
@@ -49,10 +49,12 @@ public class A2SProbeTests
         A2SProbe probe = new(_endpoint, ADDRESS, 0);
         probe.StartRequest();
         Assert.NotNull(probe.Receive(ServerQueryProtocol.EncodeInfoResponse(ServerQueryTests.Sample()), ADDRESS, _endpoint.QueryPort, 25));
-        probe.Finish(3000);
+        Assert.True(probe.HasExpired(3000));
+        probe.Finish();
         Assert.True(probe.IsComplete);
         Assert.Equal("Gilles' Box", probe.Result!.Value.Info.Name);
         Assert.False(probe.Result.Value.Info.MetadataValid);
+        Assert.Equal(25, probe.Result.Value.PingMs);
     }
 
     [Fact]
