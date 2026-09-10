@@ -99,7 +99,7 @@ public sealed class E2EMatchControl : IMatchControl
     {
         if (!world.Players.TryGetValue(request.PeerId, out PlayerState player))
             return Unknown(request.PeerId);
-        if (player.RespawnTicks > 0)
+        if (!player.IsAlive)
             return $"Player {request.PeerId} is dead.";
         world.Teleport(request.PeerId, request.Position);
         return null;
@@ -116,11 +116,12 @@ public sealed class E2EMatchControl : IMatchControl
 
     private static WorldStateOutcome Describe(SimWorld world) => new(
         world.Tick,
-        world.Players.Values
-            .Select(player => new E2EWorldPlayer(
-                player.PeerId, player.Position, player.Velocity, player.Health,
-                player.RespawnTicks))
-            .ToArray());
+        [
+            .. world.Players.Values
+                .Select(player => new E2EWorldPlayer(
+                    player.PeerId, player.Position, player.Velocity, player.Health,
+                    player.RespawnTicks))
+        ]);
 
     private static string Unknown(int peerId) => $"Unknown peer {peerId}.";
 }

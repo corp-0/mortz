@@ -74,7 +74,7 @@ public class ScoringStep(
         float best = float.MaxValue;
         foreach ((int peerId, PlayerState player) in world.Players)
         {
-            if (peerId == death.PeerId || player.RespawnTicks > 0)
+            if (peerId == death.PeerId || !player.IsAlive)
                 continue;
             if (Teams.SameSide(victimTeam, player.Team))
                 continue;

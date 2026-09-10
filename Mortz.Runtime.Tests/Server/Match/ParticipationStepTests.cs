@@ -1,7 +1,9 @@
 using Mortz.Core.Match.Configuration;
 using Mortz.Core.Match.Participation;
+using Mortz.Core.Match.Respawning;
 using Mortz.Core.Sim;
 using Mortz.Core.Terrain;
+using Mortz.Runtime.Tests.Core.Sim;
 using Mortz.Server.Match;
 using Mortz.Server.Players;
 using Xunit;
@@ -10,6 +12,35 @@ namespace Mortz.Runtime.Tests.Server.Match;
 
 public class ParticipationStepTests
 {
+    [Fact]
+    public void BlockedReturnCanEnterSpectatingAndLaterPublishAnAuthoritativeSchedule()
+    {
+        SimWorldTests.ControlledRespawns respawns = new();
+        Fixture fixture = new(0, respawns);
+        MatchParticipationChange death = Assert.Single(fixture.Kill());
+        Assert.Equal(-1, death.State.ReturnTick);
+        Assert.True(death.State.IsValid);
+        for (int i = 0; i < ParticipationStep.DEATH_VIEW_DURATION_TICKS; i++)
+        {
+            fixture.World.Step();
+            fixture.Advance([]);
+        }
+        Assert.Equal(MatchActivity.SPECTATING, fixture.Participation.Of(fixture.Player).Activity);
+        respawns.Resources = 1;
+        respawns.ReturnAt = fixture.World.Tick + 3;
+        fixture.World.Step();
+        MatchParticipationChange scheduled = Assert.Single(fixture.Advance([]));
+        Assert.Equal(fixture.World.Tick + fixture.World.Players[1].RespawnTicks, scheduled.State.ReturnTick);
+        Assert.Equal(MatchActivity.SPECTATING, scheduled.State.Activity);
+
+        respawns.Resources = 0;
+        fixture.World.Step();
+        Assert.Equal(-1, Assert.Single(fixture.Advance([])).State.ReturnTick);
+        respawns.Resources = 1;
+        fixture.World.Step();
+        Assert.Equal(MatchParticipation.Active, Assert.Single(fixture.Advance([])).State);
+    }
+
     [Fact]
     public void InitializesSeatsAndJipSpectators()
     {
@@ -53,7 +84,7 @@ public class ParticipationStepTests
         fixture.Kill();
 
         MatchParticipationChange? active = null;
-        while (fixture.World.Players[1].RespawnTicks > 0)
+        while (!fixture.World.Players[1].IsAlive)
         {
             fixture.World.Step();
             foreach (MatchParticipationChange change in fixture.Advance([]))
@@ -72,7 +103,7 @@ public class ParticipationStepTests
     {
         private readonly MatchCells _cells = new();
 
-        public Fixture(int respawnTicks)
+        public Fixture(int respawnTicks, RespawnStrategy? respawns = null)
         {
             Participation = new ParticipationStep(_cells.Keys);
             Player = _cells.GetOrJoin(1);
@@ -84,7 +115,7 @@ public class ParticipationStepTests
                     Respawn = new FixedRespawnRules { Delay = (float)respawnTicks / SimConfig.TICK_RATE },
                     SpawnImmunity = 0,
                 },
-            }, Array.Empty<SpawnPoint>());
+            }, Array.Empty<SpawnPoint>(), respawns: respawns);
             World.AddPlayer(Player.PeerId, team: null);
             Participation.Seat(Player);
         }

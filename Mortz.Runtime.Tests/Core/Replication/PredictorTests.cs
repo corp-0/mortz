@@ -10,6 +10,37 @@ namespace Mortz.Runtime.Tests.Core.Replication;
 
 public class PredictorTests
 {
+    [Theory]
+    [InlineData(0)]
+    [InlineData(12)]
+    public void DeadPredictionWaitsForAnAuthoritativeBodyEvenAfterTheReturnTick(ushort respawnTicks)
+    {
+        Predictor predictor = new(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig);
+        PlayerState corpse = new()
+        {
+            PeerId = 1,
+            Position = new Vec2(200, TestWorlds.FLOOR_Y),
+            Health = 0,
+            RespawnTicks = respawnTicks,
+            Ammo = 3,
+        };
+        predictor.Reconcile(corpse, -1, 10);
+        for (int i = 0; i < 30; i++)
+        {
+            predictor.LocalTick(new PlayerInput(InputButtons.RIGHT | InputButtons.JUMP | InputButtons.FIRE));
+        }
+        predictor.Reconcile(corpse, 5, 16);
+        Assert.False(predictor.State.IsAlive);
+        Assert.Equal(corpse.Position, predictor.State.Position);
+        Assert.Equal(respawnTicks, predictor.State.RespawnTicks);
+        Assert.Empty(predictor.Shells);
+
+        PlayerState alive = corpse with { Health = 100, RespawnTicks = 0 };
+        predictor.Reconcile(alive, 29, 40);
+        Assert.True(predictor.State.IsAlive);
+        Assert.Equal(0, predictor.State.RespawnTicks);
+    }
+
     [Fact]
     public void ModifierChangesApplyAtTheirEffectiveTickDuringPredictionAndReplay()
     {

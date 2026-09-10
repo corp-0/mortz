@@ -26,7 +26,7 @@ public static class WeaponSim
     public static bool ApplyInput(ref PlayerState p, PlayerInput input, InputButtons prevButtons,
         PlayerStats stats, int inputSeq)
     {
-        if (p.RespawnTicks > 0)
+        if (!p.IsAlive)
             return false; // corpses don't fire or reload
 
         bool firePressed = input.Fire && !prevButtons.HasFlag(InputButtons.FIRE);
@@ -48,7 +48,7 @@ public static class WeaponSim
     /// <summary>Advances reload time once per simulation tick, including ticks without input.</summary>
     public static void Advance(ref PlayerState p, PlayerStats stats)
     {
-        if (p.RespawnTicks > 0)
+        if (!p.IsAlive)
             return;
         if (p.ReloadTicks == 0 && p.Ammo == 0)
             p.ReloadTicks = stats.ReloadPerShellTicks;

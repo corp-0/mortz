@@ -93,7 +93,7 @@ public partial class PlayerView : Node2D
         }
         // Dead = gibbed: no body to show. Position keeps tracking so the local
         // player's camera lingers on the death spot until the respawn.
-        Visible = next.RespawnTicks == 0;
+        Visible = next.Health > 0;
         bool spawnProtectedVisible = SpawnProtectedSpriteVisible(next.SpawnImmunityTicks);
         _body.Visible = spawnProtectedVisible;
         _aimPivot.Visible = spawnProtectedVisible;

@@ -13,8 +13,8 @@ public static class PlayerSim
 {
     public static PlayerState Tick(PlayerState p, PlayerInput input, TerrainMask terrain, PlayerStats stats)
     {
-        if (p.RespawnTicks > 0)
-            return p; // dead bodies are frozen; SimWorld owns the countdown
+        if (!p.IsAlive)
+            return p; // only SimWorld can revive a player
 
         const float DT = SimConfig.DT;
 

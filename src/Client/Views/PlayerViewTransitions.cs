@@ -15,8 +15,8 @@ public static class PlayerViewTransitions
         PlayerViewTransition transitions = PlayerViewTransition.NONE;
         if (previous.ParryTicks == 0 && next.ParryTicks > 0)
             transitions |= PlayerViewTransition.PARRY_RAISED;
-        bool wasReloading = previous.ReloadTicks > 0 && previous.RespawnTicks == 0;
-        bool isReloading = next.ReloadTicks > 0 && next.RespawnTicks == 0;
+        bool wasReloading = previous is { ReloadTicks: > 0, Health: > 0 };
+        bool isReloading = next is { ReloadTicks: > 0, Health: > 0 };
         if (isReloading && (!wasReloading || next.Ammo > previous.Ammo))
             transitions |= PlayerViewTransition.SHELL_RELOAD_STARTED;
         if (wasReloading && !isReloading)

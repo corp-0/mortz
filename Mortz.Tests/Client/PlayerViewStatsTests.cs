@@ -20,6 +20,29 @@ namespace Mortz.Tests.Client;
 [Collection(nameof(MortzGodotCollection))]
 public class PlayerViewStatsTests : NodeServiceTest
 {
+    [Theory]
+    [InlineData(10)]
+    [InlineData(0)]
+    public void DeadBodyRemainsHiddenRegardlessOfItsReturnSchedule(ushort respawnTicks)
+    {
+        PlayerViewManager manager = TakeManagerFromGameViewScene();
+        manager.FakeDependency<INetwork>(new FakeNetwork());
+        manager.FakeDependency<ISfx>(new NullSfx());
+        ClientPlayers players = RegisterRuntime(new ClientPlayers());
+        players.OpenMatch(new MatchConfig());
+        manager.FakeDependency(players);
+        HostRouted(manager);
+        manager.BeginFrame();
+        manager.Place(2, ViewState());
+        PlayerView view = manager.ViewForTest(2);
+        Assert.True(view.Visible);
+
+        manager.Place(2, ViewState() with { Health = 0, RespawnTicks = respawnTicks });
+        Assert.False(view.Visible);
+        manager.Place(2, ViewState());
+        Assert.True(view.Visible);
+    }
+
     [Fact]
     public void PerPlayerModifiersConfigureTheMatchingView()
     {

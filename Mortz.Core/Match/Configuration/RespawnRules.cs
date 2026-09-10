@@ -4,6 +4,7 @@ using Mortz.Core.Ui;
 namespace Mortz.Core.Match.Configuration;
 
 [ConfigVariant("fixed", "Fixed", typeof(FixedRespawnRules))]
+[ConfigVariant("none", "None", typeof(NoRespawnRules))]
 public abstract class RespawnRules
 {
     public abstract RespawnRulesSnapshot ToSnapshot();
@@ -18,6 +19,8 @@ public partial class FixedRespawnRules : RespawnRules
 
     public int DelayTicks => (int)(Delay * SimConfig.TICK_RATE);
 }
+
+public partial class NoRespawnRules : RespawnRules;
 
 public abstract record RespawnRulesSnapshot
 {

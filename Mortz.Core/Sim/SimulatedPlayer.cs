@@ -13,6 +13,7 @@ public class SimulatedPlayer(PlayerStats stats)
     public Situations Situations;
     public ulong ZoneMask;
     public int? SpawnAssignment;
+    public bool HasSpawned;
     public int ModifierRevision;
     public int ModifierEffectiveTick;
 }

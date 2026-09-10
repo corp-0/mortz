@@ -1,4 +1,5 @@
 using Mortz.Core.Match.Configuration;
+using Mortz.Core.Match.Respawning;
 using Mortz.Core.Match.Teams;
 using Mortz.Core.Replication;
 using Mortz.Core.Sim;
@@ -10,6 +11,157 @@ namespace Mortz.Runtime.Tests.Core.Sim;
 
 public class SimWorldTests
 {
+    [Fact]
+    public void BlockedRespawnStaysDeadUntilItsStrategyReleasesIt()
+    {
+        ControlledRespawns respawns = new();
+        SimWorld world = new(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig, respawns: respawns);
+        world.AddPlayer(1);
+        world.QueueDamage(1, byte.MaxValue);
+        world.Step();
+        PlayerState corpse = world.Players[1];
+        Assert.Equal(0, corpse.RespawnTicks);
+        Assert.False(CombatEligibility.CanTakeDamage(corpse));
+        for (int i = 0; i < SimConfig.RESPAWN_DELAY_TICKS * 2; i++)
+        {
+            world.EnqueueInput(1, i, new PlayerInput(InputButtons.RIGHT | InputButtons.JUMP |
+                InputButtons.FIRE | InputButtons.PARRY | InputButtons.ROPE));
+            world.QueueDamage(1, byte.MaxValue);
+            world.Step();
+        }
+        Assert.False(world.Players[1].IsAlive);
+        Assert.Equal(corpse.Position, world.Players[1].Position);
+        Assert.Empty(world.Mortars);
+        Assert.Single(respawns.Deaths);
+        Assert.Empty(respawns.Respawned);
+
+        respawns.Resources = 1;
+        respawns.ReturnAt = world.Tick + 2;
+        world.Step();
+        Assert.Equal(1, world.Players[1].RespawnTicks);
+        Assert.False(world.Players[1].IsAlive);
+        world.Step();
+        Assert.True(world.Players[1].IsAlive);
+        Assert.Equal(1, Assert.Single(respawns.Respawned));
+    }
+
+    [Fact]
+    public void RespawnsConsumeSharedResourcesInPeerOrderAndRemovalEndsParticipation()
+    {
+        ControlledRespawns respawns = new() { Resources = 1 };
+        SimWorld world = new(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig, respawns: respawns);
+        world.AddPlayer(20);
+        world.AddPlayer(10);
+        Assert.Equal(1, respawns.Resources);
+        world.QueueDamage(20, byte.MaxValue);
+        world.QueueDamage(10, byte.MaxValue);
+        world.Step();
+        world.Step();
+        Assert.True(world.Players[10].IsAlive);
+        Assert.False(world.Players[20].IsAlive);
+        Assert.Equal(0, world.Players[20].RespawnTicks);
+        Assert.Equal(10, Assert.Single(respawns.Respawned));
+
+        world.QueueDamage(20, byte.MaxValue);
+        world.RemovePlayer(20);
+        world.RemovePlayer(20);
+        Assert.Equal(20, Assert.Single(respawns.Removals));
+        world.AddPlayer(20);
+        world.Step();
+        Assert.True(world.Players[20].IsAlive);
+        Assert.Equal(3, respawns.InitialSpawns);
+        Assert.Single(respawns.Respawned);
+    }
+
+    [Fact]
+    public void FailedInitialSpawnAndRespawnDoNotCommitSuccess()
+    {
+        ControlledRespawns respawns = new() { Resources = 1 };
+        FailingSpawnWorld world = new(respawns) { FailSpawn = true };
+        Assert.Throws<InvalidOperationException>(() => world.AddPlayer(1));
+        Assert.Equal(0, respawns.InitialSpawns);
+        world.FailSpawn = false;
+        world.Step();
+        Assert.Equal(1, respawns.InitialSpawns);
+        Assert.Equal(1, respawns.Resources);
+
+        world.QueueDamage(1, byte.MaxValue);
+        world.Step();
+        world.FailSpawn = true;
+        Assert.Throws<InvalidOperationException>(() => world.Step());
+        Assert.False(world.Players[1].IsAlive);
+        Assert.Equal(1, respawns.Resources);
+        Assert.Empty(respawns.Respawned);
+        world.FailSpawn = false;
+        world.Step();
+        Assert.True(world.Players[1].IsAlive);
+        Assert.Equal(0, respawns.Resources);
+        Assert.Equal(1, Assert.Single(respawns.Respawned));
+    }
+
+    [Theory]
+    [InlineData("damage")]
+    [InlineData("explosion")]
+    [InlineData("fall")]
+    public void EveryDeathPathNotifiesTheStrategyOnce(string cause)
+    {
+        ControlledRespawns respawns = new();
+        SimWorld world = new(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig, respawns: respawns);
+        world.AddPlayer(1);
+        if (cause == "fall")
+        {
+            world.Teleport(1, new Vec2(200, world.Terrain.Height + SimConfig.DEATH_PIT_DEPTH + 100));
+        }
+        if (cause == "explosion")
+        {
+            world.EnqueueInput(1, 0, new PlayerInput(InputButtons.FIRE, 64));
+        }
+        else
+        {
+            world.QueueDamage(1, byte.MaxValue);
+            world.QueueDamage(1, byte.MaxValue);
+        }
+        world.Step();
+        Assert.Equal(Assert.Single(world.Deaths), Assert.Single(respawns.Deaths));
+        world.QueueDamage(1, byte.MaxValue);
+        world.Step();
+        Assert.Empty(world.Deaths);
+        Assert.Single(respawns.Deaths);
+    }
+
+    public class ControlledRespawns : RespawnStrategy
+    {
+        public int Resources;
+        public int? ReturnAt;
+        public int InitialSpawns;
+        public List<Death> Deaths { get; } = [];
+        public List<int> Respawned { get; } = [];
+        public List<int> Removals { get; } = [];
+        public override void Died(Death death, int tick) => Deaths.Add(death);
+        public override int? ReturnTick(int peerId, int tick) => Resources > 0 ? ReturnAt ?? tick : null;
+        public override void Spawned(int peerId, bool initial)
+        {
+            if (initial)
+            {
+                InitialSpawns++;
+            }
+            else
+            {
+                Resources--;
+                Respawned.Add(peerId);
+            }
+        }
+        public override void Removed(int peerId) => Removals.Add(peerId);
+    }
+
+    public class FailingSpawnWorld(RespawnStrategy respawns)
+        : SimWorld(TestWorlds.Flat(), TestWorlds.NoSpawnProtectionConfig, respawns: respawns)
+    {
+        public bool FailSpawn;
+        protected override PlayerState FreshState(int peerId, Team? team, int lastInputSeq) =>
+            FailSpawn ? throw new InvalidOperationException("Spawn failed.") : base.FreshState(peerId, team, lastInputSeq);
+    }
+
     [Fact]
     public void SnapshotProjectionCarriesTheRequestedSkin()
     {

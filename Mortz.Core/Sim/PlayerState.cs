@@ -2,10 +2,7 @@ using Mortz.Core.Match.Teams;
 
 namespace Mortz.Core.Sim;
 
-/// <summary>
-/// Complete sim state of one player. Anything that affects gameplay must
-/// live here and ride the wire, or prediction replay drifts.
-/// </summary>
+/// <summary>Replicated body state used by simulation and prediction.</summary>
 public record struct PlayerState
 {
     public int PeerId;
@@ -52,9 +49,7 @@ public record struct PlayerState
     /// acked value through replay.</summary>
     public byte Health;
 
-    /// <summary>Ticks until respawn; nonzero = dead. A dead body is frozen:
-    /// PlayerSim and WeaponSim no-op on it, blasts skip it, shells fly
-    /// through. Only the server counts it down.</summary>
+    /// <summary>Authoritative countdown; zero on a dead player means no scheduled return.</summary>
     public ushort RespawnTicks;
 
     /// <summary>Ticks of spawn protection; nonzero = can't shoot, can't be
@@ -83,7 +78,7 @@ public record struct PlayerState
     /// non-inferable from the ack.</summary>
     public InputButtons PrevButtons;
 
-    public readonly bool IsAlive => Health > 0 && RespawnTicks == 0;
+    public readonly bool IsAlive => Health > 0;
 
     public readonly bool IsAtCriticalHealth(byte maxHealth) =>
         IsAlive && Health * 3 <= maxHealth;

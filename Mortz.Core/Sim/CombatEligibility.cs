@@ -5,10 +5,9 @@ namespace Mortz.Core.Sim;
 public static class CombatEligibility
 {
     public static bool CanFire(in PlayerState player, int inputSeq) =>
-        player.RespawnTicks == 0 &&
-        player.SpawnImmunityTicks == 0 &&
+        player is { IsAlive: true, SpawnImmunityTicks: 0 } &&
         inputSeq > player.SpawnImmunityFireThroughSeq;
 
     public static bool CanTakeDamage(in PlayerState player) =>
-        player.RespawnTicks == 0 && player.SpawnImmunityTicks == 0;
+        player is { IsAlive: true, SpawnImmunityTicks: 0 };
 }

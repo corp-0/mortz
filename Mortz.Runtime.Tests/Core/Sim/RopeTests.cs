@@ -19,6 +19,7 @@ public class RopeTests
     private static PlayerState Grounded() => new()
     {
         PeerId = 1,
+        Health = _stats.MaxHealth,
         Position = new Vec2(200, TestWorlds.FLOOR_Y),
         Grounded = true,
         JumpsLeft = SimConfig.TOTAL_JUMPS,

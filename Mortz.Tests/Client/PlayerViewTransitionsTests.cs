@@ -33,14 +33,16 @@ public class PlayerViewTransitionsTests
     }
 
     [Theory]
-    [InlineData(0)]
-    [InlineData(10)]
-    public void ReloadCompletionInterruptionOrDeathStopsTheCue(ushort respawnTicks)
+    [InlineData(false, 0)]
+    [InlineData(true, 0)]
+    [InlineData(true, 10)]
+    public void ReloadCompletionInterruptionOrDeathStopsTheCue(bool dead, ushort respawnTicks)
     {
         PlayerViewState previous = State(ammo: 1, reload: 30);
-        PlayerViewState next = State(ammo: 1, reload: respawnTicks == 0 ? (byte)0 : (byte)29)
+        PlayerViewState next = State(ammo: 1, reload: dead ? (byte)29 : (byte)0)
             with
         {
+            Health = dead ? (byte)0 : (byte)100,
             RespawnTicks = respawnTicks
         };
 

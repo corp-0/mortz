@@ -1,6 +1,7 @@
 using Mortz.Core.Collections;
 using Mortz.Core.Input;
 using Mortz.Core.Match.Configuration;
+using Mortz.Core.Match.Respawning;
 using Mortz.Core.Match.Teams;
 using Mortz.Core.Replication;
 using Mortz.Core.Sim.Modifiers;
@@ -30,7 +31,7 @@ public class SimWorld
     public int Tick { get; private set; }
     public TerrainMask Terrain { get; }
     private readonly MatchConfig _config;
-    private readonly int _respawnDelayTicks;
+    private readonly RespawnStrategy _respawns;
     public MatchConfigSnapshot Config { get; }
 
     private static MatchConfig Freeze(MatchConfig source)
@@ -50,12 +51,13 @@ public class SimWorld
     private readonly SpawnPoint[] _spawnPoints;
 
     public SimWorld(TerrainMask terrain, MatchConfig config,
-        IReadOnlyList<SpawnPoint>? spawnPoints, MapZones? zones = null)
+        IReadOnlyList<SpawnPoint>? spawnPoints, MapZones? zones = null,
+        RespawnStrategy? respawns = null)
     {
         Terrain = terrain;
         _config = Freeze(config);
-        _respawnDelayTicks = ((FixedRespawnRules)_config.Rules.Respawn).DelayTicks;
         Config = _config.ToSnapshot();
+        _respawns = respawns ?? RespawnStrategy.Create(_config.Rules.Respawn);
         Zones = zones ?? MapZones.None;
         _spawnPoints = spawnPoints?.ToArray() ?? [];
         _players = new DictionaryProjection<int, SimulatedPlayer, PlayerState>(_entries, entry => entry.State);
@@ -90,8 +92,9 @@ public class SimWorld
     public IReadOnlyList<Death> Deaths => _deaths;
 
     public SimWorld(TerrainMask terrain, MatchConfig config,
-        IReadOnlyList<Vec2>? spawnPoints = null, MapZones? zones = null)
-        : this(terrain, config, spawnPoints?.Select(point => new SpawnPoint(point)).ToArray(), zones)
+        IReadOnlyList<Vec2>? spawnPoints = null, MapZones? zones = null,
+        RespawnStrategy? respawns = null)
+        : this(terrain, config, spawnPoints?.Select(point => new SpawnPoint(point)).ToArray(), zones, respawns)
     {
     }
 
@@ -99,8 +102,13 @@ public class SimWorld
     {
         if (team != null && !_config.Rules.Teams)
             throw new ArgumentException("Team assignment with the Teams rule off.", nameof(team));
-        _entries.Add(peerId, new SimulatedPlayer(PlayerStats.Resolve(_config)));
-        _entries[peerId].State = FreshState(peerId, team, lastInputSeq: -1) with { Team = team };
+        SimulatedPlayer entry = new(PlayerStats.Resolve(_config))
+        {
+            State = new PlayerState { PeerId = peerId, Team = team, LastInputSeq = -1 },
+        };
+        _entries.Add(peerId, entry);
+        _respawns.Entered(peerId, team);
+        Spawn(entry, -1);
     }
 
     /// <summary>Same id replaces; the stack stays sorted by id so composition is
@@ -171,13 +179,22 @@ public class SimWorld
         return _entries[id].Effective;
     }
 
-    private PlayerState FreshState(int peerId, Team? team, int lastInputSeq)
+    private void Spawn(SimulatedPlayer entry, int lastInputSeq)
+    {
+        bool initial = !entry.HasSpawned;
+        entry.State = FreshState(entry.State.PeerId, entry.State.Team, lastInputSeq);
+        entry.HasSpawned = true;
+        _respawns.Spawned(entry.State.PeerId, initial);
+    }
+
+    protected virtual PlayerState FreshState(int peerId, Team? team, int lastInputSeq)
     {
         PlayerStats stats = _stats[peerId];
         Vec2 spawn = FindSpawn(peerId, team);
         return new PlayerState
         {
             PeerId = peerId,
+            Team = team,
             Position = spawn,
             Grounded = PlayerSim.OnGround(Terrain, spawn),
             JumpsLeft = stats.TotalJumps,
@@ -198,7 +215,7 @@ public class SimWorld
             if (_entries[peerId].SpawnAssignment is not int assigned)
             {
                 assignment = _config.Rules.Teams && team != null
-                    ? _players.Values.Count(player => player.Team == team)
+                    ? _entries.Values.Count(entry => entry.SpawnAssignment != null && entry.State.Team == team)
                     : Enumerable.Range(0, _entries.Count + 1)
                         .First(index => !_entries.Values.Any(entry => entry.SpawnAssignment == index));
                 _entries[peerId].SpawnAssignment = assignment;
@@ -235,7 +252,12 @@ public class SimWorld
 
     public void RemovePlayer(int peerId)
     {
-        _entries.Remove(peerId);
+        if (!_entries.Remove(peerId))
+        {
+            return;
+        }
+        _respawns.Removed(peerId);
+        _pendingDamage.RemoveAll(damage => damage.PeerId == peerId);
         _modifierChanges.RemoveAll(change => change.PeerId == peerId);
     }
 
@@ -253,6 +275,10 @@ public class SimWorld
     public void Teleport(int peerId, Vec2 position)
     {
         PlayerState player = _players[peerId];
+        if (!player.IsAlive)
+        {
+            throw new InvalidOperationException("Cannot teleport a dead player.");
+        }
         _entries[peerId].State = player with
         {
             Position = position,
@@ -281,6 +307,7 @@ public class SimWorld
 
     public void Step()
     {
+        int nextTick = checked(Tick + 1);
         _explosions.Clear();
         _shellRetirements.Clear();
         _mortarEvents.Clear();
@@ -292,14 +319,19 @@ public class SimWorld
             PlayerInput input = queue.Next(); // consumed even by the dead: acks must keep flowing
             PlayerState prev = _players[id];
             PlayerState state;
-            if (prev.RespawnTicks > 0)
+            if (!prev.IsAlive)
             {
-                state = prev;
-                if (--state.RespawnTicks == 0)
-                    state = FreshState(id, prev.Team, queue.LastAppliedSeq) with
-                    {
-                        Team = prev.Team,
-                    };
+                int? returnTick = _respawns.ReturnTick(id, nextTick);
+                if (!_entries[id].HasSpawned || returnTick <= nextTick)
+                {
+                    Spawn(_entries[id], queue.LastAppliedSeq);
+                }
+                else
+                {
+                    _entries[id].State.RespawnTicks = returnTick is int at
+                        ? checked((ushort)(at - nextTick)) : (ushort)0;
+                }
+                state = _entries[id].State;
             }
             else
             {
@@ -325,9 +357,8 @@ public class SimWorld
                 state.Aim = queue.RawAppliedInput.Aim;
                 if (FellOutOfTheMap(state))
                 {
-                    _deaths.Add(new Death(id, state.BodyCenter,
-                        KillerId: 0, Owned: false, ShellId: -1)); // death pit
-                    state = Corpse(state);
+                    state = Kill(state, new Death(id, state.BodyCenter,
+                        KillerId: 0, Owned: false, ShellId: -1));
                 }
             }
             state.LastInputSeq = queue.LastAppliedSeq;
@@ -340,7 +371,7 @@ public class SimWorld
         _forcedMortarExplosions.Clear();
         ApplyQueuedDamage();
         StepMortars();
-        Tick++;
+        Tick = nextTick;
     }
 
     private void ApplyQueuedDamage()
@@ -353,9 +384,8 @@ public class SimWorld
                 continue;
             if (pending.Amount >= player.Health)
             {
-                _deaths.Add(new Death(pending.PeerId, player.BodyCenter,
+                Kill(player, new Death(pending.PeerId, player.BodyCenter,
                     KillerId: pending.PeerId, Owned: false, ShellId: -1));
-                _entries[pending.PeerId].State = Corpse(player);
                 continue;
             }
             player.Health = (byte)(player.Health - pending.Amount);
@@ -411,7 +441,7 @@ public class SimWorld
     {
         foreach ((int id, PlayerState p) in _players)
         {
-            if (p.ParryTicks == 0 || p.RespawnTicks > 0)
+            if (p.ParryTicks == 0 || !p.IsAlive)
                 continue;
             Vec2 toCenter = p.BodyCenter - m.Position;
             float radius = _entries[id].Effective.ParryRadius;
@@ -437,7 +467,7 @@ public class SimWorld
     {
         foreach ((int id, PlayerState p) in _players)
         {
-            if (id == m.OwnerId || p.RespawnTicks > 0 || p.ParryTicks > 0)
+            if (id == m.OwnerId || !p.IsAlive || p.ParryTicks > 0)
                 continue;
             if (m.Position.X >= p.Position.X - SimConfig.PLAYER_HALF_WIDTH &&
                 m.Position.X < p.Position.X + SimConfig.PLAYER_HALF_WIDTH &&
@@ -473,9 +503,8 @@ public class SimWorld
             if (damage >= p.Health)
             {
                 // OWNED: the parried shell came back for its own shooter.
-                _deaths.Add(new Death(id, p.BodyCenter, m.OwnerId,
+                Kill(p, new Death(id, p.BodyCenter, m.OwnerId,
                     Owned: m.Deflected && id == m.FiredBy, ShellId: m.Id));
-                _entries[id].State = Corpse(p);
                 continue;
             }
             p.Health = (byte)(p.Health - damage);
@@ -489,16 +518,29 @@ public class SimWorld
         _players.TryGetValue(shooterId, out PlayerState shooter) &&
         Teams.SameSide(victim.Team, shooter.Team);
 
-    /// <summary>Body stays where it died until the respawn countdown ends;
-    /// rope drops so nothing renders.</summary>
-    private PlayerState Corpse(in PlayerState p) => p with
+    private PlayerState Kill(in PlayerState player, Death death)
     {
-        Velocity = Vec2.Zero,
-        Health = 0,
-        Rope = RopeMode.NONE,
-        RespawnTicks = (ushort)Math.Max(1, _respawnDelayTicks),
-        SpawnImmunityTicks = 0,
-    };
+        SimulatedPlayer entry = _entries[player.PeerId];
+        if (!entry.State.IsAlive)
+        {
+            return entry.State;
+        }
+        entry.State = player with
+        {
+            Velocity = Vec2.Zero,
+            Health = 0,
+            Rope = RopeMode.NONE,
+            ParryTicks = 0,
+            SpawnImmunityTicks = 0,
+            RespawnTicks = 0,
+        };
+        _deaths.Add(death);
+        int deathTick = checked(Tick + 1);
+        _respawns.Died(death, deathTick);
+        entry.State.RespawnTicks = _respawns.ReturnTick(player.PeerId, deathTick) is int at
+            ? checked((ushort)Math.Max(1, at - deathTick)) : (ushort)0;
+        return entry.State;
+    }
 
     /// <summary>Only the bottom edge kills; side/top exits fall back in.</summary>
     private bool FellOutOfTheMap(in PlayerState p) =>

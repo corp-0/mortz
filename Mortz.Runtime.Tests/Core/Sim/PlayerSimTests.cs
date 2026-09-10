@@ -12,6 +12,7 @@ public class PlayerSimTests
     private static PlayerState NewGroundedPlayer(float x = 200) => new()
     {
         PeerId = 1,
+        Health = _stats.MaxHealth,
         Position = new Vec2(x, TestWorlds.FLOOR_Y),
         Grounded = true,
     };

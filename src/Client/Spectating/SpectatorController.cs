@@ -83,12 +83,12 @@ public partial class SpectatorController : Node
         _targets.Clear();
         foreach (RenderPlayer player in players)
         {
-            if (player.PeerId != Network.LocalPeerId && player.RespawnTicks == 0)
+            if (player.PeerId != Network.LocalPeerId && player.Health > 0)
                 _targets.Add(player.PeerId);
         }
         _targets.Sort();
 
-        float seconds = SecondsUntilReturn(newestTick);
+        float? seconds = SecondsUntilReturn(newestTick);
         switch (_participation.Activity)
         {
             case MatchActivity.ACTIVE:
@@ -130,7 +130,7 @@ public partial class SpectatorController : Node
             Cycle(1);
     }
 
-    private void PresentSpectator(IReadOnlyList<RenderPlayer> players, float seconds)
+    private void PresentSpectator(IReadOnlyList<RenderPlayer> players, float? seconds)
     {
         if (_targetPeerId is not int target || !_targets.Contains(target))
             _targetPeerId = _targets.Count > 0 ? _targets[0] : null;
@@ -161,10 +161,10 @@ public partial class SpectatorController : Node
         _targetPeerId = _targets[next];
     }
 
-    private float SecondsUntilReturn(int newestTick)
+    private float? SecondsUntilReturn(int newestTick)
     {
         if (_participation.ReturnTick < 0 || newestTick < 0)
-            return 0;
+            return null;
         return Math.Max(0, _participation.ReturnTick - newestTick) / (float)SimConfig.TICK_RATE;
     }
 

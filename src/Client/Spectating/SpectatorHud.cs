@@ -8,15 +8,18 @@ public partial class SpectatorHud : Control
 
     public void HideStatus() => Visible = false;
 
-    public void ShowDeathPresentation(float seconds)
+    public void ShowDeathPresentation(float? seconds)
     {
         Visible = true;
-        _status.Text = seconds > 0
-            ? $"Respawning in {seconds:0.0}"
-            : "Respawning...";
+        _status.Text = seconds switch
+        {
+            null => "Waiting to respawn",
+            > 0 => $"Respawning in {seconds:0.0}",
+            _ => "Respawning...",
+        };
     }
 
-    public void ShowSpectating(string target, float seconds, bool canCycle)
+    public void ShowSpectating(string target, float? seconds, bool canCycle)
     {
         Visible = true;
         string who = target.Length > 0 ? $"Spectating: {target}" : "Spectating";
