@@ -21,6 +21,9 @@ public partial class MainMenu : Control
     [Signal]
     public delegate void MapEditorRequestedEventHandler();
 
+    [Signal]
+    public delegate void NavigationRequestedEventHandler();
+
     [Export] private MenuBackdrop _backdrop = null!;
     [Export] private Control _homePanel = null!;
     [Export] private ServerBrowser _browser = null!;
@@ -103,6 +106,7 @@ public partial class MainMenu : Control
 
     public void OnJoinMenuPressed()
     {
+        EmitSignal(SignalName.NavigationRequested);
         SetStatus("");
         if (!HasIdentity(PendingAction.JOIN))
             return;
@@ -111,6 +115,7 @@ public partial class MainMenu : Control
 
     public void OnHostMenuPressed()
     {
+        EmitSignal(SignalName.NavigationRequested);
         SetStatus("");
         if (!HasIdentity(PendingAction.HOST))
             return;
@@ -119,16 +124,22 @@ public partial class MainMenu : Control
 
     public void OnSettingsPressed()
     {
+        EmitSignal(SignalName.NavigationRequested);
         SetStatus("");
         _pendingAction = PendingAction.NONE;
         ShowPanel(_settingsScreen);
         _settingsScreen.Open();
     }
 
-    public void OnMapEditorPressed() => EmitSignal(SignalName.MapEditorRequested);
+    public void OnMapEditorPressed()
+    {
+        EmitSignal(SignalName.NavigationRequested);
+        EmitSignal(SignalName.MapEditorRequested);
+    }
 
     public void OnBackPressed()
     {
+        EmitSignal(SignalName.NavigationRequested);
         SetStatus("");
         ShowPanel(_homePanel);
     }

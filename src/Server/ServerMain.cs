@@ -3,11 +3,13 @@ using Chickensoft.Introspection;
 using Godot;
 using Mortz.Net;
 using Mortz.Platform;
+using Mortz.Protocol.Hosting;
 using Mortz.Server.Admission;
 using Mortz.Server.Hosting;
 using Mortz.Server.Platform;
 using Mortz.Server.Pump;
 using Mortz.Server.Query;
+using Mortz.Shared;
 using Mortz.Shared.Logging;
 #if TOOLS
 using Mortz.Shared.E2E;
@@ -29,6 +31,9 @@ public partial class ServerMain : Node
     private ServerRuntime? _runtime;
     private GameServer _server = null!;
     private ServerCapabilities _lastCapabilities;
+    private OwnedServerConnection? _owner;
+    private Task? _startupReport;
+    private bool _startupFailed;
 
     public ServerCapabilities Capabilities => _runtime?.Capabilities ?? default;
     public int BoundQueryPort => Capabilities.Query == QueryOwner.NONE ? -1 : _host.Load!.Value.Boot.QueryPort;
@@ -37,9 +42,31 @@ public partial class ServerMain : Node
 
     public void OnResolved()
     {
+        ProcessMode = ProcessModeEnum.Always;
+        try
+        {
+            string? pipeName = CmdArgs.GetValue("--host-pipe");
+            string? token = CmdArgs.GetValue("--host-token");
+            if (CmdArgs.HasFlag("--host-pipe") || CmdArgs.HasFlag("--host-token"))
+            {
+                _owner = new OwnedServerConnection(pipeName ?? "", token ?? "");
+            }
+            StartRuntime();
+        }
+        catch (Exception exception)
+        {
+            MortzLog.For("server").Error(exception, "server startup failed");
+            FailStartup("Local server startup failed. Check the server log.");
+        }
+    }
+
+    private void StartRuntime()
+    {
         if (_host.Load == null || !_host.Listen(Network))
         {
-            GetTree().Quit(1);
+            FailStartup(_host.Load == null
+                ? "Local server could not load its content or settings. Check the server log."
+                : "Local server could not bind its game port. It may already be in use.");
             return;
         }
         ServerBoot boot = _host.Load.Value.Boot;
@@ -70,7 +97,27 @@ public partial class ServerMain : Node
         lifetime.Initialize(AdvanceRuntime, Stop);
         AddChild(lifetime);
         ReportCapabilities();
+        _startupReport = _owner?.ReportAsync(new(HostControlKind.READY, "", "127.0.0.1",
+            boot.GamePort, BoundQueryPort));
         NotifyE2EListening();
+    }
+
+    private void FailStartup(string reason)
+    {
+        _startupFailed = true;
+        _startupReport = _owner?.ReportAsync(new(HostControlKind.FAILED, "", Reason: reason));
+        if (_owner == null)
+        {
+            GetTree().Quit(1);
+        }
+    }
+
+    public override void _Process(double delta)
+    {
+        if (_owner?.StopRequested == true || (_startupFailed && _startupReport?.IsCompleted != false))
+        {
+            GetTree().Quit(_startupFailed ? 1 : 0);
+        }
     }
 
     private void AdvanceRuntime()
@@ -94,7 +141,11 @@ public partial class ServerMain : Node
             Capabilities.Publication, Capabilities.Status);
     }
 
-    public void OnExitTree() => Stop();
+    public void OnExitTree()
+    {
+        _owner?.Dispose();
+        Stop();
+    }
 
     private void Stop()
     {

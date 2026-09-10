@@ -1,6 +1,7 @@
 using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
+using Mortz.Client.Hosting;
 using Mortz.Client.MapEditor;
 using Mortz.Client.Match;
 using Mortz.Client.Menus;
@@ -9,6 +10,7 @@ using Mortz.Client.Settings;
 using Mortz.Core.Terrain;
 using Mortz.Net;
 using Mortz.Platform;
+using Mortz.Protocol.Hosting;
 using Mortz.Protocol.Net;
 using Mortz.Protocol.Net.Admission;
 using Mortz.Protocol.Net.Lobby;
@@ -61,7 +63,11 @@ public partial class ClientSessionController : Node, ISessionExit,
     private MainMenu? _menu;
     private MapEditorScreen? _mapEditor;
     private string? _pendingLocalAdminPassword;
-    private bool _spawnedLocalServer;
+    private OwnedServerProcess? _localServer;
+    private Task<HostControlMessage>? _localStartup;
+    private Task? _localStop;
+    private string _hostPlayerName = "";
+    private int _hostSkin;
     private bool _subscribed;
 
     [Dependency]
@@ -72,8 +78,6 @@ public partial class ClientSessionController : Node, ISessionExit,
 
     public override void _Notification(int what)
     {
-        if (what == NotificationWMCloseRequest)
-            ServerLauncher.Kill();
         this.Notify(what);
     }
 
@@ -87,6 +91,7 @@ public partial class ClientSessionController : Node, ISessionExit,
         {
             _admission.Advance(Time.GetTicksMsec());
             _browser?.Advance();
+            AdvanceLocalServer();
         }, _admission.Dispose);
         AddChild(admissionLifetime);
         ServerProbe probe = new() { Name = "ServerProbe" };
@@ -120,30 +125,136 @@ public partial class ClientSessionController : Node, ISessionExit,
         }
         Unsubscribe();
         _connection.Cancel();
-        ServerLauncher.Kill();
+        StopLocalServer();
+        try
+        {
+            _localStop?.GetAwaiter().GetResult();
+        }
+        catch (Exception exception)
+        {
+            _log.Error(exception, "failed to stop local server");
+        }
     }
 
     public void OnHostRequested(int port, string playerName, string adminPassword,
         string serverName, int skin = 0, bool allowJoinInProgress = true)
     {
+        if (_localStop is { IsCompleted: false })
+        {
+            _menu?.SetStatus("The previous local server is still stopping. Try again shortly.");
+            return;
+        }
+        if (_localServer != null || !_session.TryBeginConnecting())
+        {
+            return;
+        }
+        _connection.Cancel();
+        Network.ResetPeer();
+        _browser?.Close();
         string localAdminPassword = adminPassword.Length > 0
             ? adminPassword
             : Convert.ToHexString(CryptoRandom.GetBytes(32));
-        if (!ServerLauncher.Spawn(port, localAdminPassword, serverName, allowJoinInProgress))
+        try
         {
-            _menu?.SetStatus("Failed to start local server.");
-            return;
+            _localServer = new OwnedServerProcess();
+            _localStartup = _localServer.StartAsync(ServerLauncher.CreateStartInfo(port,
+                localAdminPassword, serverName, allowJoinInProgress));
+            _pendingLocalAdminPassword = localAdminPassword;
+            _hostPlayerName = playerName;
+            _hostSkin = skin;
+            _menu?.SetStatus("Starting local server...");
         }
-        _pendingLocalAdminPassword = localAdminPassword;
-        _spawnedLocalServer = true;
-        StartConnecting("127.0.0.1", port, playerName, skin);
+        catch (Exception exception)
+        {
+            ReturnToMenu($"Failed to start local server: {exception.Message}", stopLocalServer: true);
+        }
     }
 
-    public void OnJoinRequested(string address, int port, string playerName, int skin = 0) =>
+    public void OnJoinRequested(string address, int port, string playerName, int skin = 0)
+    {
+        if (_session.Stage is not (ClientSessionStage.MENU or ClientSessionStage.CONNECTING))
+        {
+            return;
+        }
+        StopLocalServer();
+        _pendingLocalAdminPassword = null;
         StartConnecting(address, port, playerName, skin);
+    }
 
-    private void OnBrowserJoinRequested(ServerJoinRequest request) =>
+    private void OnBrowserJoinRequested(ServerJoinRequest request)
+    {
+        if (_session.Stage is not (ClientSessionStage.MENU or ClientSessionStage.CONNECTING))
+        {
+            return;
+        }
+        StopLocalServer();
+        _pendingLocalAdminPassword = null;
         StartConnecting(request.Address, request.Port, Settings.PlayerName, Settings.Skin, request.KnownSteamAccountId);
+    }
+
+    private void AdvanceLocalServer()
+    {
+        if (_localStop is { IsCompleted: true } stop)
+        {
+            _localStop = null;
+            if (stop.IsFaulted)
+            {
+                _log.Error(stop.Exception, "failed to stop local server");
+                _menu?.SetStatus("Failed to stop local server. See the log for details.");
+            }
+        }
+        if (_localStartup is { IsCompleted: true } startup)
+        {
+            _localStartup = null;
+            try
+            {
+                HostControlMessage ready = startup.GetAwaiter().GetResult();
+                _log.Information("local server ready at {Address}:{Port}, query port {QueryPort}",
+                    ready.Address, ready.GamePort, ready.QueryPort);
+                StartConnecting(ready.Address, ready.GamePort, _hostPlayerName, _hostSkin);
+            }
+            catch (Exception exception)
+            {
+                _log.Error(exception, "local server startup failed");
+                ReturnToMenu(exception.Message, stopLocalServer: true);
+            }
+        }
+        else if (_localStartup == null && _localServer?.HasExited == true)
+        {
+            ReturnToMenu("Local server stopped unexpectedly.", stopLocalServer: true);
+        }
+    }
+
+    private void StopLocalServer()
+    {
+        if (_localServer == null)
+        {
+            return;
+        }
+        OwnedServerProcess server = _localServer;
+        Task<HostControlMessage>? startup = _localStartup;
+        _localServer = null;
+        _localStartup = null;
+        _localStop = FinishLocalServerAsync(server, startup);
+    }
+
+    private static async Task FinishLocalServerAsync(OwnedServerProcess server, Task<HostControlMessage>? startup)
+    {
+        await server.StopAsync().ConfigureAwait(false);
+        if (startup != null)
+        {
+            try { await startup.ConfigureAwait(false); }
+            catch (Exception) { /* A cancelled launch has no result to present. */ }
+        }
+    }
+
+    private void CancelMenuConnection()
+    {
+        if (_session.Stage == ClientSessionStage.CONNECTING)
+        {
+            ReturnToMenu("", stopLocalServer: true);
+        }
+    }
 
     public void OnReadyToggled(bool ready) => new SetReadyMsg(ready).SendToServer(Network);
 
@@ -414,10 +525,9 @@ public partial class ClientSessionController : Node, ISessionExit,
         CreateMenu(autoStartIntro: true);
         _menu!.ShowHome();
         _menu.SetStatus(status);
-        if (stopLocalServer && _spawnedLocalServer)
+        if (stopLocalServer)
         {
-            ServerLauncher.Kill();
-            _spawnedLocalServer = false;
+            StopLocalServer();
         }
     }
 
@@ -427,6 +537,7 @@ public partial class ClientSessionController : Node, ISessionExit,
             return;
         _menu = _menuScene.Instantiate<MainMenu>();
         _menu.HostRequested += OnHostRequested;
+        _menu.NavigationRequested += CancelMenuConnection;
         _menu.MapEditorRequested += OpenMapEditor;
         AddChild(_menu);
         if (autoStartIntro)
