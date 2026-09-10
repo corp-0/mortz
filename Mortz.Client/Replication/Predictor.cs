@@ -63,7 +63,7 @@ public sealed class Predictor
 
     private void ApplyModifiersAt(int tick)
     {
-        var selected = _modifierHistory.LastOrDefault(change => change.Tick <= tick,
+        (int Tick, int Revision, IReadOnlyList<StatsModifier> Modifiers) selected = _modifierHistory.LastOrDefault(change => change.Tick <= tick,
             (Tick: int.MinValue, Revision: -1, Modifiers: (IReadOnlyList<StatsModifier>)Array.Empty<StatsModifier>()));
         if (selected.Revision == _appliedModifierRevision)
             return;
@@ -176,16 +176,14 @@ public sealed class Predictor
         }
     }
 
-    /// <summary>Inputs to (re)send this packet.</summary>
-    public IReadOnlyList<(int Seq, PlayerInput Input)> RecentInputs(int n) => _history.Newest(n);
+    /// <summary>Inputs to resend. Consume the view before the next tick or reconciliation.</summary>
+    public ReadOnlySpan<(int Seq, PlayerInput Input)> RecentInputs(int n) => _history.Newest(n);
 
     /// <summary>
     /// Rewind to the authoritative state and replay unacked inputs. Returns
     /// how far the predicted position moved (old - new); feed it to a decaying
     /// visual offset so corrections ease in.
     /// </summary>
-    /// <param name="serverTick">Out-of-order stragglers are dropped (replaying
-    /// from pruned history would mispredict); -1 skips the check.</param>
     public Vec2 Reconcile(PlayerState serverState, int lastAppliedSeq, int serverTick = -1)
     {
         if (serverTick >= 0)

@@ -28,6 +28,25 @@ public class InputPacketTests
     }
 
     [Fact]
+    public void EncodesRecentHistoryAfterPruningAndCapacityTrimming()
+    {
+        InputHistory history = new();
+        for (int seq = 0; seq < 200; seq++)
+        {
+            history.Add(seq, new PlayerInput(InputButtons.RIGHT, (byte)seq));
+        }
+        Assert.Equal(new[] { 196, 197, 198, 199 },
+            InputPacket.Decode(InputPacket.Encode(history.Newest(4))).Select(item => item.Seq));
+
+        history.DropThrough(198);
+        history.Add(200, new PlayerInput(InputButtons.FIRE, 200));
+        List<(int Seq, PlayerInput Input)> decoded = InputPacket.Decode(InputPacket.Encode(history.Newest(4)));
+        Assert.Equal(new[] { 198, 199, 200 }, decoded.Select(item => item.Seq));
+        Assert.Equal(new PlayerInput(InputButtons.FIRE, 200), decoded[^1].Input);
+        Assert.Empty(InputPacket.Encode(history.Newest(0)));
+    }
+
+    [Fact]
     public void EmptyPacket_DecodesToNothing()
     {
         Assert.Empty(InputPacket.Decode(InputPacket.Encode([])));
@@ -75,6 +94,19 @@ public class InputPacketTests
         }
         Assert.False(InputPacket.TryDecode([0, 0, 0, 0, 0x80, 0x80, 0x80, 0x80, 0x10, 1, 0, 0, 0], out _));
         Assert.False(InputPacket.TryDecode([0, 0, 0, 0, 0x80, 0x00, 1, 1, 0, 0], out _));
+    }
+
+    [Fact]
+    public void TransportSizeLimitFitsTheLargestValidInputPacket()
+    {
+        (int, PlayerInput)[] inputs = Enumerable.Range(0, NetConfig.INPUT_REDUNDANCY)
+            .Select(index => (index - NetConfig.INPUT_REDUNDANCY, new PlayerInput(InputButtons.RIGHT)))
+            .ToArray();
+        byte[] packet = InputPacket.Encode(inputs, int.MinValue);
+
+        Assert.Equal(InputPacket.MAX_PACKET_BYTES, packet.Length);
+        Assert.True(InputPacket.TryDecode(packet, out _));
+        Assert.False(InputPacket.TryDecode([.. packet, 0], out _));
     }
 
     [Fact]

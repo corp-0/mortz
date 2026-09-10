@@ -12,25 +12,28 @@ namespace Mortz.Protocol.Input;
 public static class InputPacket
 {
     private const int BYTES_PER_INPUT = sizeof(ushort) + sizeof(byte);
+    public const int MAX_PACKET_BYTES = sizeof(int) + 5 + sizeof(byte) + NetConfig.INPUT_REDUNDANCY * BYTES_PER_INPUT;
     private const InputButtons DEFINED_BUTTONS = InputButtons.LEFT | InputButtons.RIGHT |
                                                  InputButtons.JUMP | InputButtons.DASH | InputButtons.ROPE | InputButtons.UP |
                                                  InputButtons.DOWN | InputButtons.FIRE | InputButtons.RELOAD | InputButtons.PARRY;
 
-    public static byte[] Encode(IReadOnlyList<(int Seq, PlayerInput Input)> inputs, int generation = 0)
+    public static byte[] Encode(ReadOnlySpan<(int Seq, PlayerInput Input)> inputs, int generation = 0)
     {
-        if (inputs.Count == 0)
+        if (inputs.IsEmpty)
             return [];
-        using MemoryStream ms = new MemoryStream();
-        using BinaryWriter w = new BinaryWriter(ms);
+        return PacketEncoder.Encode(inputs, generation, Write);
+    }
+
+    private static void Write(ref PacketWriter w, ReadOnlySpan<(int Seq, PlayerInput Input)> inputs, int generation)
+    {
         w.Write(generation);
-        WriteVarUInt(w, unchecked((uint)inputs[^1].Seq));
-        w.Write((byte)inputs.Count);
+        WriteVarUInt(ref w, unchecked((uint)inputs[^1].Seq));
+        w.Write((byte)inputs.Length);
         foreach ((int _, PlayerInput input) in inputs)
         {
             w.Write((ushort)input.Buttons);
             w.Write(input.Aim);
         }
-        return ms.ToArray();
     }
 
     public static List<(int Seq, PlayerInput Input)> Decode(byte[] data)
@@ -82,7 +85,7 @@ public static class InputPacket
         return true;
     }
 
-    private static void WriteVarUInt(BinaryWriter w, uint value)
+    private static void WriteVarUInt(ref PacketWriter w, uint value)
     {
         while (value >= 0x80)
         {

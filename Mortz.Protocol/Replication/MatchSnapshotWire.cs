@@ -6,22 +6,26 @@ namespace Mortz.Protocol.Replication;
 /// <summary>Fixed binary layout for the outer match snapshot.</summary>
 public static class MatchSnapshotWire
 {
-    public static byte[] Serialize(MatchSnapshot snapshot, int? localPeerId)
+    public static byte[] Serialize(MatchSnapshot snapshot, int? localPeerId) =>
+        PacketEncoder.Encode(snapshot, localPeerId, Write);
+
+    private static void Write(ref PacketWriter writer, MatchSnapshot snapshot, int? localPeerId)
     {
-        using MemoryStream stream = new();
-        using BinaryWriter writer = new(stream);
         writer.Write(snapshot.Generation);
         writer.Write(snapshot.RosterRevision);
-        SnapshotWire.WritePlayers(writer, snapshot.Tick,
-            [.. snapshot.Players.Select(player => player.Simulation)], localPeerId,
-            snapshot.Players.Select((player, index) => (player, index)).ToDictionary(
-                item => item.player.Simulation.PeerId, item => item.player.Slot == 0 ? (byte)(item.index + 1) : item.player.Slot));
+        SnapshotWire.WritePlayersHeader(ref writer, snapshot.Tick, snapshot.Players.Length, localPeerId != null);
+        for (int index = 0; index < snapshot.Players.Length; index++)
+        {
+            ReplicatedPlayer player = snapshot.Players[index];
+            byte slot = player.Slot == 0 ? (byte)(index + 1) : player.Slot;
+            SnapshotWire.WritePlayer(ref writer, player.Simulation, localPeerId, slot);
+        }
         foreach (ReplicatedPlayer player in snapshot.Players)
         {
-            WritePresentation(writer, player.Presentation);
+            writer.Write(player.Presentation.KillingSpreeMagnitude);
+            writer.Write(player.Presentation.IsBleeding);
             writer.Write(player.Skin);
         }
-        return stream.ToArray();
     }
 
     public static MatchSnapshot Deserialize(byte[] data, IPeerSlots? slots)
@@ -41,11 +45,6 @@ public static class MatchSnapshotWire
         if (stream.Position != stream.Length)
             throw new InvalidDataException("Trailing bytes in match snapshot.");
         return new MatchSnapshot(tick, players, generation, revision);
-    }
-
-    private static void WritePresentation(BinaryWriter writer, in PlayerPresentationState presentation)
-    {
-        PlayerPresentationState.WriteTo(writer, presentation);
     }
 
     private static PlayerPresentationState ReadPresentation(BinaryReader reader)

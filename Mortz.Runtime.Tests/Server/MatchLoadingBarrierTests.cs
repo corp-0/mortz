@@ -149,6 +149,37 @@ public sealed class MatchLoadingBarrierTests : IDisposable
         Assert.True(Assert.Single(state.Players).Position.X > 8);
     }
 
+    [Fact]
+    public void MalformedInputPacketsAreRejectedAtTheServerBoundary()
+    {
+        E2EMatchControl control = new();
+        using TestServer server = new(control: control);
+        server.Connect(7, "alice");
+        server.Receive(7, new SetReadyMsg(true));
+        server.Tick();
+        byte[] valid = InputPacket.Encode([(42, new PlayerInput(InputButtons.RIGHT))],
+            server.Server.Generation);
+
+        for (int length = 0; length < valid.Length; length++)
+        {
+            server.Server.Inputs(7, valid[..length]);
+        }
+        server.Server.Inputs(7, [.. valid, 0]);
+        byte[] undefinedButtons = (byte[])valid.Clone();
+        undefinedButtons[^2] = 0x80;
+        server.Server.Inputs(7, undefinedButtons);
+
+        WorldStateOutcome state = default;
+        control.ReadState(value => state = value);
+        server.AdvanceWithoutReady();
+        Assert.Equal(8, Assert.Single(state.Players).Position.X);
+
+        server.Server.Inputs(7, valid);
+        control.ReadState(value => state = value);
+        server.AdvanceWithoutReady();
+        Assert.True(Assert.Single(state.Players).Position.X > 8);
+    }
+
     private void BeginLoadingMatch()
     {
         _server.Connect(7, "alice");

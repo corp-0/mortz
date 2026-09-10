@@ -20,35 +20,27 @@ public static class SnapshotWire
     private const byte FULL_STATE_BIT = 0x80;
     private const byte SLOT_IDS_BIT = 0x80;
     private const byte ROPE_MASK = 0x03;
+    public static byte[] Serialize(Snapshot snapshot, int? localPeerId) =>
+        PacketEncoder.Encode(snapshot, localPeerId, Write);
 
-    public static byte[] Serialize(Snapshot snapshot, int? localPeerId)
+    private static void Write(ref PacketWriter writer, Snapshot snapshot, int? localPeerId)
     {
-        using MemoryStream stream = new();
-        using BinaryWriter writer = new(stream);
-        Write(writer, snapshot, localPeerId);
-        return stream.ToArray();
-    }
-
-    internal static void Write(BinaryWriter writer, Snapshot snapshot, int? localPeerId)
-    {
-        WritePlayers(writer, snapshot.Tick, snapshot.Players, localPeerId);
-        WriteMortars(writer, snapshot.Mortars);
-    }
-
-    internal static void WritePlayers(BinaryWriter writer, int tick, PlayerState[] players,
-        int? localPeerId, IReadOnlyDictionary<int, byte>? slots = null)
-    {
-        writer.Write(tick);
-        if (players.Length > NetConfig.MAX_PLAYERS)
-            throw new InvalidDataException($"Too many players in snapshot: {players.Length}.");
-        bool slotIds = localPeerId != null;
-        writer.Write((byte)(players.Length | (slotIds ? SLOT_IDS_BIT : 0)));
-        for (int index = 0; index < players.Length; index++)
+        if (snapshot.Mortars.Length > ushort.MaxValue)
+            throw new InvalidDataException($"Too many mortars in snapshot: {snapshot.Mortars.Length}.");
+        WritePlayersHeader(ref writer, snapshot.Tick, snapshot.Players.Length, localPeerId != null);
+        for (int index = 0; index < snapshot.Players.Length; index++)
         {
-            PlayerState player = players[index];
-            byte slot = slots == null ? (byte)(index + 1) : slots[player.PeerId];
-            WritePlayer(writer, player, localPeerId, slotIds, slot);
+            WritePlayer(ref writer, snapshot.Players[index], localPeerId, (byte)(index + 1));
         }
+        WriteMortars(ref writer, snapshot.Mortars);
+    }
+
+    public static void WritePlayersHeader(ref PacketWriter writer, int tick, int count, bool slotIds)
+    {
+        if (count is < 0 or > NetConfig.MAX_PLAYERS)
+            throw new InvalidDataException($"Invalid snapshot player count {count}.");
+        writer.Write(tick);
+        writer.Write((byte)(count | (slotIds ? SLOT_IDS_BIT : 0)));
     }
 
     public static Snapshot Deserialize(byte[] data, IPeerSlots? slots = null)
@@ -85,9 +77,10 @@ public static class SnapshotWire
         return (tick, players);
     }
 
-    private static void WritePlayer(BinaryWriter writer, in PlayerState player,
-        int? localPeerId, bool slotIds, byte slot)
+    public static void WritePlayer(ref PacketWriter writer, in PlayerState player,
+        int? localPeerId, byte slot)
     {
+        bool slotIds = localPeerId != null;
         bool full = localPeerId == null || player.PeerId == localPeerId;
         if (slotIds)
         {
@@ -101,12 +94,12 @@ public static class SnapshotWire
         }
         else writer.Write(player.PeerId);
 
-        WriteVec(writer, player.Position);
+        WriteVec(ref writer, player.Position);
         writer.Write((byte)((byte)player.Rope | (player.Grounded ? GROUNDED_BIT : 0) |
                             (full ? FULL_STATE_BIT : 0)));
         if (full)
         {
-            WriteVec(writer, player.Velocity);
+            WriteVec(ref writer, player.Velocity);
             writer.Write(player.JumpsLeft);
         }
         writer.Write(player.DashCooldown);
@@ -133,9 +126,9 @@ public static class SnapshotWire
             writer.Write((ushort)player.PrevButtons);
         }
         if (player.Rope != RopeMode.NONE)
-            WriteVec(writer, player.RopePoint);
+            WriteVec(ref writer, player.RopePoint);
         if (player.Rope == RopeMode.FLYING)
-            WriteVec(writer, player.RopeVelocity);
+            WriteVec(ref writer, player.RopeVelocity);
         if (player.Rope == RopeMode.ATTACHED)
             writer.Write(Quantize(player.RopeLength));
     }
@@ -204,10 +197,8 @@ public static class SnapshotWire
     // OwnerId rides along so clients can hide their own shells and render the
     // predicted copies instead; SpawnSeq lets the shooter spot a shell the
     // server took over (a deflect) and retire its predicted copy.
-    private static void WriteMortars(BinaryWriter writer, MortarState[] mortars)
+    private static void WriteMortars(ref PacketWriter writer, MortarState[] mortars)
     {
-        if (mortars.Length > ushort.MaxValue)
-            throw new InvalidDataException($"Too many mortars in snapshot: {mortars.Length}.");
         writer.Write((ushort)mortars.Length);
         foreach (MortarState mortar in mortars)
         {
@@ -216,8 +207,8 @@ public static class SnapshotWire
             writer.Write(mortar.FiredBy);
             writer.Write(mortar.Deflected);
             writer.Write(mortar.SpawnSeq);
-            WriteVec(writer, mortar.Position);
-            WriteVec(writer, mortar.Velocity);
+            WriteVec(ref writer, mortar.Position);
+            WriteVec(ref writer, mortar.Velocity);
         }
     }
 
@@ -244,7 +235,7 @@ public static class SnapshotWire
     private static short Quantize(float value) =>
         (short)Math.Clamp((int)MathF.Round(value * 4f), short.MinValue, short.MaxValue);
 
-    private static void WriteVec(BinaryWriter writer, Vec2 value)
+    private static void WriteVec(ref PacketWriter writer, Vec2 value)
     {
         writer.Write(Quantize(value.X));
         writer.Write(Quantize(value.Y));

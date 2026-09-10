@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using Mortz.Core.Sim;
 
 namespace Mortz.Core.Input;
@@ -45,11 +46,12 @@ public sealed class InputHistory
         }
     }
 
-    /// <summary>The newest <paramref name="n"/> inputs (fewer if not enough stored), in order.</summary>
-    public IReadOnlyList<(int Seq, PlayerInput Input)> Newest(int n)
+    /// <summary>The newest inputs in order. The view is valid until the history changes.</summary>
+    public ReadOnlySpan<(int Seq, PlayerInput Input)> Newest(int n)
     {
+        ArgumentOutOfRangeException.ThrowIfNegative(n);
         int start = Math.Max(0, _items.Count - n);
-        return _items.GetRange(start, _items.Count - start);
+        return CollectionsMarshal.AsSpan(_items)[start..];
     }
 
     /// <summary>Drops everything older than <paramref name="seq"/>, keeping the

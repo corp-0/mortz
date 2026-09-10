@@ -339,13 +339,13 @@ public partial class NetworkManager : Node, INetwork, IClientSender, IServerAdmi
     [Rpc(MultiplayerApi.RpcMode.AnyPeer, TransferMode = MultiplayerPeer.TransferModeEnum.Unreliable)]
     private void SubmitInputs(byte[] packet)
     {
-        if (!IsServer) return;
+        // Reject oversized datagrams before the signal marshals another copy.
+        if (!IsServer || packet.Length > InputPacket.MAX_PACKET_BYTES) return;
         int sender = Multiplayer.GetRemoteSenderId();
         if (!_gate.IsValidated(sender) ||
             !_gate.AllowInput(sender, Time.GetTicksMsec()))
             return;
-        if (InputPacket.TryDecode(packet, out _))
-            EmitSignal(SignalName.InputsReceived, sender, packet);
+        EmitSignal(SignalName.InputsReceived, sender, packet);
     }
 
     /// <summary>Server side: drop a peer without waiting for it to leave.</summary>
