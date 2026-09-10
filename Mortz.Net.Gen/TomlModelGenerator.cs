@@ -309,10 +309,10 @@ public sealed class TomlModelGenerator : IIncrementalGenerator
     {
         if (models.ContainsKey(type)) return;
         AttributeData? union = Attr(type, "TomlUnionAttribute");
-        AttributeData[] endConditionCases = type.GetAttributes()
-            .Where(attribute => attribute.AttributeClass?.Name == "EndConditionCaseAttribute")
+        AttributeData[] variantCases = type.GetAttributes()
+            .Where(attribute => attribute.AttributeClass?.Name == "ConfigVariantAttribute")
             .ToArray();
-        if (union != null || endConditionCases.Length > 0)
+        if (union != null || variantCases.Length > 0)
         {
             ImmutableArray<CaseInfo>.Builder cases = ImmutableArray.CreateBuilder<CaseInfo>();
             string discriminator = union == null || union.ConstructorArguments.Length == 0
@@ -322,7 +322,7 @@ public sealed class TomlModelGenerator : IIncrementalGenerator
                 ImmutableArray<CaseInfo>.Empty);
             IEnumerable<AttributeData> caseAttributes = union != null
                 ? type.GetAttributes().Where(x => x.AttributeClass?.Name == "TomlCaseAttribute")
-                : endConditionCases;
+                : variantCases;
             foreach (AttributeData attr in caseAttributes)
             {
                 int typeArgument = union != null ? 1 : 2;

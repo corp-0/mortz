@@ -19,7 +19,9 @@ public partial class LobbySettingsPanel : PanelContainer
     [Export] private TextureRect _mapPreview = null!;
     [Export] private Label _mapStatus = null!;
     [Export] private UiPropertySheet _rulesSheet = null!;
-    [Export] private VictoryRulesSheet _victoryRulesSheet = null!;
+    [Export] private ConfigVariantSheet _victoryRulesSheet = null!;
+    [Export] private ConfigVariantSheet _objectiveRulesSheet = null!;
+    [Export] private ConfigVariantSheet _respawnRulesSheet = null!;
     [Export] private UiPropertySheet _physicsSheet = null!;
     [Export] private UiPropertySheet _combatSheet = null!;
 
@@ -47,6 +49,16 @@ public partial class LobbySettingsPanel : PanelContainer
         _modePicker.ItemSelected += OnModeSelected;
         _rulesSheet.Build(ModeRulesUiMetadata.Categories, _config.Rules, OnConfigEdited);
         _victoryRulesSheet.Build(_config.Rules.EndCondition, OnVictoryRulesEdited);
+        _objectiveRulesSheet.Build(_config.Rules.Objective, (ObjectiveRules rules) =>
+        {
+            _config.Rules.Objective = rules;
+            OnConfigEdited();
+        });
+        _respawnRulesSheet.Build(_config.Rules.Respawn, (RespawnRules rules) =>
+        {
+            _config.Rules.Respawn = rules;
+            OnConfigEdited();
+        });
         _physicsSheet.Build(PhysicsUiMetadata.Categories, _config.Physics, OnConfigEdited);
         _combatSheet.Build(CombatUiMetadata.Categories, _config.Combat, OnConfigEdited);
         UpdateEditing(isAdmin: false);
@@ -90,6 +102,8 @@ public partial class LobbySettingsPanel : PanelContainer
         ApplyModeOptions(selection);
         _rulesSheet.UpdateModel(_config.Rules);
         _victoryRulesSheet.UpdateModel(_config.Rules.EndCondition);
+        _objectiveRulesSheet.UpdateModel(_config.Rules.Objective);
+        _respawnRulesSheet.UpdateModel(_config.Rules.Respawn);
         _physicsSheet.UpdateModel(_config.Physics);
         _combatSheet.UpdateModel(_config.Combat);
         UpdateEditing(Admin.IsAdmin);
@@ -158,6 +172,12 @@ public partial class LobbySettingsPanel : PanelContainer
     {
         if (!Admin.IsAdmin)
             return;
+        IReadOnlyList<string> errors = ModeComposition.Errors(_config.Rules);
+        if (errors.Count > 0)
+        {
+            _mapStatus.Text = string.Join(" ", errors);
+            return;
+        }
         byte[] payload = _config.ToBytes();
         if (Admin.TrySignAdminAction(ReplaceLobbyRulesAction.ACTION,
                 ReplaceLobbyRulesAction.SignablePayload(payload),
@@ -219,6 +239,8 @@ public partial class LobbySettingsPanel : PanelContainer
         _mapPicker.Disabled = !canEdit;
         _rulesSheet.SetEditable(canEdit);
         _victoryRulesSheet.SetEditable(canEdit);
+        _objectiveRulesSheet.SetEditable(canEdit);
+        _respawnRulesSheet.SetEditable(canEdit);
         _physicsSheet.SetEditable(canEdit);
         _combatSheet.SetEditable(canEdit);
     }

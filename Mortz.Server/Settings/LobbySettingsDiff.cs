@@ -25,23 +25,12 @@ public static class LobbySettingsDiff
             beforeDraft.Rules,
             afterDraft.Rules);
 
-        EndConditionDescriptor beforeVictory = EndConditionRulesMetadata.For(beforeDraft.Rules.EndCondition);
-        EndConditionDescriptor afterVictory = EndConditionRulesMetadata.For(afterDraft.Rules.EndCondition);
-        if (beforeVictory.RulesType == afterVictory.RulesType)
-        {
-            AddDeltas(
-                deltas,
-                afterVictory.Categories,
-                beforeDraft.Rules.EndCondition,
-                afterDraft.Rules.EndCondition);
-        }
-        else
-        {
-            deltas.Add(new LobbySettingDelta(
-                "End Condition",
-                beforeVictory.DisplayName,
-                afterVictory.DisplayName));
-        }
+        AddVariantDeltas(deltas, "End Condition", beforeDraft.Rules.EndCondition,
+            afterDraft.Rules.EndCondition, EndConditionRulesMetadata.For);
+        AddVariantDeltas(deltas, "Objective", beforeDraft.Rules.Objective,
+            afterDraft.Rules.Objective, ObjectiveRulesMetadata.For);
+        AddVariantDeltas(deltas, "Respawn", beforeDraft.Rules.Respawn,
+            afterDraft.Rules.Respawn, RespawnRulesMetadata.For);
 
         AddDeltas(
             deltas,
@@ -56,6 +45,21 @@ public static class LobbySettingsDiff
             afterDraft.Combat);
 
         return [.. deltas];
+    }
+
+    private static void AddVariantDeltas<T>(List<LobbySettingDelta> deltas, string name,
+        T before, T after, Func<T, ConfigVariantDescriptor<T>> describe) where T : class
+    {
+        ConfigVariantDescriptor<T> beforeVariant = describe(before);
+        ConfigVariantDescriptor<T> afterVariant = describe(after);
+        if (beforeVariant.RulesType == afterVariant.RulesType)
+        {
+            AddDeltas(deltas, afterVariant.Categories, before, after);
+        }
+        else
+        {
+            deltas.Add(new LobbySettingDelta(name, beforeVariant.DisplayName, afterVariant.DisplayName));
+        }
     }
 
     private static void AddDeltas(

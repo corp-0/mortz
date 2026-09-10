@@ -161,6 +161,78 @@ public sealed class ConfigGeneratorTests
         Assert.DoesNotContain("BinaryWriter", generated, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void EmptyVariantGetsSnapshotClampAndNoSettingsMetadata()
+    {
+        GeneratorDriverRunResult result = Run("""
+            namespace Mortz.Core.Match.Configuration;
+            [System.AttributeUsage(System.AttributeTargets.Class, AllowMultiple = true)]
+            public class ConfigVariantAttribute(string id, string name, System.Type type) : System.Attribute;
+            [ConfigVariant("none", "None", typeof(NoRules))]
+            public abstract class Rules;
+            public partial class NoRules : Rules;
+            """);
+        string generated = string.Join("\n", result.GeneratedTrees.Select(tree => tree.ToString()));
+
+        Assert.DoesNotContain(result.Diagnostics, item => item.Severity == DiagnosticSeverity.Error);
+        Assert.Contains("NoRulesSnapshot(", generated);
+        Assert.Contains(") : global::Mortz.Core.Match.Configuration.RulesSnapshot", generated);
+        Assert.Contains("public void Clamp()", generated);
+        Assert.DoesNotContain("NoRulesUiMetadata", generated);
+    }
+
+    [Theory]
+    [InlineData("[ConfigVariant(\"a\", \"Again\", typeof(Second))]", "")]
+    [InlineData("[ConfigVariant(\"b\", \"Again\", typeof(First))]", "")]
+    [InlineData("", "public int Untracked { get; set; }")]
+    public void InvalidVariantDeclarationsProduceDiagnostics(string extra, string body)
+    {
+        GeneratorDriverRunResult result = Run($$$"""
+            namespace Mortz.Core.Match.Configuration;
+            [System.AttributeUsage(System.AttributeTargets.Class, AllowMultiple = true)]
+            public class ConfigVariantAttribute(string id, string name, System.Type type) : System.Attribute;
+            [ConfigVariant("a", "First", typeof(First))]
+            {{{extra}}}
+            public abstract class Rules;
+            public partial class First : Rules { {{{body}}} }
+            public partial class Second : Rules;
+            """);
+
+        Assert.Contains(result.Diagnostics, item => item.Id is "MZ3010" or "MZ3007");
+    }
+
+    [Fact]
+    public void SeveralVariantValuesShareOneConfigurationSection()
+    {
+        GeneratorDriverRunResult result = Run("""
+            namespace Mortz.Core.Match.Configuration;
+            [System.AttributeUsage(System.AttributeTargets.Property)]
+            public class ConfigValueAttribute(System.Type snapshot, System.Type projection) : System.Attribute;
+            public class Value;
+            public record ValueSnapshot;
+            public static class Projection
+            {
+                public static ValueSnapshot ToSnapshot(Value value) => new();
+                public static Value ToMutable(ValueSnapshot value) => new();
+                public static void Clamp(Value value) { }
+            }
+            public partial class Rules
+            {
+                [ConfigValue(typeof(ValueSnapshot), typeof(Projection))]
+                public Value Objective { get; set; } = new();
+                [ConfigValue(typeof(ValueSnapshot), typeof(Projection))]
+                public Value Respawn { get; set; } = new();
+            }
+            """);
+        string generated = string.Join("\n", result.GeneratedTrees.Select(tree => tree.ToString()));
+
+        Assert.DoesNotContain(result.Diagnostics, item => item.Severity == DiagnosticSeverity.Error);
+        Assert.Contains("Projection.ToSnapshot(Objective)", generated);
+        Assert.Contains("Projection.ToSnapshot(Respawn)", generated);
+        Assert.Contains("Projection.Clamp(Objective)", generated);
+        Assert.Contains("Projection.Clamp(Respawn)", generated);
+    }
+
     private static GeneratorDriverRunResult Run(string source)
     {
         var references = new HashSet<string>(StringComparer.OrdinalIgnoreCase)

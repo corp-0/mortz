@@ -8,7 +8,7 @@ public class ProtocolContractTests
     [Fact]
     public void AdmissionHandshakeBreakIsVersion47()
     {
-        Assert.Equal(47, NetConfig.PROTOCOL_VERSION);
+        Assert.Equal(48, NetConfig.PROTOCOL_VERSION);
     }
 
     [Fact]

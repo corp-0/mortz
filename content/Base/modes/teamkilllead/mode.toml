@@ -1,7 +1,7 @@
 format_version = 1
 name = "Team Kill Lead"
 description = "Two teams. First team to lead by the target wins."
-identity = ["rules.teams", "rules.score", "rules.winner", "rules.evaluation", "rules.replay", "rules.end_condition.type"]
+identity = ["rules.teams", "rules.score", "rules.winner", "rules.evaluation", "rules.replay", "rules.end_condition.type", "rules.objective.type", "rules.respawn.type"]
 
 [rules]
 score = "kills"

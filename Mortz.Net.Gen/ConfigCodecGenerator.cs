@@ -37,7 +37,7 @@ public class ConfigCodecGenerator : IIncrementalGenerator
             .Where(property => Has(property, "ConfigSection") || Has(property, "ConfigValue") ||
                 Has(property, "PlayerStat") || Has(property, "MatchRule")).ToArray();
         AttributeData[] cases = type.GetAttributes().Where(attribute =>
-            attribute.AttributeClass?.ToDisplayString() == PREFIX + "EndConditionCaseAttribute").ToArray();
+            attribute.AttributeClass?.ToDisplayString() == PREFIX + "ConfigVariantAttribute").ToArray();
         foreach (IPropertySymbol field in fields.Where(field => Has(field, "ConfigSection") || Has(field, "ConfigValue")))
         {
             Emit(output, (INamedTypeSymbol)field.Type, emitted);
@@ -58,7 +58,7 @@ public class ConfigCodecGenerator : IIncrementalGenerator
             {
                 INamedTypeSymbol variant = (INamedTypeSymbol)item.ConstructorArguments[2].Value!;
                 string id = SymbolDisplay.FormatLiteral((string)item.ConstructorArguments[0].Value!, true);
-                source.AppendLine($"            case {TypeName(variant)} selected:\n            {{\n                writer.Write({id});\n                byte[] payload = {Codec(variant)}.ToBytes(selected);\n                writer.Write(payload.Length);\n                writer.Write(payload);\n                break;\n            }}");
+                source.AppendLine($"            case {TypeName(variant)} selected when selected.GetType() == typeof({TypeName(variant)}):\n            {{\n                writer.Write({id});\n                byte[] payload = {Codec(variant)}.ToBytes(selected);\n                writer.Write(payload.Length);\n                writer.Write(payload);\n                break;\n            }}");
             }
             source.AppendLine("            default: throw new global::System.NotSupportedException(value.GetType().Name);\n        }");
         }
@@ -71,35 +71,38 @@ public class ConfigCodecGenerator : IIncrementalGenerator
         }
         else
         {
-            IPropertySymbol? nested = fields.SingleOrDefault(field => Has(field, "ConfigValue"));
-            if (nested != null)
+            IPropertySymbol[] nested = fields.Where(field => Has(field, "ConfigValue")).ToArray();
+            if (nested.Length > 0)
                 source.AppendLine("        writer.Write(0); // Shared section length is filled after its fields.");
             foreach (IPropertySymbol field in fields.Where(field => !Has(field, "ConfigValue")))
             {
                 source.AppendLine($"        writer.Write({(field.Type.TypeKind == TypeKind.Enum ? "(byte)" : "")}value.{field.Name});");
             }
-            if (nested != null)
+            if (nested.Length > 0)
             {
                 source.AppendLine("        int sharedLength = checked((int)stream.Position - 4);\n        stream.Position = 0;\n        writer.Write(sharedLength);\n        stream.Position = stream.Length;");
-                source.AppendLine($"        writer.Write({Codec(nested.Type)}.ToBytes(value.{nested.Name}));");
+                foreach (IPropertySymbol field in nested)
+                {
+                    source.AppendLine($"        byte[] {field.Name} = {Codec(field.Type)}.ToBytes(value.{field.Name});\n        writer.Write({field.Name}.Length);\n        writer.Write({field.Name});");
+                }
             }
         }
         source.AppendLine("        return stream.ToArray();\n    }");
         source.AppendLine($"    public static {name} FromBytes(byte[] data)\n    {{\n        using global::System.IO.MemoryStream stream = new(data, writable: false);\n        using global::System.IO.BinaryReader reader = new(stream);");
         if (cases.Length > 0)
         {
-            source.AppendLine("        string id = reader.ReadString();\n        byte[] payload = ReadSegment(reader);\n        if (stream.Position != stream.Length)\n            throw new global::System.IO.InvalidDataException(\"Trailing end-condition rule bytes.\");\n        return id switch\n        {");
+            source.AppendLine("        string id = reader.ReadString();\n        byte[] payload = ReadSegment(reader);\n        if (stream.Position != stream.Length)\n            throw new global::System.IO.InvalidDataException(\"Trailing configuration variant bytes.\");\n        return id switch\n        {");
             foreach (AttributeData item in cases)
             {
                 string id = SymbolDisplay.FormatLiteral((string)item.ConstructorArguments[0].Value!, true);
                 source.AppendLine($"            {id} => {Codec((ITypeSymbol)item.ConstructorArguments[2].Value!)}.FromBytes(payload),");
             }
-            source.AppendLine("            _ => throw new global::System.IO.InvalidDataException(\"Unknown end-condition rules.\"),\n        };");
+            source.AppendLine("            _ => throw new global::System.IO.InvalidDataException(\"Unknown configuration variant.\"),\n        };");
         }
         else
         {
-            IPropertySymbol? nested = fields.SingleOrDefault(field => Has(field, "ConfigValue"));
-            if (nested != null)
+            IPropertySymbol[] nested = fields.Where(field => Has(field, "ConfigValue")).ToArray();
+            if (nested.Length > 0)
                 source.AppendLine("        int sharedLength = reader.ReadInt32();\n        if (sharedLength < 0 || sharedLength > stream.Length - stream.Position)\n            throw new global::System.IO.InvalidDataException(\"Invalid shared configuration length.\");");
             source.AppendLine($"        {name} value = new()\n        {{");
             foreach (IPropertySymbol field in fields.Where(field => !Has(field, "ConfigValue")))
@@ -108,15 +111,24 @@ public class ConfigCodecGenerator : IIncrementalGenerator
                 source.AppendLine($"            {field.Name} = {expression},");
             }
             source.AppendLine("        };");
-            if (nested != null)
+            if (nested.Length > 0)
             {
                 source.AppendLine("        if (stream.Position != sharedLength + 4)\n            throw new global::System.IO.InvalidDataException(\"Invalid shared configuration length.\");");
-                source.AppendLine($"        value.{nested.Name} = {Codec(nested.Type)}.FromBytes(reader.ReadBytes(checked((int)(stream.Length - stream.Position))));");
+                foreach (IPropertySymbol field in nested)
+                {
+                    source.AppendLine($"        value.{field.Name} = {Codec(field.Type)}.FromBytes(ReadSegment(reader));");
+                }
             }
-            source.AppendLine("        if (stream.Position != stream.Length)\n            throw new global::System.IO.InvalidDataException(\"Trailing configuration bytes.\");\n        value.Clamp();\n        return value;");
+            source.AppendLine("        if (stream.Position != stream.Length)\n            throw new global::System.IO.InvalidDataException(\"Trailing configuration bytes.\");");
+            if (type.ToDisplayString() == PREFIX + "MatchConfig")
+            {
+                source.AppendLine("        var errors = global::Mortz.Core.Match.Configuration.ModeComposition.Errors(value.Rules);\n        if (errors.Count > 0)\n            throw new global::System.IO.InvalidDataException(global::System.String.Join(\" \", errors));");
+            }
+            source.AppendLine("        value.Clamp();\n        return value;");
         }
         source.AppendLine("    }");
         source.AppendLine("    private static byte[] ReadSegment(global::System.IO.BinaryReader reader)\n    {\n        int length = reader.ReadInt32();\n        if (length < 0 || length > reader.BaseStream.Length - reader.BaseStream.Position)\n            throw new global::System.IO.InvalidDataException(\"Invalid configuration segment length.\");\n        return reader.ReadBytes(length);\n    }");
+        source.AppendLine("    private static T ReadEnum<T>(global::System.IO.BinaryReader reader) where T : struct, global::System.Enum\n    {\n        T value = (T)global::System.Enum.ToObject(typeof(T), reader.ReadByte());\n        if (!global::System.Enum.IsDefined(value))\n            throw new global::System.IO.InvalidDataException($\"Unknown {typeof(T).Name} value '{value}'.\");\n        return value;\n    }");
         if (cases.Length == 0)
             source.AppendLine($"    public static byte[] ToBytes(this {name}Snapshot snapshot) => ToBytes(snapshot.ToMutable());");
         source.AppendLine("}");
@@ -124,7 +136,7 @@ public class ConfigCodecGenerator : IIncrementalGenerator
     }
 
     private static string Read(ITypeSymbol type) => type.TypeKind == TypeKind.Enum
-        ? $"({TypeName(type)})reader.ReadByte()"
+        ? $"ReadEnum<{TypeName(type)}>(reader)"
         : type.SpecialType switch
         {
             SpecialType.System_Boolean => "reader.ReadBoolean()",

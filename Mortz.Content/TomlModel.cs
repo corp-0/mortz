@@ -1,3 +1,5 @@
+using System.Collections;
+using System.Text;
 using Tomlyn;
 using Tomlyn.Model;
 using Tomlyn.Syntax;
@@ -39,6 +41,10 @@ public static class TomlModel
         if (!TomlGeneratedModels.TryRead(typeof(T), Toml.ToModel(syntax), "", source,
                 diagnostics, out object? value))
             throw new NotSupportedException($"'{typeof(T).Name}' is not marked [TomlModel]");
+        if (value is ITomlValidatedModel validated)
+        {
+            validated.ValidateToml(source, diagnostics);
+        }
         return new(diagnostics.Any(IsError) ? null : (T?)value, diagnostics);
     }
 
@@ -96,8 +102,8 @@ public static class TomlModel
                 rightTable.TryGetValue(pair.Key, out object? value) &&
                 TomlValueEquals(pair.Value, value));
         }
-        if (left is System.Collections.IEnumerable leftItems && left is not string &&
-            right is System.Collections.IEnumerable rightItems && right is not string)
+        if (left is IEnumerable leftItems && left is not string &&
+            right is IEnumerable rightItems && right is not string)
         {
             return leftItems.Cast<object?>().SequenceEqual(
                 rightItems.Cast<object?>(), TomlValueComparer.Instance);
@@ -185,7 +191,7 @@ public static class TomlModel
 
     internal static string Snake(string name)
     {
-        System.Text.StringBuilder result = new();
+        StringBuilder result = new();
         for (int i = 0; i < name.Length; i++)
         {
             char c = name[i];

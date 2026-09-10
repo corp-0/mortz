@@ -30,10 +30,12 @@ public class SimWorld
     public int Tick { get; private set; }
     public TerrainMask Terrain { get; }
     private readonly MatchConfig _config;
+    private readonly int _respawnDelayTicks;
     public MatchConfigSnapshot Config { get; }
 
     private static MatchConfig Freeze(MatchConfig source)
     {
+        ModeComposition.Validate(source.Rules);
         MatchConfig copy = source.ToSnapshot().ToMutable();
         copy.Rules.Clamp();
         copy.Physics.Clamp();
@@ -52,6 +54,7 @@ public class SimWorld
     {
         Terrain = terrain;
         _config = Freeze(config);
+        _respawnDelayTicks = ((FixedRespawnRules)_config.Rules.Respawn).DelayTicks;
         Config = _config.ToSnapshot();
         Zones = zones ?? MapZones.None;
         _spawnPoints = spawnPoints?.ToArray() ?? [];
@@ -493,7 +496,7 @@ public class SimWorld
         Velocity = Vec2.Zero,
         Health = 0,
         Rope = RopeMode.NONE,
-        RespawnTicks = (ushort)Math.Max(1, _config.Rules.RespawnDelayTicks),
+        RespawnTicks = (ushort)Math.Max(1, _respawnDelayTicks),
         SpawnImmunityTicks = 0,
     };
 

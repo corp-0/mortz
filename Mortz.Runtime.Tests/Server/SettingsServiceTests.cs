@@ -56,6 +56,23 @@ public sealed class SettingsServiceTests : IDisposable
     }
 
     [Fact]
+    public void InvalidCompositionCannotReplaceLobbyRules()
+    {
+        SettingsService settings = Build();
+        MatchConfig before = settings.Config;
+        MatchConfig invalid = new()
+        {
+            Rules = new ModeRules { EndCondition = new TimeLimitRules() },
+        };
+
+        SettingsMutationResult.Rejected rejected = Assert.IsType<SettingsMutationResult.Rejected>(settings.SetRules(invalid.ToBytes()));
+
+        Assert.Equal(SettingsRejectReason.INVALID_RULES, rejected.Reason);
+        Assert.Same(before, settings.Config);
+        Assert.Empty(_transport.Messages);
+    }
+
+    [Fact]
     public void ModeUpdateAppliesItsRulesAndNamesTheMode()
     {
         SettingsService settings = Build();

@@ -81,7 +81,7 @@ public class ParticipationStepTests
             {
                 Rules = new ModeRules
                 {
-                    RespawnDelay = (float)respawnTicks / SimConfig.TICK_RATE,
+                    Respawn = new FixedRespawnRules { Delay = (float)respawnTicks / SimConfig.TICK_RATE },
                     SpawnImmunity = 0,
                 },
             }, Array.Empty<SpawnPoint>());

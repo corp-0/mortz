@@ -3,9 +3,9 @@ using Mortz.Core.Ui;
 
 namespace Mortz.Core.Match.Configuration;
 
-[EndConditionCase("score_target", "Score Target", typeof(ScoreTargetRules))]
-[EndConditionCase("score_lead", "Score Lead", typeof(ScoreLeadRules))]
-[EndConditionCase("time_limit", "Time Limit", typeof(TimeLimitRules))]
+[ConfigVariant("score_target", "Score Target", typeof(ScoreTargetRules))]
+[ConfigVariant("score_lead", "Score Lead", typeof(ScoreLeadRules))]
+[ConfigVariant("time_limit", "Time Limit", typeof(TimeLimitRules))]
 public abstract class EndConditionRules
 {
     public abstract EndConditionRulesSnapshot ToSnapshot();

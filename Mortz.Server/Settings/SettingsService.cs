@@ -30,7 +30,8 @@ public sealed class SettingsService : IObservePlayers, IObservePhase
         _link = link;
         _log = log;
         Map = boot.Map;
-        Config = boot.Rules;
+        ModeComposition.Validate(boot.Rules.Rules);
+        Config = boot.Rules.ToSnapshot().ToMutable();
         LoadCatalog(boot.Catalog);
     }
 
@@ -83,6 +84,7 @@ public sealed class SettingsService : IObservePlayers, IObservePhase
         LobbySettings before = CreateState();
         string previousMode = ModeName;
         MatchConfig next = mode.Manifest.ToMatchConfigSnapshot().ToMutable();
+        ModeComposition.Validate(next.Rules);
         next.Clamp();
         Config = next.ToSnapshot().ToMutable();
         string nextMode = ModeName;

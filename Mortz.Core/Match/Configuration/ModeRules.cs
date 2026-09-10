@@ -14,6 +14,12 @@ public sealed partial class ModeRules
     [ConfigValue(typeof(EndConditionRulesSnapshot), typeof(EndConditionRulesProjection))]
     public EndConditionRules EndCondition { get; set; } = new ScoreTargetRules();
 
+    [ConfigValue(typeof(ObjectiveRulesSnapshot), typeof(ObjectiveRulesProjection))]
+    public ObjectiveRules Objective { get; set; } = new NoObjectiveRules();
+
+    [ConfigValue(typeof(RespawnRulesSnapshot), typeof(RespawnRulesProjection))]
+    public RespawnRules Respawn { get; set; } = new FixedRespawnRules();
+
     [UiProperty("Score")]
     [MatchRule]
     public ScoreMetric Score { get; set; } = ScoreMetric.KILLS;
@@ -44,16 +50,10 @@ public sealed partial class ModeRules
     [MatchRule]
     public bool SpectateDuringRespawn { get; set; } = true;
 
-    [UiCategory("Respawn")]
-    [UiProperty("Respawn Delay", min: 0, max: 60, step: 0.05f)]
-    [MatchRule(min: 0, max: 60)]
-    public float RespawnDelay { get; set; } = SimConfig.RESPAWN_DELAY;
-
+    [UiCategory("Spawn")]
     [UiProperty("Spawn Immunity", min: 0, max: 4, step: 0.05f)]
     [MatchRule(min: 0, max: 4)]
     public float SpawnImmunity { get; set; } = SimConfig.SPAWN_IMMUNITY;
-
-    public int RespawnDelayTicks => (int)(RespawnDelay * SimConfig.TICK_RATE);
 
     public int SpawnImmunityTicks => (int)(SpawnImmunity * SimConfig.TICK_RATE);
 

@@ -239,7 +239,7 @@ public class GameModeOutcomeTests
         public Fixture(ModeRules rules, GameMode? mode = null)
         {
             rules.SpawnImmunity = 0;
-            rules.RespawnDelay = 0;
+            rules.Respawn = new FixedRespawnRules { Delay = 0 };
             MatchStateKeys keys = new(1);
             Runtime = new MatchRuntime(new TerrainMask(128, 128, (_, y) => y >= 96, (_, _) => false),
                 new MatchConfig { Rules = rules },

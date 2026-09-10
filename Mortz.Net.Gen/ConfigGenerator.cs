@@ -16,8 +16,8 @@ public sealed class ConfigGenerator : IIncrementalGenerator
     private const string CONFIG_VALUE_ATTRIBUTE = "Mortz.Core.Match.Configuration.ConfigValueAttribute";
     private const string CONFIG_SECTION_ATTRIBUTE = "Mortz.Core.Match.Configuration.ConfigSectionAttribute";
     private const string ZONE_STAT_ATTRIBUTE = "Mortz.Core.Match.Configuration.ZoneStatAttribute";
-    private const string END_CONDITION_CASE_ATTRIBUTE =
-        "Mortz.Core.Match.Configuration.EndConditionCaseAttribute";
+    private const string CONFIG_VARIANT_ATTRIBUTE =
+        "Mortz.Core.Match.Configuration.ConfigVariantAttribute";
     private const string TICK_RATE_TYPE = "Mortz.Core.Sim.SimConfig";
     // MatchConfig must expose each [PlayerStat] owner type as a property named after that type.
     private const string MATCH_CONFIG = "global::Mortz.Core.Match.Configuration.MatchConfig";
@@ -62,9 +62,9 @@ public sealed class ConfigGenerator : IIncrementalGenerator
         "Property '{0}': {1}",
         "Mortz.Config", DiagnosticSeverity.Error, isEnabledByDefault: true);
 
-    private static readonly DiagnosticDescriptor _multipleNestedValues = new(
-        "MZ3009", "Unsupported nested configuration wire layout",
-        "Configuration section '{0}' has more than one nested value; its wire layout must be explicitly designed",
+    private static readonly DiagnosticDescriptor _invalidVariant = new(
+        "MZ3010", "Invalid configuration variant",
+        "Configuration family '{0}': {1}",
         "Mortz.Config", DiagnosticSeverity.Error, isEnabledByDefault: true);
 
     private enum FieldKind
@@ -115,11 +115,11 @@ public sealed class ConfigGenerator : IIncrementalGenerator
         int SpanStart,
         ImmutableArray<string> UntrackedProperties);
 
-    private sealed record EndConditionCase(string Id, string DisplayName, INamedTypeSymbol Type);
+    private sealed record VariantCase(string Id, string DisplayName, INamedTypeSymbol Type);
 
-    private sealed record EndConditionUnion(
+    private sealed record VariantUnion(
         INamedTypeSymbol Type,
-        ImmutableArray<EndConditionCase> Cases);
+        ImmutableArray<VariantCase> Cases);
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
@@ -163,46 +163,93 @@ public sealed class ConfigGenerator : IIncrementalGenerator
                 models.Left.Right,
                 models.Right));
 
-        IncrementalValueProvider<ImmutableArray<EndConditionUnion>> endConditionUnions =
+        IncrementalValueProvider<ImmutableArray<VariantUnion>> variantUnions =
             context.SyntaxProvider.ForAttributeWithMetadataName(
-                    END_CONDITION_CASE_ATTRIBUTE,
+                    CONFIG_VARIANT_ATTRIBUTE,
                     static (node, _) => node is TypeDeclarationSyntax,
-                    static (ctx, _) => ExtractEndConditionUnion((INamedTypeSymbol)ctx.TargetSymbol))
+                    static (ctx, _) => ExtractVariantUnion((INamedTypeSymbol)ctx.TargetSymbol))
                 .Collect();
-        context.RegisterSourceOutput(endConditionUnions, EmitEndConditionUnions);
+        context.RegisterSourceOutput(variantUnions, EmitVariantUnions);
     }
 
-    private static EndConditionUnion ExtractEndConditionUnion(INamedTypeSymbol type)
+    private static VariantUnion ExtractVariantUnion(INamedTypeSymbol type)
     {
-        ImmutableArray<EndConditionCase>.Builder cases = ImmutableArray.CreateBuilder<EndConditionCase>();
+        ImmutableArray<VariantCase>.Builder cases = ImmutableArray.CreateBuilder<VariantCase>();
         foreach (AttributeData attribute in type.GetAttributes().Where(candidate =>
-                     candidate.AttributeClass?.ToDisplayString() == END_CONDITION_CASE_ATTRIBUTE))
+                     candidate.AttributeClass?.ToDisplayString() == CONFIG_VARIANT_ATTRIBUTE))
         {
             if (attribute.ConstructorArguments.Length == 3 &&
                 attribute.ConstructorArguments[0].Value is string id &&
                 attribute.ConstructorArguments[1].Value is string displayName &&
                 attribute.ConstructorArguments[2].Value is INamedTypeSymbol member)
             {
-                cases.Add(new EndConditionCase(id, displayName, member));
+                cases.Add(new VariantCase(id, displayName, member));
             }
         }
-        return new EndConditionUnion(type, cases.ToImmutable());
+        return new VariantUnion(type, cases.ToImmutable());
     }
 
-    private static void EmitEndConditionUnions(SourceProductionContext spc,
-        ImmutableArray<EndConditionUnion> unions)
+    private static void EmitVariantUnions(SourceProductionContext spc,
+        ImmutableArray<VariantUnion> unions)
     {
-        foreach (IGrouping<string, EndConditionUnion> group in unions.GroupBy(
+        foreach (IGrouping<string, VariantUnion> group in unions.GroupBy(
                      union => union.Type.ToDisplayString(), StringComparer.Ordinal))
         {
-            EndConditionUnion union = group.First();
-            string source = EmitEndConditionUnion(union);
+            VariantUnion union = group.First();
+            bool valid = true;
+            HashSet<string> ids = new(StringComparer.Ordinal);
+            HashSet<string> types = new(StringComparer.Ordinal);
+            foreach (VariantCase item in union.Cases)
+            {
+                bool derives = false;
+                for (INamedTypeSymbol? parent = item.Type.BaseType; parent != null; parent = parent.BaseType)
+                {
+                    derives |= SymbolEqualityComparer.Default.Equals(parent, union.Type);
+                }
+                string? error = string.IsNullOrWhiteSpace(item.Id) || !ids.Add(item.Id)
+                    ? $"variant id '{item.Id}' must be nonempty and unique"
+                    : !types.Add(item.Type.ToDisplayString())
+                        ? $"variant type '{item.Type.Name}' is registered more than once"
+                        : !derives || item.Type.IsAbstract || !item.Type.InstanceConstructors.Any(ctor =>
+                            ctor.DeclaredAccessibility == Accessibility.Public && ctor.Parameters.Length == 0)
+                            ? $"variant '{item.Type.Name}' must be a concrete subtype with a public parameterless constructor"
+                            : null;
+                if (error != null)
+                {
+                    spc.ReportDiagnostic(Diagnostic.Create(_invalidVariant, item.Type.Locations.FirstOrDefault(), union.Type.Name, error));
+                    valid = false;
+                }
+                foreach (IPropertySymbol property in item.Type.GetMembers().OfType<IPropertySymbol>().Where(property =>
+                             !property.IsStatic && property.DeclaredAccessibility == Accessibility.Public &&
+                             property.SetMethod != null && !property.GetAttributes().Any(attribute =>
+                                 attribute.AttributeClass?.ToDisplayString() is PLAYER_STAT_ATTRIBUTE or MATCH_RULE_ATTRIBUTE or CONFIG_VALUE_ATTRIBUTE)))
+                {
+                    spc.ReportDiagnostic(Diagnostic.Create(_untrackedValue, property.Locations.FirstOrDefault(), item.Type.Name, property.Name));
+                    valid = false;
+                }
+            }
+            if (!valid)
+            {
+                continue;
+            }
+            foreach (VariantCase item in union.Cases)
+            {
+                if (!item.Type.GetMembers().OfType<IPropertySymbol>().Any(property =>
+                        property.GetAttributes().Any(attribute => attribute.AttributeClass?.ToDisplayString() is
+                            PLAYER_STAT_ATTRIBUTE or MATCH_RULE_ATTRIBUTE or CONFIG_VALUE_ATTRIBUTE)))
+                {
+                    spc.AddSource($"{HintName(item.Type.ToDisplayString())}.g.cs",
+                        SourceText.From(EmitConfig([], item.Type.Name,
+                            item.Type.ContainingNamespace.ToDisplayString(), union.Type.ToDisplayString()), Encoding.UTF8));
+                }
+            }
+            string source = EmitVariantUnion(union);
             spc.AddSource($"{HintName(union.Type.ToDisplayString())}Metadata.g.cs",
                 SourceText.From(source, Encoding.UTF8));
         }
     }
 
-    private static string EmitEndConditionUnion(EndConditionUnion union)
+    private static string EmitVariantUnion(VariantUnion union)
     {
         string ns = union.Type.ContainingNamespace.ToDisplayString();
         string baseType = union.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
@@ -214,31 +261,33 @@ public sealed class ConfigGenerator : IIncrementalGenerator
         sb.AppendLine();
         sb.AppendLine($"public static class {union.Type.Name}Metadata");
         sb.AppendLine("{");
-        sb.AppendLine("    public static global::System.Collections.Generic.IReadOnlyList<global::Mortz.Core.Match.Configuration.EndConditionDescriptor> Variants { get; } =");
-        sb.AppendLine("        global::System.Array.AsReadOnly(new global::Mortz.Core.Match.Configuration.EndConditionDescriptor[]");
+        sb.AppendLine($"    public static global::System.Collections.Generic.IReadOnlyList<global::Mortz.Core.Match.Configuration.ConfigVariantDescriptor<{baseType}>> Variants {{ get; }} =");
+        sb.AppendLine($"        global::System.Array.AsReadOnly(new global::Mortz.Core.Match.Configuration.ConfigVariantDescriptor<{baseType}>[]");
         sb.AppendLine("        {");
-        foreach (EndConditionCase item in union.Cases)
+        foreach (VariantCase item in union.Cases)
         {
             string type = item.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-            sb.AppendLine("            new global::Mortz.Core.Match.Configuration.EndConditionDescriptor(");
+            sb.AppendLine($"            new global::Mortz.Core.Match.Configuration.ConfigVariantDescriptor<{baseType}>(");
             sb.AppendLine($"                {Literal(item.Id)}, {Literal(item.DisplayName)}, typeof({type}),");
-            sb.AppendLine($"                {type}UiMetadata.Categories,");
+            bool hasUi = item.Type.GetMembers().OfType<IPropertySymbol>().Any(property =>
+                property.GetAttributes().Any(attribute => attribute.AttributeClass?.ToDisplayString() == "Mortz.Core.Ui.UiPropertyAttribute"));
+            sb.AppendLine(hasUi ? $"                {type}UiMetadata.Categories," : "                [],");
             sb.AppendLine($"                static () => new {type}(),");
             sb.AppendLine($"                static rules => (({type})rules).Clamp()),");
         }
         sb.AppendLine("        });");
         sb.AppendLine();
-        sb.AppendLine($"    public static global::Mortz.Core.Match.Configuration.EndConditionDescriptor For({baseType} rules)");
+        sb.AppendLine($"    public static global::Mortz.Core.Match.Configuration.ConfigVariantDescriptor<{baseType}> For({baseType} rules)");
         sb.AppendLine("    {");
-        sb.AppendLine("        foreach (global::Mortz.Core.Match.Configuration.EndConditionDescriptor variant in Variants)");
+        sb.AppendLine($"        foreach (global::Mortz.Core.Match.Configuration.ConfigVariantDescriptor<{baseType}> variant in Variants)");
         sb.AppendLine("        {");
-        sb.AppendLine("            if (variant.RulesType == rules.GetType())");
+        sb.AppendLine("            if (variant.RulesType == rules?.GetType())");
         sb.AppendLine("                return variant;");
         sb.AppendLine("        }");
-        sb.AppendLine("        throw new global::System.NotSupportedException($\"Unknown end-condition rules '{rules.GetType().Name}'.\");");
+        sb.AppendLine("        throw new global::System.NotSupportedException($\"Unknown configuration variant '{rules?.GetType().Name ?? \"null\"}'.\");");
         sb.AppendLine("    }");
         sb.AppendLine();
-        sb.AppendLine($"    internal static void Clamp({baseType} rules) => For(rules).Clamp(rules);");
+        sb.AppendLine($"    public static void Clamp({baseType} rules) => For(rules).Clamp(rules);");
         sb.AppendLine();
         sb.AppendLine("}");
         return sb.ToString();
@@ -351,7 +400,7 @@ public sealed class ConfigGenerator : IIncrementalGenerator
             name, type, isEnum, enumMembers, statsName ?? name, min, max,
             conv, defaultValue, node.SyntaxTree.FilePath, node.SpanStart,
             symbol.ContainingType.BaseType?.GetAttributes().Any(attribute =>
-                attribute.AttributeClass?.ToDisplayString() == END_CONDITION_CASE_ATTRIBUTE) == true
+                attribute.AttributeClass?.ToDisplayString() == CONFIG_VARIANT_ATTRIBUTE) == true
                 ? symbol.ContainingType.BaseType.ToDisplayString()
                 : null,
             snapshotType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
@@ -517,22 +566,11 @@ public sealed class ConfigGenerator : IIncrementalGenerator
             spc.ReportDiagnostic(Diagnostic.Create(_untrackedValue, Location.None,
                 "MatchConfig", property));
         }
-        IGrouping<string, FieldModel>[] unsupportedNested = allFields
-            .Where(field => field.Kind == FieldKind.VALUE)
-            .GroupBy(field => field.Owner)
-            .Where(owner => owner.Count() > 1)
-            .ToArray();
-        foreach (IGrouping<string, FieldModel> owner in unsupportedNested)
-        {
-            spc.ReportDiagnostic(Diagnostic.Create(_multipleNestedValues, Location.None,
-                owner.First().OwnerName));
-        }
         if (allFields.Any(m => !m.Diagnostics.IsEmpty) ||
             allFields.GroupBy(m => m.Owner).Any(owner =>
                 owner.SelectMany(field => field.UntrackedProperties).Distinct(StringComparer.Ordinal)
                     .Except(owner.Select(field => field.Name), StringComparer.Ordinal).Any()) ||
-            sections.Any(section => !section.UntrackedProperties.IsEmpty) ||
-            unsupportedNested.Length > 0)
+            sections.Any(section => !section.UntrackedProperties.IsEmpty))
             return;
 
         FieldModel[] valid = stats.Concat(rules).Concat(values)
@@ -768,20 +806,27 @@ public sealed class ConfigGenerator : IIncrementalGenerator
         return sb.ToString();
     }
 
-    private static string EmitConfig(FieldModel[] fields)
+    private static string EmitConfig(FieldModel[] fields, string? name = null,
+        string? ownerNamespace = null, string? baseType = null)
     {
-        string name = fields[0].OwnerName;
+        name ??= fields[0].OwnerName;
+        ownerNamespace ??= fields[0].OwnerNamespace;
+        baseType ??= fields.FirstOrDefault()?.SnapshotBase;
         FieldModel[] wireFields = fields.Where(field => field.Kind != FieldKind.VALUE).ToArray();
-        string snapshotBase = fields[0].SnapshotBase == null
+        string snapshotBase = baseType == null
             ? ""
-            : $" : global::{fields[0].SnapshotBase}Snapshot";
+            : $" : global::{baseType}Snapshot";
         var sb = new StringBuilder();
         sb.AppendLine("// <auto-generated by Mortz.Net.Gen/>");
         sb.AppendLine("#nullable enable");
         sb.AppendLine();
-        sb.AppendLine($"namespace {fields[0].OwnerNamespace};");
+        sb.AppendLine($"namespace {ownerNamespace};");
         sb.AppendLine();
         sb.AppendLine($"public sealed record {name}Snapshot(");
+        if (fields.Length == 0)
+        {
+            sb.AppendLine(")" + snapshotBase);
+        }
         for (int i = 0; i < fields.Length; i++)
         {
             FieldModel field = fields[i];
@@ -792,7 +837,7 @@ public sealed class ConfigGenerator : IIncrementalGenerator
             sb.AppendLine($"    {type} {field.Name}{suffix}");
         }
         sb.AppendLine("{");
-        string mutableOverride = fields[0].SnapshotBase == null ? "" : "override ";
+        string mutableOverride = baseType == null ? "" : "override ";
         sb.AppendLine($"    public {mutableOverride}{name} ToMutable() => new {name}");
         sb.AppendLine("    {");
         foreach (FieldModel field in fields)
@@ -805,10 +850,14 @@ public sealed class ConfigGenerator : IIncrementalGenerator
         sb.AppendLine("    };");
         sb.AppendLine("}");
         sb.AppendLine();
-        sb.AppendLine($"public sealed partial class {name} : global::Mortz.Core.Match.Configuration.IConfigSection");
+        sb.AppendLine($"public partial class {name} : global::Mortz.Core.Match.Configuration.IConfigSection");
         sb.AppendLine("{");
-        string snapshotOverride = fields[0].SnapshotBase == null ? "" : "override ";
+        string snapshotOverride = baseType == null ? "" : "override ";
         sb.AppendLine($"    public {snapshotOverride}{name}Snapshot ToSnapshot() => new {name}Snapshot(");
+        if (fields.Length == 0)
+        {
+            sb.AppendLine("        );");
+        }
         for (int i = 0; i < fields.Length; i++)
         {
             FieldModel field = fields[i];

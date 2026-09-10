@@ -114,6 +114,8 @@ public class MatchConfigTests
                 bool value => !value,
                 Enum => Enum.GetValues(property.PropertyType).Cast<object>().First(value => !Equals(value, current)),
                 EndConditionRules => new ScoreLeadRules { Target = 4 },
+                ObjectiveRules => new NoObjectiveRules(),
+                FixedRespawnRules value => new FixedRespawnRules { Delay = value.Delay + 0.05f },
                 _ => throw new InvalidOperationException(
                     $"Unhandled config type {property.PropertyType}"),
             };
@@ -134,6 +136,16 @@ public class MatchConfigTests
                 Assert.Equal(
                     ((ScoreLeadRules)expectedVictory).Target,
                     ((ScoreLeadRules)actualVictory).Target);
+                continue;
+            }
+            if (expectedValue is ObjectiveRules expectedObjective && actualValue is ObjectiveRules actualObjective)
+            {
+                Assert.Equal(expectedObjective.ToSnapshot(), actualObjective.ToSnapshot());
+                continue;
+            }
+            if (expectedValue is RespawnRules expectedRespawn && actualValue is RespawnRules actualRespawn)
+            {
+                Assert.Equal(expectedRespawn.ToSnapshot(), actualRespawn.ToSnapshot());
                 continue;
             }
             Assert.Equal(expectedValue, actualValue);
@@ -193,7 +205,7 @@ public class MatchConfigTests
                 Teams = true,
                 EndCondition = new ScoreLeadRules { Target = 17 },
                 FriendlyFire = false,
-                RespawnDelay = 1.25f,
+                Respawn = new FixedRespawnRules { Delay = 1.25f },
             },
             Physics = new Physics
             {
@@ -207,7 +219,7 @@ public class MatchConfigTests
             },
         };
         byte[] expected = Convert.FromHexString(
-            "270000001000000001000000000000010000A03F0000E03F0A73636F72655F6C65616404000000110000005C00000000008C43000016450000E144000096440040424400006144030000000000C8430000C84300002043000002440000BE434C37893D3108AC3CCDCC4C3E000016441F852B3F0080A2440000024400401C45000016430000803E0000803F3800000000409A440000003F000048440000614430000000050000000000A03F00000C429A99193F0000204164000000430000000000003F23000000");
+            "460000000C00000001000000000000010000E03F130000000A73636F72655F6C656164040000001100000009000000046E6F6E65000000000E000000056669786564040000000000A03F5C00000000008C43000016450000E144000096440040424400006144030000000000C8430000C84300002043000002440000BE434C37893D3108AC3CCDCC4C3E000016441F852B3F0080A2440000024400401C45000016430000803E0000803F3800000000409A440000003F000048440000614430000000050000000000A03F00000C429A99193F0000204164000000430000000000003F23000000");
 
         Assert.Equal(expected, config.ToBytes());
         Assert.Equal(expected, config.ToSnapshot().ToBytes());
@@ -223,7 +235,8 @@ public class MatchConfigTests
         ChangeWritableProperties(after.Combat);
         int expected = ModeRulesUiMetadata.Categories.Sum(category => category.Properties.Count) +
                        PhysicsUiMetadata.Categories.Sum(category => category.Properties.Count) +
-                       CombatUiMetadata.Categories.Sum(category => category.Properties.Count) + 1;
+                       CombatUiMetadata.Categories.Sum(category => category.Properties.Count) +
+                       FixedRespawnRulesUiMetadata.Categories.Sum(category => category.Properties.Count) + 1;
 
         LobbySettingDelta[] deltas = LobbySettingsDiff.Between(
             before.ToSnapshot(),
@@ -358,7 +371,7 @@ public class MatchConfigTests
         {
             Rules = new ModeRules
             {
-                RespawnDelay = 999,
+                Respawn = new FixedRespawnRules { Delay = 999 },
                 SpawnImmunity = 999,
             },
             Physics = new Physics
@@ -381,7 +394,7 @@ public class MatchConfigTests
         Assert.InRange(stats.RopeMissCooldownTicks, 1, 255);
         Assert.InRange(stats.ReloadPerShellTicks, 1, 255);
         Assert.InRange(stats.CoyoteMaxTicks, 1, 255);
-        Assert.InRange(maxed.Rules.RespawnDelayTicks, 1, ushort.MaxValue);
+        Assert.InRange(((FixedRespawnRules)maxed.Rules.Respawn).DelayTicks, 1, ushort.MaxValue);
         Assert.InRange(maxed.Rules.SpawnImmunityTicks, 1, 255);
         Assert.InRange(stats.ParryWindowTicks, 1, 255);
         Assert.InRange(stats.ParryCooldownTicks, 1, ushort.MaxValue);
