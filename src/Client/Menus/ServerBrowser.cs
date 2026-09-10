@@ -8,9 +8,6 @@ namespace Mortz.Client.Menus;
 [Meta(typeof(IAutoNode))]
 public partial class ServerBrowser : Control
 {
-    private static readonly Color _noteColor = new(0.72f, 0.72f, 0.75f);
-    private static readonly Color _warningColor = new(1f, 0.55f, 0.45f);
-
     [Signal] public delegate void BackRequestedEventHandler();
 
     [Export] private PackedScene _rowScene = null!;
@@ -142,8 +139,8 @@ public partial class ServerBrowser : Control
             _ => "",
         };
         _status.Text = Browser.DiscoveryStatus + (notice.Length == 0 ? "" : "\n" + notice);
-        _status.AddThemeColorOverride("font_color", Browser.Notice is
-            BrowserNotice.INCOMPATIBLE or BrowserNotice.NO_RESPONSE ? _warningColor : _noteColor);
+        _status.ThemeTypeVariation = Browser.Notice is
+            BrowserNotice.INCOMPATIBLE or BrowserNotice.NO_RESPONSE ? "WarningLabel" : "NoteLabel";
         _directPanel.Render(Browser.DirectState, Browser.AddressError, Browser.DirectTarget);
     }
 }

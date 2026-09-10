@@ -70,7 +70,7 @@ theme_override_constants/separation = 4
 
 [node name="Status" type="Label" parent="Margin/Column" unique_id=1049170998]
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.55, 0.45, 1)
+theme_type_variation = &"NoteLabel"
 text = "Steam discovery is unavailable. LAN, favorites and direct joining are available."
 autowrap_mode = 3
 

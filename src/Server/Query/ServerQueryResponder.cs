@@ -21,9 +21,7 @@ public partial class ServerQueryResponder : Node
     public bool Start(int queryPort, Func<ServerInfo> describe, string bindAddress = "*", IServerPacketRouter? router = null)
     {
         if (_socket != null)
-        {
             throw new InvalidOperationException("Query responder already started.");
-        }
         ProcessMode = ProcessModeEnum.Always;
         PacketPeerUdp socket = new();
         Error error = socket.Bind(queryPort, bindAddress);
@@ -51,14 +49,10 @@ public partial class ServerQueryResponder : Node
         BoundQueryPort = -1;
     }
 
-    public override void _ExitTree() => Stop();
-
     public override void _Process(double delta)
     {
         if (_socket is not PacketPeerUdp socket || _describe == null)
-        {
             return;
-        }
         ulong now = Time.GetTicksMsec();
         for (int i = 0; i < 32 && socket.GetAvailablePacketCount() > 0; i++)
         {
@@ -68,9 +62,7 @@ public partial class ServerQueryResponder : Node
             if (!ServerQueryProtocol.TryDecodeRequest(packet, out _, out _))
             {
                 if (packet.Length is >= 5 and <= 16384 && BinaryPrimitives.ReadInt32LittleEndian(packet) == -1)
-                {
                     _router?.HandleIncoming(packet, source, port);
-                }
                 continue;
             }
             foreach (byte[] response in _responder.Respond(packet, source, port, now, _describe()))

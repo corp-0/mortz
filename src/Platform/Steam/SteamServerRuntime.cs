@@ -9,31 +9,21 @@ using Mortz.Shared.Logging;
 
 namespace Mortz.Platform.Steam;
 
-public class SteamServerRuntime : IServerPlatform, IServerPacketRouter, IVerificationBackend, IServerPublication
+public class SteamServerRuntime : IServerPlatform, IServerPacketRouter, IVerificationBackend
 {
     private GodotSteamServerApi? _api;
     private bool _initialized;
     private bool _disposed;
     private bool _isPublic;
     private readonly Func<IEnumerable<Player>> _players;
-    private readonly ServerPublication _publication;
+    private ServerPublication? _publication;
     public VerificationSessions Verification { get; }
 
-    public SteamServerRuntime(Func<IEnumerable<Player>>? players = null)
+    public SteamServerRuntime(Func<IEnumerable<Player>> players)
     {
-        _players = players ?? (() => []);
+        _players = players;
         Verification = new VerificationSessions(this);
-        _publication = new ServerPublication(this);
     }
-
-    void IServerPublication.Publish(ServerInfo info) => PublishMetadata(info);
-    void IServerPublication.Advertise(bool active)
-    {
-        if (_initialized) { _api!.SetAdvertiseServerActive(active); }
-    }
-    ulong IServerPlayerReporting.CreateGuest() => _api!.CreateUnauthenticatedUserConnection();
-    bool IServerPlayerReporting.Update(ulong accountId, string name) => _api!.UpdateUserData(accountId, name, 0);
-    void IServerPlayerReporting.EndGuest(ulong accountId) => _api?.EndAuthSession(accountId);
 
     bool IVerificationBackend.Available => AuthenticationAvailable;
     ulong IVerificationBackend.ServerAccountId => AuthenticationAvailable ? _api!.AccountId : 0;
@@ -42,7 +32,7 @@ public class SteamServerRuntime : IServerPlatform, IServerPacketRouter, IVerific
     private void Validated(ulong accountId, long result, ulong ownerId) => Verification.Result(accountId, result == 0);
 
     public bool AuthenticationAvailable => _initialized && !_disposed && _api!.LoggedOn() && _api.AccountId != 0;
-    public bool PublicationActive => AuthenticationAvailable && _publication.Active;
+    public bool PublicationActive => AuthenticationAvailable && _publication!.Active;
     public string Status { get; private set; } = "Steam unavailable; guest play is ready.";
 
     public bool Initialize(ServerInfo info, int queryPort, bool isPublic)
@@ -73,7 +63,8 @@ public class SteamServerRuntime : IServerPlatform, IServerPacketRouter, IVerific
                 return false;
             }
             _isPublic = isPublic;
-            _api.SetAdvertiseServerActive(false);
+            _publication = new ServerPublication(_api);
+            _api.Advertise(false);
             _api.SetProduct(info.AppId.ToString());
             _api.SetGameDescription("Mortz");
             _api.SetModDir("mortz");
@@ -98,19 +89,7 @@ public class SteamServerRuntime : IServerPlatform, IServerPacketRouter, IVerific
             return;
         }
         Verification.Pump(_api!.RunCallbacks);
-        _publication.Advance(info, _players(), AuthenticationAvailable, _isPublic, Time.GetTicksMsec());
-    }
-
-    private void PublishMetadata(ServerInfo info)
-    {
-        _api!.SetServerName(info.Name);
-        _api.SetMapName(info.Map);
-        _api.SetMaxPlayerCount(info.MaxPlayers);
-        _api.ClearAllKeyValues();
-        foreach ((string key, string value) in ServerQueryMetadata.ToRules(info))
-        {
-            _api.SetKeyValue(key, value);
-        }
+        _publication!.Advance(info, _players(), AuthenticationAvailable, _isPublic, Time.GetTicksMsec());
     }
 
     public bool HandleIncoming(byte[] packet, string address, int port) =>
@@ -132,7 +111,7 @@ public class SteamServerRuntime : IServerPlatform, IServerPacketRouter, IVerific
             return;
         }
         _disposed = true;
-        _publication.Dispose();
+        _publication?.Dispose();
         Verification.Dispose();
         if (_api != null)
         {

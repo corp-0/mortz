@@ -1,5 +1,6 @@
 [gd_scene format=3 uid="uid://bfovuxg8rq0rd"]
 
+[ext_resource type="Theme" path="res://src/Shared/UI/MortzTheme.tres" id="1_5v0ek"]
 [ext_resource type="Script" uid="uid://bpnu4veoebvmx" path="res://src/Client/Menus/ServerRow.cs" id="1_row"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_normal"]
@@ -27,10 +28,11 @@ corner_radius_bottom_left = 3
 
 [node name="ServerRow" type="Button" unique_id=293927126 node_paths=PackedStringArray("_statusDot", "_name", "_detail", "_population", "_ping", "_star")]
 custom_minimum_size = Vector2(0, 56)
-anchors_preset = 10
-anchor_right = 1.0
+offset_right = 760.0
+offset_bottom = 56.0
 grow_horizontal = 2
 size_flags_horizontal = 3
+theme = ExtResource("1_5v0ek")
 theme_override_styles/normal = SubResource("StyleBoxFlat_normal")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_selected")
 theme_override_styles/hover = SubResource("StyleBoxFlat_hover")
@@ -86,8 +88,8 @@ clip_text = true
 
 [node name="Detail" type="Label" parent="Margin/Row/Text" unique_id=1609194355]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.62, 0.62, 0.65, 1)
 theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.62, 0.62, 0.65, 1)
 text = "address - status"
 clip_text = true
 

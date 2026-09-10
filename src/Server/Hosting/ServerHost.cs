@@ -1,3 +1,5 @@
+using Chickensoft.AutoInject;
+using Chickensoft.Introspection;
 using Godot;
 using Mortz.Core.Sim;
 using Mortz.Net;
@@ -7,8 +9,7 @@ using Serilog;
 
 namespace Mortz.Server.Hosting;
 
-/// <summary>Owns the listening transport. Loads the boot record here so the
-/// port is settled before any sibling binds a socket.</summary>
+[Meta(typeof(IAutoNode))]
 [GlobalClass]
 public partial class ServerHost : Node
 {
@@ -16,15 +17,20 @@ public partial class ServerHost : Node
 
     [Export] private string _defaultMap = "castlewars";
 
+    [Dependency] private NetworkManager Network => this.DependOn<NetworkManager>();
+
     public ServerBootLoad? Load { get; private set; }
+
+    public override void _Notification(int what) => this.Notify(what);
 
     public override void _Ready() => Load = ServerBootLoader.TryLoad(_defaultMap);
 
-    public bool Listen(NetworkManager network)
+    public bool Listen()
     {
         if (Load is not ServerBootLoad load)
             return false;
         ServerBoot boot = load.Boot;
+        NetworkManager network = Network;
         Error error = network.StartServer(boot.GamePort);
         if (error != Error.Ok)
         {

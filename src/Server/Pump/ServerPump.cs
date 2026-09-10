@@ -16,6 +16,8 @@ namespace Mortz.Server.Pump;
 [GlobalClass]
 public partial class ServerPump : Node
 {
+    [Dependency] private NetworkManager Network => this.DependOn<NetworkManager>();
+
     private NetworkManager? _network;
     private ServerAdmission? _admission;
 
@@ -25,8 +27,9 @@ public partial class ServerPump : Node
 
     partial void AttachE2E(ref IMatchObserver observer, ref IMatchControl control);
 
-    public GameServer Start(ServerBootLoad load, NetworkManager network, IAdmissionVerifier verifier)
+    public GameServer Start(ServerBootLoad load, IAdmissionVerifier verifier)
     {
+        NetworkManager network = Network;
         _network = network;
         IMatchObserver observer = new NullMatchObserver();
         IMatchControl control = new NullMatchControl();
@@ -51,9 +54,7 @@ public partial class ServerPump : Node
     public void Stop()
     {
         if (_network == null)
-        {
             return;
-        }
         _network.TransportPeerConnected -= Connected;
         _network.TransportPeerDisconnected -= _admission!.Disconnected;
         _network.HelloReceived -= Hello;
@@ -66,13 +67,14 @@ public partial class ServerPump : Node
         Server.Dispose();
     }
 
-    public void OnExitTree() => Stop();
-
     private void Connected(int peerId) => _admission?.Connected(peerId, Time.GetTicksMsec());
     private void Hello(int peerId, AdmissionHello hello) => _admission?.Hello(peerId, hello, Time.GetTicksMsec());
     private void Proof(int peerId, SteamProof proof) => _admission?.Proof(peerId, proof, Time.GetTicksMsec());
     public void AdvanceAdmission() => _admission?.Advance(Time.GetTicksMsec());
 
-    public override void _PhysicsProcess(double delta) =>
-        Server?.Advance(new ServerTime(Time.GetTicksMsec(), delta));
+    public override void _PhysicsProcess(double delta)
+    {
+        if (_admission != null)
+            Server.Advance(new ServerTime(Time.GetTicksMsec(), delta));
+    }
 }

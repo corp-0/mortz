@@ -2,7 +2,6 @@ using Chickensoft.AutoInject;
 using Chickensoft.Introspection;
 using Godot;
 using Mortz.Net;
-using Mortz.Platform;
 using Mortz.Protocol.Hosting;
 using Mortz.Server.Admission;
 using Mortz.Server.Hosting;
@@ -48,9 +47,7 @@ public partial class ServerMain : Node
             string? pipeName = CmdArgs.GetValue("--host-pipe");
             string? token = CmdArgs.GetValue("--host-token");
             if (CmdArgs.HasFlag("--host-pipe") || CmdArgs.HasFlag("--host-token"))
-            {
                 _owner = new OwnedServerConnection(pipeName ?? "", token ?? "");
-            }
             StartRuntime();
         }
         catch (Exception exception)
@@ -62,7 +59,7 @@ public partial class ServerMain : Node
 
     private void StartRuntime()
     {
-        if (_host.Load == null || !_host.Listen(Network))
+        if (_host.Load == null || !_host.Listen())
         {
             FailStartup(_host.Load == null
                 ? "Local server could not load its content or settings. Check the server log."
@@ -82,7 +79,7 @@ public partial class ServerMain : Node
             packetRouter = steam;
         }
 #endif
-        _server = _pump.Start(_host.Load.Value, Network, verifier);
+        _server = _pump.Start(_host.Load.Value, verifier);
         _runtime = new ServerRuntime(platform,
             port => _query.Start(port, _server.Describe,
 #if TOOLS
@@ -92,12 +89,8 @@ public partial class ServerMain : Node
 #endif
                 packetRouter), _query.Stop);
         _runtime.Start(_server.Describe(), boot.QueryPort, boot.SteamPublic);
-        // Children leave in reverse order; release Steam before the query node closes its socket.
-        PlatformRuntimeOwner lifetime = new();
-        lifetime.Initialize(AdvanceRuntime, Stop);
-        AddChild(lifetime);
         ReportCapabilities();
-        _startupReport = _owner?.ReportAsync(new(HostControlKind.READY, "", "127.0.0.1",
+        _startupReport = _owner?.ReportAsync(new HostControlMessage(HostControlKind.READY, "", "127.0.0.1",
             boot.GamePort, BoundQueryPort));
         NotifyE2EListening();
     }
@@ -105,19 +98,17 @@ public partial class ServerMain : Node
     private void FailStartup(string reason)
     {
         _startupFailed = true;
-        _startupReport = _owner?.ReportAsync(new(HostControlKind.FAILED, "", Reason: reason));
+        _startupReport = _owner?.ReportAsync(new HostControlMessage(HostControlKind.FAILED, "", Reason: reason));
         if (_owner == null)
-        {
             GetTree().Quit(1);
-        }
     }
 
     public override void _Process(double delta)
     {
         if (_owner?.StopRequested == true || (_startupFailed && _startupReport?.IsCompleted != false))
-        {
             GetTree().Quit(_startupFailed ? 1 : 0);
-        }
+        if (_runtime != null && !_startupFailed)
+            AdvanceRuntime();
     }
 
     private void AdvanceRuntime()
@@ -131,9 +122,7 @@ public partial class ServerMain : Node
     private void ReportCapabilities()
     {
         if (_runtime == null || Capabilities == _lastCapabilities)
-        {
             return;
-        }
         _lastCapabilities = Capabilities;
         MortzLog.For("server").Information(
             "game={Game} query={Query} authentication={Authentication} publication={Publication}: {Status}",
@@ -149,6 +138,7 @@ public partial class ServerMain : Node
 
     private void Stop()
     {
+        // Release admission before Steam; the runtime then closes the shared query socket.
         _pump.Stop();
         _runtime?.Dispose();
         Network.Shutdown();

@@ -1,18 +1,16 @@
-using System;
-using System.Collections.Generic;
-using Godot;
 using System.Net;
 using System.Net.Sockets;
+using Godot;
+using Mortz.Protocol.Net.Admission;
+using Mortz.Protocol.Net.Query;
 using Mortz.Server.Platform;
 
 namespace Mortz.Platform.Steam;
 
 // The addon owns this singleton; disposing the adapter only removes subscriptions.
-public class GodotSteamServerApi : IDisposable
+public class GodotSteamServerApi : IServerPublication, IDisposable
 {
-    public const int TicketCapacity = 1024;
-
-    private readonly List<(StringName Signal, Callable Callback)> _subscriptions = new();
+    private readonly List<(StringName Signal, Callable Callback)> _subscriptions = [];
     private readonly GodotObject _server;
     private readonly Callable _connected;
     private readonly Callable _connectFailure;
@@ -91,32 +89,39 @@ public class GodotSteamServerApi : IDisposable
     public ulong AccountId => unchecked((ulong)_server.Call("getSteamID").AsInt64());
     public int BeginAuthSession(byte[] ticket, ulong account)
     {
-        if (ticket.Length is 0 or > TicketCapacity)
+        if (ticket.Length is 0 or > AdmissionLimits.TICKET_BYTES)
         {
             throw new ArgumentOutOfRangeException(nameof(ticket));
         }
         return _server.Call("beginAuthSession", ticket, ticket.Length, unchecked((long)account)).AsInt32();
     }
     public void EndAuthSession(ulong account) => _server.Call("endAuthSession", unchecked((long)account));
-    public ulong CreateUnauthenticatedUserConnection() => unchecked((ulong)_server.Call("createUnauthenticatedUserConnection").AsInt64());
-    public bool UpdateUserData(ulong account, string name, uint score) =>
-        _server.Call("updateUserData", unchecked((long)account), name, score).AsBool();
+    public ulong CreateGuest() => unchecked((ulong)_server.Call("createUnauthenticatedUserConnection").AsInt64());
+    public bool Update(ulong accountId, string name) =>
+        _server.Call("updateUserData", unchecked((long)accountId), name, 0).AsBool();
+    public void EndGuest(ulong accountId) => EndAuthSession(accountId);
     public void SetProduct(string product) => _server.Call("setProduct", product);
     public void SetGameDescription(string description) => _server.Call("setGameDescription", description);
     public void SetModDir(string directory) => _server.Call("setModDir", directory);
     public void SetDedicatedServer(bool dedicated) => _server.Call("setDedicatedServer", dedicated);
-    public void SetServerName(string name) => _server.Call("setServerName", name);
-    public void SetMapName(string map) => _server.Call("setMapName", map);
-    public void SetMaxPlayerCount(int maximum) => _server.Call("setMaxPlayerCount", maximum);
-    public void SetAdvertiseServerActive(bool active) => _server.Call("setAdvertiseServerActive", active);
-    public void ClearAllKeyValues() => _server.Call("clearAllKeyValues");
-    public void SetKeyValue(string key, string value) => _server.Call("setKeyValue", key, value);
+    public void Advertise(bool active) => _server.Call("setAdvertiseServerActive", active);
+    public void Publish(ServerInfo info)
+    {
+        _server.Call("setServerName", info.Name);
+        _server.Call("setMapName", info.Map);
+        _server.Call("setMaxPlayerCount", info.MaxPlayers);
+        _server.Call("clearAllKeyValues");
+        foreach ((string key, string value) in ServerQueryMetadata.ToRules(info))
+        {
+            _server.Call("setKeyValue", key, value);
+        }
+    }
     public void LogOff() => _server.Call("logOff");
     public void Shutdown() => _server.Call("serverShutdown");
 
     private void Subscribe(StringName signal, Callable callback)
     {
-        var error = _server.Connect(signal, callback);
+        Error error = _server.Connect(signal, callback);
         if (error != Error.Ok)
         {
             throw new InvalidOperationException($"Cannot subscribe to SteamServer.{signal}: {error}");
@@ -131,10 +136,11 @@ public class GodotSteamServerApi : IDisposable
             return;
         }
         _disposed = true;
-        foreach (var (signal, callback) in _subscriptions)
+        foreach ((StringName signal, Callable callback) in _subscriptions)
         {
             _server.Disconnect(signal, callback);
         }
         _subscriptions.Clear();
+        GC.SuppressFinalize(this);
     }
 }

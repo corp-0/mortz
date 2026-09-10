@@ -8,7 +8,6 @@ using Mortz.Client.Settings;
 using Mortz.Net;
 using Mortz.Protocol.Net;
 #if MORTZ_STEAM
-using Mortz.Platform;
 using Mortz.Platform.Steam;
 using Mortz.Shared;
 #endif
@@ -27,10 +26,13 @@ public partial class ClientMain : Node,
 {
     [Export] private Sfx _sfx = null!;
     private ClientSettings _settings = null!;
+#if MORTZ_STEAM
+    private IInternetDiscovery _discovery = null!;
+    private IClientTicketProvider _tickets = null!;
+    private readonly SteamClientRuntime _steam = new();
+#else
     private readonly IInternetDiscovery _discovery = new UnavailableInternetDiscovery();
     private readonly IClientTicketProvider _tickets = new GuestTicketProvider();
-#if MORTZ_STEAM
-    private readonly SteamClientRuntime _steam = new();
 #endif
 
     [Dependency] private NetworkManager Network => this.DependOn<NetworkManager>();
@@ -54,11 +56,7 @@ public partial class ClientMain : Node,
         _tickets = _steam.Tickets;
         _discovery = _steam.Discovery;
         _settings = ClientSettings.Load(MortzUserData.Resolve(), _steam.PersonaName);
-        PlatformRuntimeOwner owner = new();
-        owner.Initialize(_steam.Advance, _steam.Dispose);
-        AddChild(owner);
-        // Release connection and browser consumers before the addon singleton.
-        MoveChild(owner, 0);
+        GetTree().ProcessFrame += _steam.Advance;
 #else
         _settings = ClientSettings.Load();
 #endif
@@ -69,6 +67,7 @@ public partial class ClientMain : Node,
     public void OnExitTree()
     {
 #if MORTZ_STEAM
+        GetTree().ProcessFrame -= _steam.Advance;
         _steam.Dispose();
 #endif
     }

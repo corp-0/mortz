@@ -9,7 +9,6 @@ using Mortz.Client.Servers;
 using Mortz.Client.Settings;
 using Mortz.Core.Terrain;
 using Mortz.Net;
-using Mortz.Platform;
 using Mortz.Protocol.Hosting;
 using Mortz.Protocol.Net;
 using Mortz.Protocol.Net.Admission;
@@ -86,14 +85,7 @@ public partial class ClientSessionController : Node, ISessionExit,
         _admission = new ClientAdmission(Tickets, Network, Time.GetTicksMsec);
         _admission.Accepted += OnAdmitted;
         _admission.Rejected += OnAdmissionRejected;
-        PlatformRuntimeOwner admissionLifetime = new();
-        admissionLifetime.Initialize(() =>
-        {
-            _admission.Advance(Time.GetTicksMsec());
-            _browser?.Advance();
-            AdvanceLocalServer();
-        }, _admission.Dispose);
-        AddChild(admissionLifetime);
+        GetTree().ProcessFrame += AdvanceSession;
         ServerProbe probe = new() { Name = "ServerProbe" };
         AddChild(probe);
         _browser = new ServerBrowserController(probe, () => Settings.Favorites, Settings.SetFavorites, Discovery, Time.GetTicksMsec);
@@ -117,6 +109,7 @@ public partial class ClientSessionController : Node, ISessionExit,
 
     public void OnExitTree()
     {
+        GetTree().ProcessFrame -= AdvanceSession;
         _admission?.Dispose();
         if (_browser != null)
         {
@@ -145,9 +138,7 @@ public partial class ClientSessionController : Node, ISessionExit,
             return;
         }
         if (_localServer != null || !_session.TryBeginConnecting())
-        {
             return;
-        }
         _connection.Cancel();
         Network.ResetPeer();
         _browser?.Close();
@@ -173,9 +164,7 @@ public partial class ClientSessionController : Node, ISessionExit,
     public void OnJoinRequested(string address, int port, string playerName, int skin = 0)
     {
         if (_session.Stage is not (ClientSessionStage.MENU or ClientSessionStage.CONNECTING))
-        {
             return;
-        }
         StopLocalServer();
         _pendingLocalAdminPassword = null;
         StartConnecting(address, port, playerName, skin);
@@ -184,9 +173,7 @@ public partial class ClientSessionController : Node, ISessionExit,
     private void OnBrowserJoinRequested(ServerJoinRequest request)
     {
         if (_session.Stage is not (ClientSessionStage.MENU or ClientSessionStage.CONNECTING))
-        {
             return;
-        }
         StopLocalServer();
         _pendingLocalAdminPassword = null;
         StartConnecting(request.Address, request.Port, Settings.PlayerName, Settings.Skin, request.KnownSteamAccountId);
@@ -220,17 +207,13 @@ public partial class ClientSessionController : Node, ISessionExit,
             }
         }
         else if (_localStartup == null && _localServer?.HasExited == true)
-        {
             ReturnToMenu("Local server stopped unexpectedly.", stopLocalServer: true);
-        }
     }
 
     private void StopLocalServer()
     {
         if (_localServer == null)
-        {
             return;
-        }
         OwnedServerProcess server = _localServer;
         Task<HostControlMessage>? startup = _localStartup;
         _localServer = null;
@@ -251,9 +234,7 @@ public partial class ClientSessionController : Node, ISessionExit,
     private void CancelMenuConnection()
     {
         if (_session.Stage == ClientSessionStage.CONNECTING)
-        {
             ReturnToMenu("", stopLocalServer: true);
-        }
     }
 
     public void OnReadyToggled(bool ready) => new SetReadyMsg(ready).SendToServer(Network);
@@ -311,7 +292,7 @@ public partial class ClientSessionController : Node, ISessionExit,
             OnConnectionFailed();
     }
 
-    private async void OnConnectionFailed()
+    private void OnConnectionFailed()
     {
         ConnectionFailure failure = _connection.Failed();
         if (failure.Action == ConnectionFailureAction.IGNORE)
@@ -319,9 +300,11 @@ public partial class ClientSessionController : Node, ISessionExit,
         if (failure.Action == ConnectionFailureAction.RETRY)
         {
             _menu?.SetStatus($"Retrying... ({failure.RetryNumber}/{failure.MaxRetries})");
-            await ToSignal(GetTree().CreateTimer(1.0), SceneTreeTimer.SignalName.Timeout);
-            if (_connection.BeginScheduledRetry(failure.Generation))
-                TryConnect();
+            GetTree().CreateTimer(1.0).Timeout += () =>
+            {
+                if (_connection.BeginScheduledRetry(failure.Generation))
+                    TryConnect();
+            };
             return;
         }
 
@@ -428,13 +411,13 @@ public partial class ClientSessionController : Node, ISessionExit,
     }
 
 #if TOOLS
-    private async void DelayMatchEntry(PendingMatchEntry entry, byte[] terrainData)
+    private void DelayMatchEntry(PendingMatchEntry entry, byte[] terrainData)
     {
-        await ToSignal(GetTree().CreateTimer(
-            E2ELaunch.ScreenLoadDelayMs / 1000.0),
-            SceneTreeTimer.SignalName.Timeout);
-        if (_pendingMatch == entry && _connectedSession != null)
-            MountMatch(entry, terrainData);
+        GetTree().CreateTimer(E2ELaunch.ScreenLoadDelayMs / 1000.0).Timeout += () =>
+        {
+            if (IsInstanceValid(this) && IsInsideTree() && _pendingMatch == entry && _connectedSession != null)
+                MountMatch(entry, terrainData);
+        };
     }
 #endif
 
@@ -496,6 +479,14 @@ public partial class ClientSessionController : Node, ISessionExit,
             runtime.Tick(runtime.SampleInput?.Invoke() ?? default);
     }
 
+    // Connection work must continue while gameplay processing is paused.
+    private void AdvanceSession()
+    {
+        _admission?.Advance(Time.GetTicksMsec());
+        _browser?.Advance();
+        AdvanceLocalServer();
+    }
+
     public override void _Process(double delta) => _matchRuntime?.Advance((float)delta);
 
     private void RejectMatchLoad(string reason)
@@ -526,9 +517,7 @@ public partial class ClientSessionController : Node, ISessionExit,
         _menu!.ShowHome();
         _menu.SetStatus(status);
         if (stopLocalServer)
-        {
             StopLocalServer();
-        }
     }
 
     private void CreateMenu(bool autoStartIntro)
@@ -599,15 +588,15 @@ public partial class ClientSessionController : Node, ISessionExit,
     }
 
 #if TOOLS
-    private async void DelayLobbyEntry(int generation)
+    private void DelayLobbyEntry(int generation)
     {
         ConnectedSession? connection = _connectedSession;
-        await ToSignal(GetTree().CreateTimer(
-            E2ELaunch.ScreenLoadDelayMs / 1000.0),
-            SceneTreeTimer.SignalName.Timeout);
-        if (_lobby == null && connection != null && ReferenceEquals(connection, _connectedSession) &&
-            _session.Stage == ClientSessionStage.LOBBY)
-            MountLobby(generation);
+        GetTree().CreateTimer(E2ELaunch.ScreenLoadDelayMs / 1000.0).Timeout += () =>
+        {
+            if (IsInstanceValid(this) && IsInsideTree() && _lobby == null && connection != null &&
+                ReferenceEquals(connection, _connectedSession) && _session.Stage == ClientSessionStage.LOBBY)
+                MountLobby(generation);
+        };
     }
 #endif
 

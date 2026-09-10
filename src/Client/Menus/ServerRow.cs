@@ -7,11 +7,6 @@ namespace Mortz.Client.Menus;
 /// <summary>One line of the server browser, instanced per entry.</summary>
 public partial class ServerRow : Button
 {
-    private static readonly Color _online = new(0.35f, 0.85f, 0.45f);
-    private static readonly Color _probing = new(0.6f, 0.6f, 0.6f);
-    private static readonly Color _offline = new(0.85f, 0.3f, 0.3f);
-    private static readonly Color _incompatible = new(0.95f, 0.7f, 0.2f);
-
     [Signal] public delegate void SelectedEventHandler();
     [Signal] public delegate void FavoriteToggledEventHandler();
 
@@ -58,14 +53,13 @@ public partial class ServerRow : Button
         return Entry.IsFavorite ? "Remove from favorites" : "Keep in favorites";
     }
 
-    private Color StatusColor() => Entry.Status switch
+    private Color StatusColor() => GetThemeColor(Entry.Status switch
     {
-        ServerStatus.ONLINE => _online,
-        ServerStatus.PROBING => _probing,
-        ServerStatus.INCOMPATIBLE => _incompatible,
-        ServerStatus.OFFLINE => _offline,
-        _ => _probing,
-    };
+        ServerStatus.ONLINE => "success",
+        ServerStatus.INCOMPATIBLE => "caution",
+        ServerStatus.OFFLINE => "danger",
+        _ => "pending"
+    }, "MortzUI");
 
     private string StatusText()
     {
